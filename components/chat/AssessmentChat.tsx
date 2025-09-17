@@ -7,6 +7,9 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { Send, Loader2 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
+import { AssessmentDomain } from '@prisma/client'
+import { ASSESSMENT_CONFIG } from '@/lib/config/ai-config'
+import { QuestionPresenter, AssessmentComplete } from '@/components/assessment/QuestionPresenter'
 
 interface Message {
   id: string
@@ -19,6 +22,18 @@ interface AssessmentChatProps {
   assessmentId: string
 }
 
+interface StructuredAssessmentState {
+  currentQuestion?: string
+  questionId?: string
+  currentDomain?: AssessmentDomain
+  progress?: {
+    totalQuestions: number
+    answeredQuestions: number
+    completedDomains: number
+    overallProgress: number
+  }
+}
+
 export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
   const { data: session } = useSession()
   const [messages, setMessages] = useState<Message[]>([])
@@ -26,7 +41,10 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [isInitialized, setIsInitialized] = useState(false)
   const [assessmentStatus, setAssessmentStatus] = useState<'IN_PROGRESS' | 'COMPLETED'>('IN_PROGRESS')
+  const [structuredState, setStructuredState] = useState<StructuredAssessmentState>({})
   const scrollAreaRef = useRef<HTMLDivElement>(null)
+
+  const isStructuredMode = ASSESSMENT_CONFIG.CURRENT_MODE === 'structured'
 
   // Load existing messages and send initial greeting
   useEffect(() => {
@@ -77,6 +95,17 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
 
       if (response.ok) {
         const data = await response.json()
+
+        if (isStructuredMode) {
+          // Handle structured mode initialization
+          setStructuredState({
+            currentQuestion: data.nextQuestion,
+            questionId: data.questionId,
+            currentDomain: data.currentDomain,
+            progress: data.progress
+          })
+        }
+
         setMessages(prev => [...prev, {
           id: Date.now().toString(),
           role: 'assistant',
@@ -91,7 +120,7 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!input.trim() || isLoading || assessmentStatus === 'COMPLETED') return
 
     const userMessage: Message = {
@@ -116,7 +145,7 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
 
       if (response.ok) {
         const data = await response.json()
-        
+
         const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
@@ -125,7 +154,7 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
         }
 
         setMessages(prev => [...prev, assistantMessage])
-        
+
         if (data.isComplete) {
           setAssessmentStatus('COMPLETED')
         }
@@ -153,6 +182,62 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
     }
   }
 
+  const handleStructuredAnswer = async (questionId: string, response: boolean) => {
+    setIsLoading(true)
+
+    try {
+      const apiResponse = await fetch(`/api/assessments/${assessmentId}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questionId,
+          response
+        })
+      })
+
+      if (apiResponse.ok) {
+        const data = await apiResponse.json()
+
+        // Add conversation messages
+        const userMessage: Message = {
+          id: Date.now().toString(),
+          role: 'user',
+          content: response ? 'Yes' : 'No',
+          timestamp: new Date()
+        }
+
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: data.message,
+          timestamp: new Date()
+        }
+
+        setMessages(prev => [...prev, userMessage, assistantMessage])
+
+        // Update structured state
+        if (data.isComplete) {
+          setAssessmentStatus('COMPLETED')
+          setStructuredState({})
+        } else {
+          setStructuredState({
+            currentQuestion: data.nextQuestion,
+            questionId: data.questionId,
+            currentDomain: data.currentDomain,
+            progress: data.progress
+          })
+        }
+      } else {
+        throw new Error('Failed to submit response')
+      }
+    } catch (error) {
+      console.error('Error submitting structured answer:', error)
+      // Could add error state handling here
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   if (!isInitialized) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -162,6 +247,67 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
     )
   }
 
+  if (isStructuredMode) {
+    // Structured Assessment Mode
+    if (assessmentStatus === 'COMPLETED') {
+      return (
+        <div className="flex flex-col h-full">
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b">
+            <h2 className="text-lg font-semibold">Behavioral Assessment</h2>
+            <Badge variant="secondary">Complete</Badge>
+          </div>
+
+          <div className="flex-1 p-4 overflow-auto">
+            <AssessmentComplete
+              totalQuestions={structuredState.progress?.totalQuestions || 0}
+              answeredQuestions={structuredState.progress?.answeredQuestions || 0}
+              completedDomains={structuredState.progress?.completedDomains || 0}
+              onViewResults={() => {
+                // Could navigate to results page
+                console.log('View results clicked')
+              }}
+            />
+          </div>
+        </div>
+      )
+    }
+
+    if (structuredState.currentQuestion && structuredState.questionId && structuredState.currentDomain && structuredState.progress) {
+      return (
+        <div className="flex flex-col h-full">
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b">
+            <h2 className="text-lg font-semibold">Behavioral Assessment</h2>
+            <Badge variant="default">In Progress</Badge>
+          </div>
+
+          <div className="flex-1 p-4 overflow-auto">
+            <QuestionPresenter
+              questionId={structuredState.questionId}
+              questionText={structuredState.currentQuestion}
+              currentDomain={structuredState.currentDomain}
+              progress={structuredState.progress}
+              isLoading={isLoading}
+              onAnswer={handleStructuredAnswer}
+            />
+          </div>
+        </div>
+      )
+    }
+
+    // Loading state for structured mode
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="flex items-center space-x-2">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span>Preparing assessment...</span>
+        </div>
+      </div>
+    )
+  }
+
+  // Conversational Assessment Mode
   return (
     <div className="flex flex-col h-full">
       {/* Header */}

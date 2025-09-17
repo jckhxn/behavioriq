@@ -4,7 +4,7 @@ import { prisma } from '@/lib/db/prisma'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
@@ -12,7 +12,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const assessmentId = params.id
+    const assessmentId = (await params).id
 
     // Verify assessment belongs to user
     const assessment = await prisma.assessment.findFirst({

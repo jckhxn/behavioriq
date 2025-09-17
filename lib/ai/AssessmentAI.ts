@@ -1,44 +1,62 @@
-import { prisma } from '@/lib/db/prisma'
-import { generateChatCompletion } from './openai'
-import { AssessmentDomain, RiskLevel, MessageRole } from '@prisma/client'
+import { prisma } from "@/lib/db/prisma";
+import { getChatCompletion } from "./openai";
+import { AssessmentDomain, RiskLevel, MessageRole } from "@prisma/client";
+import { EARLY_DETECTION_SCREENER } from "../assessment/assessments";
+import {
+  ScoringCalculator,
+  type QuestionResponse,
+  type DomainScore,
+} from "../assessment/scoring";
 
 export interface AssessmentScores {
-  [AssessmentDomain.ANTISOCIAL]: number
-  [AssessmentDomain.VIOLENCE]: number
-  [AssessmentDomain.ATTENTION]: number
-  [AssessmentDomain.EMOTIONAL]: number
-  [AssessmentDomain.CONDUCT]: number
+  [key: string]: number;
 }
 
 export interface ScoreUpdate {
-  domain: AssessmentDomain
-  rawScore: number
-  riskLevel: RiskLevel
-  confidence: number
+  domain: string;
+  rawScore: number;
+  riskLevel: RiskLevel;
+  confidence: number;
 }
 
 export interface AssessmentResponse {
-  message: string
-  scores: ScoreUpdate[]
-  nextQuestion?: string
-  isComplete: boolean
+  message: string;
+  scores: ScoreUpdate[];
+  nextQuestion?: string;
+  questionId?: string;
+  currentDomain?: string;
+  isComplete: boolean;
+  progress?: {
+    totalQuestions: number;
+    answeredQuestions: number;
+    completedDomains: number;
+    overallProgress: number;
+  };
+  aiRecommendations?: string;
+}
+
+export interface StructuredQuestionResponse {
+  questionId: string;
+  response: boolean;
 }
 
 export class AssessmentAI {
-  private assessmentId: string
-  private currentScores: AssessmentScores
-  private conversationHistory: Array<{ role: MessageRole; content: string }>
+  private assessmentId: string;
+  private currentScores: AssessmentScores;
+  private conversationHistory: Array<{ role: string; content: string }>;
+  private questionResponses: QuestionResponse[];
+  private currentQuestionIndex: number;
+  private currentDomainIndex: number;
+  private isStructuredMode: boolean;
 
   constructor(assessmentId: string) {
-    this.assessmentId = assessmentId
-    this.currentScores = {
-      [AssessmentDomain.ANTISOCIAL]: 0,
-      [AssessmentDomain.VIOLENCE]: 0,
-      [AssessmentDomain.ATTENTION]: 0,
-      [AssessmentDomain.EMOTIONAL]: 0,
-      [AssessmentDomain.CONDUCT]: 0
-    }
-    this.conversationHistory = []
+    this.assessmentId = assessmentId;
+    this.currentScores = {};
+    this.conversationHistory = [];
+    this.questionResponses = [];
+    this.currentQuestionIndex = 0;
+    this.currentDomainIndex = 0;
+    this.isStructuredMode = true; // Always use structured mode per user story
   }
 
   async initialize(): Promise<void> {
@@ -46,252 +64,449 @@ export class AssessmentAI {
       // Load existing conversation history
       const messages = await prisma.chatMessage.findMany({
         where: { assessmentId: this.assessmentId },
-        orderBy: { timestamp: 'asc' }
-      })
+        orderBy: { timestamp: "asc" },
+      });
 
-      this.conversationHistory = messages.map(msg => ({
+      this.conversationHistory = messages.map((msg) => ({
         role: msg.role,
-        content: msg.content
-      }))
+        content: msg.content,
+      }));
 
-      // Load latest scores
-      const latestScores = await prisma.score.findMany({
+      // Load question responses for structured mode
+      const responses = await prisma.questionResponse.findMany({
         where: { assessmentId: this.assessmentId },
-        orderBy: { timestamp: 'desc' },
-        distinct: ['domain']
-      })
+        orderBy: { timestamp: "asc" },
+      });
 
-      latestScores.forEach(score => {
-        this.currentScores[score.domain] = score.rawScore
-      })
+      this.questionResponses = responses.map((r) => ({
+        questionId: r.questionId,
+        response: r.response,
+        timestamp: r.timestamp,
+      }));
+
+      // Calculate current progress
+      this.updateCurrentProgress();
     } catch (error) {
-      console.error('Error initializing AssessmentAI:', error)
-      throw new Error('Failed to initialize assessment')
+      console.error("Error initializing AssessmentAI:", error);
+      throw new Error("Failed to initialize assessment");
     }
   }
 
-  async processResponse(userResponse: string): Promise<AssessmentResponse> {
+  async processStructuredResponse(
+    questionResponse: StructuredQuestionResponse
+  ): Promise<AssessmentResponse> {
     try {
-      // Add user response to history
-      this.conversationHistory.push({
-        role: MessageRole.USER,
-        content: userResponse
-      })
+      // Store the response
+      this.questionResponses.push({
+        questionId: questionResponse.questionId,
+        response: questionResponse.response,
+        timestamp: new Date(),
+      });
 
-      // Analyze response and update scores
-      const analysis = await this.analyzeResponse(userResponse)
-      
-      // Store user message
-      await prisma.chatMessage.create({
-        data: {
-          assessmentId: this.assessmentId,
-          role: MessageRole.USER,
-          content: userResponse,
-          timestamp: new Date()
-        }
-      })
+      // Get current domain and check for skip conditions
+      const currentDomain = this.getCurrentDomainFromQuestionId(
+        questionResponse.questionId
+      );
+
+      const terminationCheck = ScoringCalculator.checkEarlyTermination(
+        currentDomain,
+        this.questionResponses
+      );
+
+      let nextQuestion = null;
+      let isComplete = false;
+
+      if (terminationCheck.nextQuestionId) {
+        // Skip to specific question
+        nextQuestion = this.getQuestionById(terminationCheck.nextQuestionId);
+      } else {
+        // Get next question using our improved logic
+        nextQuestion = this.getNextQuestionImproved();
+      }
+
+      isComplete = nextQuestion === null;
+
+      // Calculate all domain scores
+      const domainScores = ScoringCalculator.getAllDomainScores(
+        this.questionResponses
+      );
+
+      // Generate AI recommendations if complete
+      let aiRecommendations = "";
+      if (isComplete) {
+        aiRecommendations = await this.generateAIRecommendations(domainScores);
+      }
+
+      // Save response to database
+      await this.saveQuestionResponse(questionResponse);
 
       // Update scores in database
-      await this.updateScores(analysis.scores)
+      await this.updateStructuredScores(domainScores);
 
-      // Generate next question or completion message
-      const nextQuestion = analysis.isComplete 
-        ? null 
-        : await this.generateNextQuestion()
+      const message = this.generateResponseMessage(
+        questionResponse.response,
+        nextQuestion,
+        isComplete,
+        aiRecommendations
+      );
 
-      const responseMessage = analysis.isComplete
-        ? this.generateCompletionMessage()
-        : (nextQuestion || "Please continue sharing your thoughts.")
+      return {
+        message,
+        scores: domainScores.map((ds) => ({
+          domain: ds.domain,
+          rawScore: ds.score,
+          riskLevel: ScoringCalculator.mapScoreToRiskLevel(ds),
+          confidence: ds.isClinicallySignificant ? 0.9 : 0.7,
+        })),
+        nextQuestion: nextQuestion?.text,
+        questionId: nextQuestion?.id,
+        currentDomain: currentDomain,
+        isComplete,
+        progress: this.calculateProgress(),
+        aiRecommendations: isComplete ? aiRecommendations : undefined,
+      };
+    } catch (error) {
+      console.error("Error processing structured response:", error);
+      throw new Error("Failed to process assessment response");
+    }
+  }
 
-      // Add assistant response to history
-      this.conversationHistory.push({
-        role: MessageRole.ASSISTANT,
-        content: responseMessage
-      })
+  private async generateAIRecommendations(
+    domainScores: DomainScore[]
+  ): Promise<string> {
+    const clinicallySignificantDomains = domainScores.filter(
+      (ds) => ds.isClinicallySignificant
+    );
 
-      // Store assistant message
-      await prisma.chatMessage.create({
+    const prompt = `Based on the following assessment results, provide professional recommendations and citations:
+
+Assessment Results:
+${domainScores
+  .map(
+    (ds) =>
+      `${ds.displayName}: ${ds.score}/${
+        ds.totalPossible
+      } (${ds.percentage.toFixed(1)}%) - ${
+        ds.isClinicallySignificant
+          ? "Clinically Significant"
+          : "Within Normal Range"
+      }`
+  )
+  .join("\n")}
+
+Clinically Significant Areas: ${
+      clinicallySignificantDomains.map((ds) => ds.displayName).join(", ") ||
+      "None"
+    }
+
+Please provide:
+1. A brief interpretation of the results
+2. Specific recommendations for each clinically significant area
+3. General wellness recommendations
+4. Professional referral suggestions if appropriate
+
+Keep the response professional, empathetic, and actionable.`;
+
+    try {
+      const response = await getChatCompletion([
+        {
+          role: "system",
+          content:
+            "You are a licensed clinical psychologist providing assessment interpretations and recommendations.",
+        },
+        { role: "user", content: prompt },
+      ]);
+
+      return response || "Unable to generate recommendations at this time.";
+    } catch (error) {
+      console.error("Error generating AI recommendations:", error);
+      return "Assessment complete. Please consult with a mental health professional for interpretation and next steps.";
+    }
+  }
+
+  private shouldSkipCurrentDomain(): boolean {
+    if (this.currentDomainIndex >= EARLY_DETECTION_SCREENER.length)
+      return false;
+
+    const currentDomain = EARLY_DETECTION_SCREENER[this.currentDomainIndex];
+    const domainScore = ScoringCalculator.calculateDomainScore(
+      currentDomain.name,
+      this.questionResponses
+    );
+
+    return domainScore.skipped;
+  }
+
+  private getCurrentDomainFromQuestionId(questionId: string): string {
+    for (const domain of EARLY_DETECTION_SCREENER) {
+      if (domain.questions.some((q) => q.id === questionId)) {
+        return domain.name;
+      }
+    }
+    throw new Error(`Domain not found for question ${questionId}`);
+  }
+
+  private getNextQuestionImproved() {
+    // Get all answered question IDs
+    const answeredQuestionIds = new Set(
+      this.questionResponses.map((r) => r.questionId)
+    );
+
+    console.log(`\n🔍 FINDING NEXT QUESTION`);
+    console.log(
+      `Currently answered: [${Array.from(answeredQuestionIds).join(", ")}]`
+    );
+
+    // Go through each domain in order
+    for (const domain of EARLY_DETECTION_SCREENER) {
+      console.log(`\n📋 Checking domain: ${domain.name}`);
+
+      // Check if we have any responses for this domain
+      const domainHasResponses = domain.questions.some((q) =>
+        answeredQuestionIds.has(q.id)
+      );
+
+      console.log(`Domain has responses: ${domainHasResponses}`);
+      console.log(`Domain has prerequisite: ${!!domain.prerequisite}`);
+
+      // Only check for skipping if we've started this domain OR if it has a prerequisite
+      if (domainHasResponses || domain.prerequisite) {
+        console.log(`⚖️ Evaluating domain for skipping...`);
+        const domainScore = ScoringCalculator.calculateDomainScore(
+          domain.name,
+          this.questionResponses
+        );
+        if (domainScore.skipped) {
+          console.log(
+            `⏭️ DOMAIN SKIPPED: ${domain.name} - ${domainScore.skipReason}`
+          );
+          continue; // Skip this entire domain
+        }
+      } else {
+        console.log(
+          `⏸️ Skipping evaluation (domain not started and no prerequisite)`
+        );
+      }
+
+      // Find the first unanswered question in this domain
+      console.log(`🔎 Looking for unanswered questions in ${domain.name}...`);
+      for (const question of domain.questions) {
+        const isAnswered = answeredQuestionIds.has(question.id);
+        console.log(
+          `  ${question.id}: ${isAnswered ? "✅ answered" : "❓ unanswered"}`
+        );
+        if (!isAnswered) {
+          console.log(
+            `➡️ NEXT QUESTION: ${question.id} in domain ${domain.name}`
+          );
+          return question; // Return the next unanswered question
+        }
+      }
+      console.log(`✅ All questions in ${domain.name} are completed`);
+    }
+
+    // If we get here, all questions are answered
+    console.log(`🎉 ALL QUESTIONS COMPLETED!`);
+    return null;
+  }
+
+  private getQuestionById(questionId: string) {
+    for (const domain of EARLY_DETECTION_SCREENER) {
+      const question = domain.questions.find((q) => q.id === questionId);
+      if (question) {
+        return question;
+      }
+    }
+    return null;
+  }
+
+  private generateResponseMessage(
+    userResponse: boolean,
+    nextQuestion: any,
+    isComplete: boolean,
+    aiRecommendations?: string
+  ): string {
+    if (isComplete) {
+      return `Assessment complete! Your responses have been recorded and analyzed. ${
+        aiRecommendations ? "Please review the recommendations below." : ""
+      }`;
+    }
+
+    return `Thank you for your response. ${
+      nextQuestion ? "Next question ready." : "Moving to next section."
+    }`;
+  }
+
+  private calculateProgress() {
+    const totalQuestions = EARLY_DETECTION_SCREENER.reduce(
+      (sum, domain) => sum + domain.questions.length,
+      0
+    );
+    const answeredQuestions = this.questionResponses.length;
+    const completedDomains = this.currentDomainIndex;
+
+    return {
+      totalQuestions,
+      answeredQuestions,
+      completedDomains,
+      overallProgress: (answeredQuestions / totalQuestions) * 100,
+    };
+  }
+
+  private updateCurrentProgress() {
+    // Update current indices based on responses using improved logic
+    const answeredQuestionIds = new Set(
+      this.questionResponses.map((r) => r.questionId)
+    );
+
+    this.currentDomainIndex = 0;
+    this.currentQuestionIndex = 0;
+
+    // Find which domain we're currently working on
+    for (
+      let domainIndex = 0;
+      domainIndex < EARLY_DETECTION_SCREENER.length;
+      domainIndex++
+    ) {
+      const domain = EARLY_DETECTION_SCREENER[domainIndex];
+
+      // Check if we have any responses for this domain
+      const domainHasResponses = domain.questions.some((q) =>
+        answeredQuestionIds.has(q.id)
+      );
+
+      // Only check for skipping if we've started this domain OR if it has a prerequisite
+      if (domainHasResponses || domain.prerequisite) {
+        const domainScore = ScoringCalculator.calculateDomainScore(
+          domain.name,
+          this.questionResponses
+        );
+        if (domainScore.skipped) {
+          continue;
+        }
+      }
+
+      // Check questions in this domain
+      let allQuestionsAnswered = true;
+      let lastAnsweredIndex = -1;
+
+      for (
+        let questionIndex = 0;
+        questionIndex < domain.questions.length;
+        questionIndex++
+      ) {
+        const question = domain.questions[questionIndex];
+        if (answeredQuestionIds.has(question.id)) {
+          lastAnsweredIndex = questionIndex;
+        } else {
+          allQuestionsAnswered = false;
+          break;
+        }
+      }
+
+      if (!allQuestionsAnswered) {
+        // This is the current domain we're working on
+        this.currentDomainIndex = domainIndex;
+        this.currentQuestionIndex = lastAnsweredIndex + 1;
+        return;
+      }
+    }
+
+    // If we reach here, all domains are complete
+    this.currentDomainIndex = EARLY_DETECTION_SCREENER.length;
+    this.currentQuestionIndex = 0;
+  }
+
+  private async saveQuestionResponse(
+    questionResponse: StructuredQuestionResponse
+  ) {
+    try {
+      await prisma.questionResponse.create({
         data: {
           assessmentId: this.assessmentId,
-          role: MessageRole.ASSISTANT,
-          content: responseMessage,
-          timestamp: new Date()
-        }
-      })
-
-      // Mark assessment as complete if done
-      if (analysis.isComplete) {
-        await prisma.assessment.update({
-          where: { id: this.assessmentId },
-          data: {
-            status: 'COMPLETED',
-            completedAt: new Date()
-          }
-        })
-      }
-
-      return {
-        message: responseMessage,
-        scores: analysis.scores,
-        nextQuestion: nextQuestion || undefined,
-        isComplete: analysis.isComplete
-      }
+          questionId: questionResponse.questionId,
+          response: questionResponse.response,
+          timestamp: new Date(),
+        },
+      });
     } catch (error) {
-      console.error('Error processing assessment response:', error)
-      throw new Error('Failed to process response')
+      console.error("Error saving question response:", error);
     }
   }
 
-  private async analyzeResponse(response: string): Promise<{
-    scores: ScoreUpdate[]
-    isComplete: boolean
-  }> {
-    const systemPrompt = `You are a psychological assessment AI analyzing responses for behavioral indicators.
+  private mapDomainToEnum(domainName: string): AssessmentDomain {
+    // Map our custom domain names to existing Prisma enum values
+    const domainMapping: Record<string, AssessmentDomain> = {
+      SUICIDALITY: AssessmentDomain.EMOTIONAL,
+      SELF_HARM: AssessmentDomain.VIOLENCE,
+      ANTISOCIAL: AssessmentDomain.ANTISOCIAL,
+    };
 
-Analyze the user's response and provide scores for each domain on a scale of 0-100:
-- ANTISOCIAL: Social withdrawal, isolation, lack of social skills
-- VIOLENCE: Aggressive thoughts, violent tendencies, harm to others
-- ATTENTION: Focus issues, hyperactivity, impulsivity
-- EMOTIONAL: Emotional dysregulation, anxiety, depression
-- CONDUCT: Rule-breaking, defiance, authority issues
+    return domainMapping[domainName] || AssessmentDomain.ANTISOCIAL;
+  }
 
-For each domain, provide:
-1. Raw score (0-100)
-2. Risk level (LOW, MODERATE, HIGH, VERY_HIGH)
-3. Confidence (0.0-1.0)
-
-Also determine if enough information has been gathered (typically after 8-12 exchanges).
-
-Respond ONLY with valid JSON in this format:
-{
-  "scores": [
-    {
-      "domain": "ANTISOCIAL",
-      "rawScore": 25,
-      "riskLevel": "LOW",
-      "confidence": 0.8
-    }
-  ],
-  "isComplete": false
-}`
-
+  private async updateStructuredScores(
+    domainScores: DomainScore[]
+  ): Promise<void> {
     try {
-      const completion = await generateChatCompletion([
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Conversation history: ${JSON.stringify(this.conversationHistory.slice(-6))}\n\nCurrent response to analyze: "${response}"` }
-      ], {
-        model: 'gpt-4',
-        temperature: 0.3,
-        maxTokens: 800
-      })
+      const scoreUpdates = domainScores.map((domainScore) => ({
+        assessmentId: this.assessmentId,
+        domain: this.mapDomainToEnum(domainScore.domain),
+        rawScore: domainScore.score,
+        totalPossible: domainScore.totalPossible,
+        questionsAnswered: domainScore.questionsAnswered,
+        riskLevel: ScoringCalculator.mapScoreToRiskLevel(domainScore),
+        confidence: domainScore.isClinicallySignificant ? 0.9 : 0.7,
+        timestamp: new Date(),
+      }));
 
-      const content = completion.choices[0]?.message?.content
-      if (!content) {
-        throw new Error('No response from AI')
-      }
-
-      const analysis = JSON.parse(content)
-      
-      // Validate and update current scores
-      analysis.scores.forEach((score: ScoreUpdate) => {
-        this.currentScores[score.domain] = score.rawScore
-      })
-
-      return analysis
+      await prisma.score.createMany({
+        data: scoreUpdates,
+      });
     } catch (error) {
-      console.error('Error analyzing response:', error)
-      // Return default neutral scores on error
-      return {
-        scores: Object.values(AssessmentDomain).map(domain => ({
-          domain,
-          rawScore: this.currentScores[domain],
-          riskLevel: RiskLevel.LOW,
-          confidence: 0.5
-        })),
-        isComplete: false
-      }
+      console.error("Error updating scores:", error);
     }
   }
 
-  private async generateNextQuestion(): Promise<string | null> {
-    if (this.conversationHistory.length >= 20) {
-      return null // Assessment should be complete
-    }
+  async getInitialStructuredQuestion(): Promise<{
+    questionId: string;
+    text: string;
+    domain: string;
+  } | null> {
+    if (EARLY_DETECTION_SCREENER.length === 0) return null;
 
-    const systemPrompt = `You are conducting a psychological assessment interview. Based on the conversation history and current assessment needs, generate the next most appropriate question.
+    const firstDomain = EARLY_DETECTION_SCREENER[0];
+    const firstQuestion = firstDomain.questions[0];
 
-Guidelines:
-- Ask open-ended questions that encourage detailed responses
-- Explore areas that need more information based on current scores
-- Be empathetic and professional
-- Avoid leading questions
-- Focus on understanding thoughts, feelings, and behaviors
-- Keep questions conversational and non-threatening
-
-Generate ONE concise, empathetic question that will help gather more assessment information.`
-
-    try {
-      const completion = await generateChatCompletion([
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Conversation so far: ${JSON.stringify(this.conversationHistory)}\n\nCurrent scores: ${JSON.stringify(this.currentScores)}` }
-      ], {
-        model: 'gpt-4',
-        temperature: 0.7,
-        maxTokens: 200
-      })
-
-      return completion.choices[0]?.message?.content || null
-    } catch (error) {
-      console.error('Error generating next question:', error)
-      return "Can you tell me more about how you've been feeling lately?"
-    }
-  }
-
-  private generateCompletionMessage(): string {
-    const totalResponses = this.conversationHistory.filter(msg => msg.role === MessageRole.USER).length
-    return `Thank you for completing the assessment. I've gathered valuable information from our ${totalResponses} exchanges. The assessment results are now available in your dashboard.`
-  }
-
-  private async updateScores(scores: ScoreUpdate[]): Promise<void> {
-    try {
-      const scorePromises = scores.map(score =>
-        prisma.score.create({
-          data: {
-            assessmentId: this.assessmentId,
-            domain: score.domain,
-            rawScore: score.rawScore,
-            riskLevel: score.riskLevel,
-            confidence: score.confidence,
-            timestamp: new Date()
-          }
-        })
-      )
-
-      await Promise.all(scorePromises)
-    } catch (error) {
-      console.error('Error updating scores:', error)
-      throw new Error('Failed to update assessment scores')
-    }
+    return {
+      questionId: firstQuestion.id,
+      text: firstQuestion.text,
+      domain: firstDomain.name,
+    };
   }
 
   async getCurrentScores(): Promise<AssessmentScores> {
-    return { ...this.currentScores }
+    return this.currentScores;
   }
 
-  static async createNewAssessment(userId: string, subjectName: string): Promise<string> {
+  static async createNewAssessment(
+    userId: string,
+    subjectName: string
+  ): Promise<string> {
     try {
       const assessment = await prisma.assessment.create({
         data: {
           userId,
           subjectName,
-          status: 'IN_PROGRESS'
-        }
-      })
+          status: "IN_PROGRESS",
+          currentDomain: AssessmentDomain.ANTISOCIAL, // Use valid enum value
+        },
+      });
 
-      return assessment.id
+      return assessment.id;
     } catch (error) {
-      console.error('Error creating new assessment:', error)
-      throw new Error('Failed to create assessment')
+      console.error("Error creating assessment:", error);
+      throw new Error("Failed to create new assessment");
     }
   }
 }

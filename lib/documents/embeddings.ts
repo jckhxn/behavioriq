@@ -88,8 +88,8 @@ export async function searchSimilarDocuments(
       document_title: string
       document_fileName: string
       document_category: DocumentCategory
-    }>>`
-      SELECT 
+    }>>(
+      `SELECT
         dc.id,
         dc.title,
         dc.content,
@@ -105,8 +105,9 @@ export async function searchSimilarDocuments(
         AND dc.embedding IS NOT NULL
         AND 1 - (dc.embedding <=> $${params.length + 1}::vector) >= $${params.length + 2}
       ORDER BY dc.embedding <=> $${params.length + 1}::vector
-      LIMIT $${params.length + 3}
-    `, ...params, queryEmbedding, threshold, limit)
+      LIMIT $${params.length + 3}`,
+      ...params, queryEmbedding, threshold, limit
+    )
 
     return results.map(result => ({
       id: result.id,

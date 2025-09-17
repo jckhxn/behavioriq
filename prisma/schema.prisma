@@ -115,12 +115,15 @@ model Assessment {
   userId        String
   subjectName   String
   status        AssessmentStatus @default(IN_PROGRESS)
+  currentDomain AssessmentDomain? // Track current domain being assessed
+  currentQuestionOrder Int?       // Track current question within domain
   startedAt     DateTime         @default(now())
   completedAt   DateTime?
-  
+
   messages      ChatMessage[]
   scores        Score[]
-  
+  responses     QuestionResponse[]
+
   @@index([userId])
   @@index([status])
   @@map("assessments")
@@ -164,11 +167,77 @@ model Score {
   assessmentId  String
   domain        AssessmentDomain
   rawScore      Float
+  totalPossible Int              // Total possible points for this domain
+  questionsAnswered Int          // Number of questions answered (for early termination tracking)
   riskLevel     RiskLevel
   confidence    Float            // 0 to 1
+  wasTerminatedEarly Boolean     @default(false) // True if domain was skipped due to early termination
   timestamp     DateTime         @default(now())
-  
+
   @@unique([assessmentId, domain, timestamp])
   @@index([assessmentId])
   @@map("scores")
+}
+
+model QuestionSet {
+  id            String           @id @default(cuid())
+  domain        AssessmentDomain
+  name          String
+  description   String?
+  isActive      Boolean          @default(true)
+  order         Int              // Order of domains in assessment
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  questions     Question[]
+  terminationRules TerminationRule[]
+
+  @@unique([domain])
+  @@index([domain, isActive])
+  @@map("question_sets")
+}
+
+model Question {
+  id            String      @id @default(cuid())
+  questionSet   QuestionSet @relation(fields: [questionSetId], references: [id], onDelete: Cascade)
+  questionSetId String
+  text          String      @db.Text
+  order         Int
+  isGatingQuestion Boolean  @default(false) // If true, failing this can trigger early termination
+  weight        Int         @default(1)     // Point value for "Yes" answer
+  isActive      Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([questionSetId, order])
+  @@index([questionSetId, isActive])
+  @@map("questions")
+}
+
+model TerminationRule {
+  id            String      @id @default(cuid())
+  questionSet   QuestionSet @relation(fields: [questionSetId], references: [id], onDelete: Cascade)
+  questionSetId String
+  name          String
+  description   String?
+  minimumYesToContinue Int // Minimum "yes" answers needed to continue with domain
+  checkAfterQuestion Int   // Check rule after this question number
+  isActive      Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+
+  @@index([questionSetId, isActive])
+  @@map("termination_rules")
+}
+
+model QuestionResponse {
+  id            String     @id @default(cuid())
+  assessment    Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  assessmentId  String
+  questionId    String     // Store question ID as string (no foreign key for Early Detection Screener)
+  response      Boolean    // true for "Yes", false for "No"
+  timestamp     DateTime   @default(now())
+
+  @@unique([assessmentId, questionId])
+  @@index([assessmentId])
+  @@map("question_responses")
 }

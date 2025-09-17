@@ -96,7 +96,7 @@ export function DocumentUpload({
     setUploadFiles(prev => prev.filter(file => file.id !== fileId))
   }
 
-  const uploadFiles = async () => {
+  const handleUpload = async () => {
     if (uploadFiles.length === 0) return
 
     setIsUploading(true)
@@ -228,7 +228,7 @@ export function DocumentUpload({
             <div className="flex items-center justify-between">
               <h3 className="font-medium">Files to Upload</h3>
               <Button
-                onClick={uploadFiles}
+                onClick={handleUpload}
                 disabled={isUploading || uploadFiles.every(f => f.status === 'success')}
               >
                 {isUploading ? 'Uploading...' : 'Upload All'}

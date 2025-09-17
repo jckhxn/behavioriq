@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/config'
+import { prisma } from '@/lib/db/prisma'
 import { AssessmentAI } from '@/lib/ai/AssessmentAI'
 import { z } from 'zod'
 

@@ -2,6 +2,15 @@ import { prisma } from '@/lib/db/prisma'
 import { generateChatCompletion } from './openai'
 import { searchSimilarDocuments, SearchResult } from '@/lib/documents/embeddings'
 import { MessageRole, DocumentCategory } from '@prisma/client'
+import {
+  AI_MODELS,
+  AI_PARAMETERS,
+  KNOWLEDGE_CONFIG,
+  SYSTEM_PROMPTS,
+  SUCCESS_MESSAGES,
+  ERROR_MESSAGES,
+  getCategorySuggestions
+} from '@/lib/config/ai-config'
 
 export interface KnowledgeResponse {
   message: string
@@ -32,7 +41,7 @@ export class KnowledgeAI {
       const messages = await prisma.chatMessage.findMany({
         where: { sessionId: this.context.sessionId },
         orderBy: { timestamp: 'asc' },
-        take: 20 // Limit to recent messages to manage context
+        take: AI_PARAMETERS.KNOWLEDGE.CONTEXT_WINDOW
       })
 
       this.context.conversationHistory = messages.map(msg => ({
@@ -41,7 +50,7 @@ export class KnowledgeAI {
       }))
     } catch (error) {
       console.error('Error initializing KnowledgeAI:', error)
-      throw new Error('Failed to initialize knowledge chat')
+      throw new Error(ERROR_MESSAGES.KNOWLEDGE.INITIALIZATION_FAILED)
     }
   }
 
@@ -58,8 +67,8 @@ export class KnowledgeAI {
         query,
         this.context.userId,
         {
-          limit: 5,
-          threshold: 0.6,
+          limit: AI_PARAMETERS.KNOWLEDGE.SEARCH_LIMIT,
+          threshold: AI_PARAMETERS.KNOWLEDGE.SEARCH_THRESHOLD,
           categories
         }
       )
@@ -79,7 +88,7 @@ export class KnowledgeAI {
       return response
     } catch (error) {
       console.error('Error processing knowledge query:', error)
-      throw new Error('Failed to process query')
+      throw new Error(ERROR_MESSAGES.KNOWLEDGE.PROCESSING_FAILED)
     }
   }
 
@@ -87,60 +96,50 @@ export class KnowledgeAI {
     query: string,
     searchResults: SearchResult[]
   ): Promise<{ message: string; confidence: number }> {
-    const hasRelevantContext = searchResults.length > 0 && searchResults[0].similarity > 0.7
+    const hasRelevantContext = searchResults.length > 0 && searchResults[0].similarity > AI_PARAMETERS.KNOWLEDGE.HIGH_SIMILARITY_THRESHOLD
 
     if (!hasRelevantContext) {
       return {
-        message: "I don't have enough relevant information in the knowledge base to answer your question accurately. Could you try rephrasing your question or asking about a different topic?",
+        message: SYSTEM_PROMPTS.FALLBACKS.KNOWLEDGE_NO_CONTEXT,
         confidence: 0.1
       }
     }
 
     // Prepare context from search results
     const contextChunks = searchResults
-      .filter(result => result.similarity > 0.6)
+      .filter(result => result.similarity > AI_PARAMETERS.KNOWLEDGE.MIN_SIMILARITY_FOR_CONTEXT)
       .map(result => `Source: ${result.document.title}\n${result.content}`)
       .join('\n\n---\n\n')
 
     const conversationContext = this.context.conversationHistory
-      .slice(-6) // Last 3 exchanges
+      .slice(-AI_PARAMETERS.KNOWLEDGE.CONVERSATION_CONTEXT_LIMIT)
       .map(msg => `${msg.role}: ${msg.content}`)
       .join('\n')
 
-    const systemPrompt = `You are a knowledgeable AI assistant helping users find information from their document collection.
-
-Guidelines:
-- Provide accurate, helpful answers based solely on the provided context
-- Be concise but comprehensive
-- If information is incomplete, acknowledge limitations
-- Always cite which documents you're referencing
-- Maintain conversational tone while being informative
-- If the context doesn't contain relevant information, say so clearly
+    const systemPrompt = `${SYSTEM_PROMPTS.KNOWLEDGE_RESPONSE}
 
 Context from documents:
 ${contextChunks}
 
 Recent conversation:
-${conversationContext}
-
-Provide a helpful response that answers the user's question using the available context.`
+${conversationContext}`
 
     try {
       const completion = await generateChatCompletion([
         { role: 'system', content: systemPrompt },
         { role: 'user', content: query }
       ], {
-        model: 'gpt-4',
-        temperature: 0.3,
-        maxTokens: 1000
+        model: AI_MODELS.CHAT.PRIMARY,
+        temperature: AI_PARAMETERS.KNOWLEDGE.TEMPERATURE,
+        maxTokens: AI_PARAMETERS.KNOWLEDGE.MAX_TOKENS
       })
 
-      const responseContent = completion.choices[0]?.message?.content || 
-        "I'm sorry, I couldn't generate a response. Please try again."
+      const responseContent = completion.choices[0]?.message?.content ||
+        SYSTEM_PROMPTS.FALLBACKS.KNOWLEDGE_ERROR
 
       // Calculate confidence based on search result quality
       const avgSimilarity = searchResults.reduce((sum, result) => sum + result.similarity, 0) / searchResults.length
-      const confidence = Math.min(avgSimilarity * 1.2, 0.95) // Boost slightly but cap at 95%
+      const confidence = Math.min(avgSimilarity * AI_PARAMETERS.KNOWLEDGE.CONFIDENCE_BOOST_FACTOR, AI_PARAMETERS.KNOWLEDGE.MAX_CONFIDENCE)
 
       return {
         message: responseContent,
@@ -149,7 +148,7 @@ Provide a helpful response that answers the user's question using the available 
     } catch (error) {
       console.error('Error generating contextual response:', error)
       return {
-        message: "I encountered an error while processing your question. Please try again.",
+        message: SYSTEM_PROMPTS.FALLBACKS.KNOWLEDGE_ERROR,
         confidence: 0.1
       }
     }
@@ -211,7 +210,7 @@ Provide a helpful response that answers the user's question using the available 
       })
     } catch (error) {
       console.error('Error searching documents:', error)
-      throw new Error('Failed to search documents')
+      throw new Error(ERROR_MESSAGES.KNOWLEDGE.SEARCH_FAILED)
     }
   }
 
@@ -228,7 +227,7 @@ Provide a helpful response that answers the user's question using the available 
       return session.id
     } catch (error) {
       console.error('Error creating new knowledge session:', error)
-      throw new Error('Failed to create chat session')
+      throw new Error(ERROR_MESSAGES.KNOWLEDGE.SESSION_CREATION_FAILED)
     }
   }
 
@@ -240,7 +239,7 @@ Provide a helpful response that answers the user's question using the available 
       })
     } catch (error) {
       console.error('Error updating session title:', error)
-      throw new Error('Failed to update session title')
+      throw new Error(ERROR_MESSAGES.KNOWLEDGE.SESSION_UPDATE_FAILED)
     }
   }
 
@@ -256,32 +255,10 @@ Provide a helpful response that answers the user's question using the available 
 
       const categories = [...new Set(recentDocs.map(doc => doc.category))]
       
-      const suggestions = [
-        "What are the key policies I should be aware of?",
-        "Can you summarize the main procedures?",
-        "What assessment tools are available?",
-        "Help me understand the guidelines for...",
-      ]
-
-      // Add category-specific suggestions
-      if (categories.includes(DocumentCategory.POLICY)) {
-        suggestions.push("What's our policy on...")
-      }
-      if (categories.includes(DocumentCategory.PROCEDURE)) {
-        suggestions.push("How do I follow the procedure for...")
-      }
-      if (categories.includes(DocumentCategory.ASSESSMENT_TOOL)) {
-        suggestions.push("Which assessment tool should I use for...")
-      }
-
-      return suggestions.slice(0, 5)
+      return getCategorySuggestions(categories)
     } catch (error) {
       console.error('Error getting suggested questions:', error)
-      return [
-        "What information do you have about...?",
-        "Can you help me understand...?",
-        "What should I know about...?"
-      ]
+      return KNOWLEDGE_CONFIG.DEFAULT_SUGGESTIONS.slice(0, 3)
     }
   }
 }

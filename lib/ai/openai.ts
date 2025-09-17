@@ -1,69 +1,25 @@
-import OpenAI from 'openai'
+import { openai } from "@ai-sdk/openai";
+import { generateText, embed } from "ai";
 
-if (!process.env.OPENAI_API_KEY) {
-  throw new Error('OPENAI_API_KEY is not set in environment variables')
-}
-
-export const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-})
-
-export async function createEmbedding(text: string): Promise<number[]> {
-  try {
-    const response = await openai.embeddings.create({
-      model: 'text-embedding-3-small',
-      input: text,
-    })
-    
-    return response.data[0].embedding
-  } catch (error) {
-    console.error('Error creating embedding:', error)
-    throw new Error('Failed to create embedding')
-  }
-}
-
-export async function createEmbeddings(texts: string[]): Promise<number[][]> {
-  try {
-    const response = await openai.embeddings.create({
-      model: 'text-embedding-3-small',
-      input: texts,
-    })
-    
-    return response.data.map(item => item.embedding)
-  } catch (error) {
-    console.error('Error creating embeddings:', error)
-    throw new Error('Failed to create embeddings')
-  }
-}
-
-export async function generateChatCompletion(
-  messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
-  options: {
-    model?: string
-    temperature?: number
-    maxTokens?: number
-    stream?: boolean
-  } = {}
+// Chat completion using AI SDK with GPT-4o mini
+export async function getChatCompletion(
+  messages: Array<{
+    role: "system" | "user" | "assistant";
+    content: string;
+  }>
 ) {
-  const {
-    model = 'gpt-4',
-    temperature = 0.7,
-    maxTokens = 1000,
-    stream = false
-  } = options
+  const { text } = await generateText({
+    model: openai("gpt-4o-mini"),
+    messages,
+  });
+  return text;
+}
 
-  try {
-    const response = await openai.chat.completions.create({
-      model,
-      messages,
-      temperature,
-      max_tokens: maxTokens,
-      stream
-    })
-    
-    return response
-  } catch (error) {
-    console.error('Error generating chat completion:', error)
-    throw new Error('Failed to generate response')
-  }
+// Embeddings using AI SDK
+export async function getEmbeddings(input: string) {
+  const { embedding } = await embed({
+    model: openai.embedding("text-embedding-3-small"),
+    value: input,
+  });
+  return embedding;
 }

@@ -140,12 +140,8 @@ Quality Assurance:
   ]
 
   for (const docData of sampleDocuments) {
-    const document = await prisma.document.upsert({
-      where: { 
-        fileName: docData.fileName,
-      },
-      update: {},
-      create: docData
+    const document = await prisma.document.create({
+      data: docData
     })
 
     console.log('✅ Created sample document:', document.title)
