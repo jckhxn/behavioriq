@@ -1,0 +1,381 @@
+/**
+ * Dynamic Scoring Calculator for Structured Assessments
+ *
+ * Handles yes/no question scoring, early termination logic,
+ * and risk level calculation for dynamically loaded assessments.
+ */
+
+import { AssessmentDomain, RiskLevel } from "@prisma/client";
+import { QuestionSetConfig } from "./types";
+
+export interface QuestionResponse {
+  questionId: string;
+  response: boolean;
+  timestamp?: Date;
+}
+
+export interface DomainScore {
+  domain: string;
+  displayName: string;
+  score: number;
+  totalPossible: number;
+  clinicallySignificantScore: number;
+  isClinicallySignificant: boolean;
+  skipped: boolean;
+  skipReason?: string;
+  percentage: number;
+  questionsAnswered: number;
+}
+
+export interface TerminationCheckResult {
+  shouldTerminate: boolean;
+  nextQuestionId?: string;
+}
+
+export class DynamicScoringCalculator {
+  private assessmentConfigs: QuestionSetConfig[];
+
+  constructor(assessmentConfigs: QuestionSetConfig[]) {
+    this.assessmentConfigs = assessmentConfigs;
+  }
+
+  /**
+   * Calculate score for a specific domain
+   */
+  calculateDomainScore(
+    domainName: string,
+    responses: QuestionResponse[]
+  ): DomainScore {
+    const domainConfig = this.assessmentConfigs.find(
+      (d) => d.name === domainName
+    );
+
+    if (!domainConfig) {
+      throw new Error(`Domain ${domainName} not found`);
+    }
+
+    console.log(`\n=== CALCULATING DOMAIN SCORE: ${domainName} ===`);
+    console.log(`Domain config:`, {
+      totalPossible: domainConfig.totalPossibleScore,
+      clinicalThreshold: domainConfig.clinicallySignificantScore,
+      hasPrerequisites: domainConfig.prerequisites.length > 0,
+      hasMultiPart: !!domainConfig.multiPartLogic,
+    });
+
+    // Check prerequisites (e.g., age check for ASPD)
+    if (domainConfig.prerequisites.length > 0) {
+      for (const prerequisite of domainConfig.prerequisites) {
+        console.log(
+          `Checking prerequisite: ${prerequisite.questionId} must be ${prerequisite.requiredValue}`
+        );
+        const prereqResponse = responses.find(
+          (r) => r.questionId === prerequisite.questionId
+        );
+        console.log(
+          `Prerequisite response:`,
+          prereqResponse
+            ? `${prereqResponse.questionId} = ${prereqResponse.response}`
+            : "Not found"
+        );
+
+        if (
+          !prereqResponse ||
+          prereqResponse.response !== prerequisite.requiredValue
+        ) {
+          console.log(`❌ DOMAIN SKIPPED: Prerequisite not met`);
+          return {
+            domain: domainName,
+            displayName: domainConfig.displayName,
+            score: 0,
+            totalPossible: domainConfig.totalPossibleScore,
+            clinicallySignificantScore: domainConfig.clinicallySignificantScore,
+            isClinicallySignificant: false,
+            skipped: true,
+            skipReason: "Prerequisite not met",
+            percentage: 0,
+            questionsAnswered: 0,
+          };
+        }
+      }
+      console.log(`✅ Prerequisites met, continuing with domain`);
+    }
+
+    // Handle multi-part logic (ASPD)
+    if (domainConfig.multiPartLogic) {
+      return this.calculateMultiPartScore(domainConfig, responses);
+    }
+
+    // Standard scoring
+    const domainResponses = responses.filter((r) =>
+      domainConfig.questions.some((q) => q.id === r.questionId)
+    );
+
+    console.log(
+      `Domain responses (${domainResponses.length} answered):`,
+      domainResponses.map((r) => `${r.questionId}=${r.response ? "YES" : "NO"}`)
+    );
+
+    const score = domainResponses.reduce(
+      (sum, response) => sum + (response.response ? 1 : 0),
+      0
+    );
+
+    const yesCount = score;
+    const noCount = domainResponses.length - score;
+    const percentage = (score / domainConfig.totalPossibleScore) * 100;
+    const isClinicallySignificant =
+      score >= domainConfig.clinicallySignificantScore;
+
+    console.log(`Scoring results:`, {
+      yesAnswers: yesCount,
+      noAnswers: noCount,
+      totalAnswered: domainResponses.length,
+      rawScore: score,
+      totalPossible: domainConfig.totalPossibleScore,
+      percentage: percentage.toFixed(1) + "%",
+      clinicalThreshold: domainConfig.clinicallySignificantScore,
+      isClinicallySignificant,
+      skipped: false,
+    });
+
+    return {
+      domain: domainName,
+      displayName: domainConfig.displayName,
+      score,
+      totalPossible: domainConfig.totalPossibleScore,
+      clinicallySignificantScore: domainConfig.clinicallySignificantScore,
+      isClinicallySignificant,
+      skipped: false,
+      percentage,
+      questionsAnswered: domainResponses.length,
+    };
+  }
+
+  /**
+   * Calculate multi-part domain score (for ASPD)
+   */
+  private calculateMultiPartScore(
+    domainConfig: QuestionSetConfig,
+    responses: QuestionResponse[]
+  ): DomainScore {
+    const { multiPartLogic } = domainConfig;
+    if (!multiPartLogic) {
+      throw new Error("Multi-part logic not defined");
+    }
+
+    // Part 1: Childhood Conduct Disorder symptoms (before age 15)
+    const part1Responses = responses.filter((r) =>
+      multiPartLogic.part1Questions.includes(r.questionId)
+    );
+    const part1Score = part1Responses.reduce(
+      (sum, r) => sum + (r.response ? 1 : 0),
+      0
+    );
+    const part1Met = part1Score >= multiPartLogic.part1Threshold;
+
+    console.log(
+      `Part 1 (Childhood CD): ${part1Score}/${multiPartLogic.part1Questions.length} (threshold: ${multiPartLogic.part1Threshold})`
+    );
+
+    // Part 2: Adult antisocial behavior (18+)
+    const part2Responses = responses.filter((r) =>
+      multiPartLogic.part2Questions.includes(r.questionId)
+    );
+    const part2Score = part2Responses.reduce(
+      (sum, r) => sum + (r.response ? 1 : 0),
+      0
+    );
+    const part2Met = part2Score >= multiPartLogic.part2Threshold;
+
+    console.log(
+      `Part 2 (Adult): ${part2Score}/${multiPartLogic.part2Questions.length} (threshold: ${multiPartLogic.part2Threshold})`
+    );
+
+    // Total score
+    const totalScore = part1Score + part2Score;
+    const totalAnswered = part1Responses.length + part2Responses.length;
+    const percentage = (totalScore / domainConfig.totalPossibleScore) * 100;
+
+    // Clinical significance: Both parts must meet threshold
+    const isClinicallySignificant = part1Met && part2Met;
+
+    console.log(`Multi-part scoring:`, {
+      part1Score,
+      part1Met,
+      part2Score,
+      part2Met,
+      totalScore,
+      isClinicallySignificant,
+      percentage: percentage.toFixed(1) + "%",
+    });
+
+    return {
+      domain: domainConfig.name,
+      displayName: domainConfig.displayName,
+      score: totalScore,
+      totalPossible: domainConfig.totalPossibleScore,
+      clinicallySignificantScore: domainConfig.clinicallySignificantScore,
+      isClinicallySignificant,
+      skipped: false,
+      percentage,
+      questionsAnswered: totalAnswered,
+    };
+  }
+
+  /**
+   * Check if early termination should occur for a domain
+   */
+  checkEarlyTermination(
+    domainName: string,
+    responses: QuestionResponse[]
+  ): TerminationCheckResult {
+    const domainConfig = this.assessmentConfigs.find(
+      (d) => d.name === domainName
+    );
+    if (!domainConfig) return { shouldTerminate: false };
+
+    // Get the most recently answered question
+    const lastResponse = responses[responses.length - 1];
+    if (!lastResponse) return { shouldTerminate: false };
+
+    // Check if any question in this domain has a skip condition triggered by the last response
+    for (const question of domainConfig.questions) {
+      // Check through skipConditions array
+      for (const skipCondition of domainConfig.skipConditions) {
+        if (skipCondition.questionId === lastResponse.questionId) {
+          // The last response was to a question that can trigger a skip
+          if (lastResponse.response === skipCondition.skipValue) {
+            return {
+              shouldTerminate: false,
+              nextQuestionId: skipCondition.skipToQuestion,
+            };
+          }
+        }
+      }
+    }
+
+    return { shouldTerminate: false };
+  }
+
+  /**
+   * Calculate all domain scores
+   */
+  getAllDomainScores(responses: QuestionResponse[]): DomainScore[] {
+    return this.assessmentConfigs.map((domain) =>
+      this.calculateDomainScore(domain.name, responses)
+    );
+  }
+
+  /**
+   * Get next question for assessment
+   */
+  getNextQuestion(
+    currentDomainIndex: number,
+    currentQuestionIndex: number,
+    responses: QuestionResponse[]
+  ): { questionId: string; text: string; domain: string } | null {
+    if (currentDomainIndex >= this.assessmentConfigs.length) return null;
+
+    const currentDomain = this.assessmentConfigs[currentDomainIndex];
+
+    // Check for skip conditions
+    const terminationCheck = this.checkEarlyTermination(
+      currentDomain.name,
+      responses
+    );
+    if (terminationCheck.nextQuestionId) {
+      const question = currentDomain.questions.find(
+        (q) => q.id === terminationCheck.nextQuestionId
+      );
+      if (question) {
+        return {
+          questionId: question.id,
+          text: question.text,
+          domain: currentDomain.name,
+        };
+      }
+    }
+
+    // Get next question in current domain
+    if (currentQuestionIndex < currentDomain.questions.length - 1) {
+      const nextQuestion = currentDomain.questions[currentQuestionIndex + 1];
+      return {
+        questionId: nextQuestion.id,
+        text: nextQuestion.text,
+        domain: currentDomain.name,
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Get next domain
+   */
+  getNextDomain(currentDomainIndex: number): {
+    name: string;
+    firstQuestion: { questionId: string; text: string };
+  } | null {
+    const nextDomainIndex = currentDomainIndex + 1;
+    if (nextDomainIndex >= this.assessmentConfigs.length) return null;
+
+    const nextDomain = this.assessmentConfigs[nextDomainIndex];
+    const firstQuestion = nextDomain.questions[0];
+
+    return {
+      name: nextDomain.name,
+      firstQuestion: {
+        questionId: firstQuestion.id,
+        text: firstQuestion.text,
+      },
+    };
+  }
+
+  /**
+   * Check if assessment is complete
+   */
+  isAssessmentComplete(
+    responses: QuestionResponse[],
+    currentDomainIndex: number
+  ): boolean {
+    return currentDomainIndex >= this.assessmentConfigs.length;
+  }
+
+  /**
+   * Calculate progress
+   */
+  calculateProgress(
+    responses: QuestionResponse[],
+    currentDomainIndex: number
+  ): {
+    totalQuestions: number;
+    answeredQuestions: number;
+    completedDomains: number;
+    overallProgress: number;
+  } {
+    const totalQuestions = this.assessmentConfigs.reduce(
+      (sum, domain) => sum + domain.questions.length,
+      0
+    );
+    const answeredQuestions = responses.length;
+    const completedDomains = currentDomainIndex;
+
+    return {
+      totalQuestions,
+      answeredQuestions,
+      completedDomains,
+      overallProgress: (answeredQuestions / totalQuestions) * 100,
+    };
+  }
+
+  /**
+   * Map score to risk level
+   */
+  mapScoreToRiskLevel(domainScore: DomainScore): RiskLevel {
+    if (domainScore.skipped) return RiskLevel.LOW;
+    if (domainScore.isClinicallySignificant) return RiskLevel.HIGH;
+
+    if (domainScore.percentage >= 60) return RiskLevel.MODERATE;
+    return RiskLevel.LOW;
+  }
+}

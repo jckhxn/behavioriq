@@ -1,100 +1,107 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useRef } from 'react'
-import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Badge } from '@/components/ui/badge'
-import { Send, Loader2 } from 'lucide-react'
-import { useSession } from 'next-auth/react'
-import { AssessmentDomain } from '@prisma/client'
-import { ASSESSMENT_CONFIG } from '@/lib/config/ai-config'
-import { QuestionPresenter, AssessmentComplete } from '@/components/assessment/QuestionPresenter'
+import { useState, useEffect, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
+import { Send, Loader2 } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { AssessmentDomain } from "@prisma/client";
+import { ASSESSMENT_CONFIG } from "@/lib/config/ai-config";
+import { QuestionPresenter } from "@/components/assessment/QuestionPresenter";
 
 interface Message {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  timestamp: Date
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: Date;
 }
 
 interface AssessmentChatProps {
-  assessmentId: string
+  assessmentId: string;
 }
 
 interface StructuredAssessmentState {
-  currentQuestion?: string
-  questionId?: string
-  currentDomain?: AssessmentDomain
+  currentQuestion?: string;
+  questionId?: string;
+  currentDomain?: AssessmentDomain;
   progress?: {
-    totalQuestions: number
-    answeredQuestions: number
-    completedDomains: number
-    overallProgress: number
-  }
+    totalQuestions: number;
+    answeredQuestions: number;
+    completedDomains: number;
+    overallProgress: number;
+  };
 }
 
 export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
-  const { data: session } = useSession()
-  const [messages, setMessages] = useState<Message[]>([])
-  const [input, setInput] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [isInitialized, setIsInitialized] = useState(false)
-  const [assessmentStatus, setAssessmentStatus] = useState<'IN_PROGRESS' | 'COMPLETED'>('IN_PROGRESS')
-  const [structuredState, setStructuredState] = useState<StructuredAssessmentState>({})
-  const scrollAreaRef = useRef<HTMLDivElement>(null)
+  const { data: session } = useSession();
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [assessmentStatus, setAssessmentStatus] = useState<
+    "IN_PROGRESS" | "COMPLETED"
+  >("IN_PROGRESS");
+  const [structuredState, setStructuredState] =
+    useState<StructuredAssessmentState>({});
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  const isStructuredMode = ASSESSMENT_CONFIG.CURRENT_MODE === 'structured'
+  const isStructuredMode = ASSESSMENT_CONFIG.CURRENT_MODE === "structured";
 
   // Load existing messages and send initial greeting
   useEffect(() => {
     const loadMessages = async () => {
       try {
-        const response = await fetch(`/api/assessments/${assessmentId}/messages`)
+        const response = await fetch(
+          `/api/assessments/${assessmentId}/messages`
+        );
         if (response.ok) {
-          const data = await response.json()
-          setMessages(data.messages.map((msg: any) => ({
-            ...msg,
-            timestamp: new Date(msg.timestamp)
-          })))
-          setAssessmentStatus(data.status)
-          
+          const data = await response.json();
+          setMessages(
+            data.messages.map((msg: any) => ({
+              ...msg,
+              timestamp: new Date(msg.timestamp),
+            }))
+          );
+          setAssessmentStatus(data.status);
+
           // Send initial greeting if no messages exist
           if (data.messages.length === 0) {
-            await sendInitialGreeting()
+            await sendInitialGreeting();
           }
         }
       } catch (error) {
-        console.error('Error loading messages:', error)
+        console.error("Error loading messages:", error);
       } finally {
-        setIsInitialized(true)
+        setIsInitialized(true);
       }
-    }
+    };
 
     if (assessmentId) {
-      loadMessages()
+      loadMessages();
     }
-  }, [assessmentId])
+  }, [assessmentId]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
-  }, [messages])
+  }, [messages]);
 
   const sendInitialGreeting = async () => {
     try {
       const response = await fetch(`/api/assessments/${assessmentId}/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: 'start_assessment'
-        })
-      })
+          message: "start_assessment",
+        }),
+      });
 
       if (response.ok) {
-        const data = await response.json()
+        const data = await response.json();
 
         if (isStructuredMode) {
           // Handle structured mode initialization
@@ -102,141 +109,147 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
             currentQuestion: data.nextQuestion,
             questionId: data.questionId,
             currentDomain: data.currentDomain,
-            progress: data.progress
-          })
+            progress: data.progress,
+          });
         }
 
-        setMessages(prev => [...prev, {
-          id: Date.now().toString(),
-          role: 'assistant',
-          content: data.message,
-          timestamp: new Date()
-        }])
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            role: "assistant",
+            content: data.message,
+            timestamp: new Date(),
+          },
+        ]);
       }
     } catch (error) {
-      console.error('Error sending initial greeting:', error)
+      console.error("Error sending initial greeting:", error);
     }
-  }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
-    if (!input.trim() || isLoading || assessmentStatus === 'COMPLETED') return
+    if (!input.trim() || isLoading || assessmentStatus === "COMPLETED") return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      role: 'user',
+      role: "user",
       content: input,
-      timestamp: new Date()
-    }
+      timestamp: new Date(),
+    };
 
-    setMessages(prev => [...prev, userMessage])
-    setInput('')
-    setIsLoading(true)
+    setMessages((prev) => [...prev, userMessage]);
+    setInput("");
+    setIsLoading(true);
 
     try {
       const response = await fetch(`/api/assessments/${assessmentId}/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: input
-        })
-      })
+          message: input,
+        }),
+      });
 
       if (response.ok) {
-        const data = await response.json()
+        const data = await response.json();
 
         const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
-          role: 'assistant',
+          role: "assistant",
           content: data.message,
-          timestamp: new Date()
-        }
+          timestamp: new Date(),
+        };
 
-        setMessages(prev => [...prev, assistantMessage])
+        setMessages((prev) => [...prev, assistantMessage]);
 
         if (data.isComplete) {
-          setAssessmentStatus('COMPLETED')
+          setAssessmentStatus("COMPLETED");
         }
       } else {
         // Handle error
         const errorMessage: Message = {
           id: (Date.now() + 1).toString(),
-          role: 'assistant',
+          role: "assistant",
           content: "I apologize, but I encountered an error. Please try again.",
-          timestamp: new Date()
-        }
-        setMessages(prev => [...prev, errorMessage])
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, errorMessage]);
       }
     } catch (error) {
-      console.error('Error sending message:', error)
+      console.error("Error sending message:", error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        role: 'assistant',
+        role: "assistant",
         content: "I'm sorry, there was a connection error. Please try again.",
-        timestamp: new Date()
-      }
-      setMessages(prev => [...prev, errorMessage])
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
-  const handleStructuredAnswer = async (questionId: string, response: boolean) => {
-    setIsLoading(true)
+  const handleStructuredAnswer = async (
+    questionId: string,
+    response: boolean
+  ) => {
+    setIsLoading(true);
 
     try {
       const apiResponse = await fetch(`/api/assessments/${assessmentId}/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           questionId,
-          response
-        })
-      })
+          response,
+        }),
+      });
 
       if (apiResponse.ok) {
-        const data = await apiResponse.json()
+        const data = await apiResponse.json();
 
         // Add conversation messages
         const userMessage: Message = {
           id: Date.now().toString(),
-          role: 'user',
-          content: response ? 'Yes' : 'No',
-          timestamp: new Date()
-        }
+          role: "user",
+          content: response ? "Yes" : "No",
+          timestamp: new Date(),
+        };
 
         const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
-          role: 'assistant',
+          role: "assistant",
           content: data.message,
-          timestamp: new Date()
-        }
+          timestamp: new Date(),
+        };
 
-        setMessages(prev => [...prev, userMessage, assistantMessage])
+        setMessages((prev) => [...prev, userMessage, assistantMessage]);
 
         // Update structured state
         if (data.isComplete) {
-          setAssessmentStatus('COMPLETED')
-          setStructuredState({})
+          setAssessmentStatus("COMPLETED");
+          setStructuredState({});
         } else {
           setStructuredState({
             currentQuestion: data.nextQuestion,
             questionId: data.questionId,
             currentDomain: data.currentDomain,
-            progress: data.progress
-          })
+            progress: data.progress,
+          });
         }
       } else {
-        throw new Error('Failed to submit response')
+        throw new Error("Failed to submit response");
       }
     } catch (error) {
-      console.error('Error submitting structured answer:', error)
+      console.error("Error submitting structured answer:", error);
       // Could add error state handling here
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   if (!isInitialized) {
     return (
@@ -244,12 +257,12 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
         <Loader2 className="h-6 w-6 animate-spin" />
         <span className="ml-2">Loading assessment...</span>
       </div>
-    )
+    );
   }
 
   if (isStructuredMode) {
     // Structured Assessment Mode
-    if (assessmentStatus === 'COMPLETED') {
+    if (assessmentStatus === "COMPLETED") {
       return (
         <div className="flex flex-col h-full">
           {/* Header */}
@@ -259,21 +272,37 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
           </div>
 
           <div className="flex-1 p-4 overflow-auto">
-            <AssessmentComplete
-              totalQuestions={structuredState.progress?.totalQuestions || 0}
-              answeredQuestions={structuredState.progress?.answeredQuestions || 0}
-              completedDomains={structuredState.progress?.completedDomains || 0}
-              onViewResults={() => {
-                // Could navigate to results page
-                console.log('View results clicked')
-              }}
-            />
+            <div className="text-center space-y-4 p-6">
+              <div className="text-2xl font-bold text-green-600">
+                Assessment Complete!
+              </div>
+              <div className="text-muted-foreground">
+                Total Questions: {structuredState.progress?.totalQuestions || 0}
+                <br />
+                Answered Questions:{" "}
+                {structuredState.progress?.answeredQuestions || 0}
+                <br />
+                Completed Domains:{" "}
+                {structuredState.progress?.completedDomains || 0}
+              </div>
+              <button
+                onClick={() => console.log("View results clicked")}
+                className="bg-primary text-primary-foreground px-4 py-2 rounded"
+              >
+                View Results
+              </button>
+            </div>
           </div>
         </div>
-      )
+      );
     }
 
-    if (structuredState.currentQuestion && structuredState.questionId && structuredState.currentDomain && structuredState.progress) {
+    if (
+      structuredState.currentQuestion &&
+      structuredState.questionId &&
+      structuredState.currentDomain &&
+      structuredState.progress
+    ) {
       return (
         <div className="flex flex-col h-full">
           {/* Header */}
@@ -293,7 +322,7 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
             />
           </div>
         </div>
-      )
+      );
     }
 
     // Loading state for structured mode
@@ -304,7 +333,7 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
           <span>Preparing assessment...</span>
         </div>
       </div>
-    )
+    );
   }
 
   // Conversational Assessment Mode
@@ -313,8 +342,10 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b">
         <h2 className="text-lg font-semibold">Behavioral Assessment</h2>
-        <Badge variant={assessmentStatus === 'COMPLETED' ? 'secondary' : 'default'}>
-          {assessmentStatus === 'COMPLETED' ? 'Complete' : 'In Progress'}
+        <Badge
+          variant={assessmentStatus === "COMPLETED" ? "secondary" : "default"}
+        >
+          {assessmentStatus === "COMPLETED" ? "Complete" : "In Progress"}
         </Badge>
       </div>
 
@@ -324,19 +355,25 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
           {messages.map((message) => (
             <div
               key={message.id}
-              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              className={`flex ${
+                message.role === "user" ? "justify-end" : "justify-start"
+              }`}
             >
               <div
                 className={`max-w-[80%] rounded-lg p-3 ${
-                  message.role === 'user'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted'
+                  message.role === "user"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted"
                 }`}
               >
                 <p className="text-sm">{message.content}</p>
-                <p className={`text-xs mt-1 ${
-                  message.role === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground'
-                }`}>
+                <p
+                  className={`text-xs mt-1 ${
+                    message.role === "user"
+                      ? "text-primary-foreground/70"
+                      : "text-muted-foreground"
+                  }`}
+                >
                   {message.timestamp.toLocaleTimeString()}
                 </p>
               </div>
@@ -359,22 +396,24 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={
-              assessmentStatus === 'COMPLETED'
+              assessmentStatus === "COMPLETED"
                 ? "Assessment completed"
                 : "Share your thoughts and feelings..."
             }
-            disabled={isLoading || assessmentStatus === 'COMPLETED'}
+            disabled={isLoading || assessmentStatus === "COMPLETED"}
             className="min-h-[60px] max-h-[120px]"
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                handleSubmit(e)
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit(e);
               }
             }}
           />
           <Button
             type="submit"
-            disabled={!input.trim() || isLoading || assessmentStatus === 'COMPLETED'}
+            disabled={
+              !input.trim() || isLoading || assessmentStatus === "COMPLETED"
+            }
             size="sm"
             className="self-end"
           >
@@ -385,12 +424,12 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
             )}
           </Button>
         </div>
-        {assessmentStatus === 'COMPLETED' && (
+        {assessmentStatus === "COMPLETED" && (
           <p className="text-sm text-muted-foreground mt-2">
             Assessment completed. Check the scoring panel for results.
           </p>
         )}
       </form>
     </div>
-  )
+  );
 }

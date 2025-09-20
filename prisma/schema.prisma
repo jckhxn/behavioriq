@@ -180,14 +180,20 @@ model Score {
 }
 
 model QuestionSet {
-  id            String           @id @default(cuid())
-  domain        AssessmentDomain
-  name          String
-  description   String?
-  isActive      Boolean          @default(true)
-  order         Int              // Order of domains in assessment
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  id                        String           @id @default(cuid())
+  domain                    AssessmentDomain
+  name                      String
+  displayName               String?          // User-friendly display name
+  description               String?
+  isActive                  Boolean          @default(true)
+  order                     Int              // Order of domains in assessment
+  totalPossibleScore        Int?             // Maximum possible score for clinical evaluation
+  clinicallySignificantScore Int?            // Threshold score for clinical significance
+  skipConditions            Json?            // JSON array of skip conditions
+  prerequisites             Json?            // JSON array of prerequisite conditions
+  multiPartLogic            Json?            // JSON configuration for multi-part question logic
+  createdAt                 DateTime         @default(now())
+  updatedAt                 DateTime         @updatedAt
 
   questions     Question[]
   terminationRules TerminationRule[]

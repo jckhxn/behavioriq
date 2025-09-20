@@ -1,0 +1,84 @@
+{
+  "domain": "VIOLENCE",
+  "name": "Violence Risk Assessment",
+  "displayName": "Violence Risk",
+  "description": "Evaluates aggressive thoughts, violent tendencies, and risk of harm to others",
+  "order": 2,
+  "totalPossibleScore": 8,
+  "clinicallySignificantScore": 3,
+  "questions": [
+    {
+      "id": "violence_1",
+      "text": "Do you often feel angry or irritated?",
+      "order": 1,
+      "isGatingQuestion": true,
+      "weight": 1
+    },
+    {
+      "id": "violence_2",
+      "text": "Do you sometimes have thoughts about hurting others?",
+      "order": 2,
+      "isGatingQuestion": true,
+      "weight": 1
+    },
+    {
+      "id": "violence_3",
+      "text": "Do you have difficulty controlling your temper?",
+      "order": 3,
+      "isGatingQuestion": false,
+      "weight": 1,
+      "skipCondition": {
+        "questionId": "violence_1",
+        "skipValue": false,
+        "skipToQuestion": "violence_6"
+      }
+    },
+    {
+      "id": "violence_4",
+      "text": "Have you been in physical fights in the past year?",
+      "order": 4,
+      "isGatingQuestion": false,
+      "weight": 1
+    },
+    {
+      "id": "violence_5",
+      "text": "Do you enjoy watching violent movies or games?",
+      "order": 5,
+      "isGatingQuestion": false,
+      "weight": 1
+    },
+    {
+      "id": "violence_6",
+      "text": "Do you feel like hitting things when you're frustrated?",
+      "order": 6,
+      "isGatingQuestion": false,
+      "weight": 1
+    },
+    {
+      "id": "violence_7",
+      "text": "Do you sometimes threaten others when angry?",
+      "order": 7,
+      "isGatingQuestion": false,
+      "weight": 1
+    },
+    {
+      "id": "violence_8",
+      "text": "Do you have access to weapons?",
+      "order": 8,
+      "isGatingQuestion": false,
+      "weight": 1
+    }
+  ],
+  "prerequisite": {
+    "questionId": "violence_2",
+    "requiredValue": true
+  },
+  "terminationRules": [
+    {
+      "name": "Early Violence Screening",
+      "description": "Skip remaining questions if no initial violence indicators",
+      "minimumYesToContinue": 1,
+      "checkAfterQuestion": 2
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "domain": "EMOTIONAL",
+  "name": "Emotional Regulation Assessment",
+  "displayName": "Emotional Regulation",
+  "description": "Evaluates emotional stability, anxiety, and depression indicators",
+  "order": 4,
+  "totalPossibleScore": 7,
+  "clinicallySignificantScore": 5,
+  "questions": [
+    {
+      "id": "emotional_1",
+      "text": "Do you often feel sad or depressed?",
+      "order": 1,
+      "isGatingQuestion": true,
+      "weight": 1
+    },
+    {
+      "id": "emotional_2",
+      "text": "Do you frequently feel anxious or worried?",
+      "order": 2,
+      "isGatingQuestion": true,
+      "weight": 1
+    },
+    {
+      "id": "emotional_3",
+      "text": "Do your moods change quickly throughout the day?",
+      "order": 3,
+      "isGatingQuestion": false,
+      "weight": 1,
+      "skipCondition": {
+        "questionId": "emotional_1",
+        "skipValue": false,
+        "skipToQuestion": "emotional_5"
+      }
+    },
+    {
+      "id": "emotional_4",
+      "text": "Do you have trouble sleeping due to worries?",
+      "order": 4,
+      "isGatingQuestion": false,
+      "weight": 1
+    },
+    {
+      "id": "emotional_5",
+      "text": "Do you feel overwhelmed by daily tasks?",
+      "order": 5,
+      "isGatingQuestion": false,
+      "weight": 1
+    },
+    {
+      "id": "emotional_6",
+      "text": "Do you have thoughts of self-harm?",
+      "order": 6,
+      "isGatingQuestion": false,
+      "weight": 1
+    },
+    {
+      "id": "emotional_7",
+      "text": "Do you feel hopeless about the future?",
+      "order": 7,
+      "isGatingQuestion": false,
+      "weight": 1
+    }
+  ],
+  "prerequisite": {
+    "questionId": "emotional_2",
+    "requiredValue": true
+  },
+  "terminationRules": [
+    {
+      "name": "Early Emotional Screening",
+      "description": "Skip remaining questions if no initial emotional concerns",
+      "minimumYesToContinue": 1,
+      "checkAfterQuestion": 2
+    }
+  ]
+}

@@ -1,86 +1,97 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
-import { Badge } from '@/components/ui/badge'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Separator } from '@/components/ui/separator'
-import { AssessmentDomain, RiskLevel } from '@prisma/client'
-import { AlertTriangle, CheckCircle, XCircle, Clock } from 'lucide-react'
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { AssessmentDomain, RiskLevel } from "@prisma/client";
+import { AlertTriangle, CheckCircle, XCircle, Clock } from "lucide-react";
 
 interface Score {
-  domain: AssessmentDomain
-  rawScore: number
-  riskLevel: RiskLevel
-  confidence: number
-  timestamp: Date
+  domain: AssessmentDomain;
+  rawScore: number;
+  riskLevel: RiskLevel;
+  confidence: number;
+  timestamp: Date;
 }
 
 interface ScoringSidebarProps {
-  assessmentId: string
+  assessmentId: string;
 }
 
 const DOMAIN_LABELS = {
-  [AssessmentDomain.ANTISOCIAL]: 'Antisocial',
-  [AssessmentDomain.VIOLENCE]: 'Violence',
-  [AssessmentDomain.ATTENTION]: 'Attention',
-  [AssessmentDomain.EMOTIONAL]: 'Emotional',
-  [AssessmentDomain.CONDUCT]: 'Conduct'
-}
+  [AssessmentDomain.ANTISOCIAL]: "Antisocial",
+  [AssessmentDomain.VIOLENCE]: "Violence",
+  [AssessmentDomain.ATTENTION]: "Attention",
+  [AssessmentDomain.EMOTIONAL]: "Emotional",
+  [AssessmentDomain.CONDUCT]: "Conduct",
+};
 
 const RISK_COLORS = {
-  [RiskLevel.LOW]: 'bg-green-500',
-  [RiskLevel.MODERATE]: 'bg-yellow-500',
-  [RiskLevel.HIGH]: 'bg-orange-500',
-  [RiskLevel.VERY_HIGH]: 'bg-red-500'
-}
+  [RiskLevel.LOW]: "from-green-400 to-green-600",
+  [RiskLevel.MODERATE]: "from-yellow-400 to-orange-500",
+  [RiskLevel.HIGH]: "from-orange-500 to-red-500",
+  [RiskLevel.VERY_HIGH]: "from-red-500 to-red-700",
+};
 
 const RISK_VARIANTS = {
-  [RiskLevel.LOW]: 'secondary' as const,
-  [RiskLevel.MODERATE]: 'secondary' as const,
-  [RiskLevel.HIGH]: 'destructive' as const,
-  [RiskLevel.VERY_HIGH]: 'destructive' as const
-}
+  [RiskLevel.LOW]: "secondary" as const,
+  [RiskLevel.MODERATE]: "secondary" as const,
+  [RiskLevel.HIGH]: "destructive" as const,
+  [RiskLevel.VERY_HIGH]: "destructive" as const,
+};
+
+const RISK_ICONS = {
+  [RiskLevel.LOW]: CheckCircle,
+  [RiskLevel.MODERATE]: Clock,
+  [RiskLevel.HIGH]: AlertTriangle,
+  [RiskLevel.VERY_HIGH]: XCircle,
+};
 
 export function ScoringSidebar({ assessmentId }: ScoringSidebarProps) {
-  const [scores, setScores] = useState<Score[]>([])
-  const [assessmentStatus, setAssessmentStatus] = useState<'IN_PROGRESS' | 'COMPLETED'>('IN_PROGRESS')
-  const [isLoading, setIsLoading] = useState(true)
-  const [messageCount, setMessageCount] = useState(0)
+  const [scores, setScores] = useState<Score[]>([]);
+  const [assessmentStatus, setAssessmentStatus] = useState<
+    "IN_PROGRESS" | "COMPLETED"
+  >("IN_PROGRESS");
+  const [isLoading, setIsLoading] = useState(true);
+  const [messageCount, setMessageCount] = useState(0);
 
   // Load scores and poll for updates
   useEffect(() => {
     const loadScores = async () => {
       try {
-        const response = await fetch(`/api/assessments/${assessmentId}/scores`)
+        const response = await fetch(`/api/assessments/${assessmentId}/scores`);
         if (response.ok) {
-          const data = await response.json()
-          setScores(data.scores.map((score: any) => ({
-            ...score,
-            timestamp: new Date(score.timestamp)
-          })))
-          setAssessmentStatus(data.status)
-          setMessageCount(data.messageCount)
+          const data = await response.json();
+          setScores(
+            data.scores.map((score: any) => ({
+              ...score,
+              timestamp: new Date(score.timestamp),
+            }))
+          );
+          setAssessmentStatus(data.status);
+          setMessageCount(data.messageCount);
         }
       } catch (error) {
-        console.error('Error loading scores:', error)
+        console.error("Error loading scores:", error);
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
+    };
 
-    loadScores()
+    loadScores();
 
     // Poll for updates every 5 seconds if assessment is in progress
     const interval = setInterval(() => {
-      if (assessmentStatus === 'IN_PROGRESS') {
-        loadScores()
+      if (assessmentStatus === "IN_PROGRESS") {
+        loadScores();
       }
-    }, 5000)
+    }, 5000);
 
-    return () => clearInterval(interval)
-  }, [assessmentId, assessmentStatus])
+    return () => clearInterval(interval);
+  }, [assessmentId, assessmentStatus]);
 
   // Get latest score for each domain
   const getLatestScores = () => {
@@ -89,51 +100,61 @@ export function ScoringSidebar({ assessmentId }: ScoringSidebarProps) {
       [AssessmentDomain.VIOLENCE]: null,
       [AssessmentDomain.ATTENTION]: null,
       [AssessmentDomain.EMOTIONAL]: null,
-      [AssessmentDomain.CONDUCT]: null
-    }
+      [AssessmentDomain.CONDUCT]: null,
+    };
 
-    scores.forEach(score => {
-      if (!latestScores[score.domain] || 
-          score.timestamp > latestScores[score.domain]!.timestamp) {
-        latestScores[score.domain] = score
+    scores.forEach((score) => {
+      if (
+        !latestScores[score.domain] ||
+        score.timestamp > latestScores[score.domain]!.timestamp
+      ) {
+        latestScores[score.domain] = score;
       }
-    })
+    });
 
-    return latestScores
-  }
+    return latestScores;
+  };
 
-  const calculateOverallRisk = (latestScores: Record<AssessmentDomain, Score | null>): RiskLevel => {
-    const validScores = Object.values(latestScores).filter(score => score !== null)
-    if (validScores.length === 0) return RiskLevel.LOW
+  const calculateOverallRisk = (
+    latestScores: Record<AssessmentDomain, Score | null>
+  ): RiskLevel => {
+    const validScores = Object.values(latestScores).filter(
+      (score) => score !== null
+    );
+    if (validScores.length === 0) return RiskLevel.LOW;
 
     const riskValues = {
       [RiskLevel.LOW]: 1,
       [RiskLevel.MODERATE]: 2,
       [RiskLevel.HIGH]: 3,
-      [RiskLevel.VERY_HIGH]: 4
+      [RiskLevel.VERY_HIGH]: 4,
+    };
+
+    const avgRisk =
+      validScores.reduce(
+        (sum, score) => sum + riskValues[score!.riskLevel],
+        0
+      ) / validScores.length;
+
+    if (avgRisk < 1.5) return RiskLevel.LOW;
+    if (avgRisk < 2.5) return RiskLevel.MODERATE;
+    if (avgRisk < 3.5) return RiskLevel.HIGH;
+    return RiskLevel.VERY_HIGH;
+  };
+
+  const getStatusIcon = (status: "IN_PROGRESS" | "COMPLETED") => {
+    if (status === "COMPLETED") {
+      return <CheckCircle className="h-4 w-4 text-green-500" />;
     }
-
-    const avgRisk = validScores.reduce((sum, score) => sum + riskValues[score!.riskLevel], 0) / validScores.length
-
-    if (avgRisk < 1.5) return RiskLevel.LOW
-    if (avgRisk < 2.5) return RiskLevel.MODERATE
-    if (avgRisk < 3.5) return RiskLevel.HIGH
-    return RiskLevel.VERY_HIGH
-  }
-
-  const getStatusIcon = (status: 'IN_PROGRESS' | 'COMPLETED') => {
-    if (status === 'COMPLETED') {
-      return <CheckCircle className="h-4 w-4 text-green-500" />
-    }
-    return <Clock className="h-4 w-4 text-blue-500" />
-  }
+    return <Clock className="h-4 w-4 text-blue-500" />;
+  };
 
   const getRiskIcon = (riskLevel: RiskLevel) => {
     if (riskLevel === RiskLevel.HIGH || riskLevel === RiskLevel.VERY_HIGH) {
-      return <AlertTriangle className="h-4 w-4 text-red-500" />
+      return <AlertTriangle className="h-4 w-4 text-red-500" />;
     }
-    return null
-  }
+    return null;
+  };
 
   if (isLoading) {
     return (
@@ -148,11 +169,11 @@ export function ScoringSidebar({ assessmentId }: ScoringSidebarProps) {
           </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
-  const latestScores = getLatestScores()
-  const overallRisk = calculateOverallRisk(latestScores)
+  const latestScores = getLatestScores();
+  const overallRisk = calculateOverallRisk(latestScores);
 
   return (
     <Card className="h-full">
@@ -162,10 +183,11 @@ export function ScoringSidebar({ assessmentId }: ScoringSidebarProps) {
           {getStatusIcon(assessmentStatus)}
         </CardTitle>
         <div className="text-sm text-muted-foreground">
-          {messageCount} exchanges • {assessmentStatus.replace('_', ' ').toLowerCase()}
+          {messageCount} exchanges •{" "}
+          {assessmentStatus.replace("_", " ").toLowerCase()}
         </div>
       </CardHeader>
-      
+
       <CardContent className="space-y-4">
         {/* Overall Risk */}
         <div className="space-y-2">
@@ -174,9 +196,14 @@ export function ScoringSidebar({ assessmentId }: ScoringSidebarProps) {
             {getRiskIcon(overallRisk)}
           </div>
           <div className="flex items-center gap-2">
-            <div className={`w-3 h-3 rounded-full ${RISK_COLORS[overallRisk]}`} />
-            <Badge variant={RISK_VARIANTS[overallRisk]}>
-              {overallRisk.replace('_', ' ')}
+            <div
+              className={`w-3 h-3 rounded-full bg-gradient-to-r ${RISK_COLORS[overallRisk]} shadow-sm`}
+            />
+            <Badge
+              variant={RISK_VARIANTS[overallRisk]}
+              className="bg-gradient-to-r from-background/90 to-background/60 backdrop-blur-sm"
+            >
+              {overallRisk.replace("_", " ")}
             </Badge>
           </div>
         </div>
@@ -187,29 +214,38 @@ export function ScoringSidebar({ assessmentId }: ScoringSidebarProps) {
         <ScrollArea className="h-[400px]">
           <div className="space-y-4">
             {Object.entries(DOMAIN_LABELS).map(([domain, label]) => {
-              const score = latestScores[domain as AssessmentDomain]
-              
+              const score = latestScores[domain as AssessmentDomain];
+
               return (
                 <div key={domain} className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">{label}</span>
                     {score && getRiskIcon(score.riskLevel)}
                   </div>
-                  
+
                   {score ? (
                     <>
                       <div className="space-y-1">
                         <div className="flex justify-between text-xs">
                           <span>Score: {Math.round(score.rawScore)}/100</span>
-                          <span>Confidence: {Math.round(score.confidence * 100)}%</span>
+                          <span>
+                            Confidence: {Math.round(score.confidence * 100)}%
+                          </span>
                         </div>
                         <Progress value={score.rawScore} className="h-2" />
                       </div>
-                      
+
                       <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${RISK_COLORS[score.riskLevel]}`} />
-                        <Badge variant={RISK_VARIANTS[score.riskLevel]} className="text-xs">
-                          {score.riskLevel.replace('_', ' ')}
+                        <div
+                          className={`w-2 h-2 rounded-full bg-gradient-to-r ${
+                            RISK_COLORS[score.riskLevel]
+                          } shadow-sm`}
+                        />
+                        <Badge
+                          variant={RISK_VARIANTS[score.riskLevel]}
+                          className="text-xs bg-gradient-to-r from-background/90 to-background/60 backdrop-blur-sm"
+                        >
+                          {score.riskLevel.replace("_", " ")}
                         </Badge>
                       </div>
                     </>
@@ -219,7 +255,7 @@ export function ScoringSidebar({ assessmentId }: ScoringSidebarProps) {
                     </div>
                   )}
                 </div>
-              )
+              );
             })}
           </div>
         </ScrollArea>
@@ -233,7 +269,9 @@ export function ScoringSidebar({ assessmentId }: ScoringSidebarProps) {
               <ScrollArea className="h-32">
                 <div className="space-y-2">
                   {scores
-                    .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+                    .sort(
+                      (a, b) => b.timestamp.getTime() - a.timestamp.getTime()
+                    )
                     .slice(0, 5)
                     .map((score, index) => (
                       <div key={index} className="text-xs p-2 bg-muted rounded">
@@ -253,7 +291,7 @@ export function ScoringSidebar({ assessmentId }: ScoringSidebarProps) {
         )}
 
         {/* Assessment Progress */}
-        {assessmentStatus === 'IN_PROGRESS' && (
+        {assessmentStatus === "IN_PROGRESS" && (
           <>
             <Separator />
             <div className="space-y-2">
@@ -266,7 +304,7 @@ export function ScoringSidebar({ assessmentId }: ScoringSidebarProps) {
           </>
         )}
 
-        {assessmentStatus === 'COMPLETED' && (
+        {assessmentStatus === "COMPLETED" && (
           <>
             <Separator />
             <div className="space-y-2 text-center">
@@ -280,5 +318,5 @@ export function ScoringSidebar({ assessmentId }: ScoringSidebarProps) {
         )}
       </CardContent>
     </Card>
-  )
+  );
 }

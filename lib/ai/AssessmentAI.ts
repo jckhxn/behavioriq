@@ -1,7 +1,10 @@
 import { prisma } from "@/lib/db/prisma";
 import { getChatCompletion } from "./openai";
 import { AssessmentDomain, RiskLevel, MessageRole } from "@prisma/client";
-import { EARLY_DETECTION_SCREENER } from "../assessment/assessments";
+import {
+  loadAssessmentConfigs,
+  QuestionSetConfig,
+} from "@/lib/assessment/db-loader";
 import {
   ScoringCalculator,
   type QuestionResponse,
@@ -40,14 +43,21 @@ export interface StructuredQuestionResponse {
   response: boolean;
 }
 
+export interface ConversationMessage {
+  role: string;
+  content: string;
+}
+
 export class AssessmentAI {
   private assessmentId: string;
   private currentScores: AssessmentScores;
-  private conversationHistory: Array<{ role: string; content: string }>;
+  private conversationHistory: ConversationMessage[];
   private questionResponses: QuestionResponse[];
   private currentQuestionIndex: number;
   private currentDomainIndex: number;
   private isStructuredMode: boolean;
+  private assessmentConfigs: QuestionSetConfig[] = [];
+  private scoringCalculator: ScoringCalculator | null = null;
 
   constructor(assessmentId: string) {
     this.assessmentId = assessmentId;
@@ -61,7 +71,11 @@ export class AssessmentAI {
 
   async initialize(): Promise<void> {
     try {
-      // Load existing conversation history
+      // Load assessment configurations dynamically
+      this.assessmentConfigs = await loadAssessmentConfigs();
+
+      // Create scoring calculator with loaded configs
+      this.scoringCalculator = new ScoringCalculator(this.assessmentConfigs); // Load existing conversation history
       const messages = await prisma.chatMessage.findMany({
         where: { assessmentId: this.assessmentId },
         orderBy: { timestamp: "asc" },
@@ -108,7 +122,7 @@ export class AssessmentAI {
         questionResponse.questionId
       );
 
-      const terminationCheck = ScoringCalculator.checkEarlyTermination(
+      const terminationCheck = this.scoringCalculator!.checkEarlyTermination(
         currentDomain,
         this.questionResponses
       );
@@ -127,7 +141,7 @@ export class AssessmentAI {
       isComplete = nextQuestion === null;
 
       // Calculate all domain scores
-      const domainScores = ScoringCalculator.getAllDomainScores(
+      const domainScores = this.scoringCalculator!.getAllDomainScores(
         this.questionResponses
       );
 
@@ -155,7 +169,7 @@ export class AssessmentAI {
         scores: domainScores.map((ds) => ({
           domain: ds.domain,
           rawScore: ds.score,
-          riskLevel: ScoringCalculator.mapScoreToRiskLevel(ds),
+          riskLevel: this.scoringCalculator!.mapScoreToRiskLevel(ds),
           confidence: ds.isClinicallySignificant ? 0.9 : 0.7,
         })),
         nextQuestion: nextQuestion?.text,
@@ -225,20 +239,19 @@ Keep the response professional, empathetic, and actionable.`;
   }
 
   private shouldSkipCurrentDomain(): boolean {
-    if (this.currentDomainIndex >= EARLY_DETECTION_SCREENER.length)
-      return false;
+    if (this.currentDomainIndex >= this.assessmentConfigs.length) return false;
 
-    const currentDomain = EARLY_DETECTION_SCREENER[this.currentDomainIndex];
-    const domainScore = ScoringCalculator.calculateDomainScore(
+    const currentDomain = this.assessmentConfigs[this.currentDomainIndex];
+    const domainScore = this.scoringCalculator!.calculateDomainScore(
       currentDomain.name,
       this.questionResponses
     );
 
-    return domainScore.skipped;
+    return domainScore.skipped || false;
   }
 
   private getCurrentDomainFromQuestionId(questionId: string): string {
-    for (const domain of EARLY_DETECTION_SCREENER) {
+    for (const domain of this.assessmentConfigs) {
       if (domain.questions.some((q) => q.id === questionId)) {
         return domain.name;
       }
@@ -258,7 +271,7 @@ Keep the response professional, empathetic, and actionable.`;
     );
 
     // Go through each domain in order
-    for (const domain of EARLY_DETECTION_SCREENER) {
+    for (const domain of this.assessmentConfigs) {
       console.log(`\n📋 Checking domain: ${domain.name}`);
 
       // Check if we have any responses for this domain
@@ -267,18 +280,21 @@ Keep the response professional, empathetic, and actionable.`;
       );
 
       console.log(`Domain has responses: ${domainHasResponses}`);
-      console.log(`Domain has prerequisite: ${!!domain.prerequisite}`);
+      // console.log(`Domain has prerequisite: ${!!domain.prerequisite}`);
 
-      // Only check for skipping if we've started this domain OR if it has a prerequisite
-      if (domainHasResponses || domain.prerequisite) {
+      // Only check for skipping if we've started this domain
+      if (domainHasResponses) {
+        // || domain.prerequisite) {
         console.log(`⚖️ Evaluating domain for skipping...`);
-        const domainScore = ScoringCalculator.calculateDomainScore(
+        const domainScore = this.scoringCalculator!.calculateDomainScore(
           domain.name,
           this.questionResponses
         );
-        if (domainScore.skipped) {
+        if (domainScore.skipped || false) {
           console.log(
-            `⏭️ DOMAIN SKIPPED: ${domain.name} - ${domainScore.skipReason}`
+            `⏭️ DOMAIN SKIPPED: ${domain.name} - ${
+              domainScore.skipReason || "Unknown reason"
+            }`
           );
           continue; // Skip this entire domain
         }
@@ -311,7 +327,7 @@ Keep the response professional, empathetic, and actionable.`;
   }
 
   private getQuestionById(questionId: string) {
-    for (const domain of EARLY_DETECTION_SCREENER) {
+    for (const domain of this.assessmentConfigs) {
       const question = domain.questions.find((q) => q.id === questionId);
       if (question) {
         return question;
@@ -338,7 +354,7 @@ Keep the response professional, empathetic, and actionable.`;
   }
 
   private calculateProgress() {
-    const totalQuestions = EARLY_DETECTION_SCREENER.reduce(
+    const totalQuestions = this.assessmentConfigs.reduce(
       (sum, domain) => sum + domain.questions.length,
       0
     );
@@ -365,23 +381,24 @@ Keep the response professional, empathetic, and actionable.`;
     // Find which domain we're currently working on
     for (
       let domainIndex = 0;
-      domainIndex < EARLY_DETECTION_SCREENER.length;
+      domainIndex < this.assessmentConfigs.length;
       domainIndex++
     ) {
-      const domain = EARLY_DETECTION_SCREENER[domainIndex];
+      const domain = this.assessmentConfigs[domainIndex];
 
       // Check if we have any responses for this domain
       const domainHasResponses = domain.questions.some((q) =>
         answeredQuestionIds.has(q.id)
       );
 
-      // Only check for skipping if we've started this domain OR if it has a prerequisite
-      if (domainHasResponses || domain.prerequisite) {
-        const domainScore = ScoringCalculator.calculateDomainScore(
+      // Only check for skipping if we've started this domain
+      if (domainHasResponses) {
+        // || domain.prerequisite) {
+        const domainScore = this.scoringCalculator!.calculateDomainScore(
           domain.name,
           this.questionResponses
         );
-        if (domainScore.skipped) {
+        if (domainScore.skipped || false) {
           continue;
         }
       }
@@ -413,7 +430,7 @@ Keep the response professional, empathetic, and actionable.`;
     }
 
     // If we reach here, all domains are complete
-    this.currentDomainIndex = EARLY_DETECTION_SCREENER.length;
+    this.currentDomainIndex = this.assessmentConfigs.length;
     this.currentQuestionIndex = 0;
   }
 
@@ -455,7 +472,7 @@ Keep the response professional, empathetic, and actionable.`;
         rawScore: domainScore.score,
         totalPossible: domainScore.totalPossible,
         questionsAnswered: domainScore.questionsAnswered,
-        riskLevel: ScoringCalculator.mapScoreToRiskLevel(domainScore),
+        riskLevel: this.scoringCalculator!.mapScoreToRiskLevel(domainScore),
         confidence: domainScore.isClinicallySignificant ? 0.9 : 0.7,
         timestamp: new Date(),
       }));
@@ -473,9 +490,9 @@ Keep the response professional, empathetic, and actionable.`;
     text: string;
     domain: string;
   } | null> {
-    if (EARLY_DETECTION_SCREENER.length === 0) return null;
+    if (this.assessmentConfigs.length === 0) return null;
 
-    const firstDomain = EARLY_DETECTION_SCREENER[0];
+    const firstDomain = this.assessmentConfigs[0];
     const firstQuestion = firstDomain.questions[0];
 
     return {
