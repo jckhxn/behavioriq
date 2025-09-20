@@ -97,42 +97,17 @@ export async function POST(
         );
       }
 
-      // Process structured response
+      // Process structured response (only mode supported)
       const response = await assessmentAI.processStructuredResponse(
         structuredValidation.data
       );
       return NextResponse.json(response);
     } else {
-      // Handle conversational assessment
-      const validation = chatSchema.safeParse(body);
-
-      if (!validation.success) {
-        return NextResponse.json(
-          { error: validation.error.errors[0].message },
-          { status: 400 }
-        );
-      }
-
-      const { message } = validation.data;
-
-      // Handle initial greeting
-      if (message === "start_assessment") {
-        return NextResponse.json({
-          message:
-            "Hello! I'm here to conduct a behavioral assessment. This conversation will help me understand your thoughts, feelings, and experiences. Please feel free to share openly and honestly. To begin, can you tell me how you've been feeling lately?",
-          scores: [],
-          isComplete: false,
-        });
-      }
-
-      // Process the user's response
-      // For now, return a basic response since conversational assessment needs different handling
-      const response = {
-        message: "Thank you for sharing. Can you tell me more about that?",
-        scores: [],
-        isComplete: false,
-      };
-      return NextResponse.json(response);
+      // Only structured mode is supported
+      return NextResponse.json(
+        { error: "Only structured assessment mode is supported" },
+        { status: 400 }
+      );
     }
   } catch (error) {
     console.error("Assessment chat error:", error);

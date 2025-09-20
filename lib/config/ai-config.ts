@@ -14,9 +14,9 @@ import { AssessmentDomain, RiskLevel, DocumentCategory } from "@prisma/client";
 export const AI_MODELS = {
   // Chat completion models
   CHAT: {
-    PRIMARY: "gpt-4" as const,
-    FALLBACK: "gpt-3.5-turbo" as const,
-    FAST: "gpt-3.5-turbo" as const,
+    PRIMARY: "gpt-4o-mini" as const,
+    FALLBACK: "gpt-4o-mini" as const,
+    FAST: "gpt-4o-mini" as const,
   },
 
   // Embedding models
@@ -136,13 +136,12 @@ export const ASSESSMENT_CONFIG = {
     return acc;
   }, {} as Record<AssessmentDomain, number>),
 
-  // Assessment Mode Configuration
+  // Assessment Mode Configuration - Now only structured mode
   MODE: {
-    STRUCTURED: "structured", // New yes/no format
-    CONVERSATIONAL: "conversational", // Original open-ended format
+    STRUCTURED: "structured", // Yes/no question format
   },
 
-  // Current assessment mode (can be changed to switch between formats)
+  // Current assessment mode - always structured
   CURRENT_MODE: "structured" as const,
 } as const;
 

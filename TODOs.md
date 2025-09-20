@@ -6,8 +6,10 @@
 - Assessments can be loaded into db
 - Users can specify assessments/domains
 - Upload asssessments from dashboard
+- Admin can configure custom assessments based on modular domain questionaires?
 - ✅ Write docs on how to write assessments (See docs/ASSESSMENT_WRITING_GUIDE.md)
 - Separate Knowledge Chat feature from app (Make sep project.)
+
 
 # Features to add
 

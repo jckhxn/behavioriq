@@ -1,7 +1,7 @@
 import { UnifiedChat } from "@/components/chat/UnifiedChat";
 import { Button } from "@/components/ui/button";
 import { auth, signOut } from "@/lib/auth/config";
-import { Brain, FileText, LogOut, Settings, Menu } from "lucide-react";
+import { Brain, LogOut, Settings, Menu } from "lucide-react";
 import Link from "next/link";
 import {
   SidebarProvider,
@@ -145,14 +145,6 @@ function AppSidebar({ user }: { user: any }) {
               <Link href="/" className="flex items-center gap-2">
                 <Brain className="h-4 w-4" />
                 Assessment
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <Link href="/" className="flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Knowledge
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

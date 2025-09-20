@@ -2,22 +2,17 @@
 
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DocumentManager } from "./DocumentManager";
 import { UserManager } from "./UserManager";
 import { AssessmentManager } from "./AssessmentManager";
 import { SystemStats } from "./SystemStats";
-import { FileText, Users, BarChart3, Brain } from "lucide-react";
+import { Users, BarChart3, Brain } from "lucide-react";
 
 export function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState("documents");
+  const [activeTab, setActiveTab] = useState("assessments");
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-      <TabsList className="grid w-full grid-cols-4">
-        <TabsTrigger value="documents" className="flex items-center gap-2">
-          <FileText className="h-4 w-4" />
-          Documents
-        </TabsTrigger>
+      <TabsList className="grid w-full grid-cols-3">
         <TabsTrigger value="assessments" className="flex items-center gap-2">
           <Brain className="h-4 w-4" />
           Assessments
@@ -31,10 +26,6 @@ export function AdminDashboard() {
           Statistics
         </TabsTrigger>
       </TabsList>
-
-      <TabsContent value="documents">
-        <DocumentManager />
-      </TabsContent>
 
       <TabsContent value="assessments">
         <AssessmentManager />
