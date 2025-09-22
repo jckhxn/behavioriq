@@ -46,6 +46,30 @@ enum AssessmentDomain {
   CONDUCT
 }
 
+enum LicenseType {
+  TRIAL
+  BASIC
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum LicenseStatus {
+  ACTIVE
+  EXPIRED
+  SUSPENDED
+  CANCELLED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  INCOMPLETE
+  INCOMPLETE_EXPIRED
+  TRIALING
+  UNPAID
+}
+
 enum DocumentCategory {
   POLICY
   PROCEDURE
@@ -62,13 +86,23 @@ model User {
   name          String?
   password      String
   role          Role            @default(USER)
+  isActive      Boolean         @default(true)
+  lastLoginAt   DateTime?
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
   
+  // Organization relationship
+  organization    Organization? @relation(fields: [organizationId], references: [id])
+  organizationId  String?
+  
+  // Relations
   documents     Document[]
   assessments   Assessment[]
   chatSessions  ChatSession[]
+  licenses      UserLicense[]
+  usageMetrics  UsageMetrics[]
   
+  @@index([organizationId])
   @@map("users")
 }
 
@@ -246,4 +280,104 @@ model QuestionResponse {
   @@unique([assessmentId, questionId])
   @@index([assessmentId])
   @@map("question_responses")
+}
+
+model License {
+  id              String        @id @default(cuid())
+  licenseKey      String        @unique
+  type            LicenseType   @default(TRIAL)
+  status          LicenseStatus @default(ACTIVE)
+  maxUsers        Int           @default(1)
+  maxAssessments  Int?          // null = unlimited
+  features        Json?         // Feature flags as JSON
+  validFrom       DateTime      @default(now())
+  validUntil      DateTime?     // null = no expiration
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  // Relations
+  organization    Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId  String?
+  users           UserLicense[]
+  
+  @@index([licenseKey])
+  @@index([status])
+  @@map("licenses")
+}
+
+model Organization {
+  id                String    @id @default(cuid())
+  name              String
+  email             String?
+  phone             String?
+  address           String?
+  billingEmail      String?
+  taxId             String?
+  industry          String?
+  employeeCount     String?   // e.g., "1-10", "11-50", etc.
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // Relations
+  licenses          License[]
+  subscriptions     Subscription[]
+  users             User[]
+  
+  @@map("organizations")
+}
+
+model UserLicense {
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  license     License  @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  licenseId   String
+  assignedAt  DateTime @default(now())
+  assignedBy  String?  // User ID who assigned this license
+  isActive    Boolean  @default(true)
+  
+  @@unique([userId, licenseId])
+  @@index([userId])
+  @@index([licenseId])
+  @@map("user_licenses")
+}
+
+model Subscription {
+  id                    String             @id @default(cuid())
+  organization          Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId        String
+  stripeSubscriptionId  String?            @unique
+  stripeCustomerId      String?
+  status                SubscriptionStatus @default(TRIALING)
+  priceId               String?            // Stripe price ID
+  quantity              Int                @default(1)
+  currentPeriodStart    DateTime?
+  currentPeriodEnd      DateTime?
+  trialStart            DateTime?
+  trialEnd              DateTime?
+  cancelAtPeriodEnd     Boolean            @default(false)
+  cancelAt              DateTime?
+  canceledAt            DateTime?
+  metadata              Json?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  
+  @@index([organizationId])
+  @@index([status])
+  @@map("subscriptions")
+}
+
+model UsageMetrics {
+  id             String   @id @default(cuid())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String
+  date           DateTime @default(now()) @db.Date
+  assessments    Int      @default(0)
+  pdfReports     Int      @default(0)
+  apiCalls       Int      @default(0)
+  
+  @@unique([userId, date])
+  @@index([userId])
+  @@index([date])
+  @@map("usage_metrics")
 }

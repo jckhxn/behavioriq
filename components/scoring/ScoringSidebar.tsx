@@ -8,6 +8,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { AssessmentDomain, RiskLevel } from "@prisma/client";
 import { AlertTriangle, CheckCircle, XCircle, Clock } from "lucide-react";
+import { PDFReportButton } from "@/components/reports/PDFReportButton";
+import { AssessmentLineChart } from "@/components/charts/AssessmentLineChart";
 
 interface Score {
   domain: AssessmentDomain;
@@ -19,6 +21,7 @@ interface Score {
 
 interface ScoringSidebarProps {
   assessmentId: string;
+  subjectName?: string;
 }
 
 const DOMAIN_LABELS = {
@@ -50,7 +53,10 @@ const RISK_ICONS = {
   [RiskLevel.VERY_HIGH]: XCircle,
 };
 
-export function ScoringSidebar({ assessmentId }: ScoringSidebarProps) {
+export function ScoringSidebar({
+  assessmentId,
+  subjectName = "Assessment",
+}: ScoringSidebarProps) {
   const [scores, setScores] = useState<Score[]>([]);
   const [assessmentStatus, setAssessmentStatus] = useState<
     "IN_PROGRESS" | "COMPLETED"
@@ -307,12 +313,36 @@ export function ScoringSidebar({ assessmentId }: ScoringSidebarProps) {
         {assessmentStatus === "COMPLETED" && (
           <>
             <Separator />
-            <div className="space-y-2 text-center">
-              <CheckCircle className="h-8 w-8 text-green-500 mx-auto" />
-              <span className="text-sm font-medium">Assessment Complete</span>
-              <div className="text-xs text-muted-foreground">
-                All domains have been evaluated based on the conversation.
+
+            {/* Assessment Results Chart */}
+            <div className="space-y-4">
+              <AssessmentLineChart
+                assessmentId={assessmentId}
+                showTitle={false}
+                height={200}
+                className="w-full"
+              />
+            </div>
+
+            <Separator />
+
+            <div className="space-y-4 text-center">
+              <div>
+                <CheckCircle className="h-8 w-8 text-green-500 mx-auto" />
+                <span className="text-sm font-medium block mt-2">
+                  Assessment Complete
+                </span>
+                <div className="text-xs text-muted-foreground">
+                  All domains have been evaluated based on the conversation.
+                </div>
               </div>
+
+              <PDFReportButton
+                assessmentId={assessmentId}
+                subjectName={subjectName}
+                variant="outline"
+                size="sm"
+              />
             </div>
           </>
         )}

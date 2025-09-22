@@ -131,10 +131,13 @@ export const ASSESSMENT_CONFIG = {
   },
 
   // Default scores for new assessments
-  DEFAULT_SCORES: Object.values(AssessmentDomain).reduce((acc, domain) => {
-    acc[domain] = 0;
-    return acc;
-  }, {} as Record<AssessmentDomain, number>),
+  DEFAULT_SCORES: Object.values(AssessmentDomain).reduce(
+    (acc, domain) => {
+      acc[domain] = 0;
+      return acc;
+    },
+    {} as Record<AssessmentDomain, number>
+  ),
 
   // Assessment Mode Configuration - Now only structured mode
   MODE: {

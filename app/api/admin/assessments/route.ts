@@ -46,21 +46,74 @@ export async function POST(request: NextRequest) {
   try {
     const data = await request.json();
 
-    const questionSet = await prisma.questionSet.create({
-      data: {
-        domain: data.domain,
-        name: data.name,
-        description: data.description,
-        order: data.order,
-        isActive: true,
-      },
-      include: {
-        questions: true,
-        terminationRules: true,
-      },
+    // Start a transaction to create question set with questions and rules
+    const result = await prisma.$transaction(async (tx) => {
+      // Create the question set
+      const questionSet = await tx.questionSet.create({
+        data: {
+          domain: data.domain,
+          name: data.name,
+          displayName: data.displayName,
+          description: data.description,
+          order: data.order,
+          totalPossibleScore: data.totalPossibleScore,
+          clinicallySignificantScore: data.clinicallySignificantScore,
+          skipConditions: data.skipConditions,
+          prerequisites: data.prerequisites,
+          multiPartLogic: data.multiPartLogic,
+          isActive: true,
+        },
+      });
+
+      // Create questions if provided
+      if (data.questions && data.questions.length > 0) {
+        await tx.question.createMany({
+          data: data.questions.map((q: any) => ({
+            questionSetId: questionSet.id,
+            text: q.text,
+            order: q.order,
+            isGatingQuestion: q.isGatingQuestion || false,
+            weight: q.weight || 1,
+            isActive: true,
+          })),
+        });
+      }
+
+      // Create termination rules if provided
+      if (data.terminationRules && data.terminationRules.length > 0) {
+        await tx.terminationRule.createMany({
+          data: data.terminationRules.map((rule: any) => ({
+            questionSetId: questionSet.id,
+            name: rule.name,
+            description: rule.description,
+            minimumYesToContinue: rule.minimumYesToContinue,
+            checkAfterQuestion: rule.checkAfterQuestion,
+            isActive: true,
+          })),
+        });
+      }
+
+      // Return the complete question set with relations
+      return await tx.questionSet.findUnique({
+        where: { id: questionSet.id },
+        include: {
+          questions: {
+            orderBy: { order: "asc" },
+          },
+          terminationRules: {
+            orderBy: { checkAfterQuestion: "asc" },
+          },
+          _count: {
+            select: {
+              questions: true,
+              terminationRules: true,
+            },
+          },
+        },
+      });
     });
 
-    return NextResponse.json(questionSet, { status: 201 });
+    return NextResponse.json(result, { status: 201 });
   } catch (error) {
     console.error("Error creating assessment:", error);
     return NextResponse.json(

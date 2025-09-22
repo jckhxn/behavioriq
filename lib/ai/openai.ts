@@ -23,3 +23,21 @@ export async function getEmbeddings(input: string) {
   });
   return embedding;
 }
+
+// Simple AI response generation for recommendations
+export async function generateAIResponse(
+  prompt: string,
+  options?: { temperature?: number; maxTokens?: number }
+) {
+  const { text } = await generateText({
+    model: openai("gpt-4o-mini"),
+    messages: [
+      {
+        role: "user" as const,
+        content: prompt,
+      },
+    ],
+    temperature: options?.temperature || 0.7,
+  });
+  return text;
+}

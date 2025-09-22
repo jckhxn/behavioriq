@@ -23,6 +23,7 @@ interface UnifiedChatProps {
 export function UnifiedChat({ className }: UnifiedChatProps) {
   const { data: session } = useSession();
   const [assessmentId, setAssessmentId] = useState<string | null>(null);
+  const [subjectName, setSubjectName] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const isMobile = useIsMobile();
   const [scoringSheetOpen, setScoringSheetOpen] = useState(false);
@@ -35,17 +36,19 @@ export function UnifiedChat({ className }: UnifiedChatProps) {
       setIsLoading(true);
       try {
         // Create new assessment
+        const currentSubjectName = `Assessment ${new Date().toLocaleDateString()}`;
         const response = await fetch("/api/assessments", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            subjectName: `Assessment ${new Date().toLocaleDateString()}`,
+            subjectName: currentSubjectName,
           }),
         });
 
         if (response.ok) {
           const assessment = await response.json();
-          setAssessmentId(assessment.id);
+          setAssessmentId(assessment.assessmentId);
+          setSubjectName(currentSubjectName);
         }
       } catch (error) {
         console.error("Error creating assessment:", error);
@@ -106,7 +109,10 @@ export function UnifiedChat({ className }: UnifiedChatProps) {
                   </SheetDescription>
                 </SheetHeader>
                 <div className="mt-4 h-full overflow-auto">
-                  <ScoringSidebar assessmentId={assessmentId} />
+                  <ScoringSidebar
+                    assessmentId={assessmentId}
+                    subjectName={subjectName}
+                  />
                 </div>
               </SheetContent>
             </Sheet>
@@ -138,8 +144,11 @@ export function UnifiedChat({ className }: UnifiedChatProps) {
           {/* Desktop-only Scoring Sidebar */}
           {assessmentId && !isMobile && (
             <div className="hidden lg:block w-80 flex-shrink-0">
-              <div className="card-gradient rounded-xl p-4 animate-slide-up sticky top-6 h-fit">
-                <ScoringSidebar assessmentId={assessmentId} />
+              <div className="card-gradient rounded-xl p-4 animate-slide-up sticky top-6 h-fit max-h-[calc(100vh-8rem)]">
+                <ScoringSidebar
+                  assessmentId={assessmentId}
+                  subjectName={subjectName}
+                />
               </div>
             </div>
           )}

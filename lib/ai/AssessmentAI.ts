@@ -477,6 +477,16 @@ Keep the response professional, empathetic, and actionable.`;
         timestamp: new Date(),
       }));
 
+      // Delete existing scores for these domains to avoid duplicates
+      const domains = scoreUpdates.map((s) => s.domain);
+      await prisma.score.deleteMany({
+        where: {
+          assessmentId: this.assessmentId,
+          domain: { in: domains },
+        },
+      });
+
+      // Create new scores
       await prisma.score.createMany({
         data: scoreUpdates,
       });
