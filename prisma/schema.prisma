@@ -101,6 +101,7 @@ model User {
   chatSessions  ChatSession[]
   licenses      UserLicense[]
   usageMetrics  UsageMetrics[]
+  recommendations Recommendation[]
   
   @@index([organizationId])
   @@map("users")
@@ -157,6 +158,7 @@ model Assessment {
   messages      ChatMessage[]
   scores        Score[]
   responses     QuestionResponse[]
+  recommendations Recommendation[]
 
   @@index([userId])
   @@index([status])
@@ -211,6 +213,26 @@ model Score {
   @@unique([assessmentId, domain, timestamp])
   @@index([assessmentId])
   @@map("scores")
+}
+
+model Recommendation {
+  id            String     @id @default(cuid())
+  assessment    Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  assessmentId  String
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String
+  title         String     // Summary title for the recommendation
+  content       String     @db.Text // Full AI-generated recommendation text
+  category      String?    // Category like "Immediate Action", "Therapeutic", etc.
+  priority      Int        @default(1) // 1-5 priority level
+  isBookmarked  Boolean    @default(false) // User can bookmark important recommendations
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([userId])
+  @@index([assessmentId])
+  @@index([isBookmarked])
+  @@map("recommendations")
 }
 
 model QuestionSet {

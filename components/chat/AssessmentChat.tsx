@@ -10,6 +10,7 @@ import { useSession } from "next-auth/react";
 import { AssessmentDomain } from "@prisma/client";
 import { ASSESSMENT_CONFIG } from "@/lib/config/ai-config";
 import { QuestionPresenter } from "@/components/assessment/QuestionPresenter";
+import { AssessmentCompletion } from "@/components/assessment/AssessmentCompletion";
 
 interface Message {
   id: string;
@@ -45,6 +46,8 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
   >("IN_PROGRESS");
   const [structuredState, setStructuredState] =
     useState<StructuredAssessmentState>({});
+  const [subjectName, setSubjectName] = useState<string>("");
+  const [aiRecommendations, setAiRecommendations] = useState<string>("");
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const isStructuredMode = ASSESSMENT_CONFIG.CURRENT_MODE === "structured";
@@ -53,6 +56,17 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
   useEffect(() => {
     const loadMessages = async () => {
       try {
+        // Get assessment data first
+        const assessmentResponse = await fetch(
+          `/api/assessments/${assessmentId}`
+        );
+        if (assessmentResponse.ok) {
+          const assessmentData = await assessmentResponse.json();
+          setSubjectName(assessmentData.subjectName || "");
+          setAssessmentStatus(assessmentData.status);
+        }
+
+        // Get messages
         const response = await fetch(
           `/api/assessments/${assessmentId}/messages`
         );
@@ -64,10 +78,12 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
               timestamp: new Date(msg.timestamp),
             }))
           );
+
+          // Override with latest status from messages endpoint
           setAssessmentStatus(data.status);
 
-          // Send initial greeting if no messages exist
-          if (data.messages.length === 0) {
+          // Only send initial greeting if assessment is not completed and no messages exist
+          if (data.status !== "COMPLETED" && data.messages.length === 0) {
             await sendInitialGreeting();
           }
         }
@@ -131,7 +147,7 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!input.trim() || isLoading || assessmentStatus === "COMPLETED") return;
+    if (!input.trim() || isLoading) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -264,36 +280,10 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
     // Structured Assessment Mode
     if (assessmentStatus === "COMPLETED") {
       return (
-        <div className="flex flex-col h-full">
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b">
-            <h2 className="text-lg font-semibold">Behavioral Assessment</h2>
-            <Badge variant="secondary">Complete</Badge>
-          </div>
-
-          <div className="flex-1 p-4 overflow-auto">
-            <div className="text-center space-y-4 p-6">
-              <div className="text-2xl font-bold text-green-600">
-                Assessment Complete!
-              </div>
-              <div className="text-muted-foreground">
-                Total Questions: {structuredState.progress?.totalQuestions || 0}
-                <br />
-                Answered Questions:{" "}
-                {structuredState.progress?.answeredQuestions || 0}
-                <br />
-                Completed Domains:{" "}
-                {structuredState.progress?.completedDomains || 0}
-              </div>
-              <button
-                onClick={() => console.log("View results clicked")}
-                className="bg-primary text-primary-foreground px-4 py-2 rounded"
-              >
-                View Results
-              </button>
-            </div>
-          </div>
-        </div>
+        <AssessmentCompletion
+          assessmentId={assessmentId}
+          subjectName={subjectName}
+        />
       );
     }
 
@@ -337,16 +327,21 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
   }
 
   // Conversational Assessment Mode
+  if (assessmentStatus === "COMPLETED") {
+    return (
+      <AssessmentCompletion
+        assessmentId={assessmentId}
+        subjectName={subjectName}
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b">
         <h2 className="text-lg font-semibold">Behavioral Assessment</h2>
-        <Badge
-          variant={assessmentStatus === "COMPLETED" ? "secondary" : "default"}
-        >
-          {assessmentStatus === "COMPLETED" ? "Complete" : "In Progress"}
-        </Badge>
+        <Badge variant="default">In Progress</Badge>
       </div>
 
       {/* Messages */}
@@ -395,12 +390,8 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={
-              assessmentStatus === "COMPLETED"
-                ? "Assessment completed"
-                : "Share your thoughts and feelings..."
-            }
-            disabled={isLoading || assessmentStatus === "COMPLETED"}
+            placeholder="Share your thoughts and feelings..."
+            disabled={isLoading}
             className="min-h-[60px] max-h-[120px]"
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
@@ -411,9 +402,7 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
           />
           <Button
             type="submit"
-            disabled={
-              !input.trim() || isLoading || assessmentStatus === "COMPLETED"
-            }
+            disabled={!input.trim() || isLoading}
             size="sm"
             className="self-end"
           >
@@ -424,11 +413,6 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
             )}
           </Button>
         </div>
-        {assessmentStatus === "COMPLETED" && (
-          <p className="text-sm text-muted-foreground mt-2">
-            Assessment completed. Check the scoring panel for results.
-          </p>
-        )}
       </form>
     </div>
   );

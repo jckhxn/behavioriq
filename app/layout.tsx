@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { SessionProvider } from "next-auth/react";
 import { Toaster } from "@/components/ui/sonner";
+import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -16,7 +17,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "AI Assessment & Document Chat",
-  description: "Conversational AI behavioral assessments with intelligent document-based chat",
+  description:
+    "Conversational AI behavioral assessments with intelligent document-based chat",
 };
 
 export default function RootLayout({
@@ -25,14 +27,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <SessionProvider>
-          {children}
-          <Toaster />
-        </SessionProvider>
+        <ThemeProvider>
+          <SessionProvider>
+            {children}
+            <Toaster />
+          </SessionProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

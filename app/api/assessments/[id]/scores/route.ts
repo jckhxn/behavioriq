@@ -1,63 +1,69 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/lib/auth/config'
-import { prisma } from '@/lib/db/prisma'
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth/config";
+import { prisma } from "@/lib/db/prisma";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth()
+    const session = await auth();
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const assessmentId = (await params).id
+    const assessmentId = (await params).id;
 
     // Verify assessment belongs to user
     const assessment = await prisma.assessment.findFirst({
       where: {
         id: assessmentId,
-        userId: session.user.id
-      }
-    })
+        userId: session.user.id,
+      },
+    });
 
     if (!assessment) {
-      return NextResponse.json({ error: 'Assessment not found' }, { status: 404 })
+      return NextResponse.json(
+        { error: "Assessment not found" },
+        { status: 404 }
+      );
     }
 
     // Get all scores
     const scores = await prisma.score.findMany({
       where: { assessmentId },
-      orderBy: { timestamp: 'desc' },
+      orderBy: { timestamp: "desc" },
       select: {
         id: true,
         domain: true,
         rawScore: true,
+        totalPossible: true,
+        questionsAnswered: true,
         riskLevel: true,
         confidence: true,
-        timestamp: true
-      }
-    })
+        wasTerminatedEarly: true,
+        timestamp: true,
+      },
+    });
 
     // Get message count
     const messageCount = await prisma.chatMessage.count({
-      where: { 
+      where: {
         assessmentId,
-        role: 'USER'
-      }
-    })
+        role: "USER",
+      },
+    });
 
     return NextResponse.json({
       scores,
       status: assessment.status,
-      messageCount
-    })
+      messageCount,
+    });
   } catch (error) {
-    console.error('Get assessment scores error:', error)
+    console.error("Get assessment scores error:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch scores' },
+      { error: "Failed to fetch scores" },
       { status: 500 }
-    )
+    );
   }
 }

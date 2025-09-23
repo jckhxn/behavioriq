@@ -1,41 +1,55 @@
-import { auth } from "@/lib/auth/config"
-import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
+import { auth } from "@/lib/auth/config";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
 export default auth(async function middleware(req: NextRequest) {
-  const session = await auth()
-  const isAuth = !!session?.user
-  const isAuthPage = req.nextUrl.pathname.startsWith("/login") || 
-                     req.nextUrl.pathname.startsWith("/register")
+  const session = await auth();
+  const isAuth = !!session?.user;
+  const isAuthPage =
+    req.nextUrl.pathname.startsWith("/login") ||
+    req.nextUrl.pathname.startsWith("/register");
+
+  // Public pages that don't require authentication
+  const isPublicPage =
+    req.nextUrl.pathname === "/" ||
+    req.nextUrl.pathname.startsWith("/trial-assessment") ||
+    req.nextUrl.pathname.startsWith("/trial-results") ||
+    req.nextUrl.pathname.startsWith("/payment") ||
+    req.nextUrl.pathname.startsWith("/payment-success");
 
   if (isAuthPage) {
     if (isAuth) {
-      return NextResponse.redirect(new URL("/", req.url))
+      return NextResponse.redirect(new URL("/", req.url));
     }
-    return null
+    return null;
   }
 
-  if (!isAuth && !isAuthPage) {
-    let from = req.nextUrl.pathname
+  // Allow access to public pages without authentication
+  if (isPublicPage) {
+    return null;
+  }
+
+  if (!isAuth && !isAuthPage && !isPublicPage) {
+    let from = req.nextUrl.pathname;
     if (req.nextUrl.search) {
-      from += req.nextUrl.search
+      from += req.nextUrl.search;
     }
-    
+
     return NextResponse.redirect(
       new URL(`/login?from=${encodeURIComponent(from)}`, req.url)
-    )
+    );
   }
 
   // Check admin routes
   if (req.nextUrl.pathname.startsWith("/admin")) {
     if (session?.user?.role !== "ADMIN") {
-      return NextResponse.redirect(new URL("/", req.url))
+      return NextResponse.redirect(new URL("/", req.url));
     }
   }
-})
+});
 
 export const config = {
   matcher: [
-    "/((?!api/auth|_next/static|_next/image|favicon.ico).*)",
+    "/((?!api/auth|_next/static|_next/image|favicon.ico|trial-assessment|trial-results|payment).*)",
   ],
-}
+};

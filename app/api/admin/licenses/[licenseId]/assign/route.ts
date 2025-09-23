@@ -11,9 +11,10 @@ import { LicensingService } from "@/lib/licensing/licensing-service";
 // POST /api/admin/licenses/[licenseId]/assign - Assign license to user
 export async function POST(
   request: NextRequest,
-  { params }: { params: { licenseId: string } }
+  { params }: { params: Promise<{ licenseId: string }> }
 ) {
   try {
+    const { licenseId } = await params;
     const session = await auth();
 
     if (!session?.user) {
@@ -27,7 +28,6 @@ export async function POST(
       );
     }
 
-    const { licenseId } = params;
     const body = await request.json();
     const { userId } = body;
 

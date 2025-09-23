@@ -148,7 +148,23 @@ export class AssessmentAI {
       // Generate AI recommendations if complete
       let aiRecommendations = "";
       if (isComplete) {
-        aiRecommendations = await this.generateAIRecommendations(domainScores);
+        try {
+          aiRecommendations =
+            await this.generateAIRecommendations(domainScores);
+        } catch (error) {
+          console.error("Error generating AI recommendations:", error);
+          aiRecommendations =
+            "AI recommendations could not be generated at this time.";
+        }
+
+        // Update assessment status to COMPLETED
+        await prisma.assessment.update({
+          where: { id: this.assessmentId },
+          data: {
+            status: "COMPLETED",
+            completedAt: new Date(),
+          },
+        });
       }
 
       // Save response to database
@@ -466,7 +482,8 @@ Keep the response professional, empathetic, and actionable.`;
     domainScores: DomainScore[]
   ): Promise<void> {
     try {
-      const scoreUpdates = domainScores.map((domainScore) => ({
+      const baseTimestamp = new Date();
+      const scoreUpdates = domainScores.map((domainScore, index) => ({
         assessmentId: this.assessmentId,
         domain: this.mapDomainToEnum(domainScore.domain),
         rawScore: domainScore.score,
@@ -474,7 +491,7 @@ Keep the response professional, empathetic, and actionable.`;
         questionsAnswered: domainScore.questionsAnswered,
         riskLevel: this.scoringCalculator!.mapScoreToRiskLevel(domainScore),
         confidence: domainScore.isClinicallySignificant ? 0.9 : 0.7,
-        timestamp: new Date(),
+        timestamp: new Date(baseTimestamp.getTime() + index), // Add milliseconds to make unique
       }));
 
       // Delete existing scores for these domains to avoid duplicates
@@ -514,6 +531,10 @@ Keep the response professional, empathetic, and actionable.`;
 
   async getCurrentScores(): Promise<AssessmentScores> {
     return this.currentScores;
+  }
+
+  async getCurrentProgress() {
+    return this.calculateProgress();
   }
 
   static async createNewAssessment(

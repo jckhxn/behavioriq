@@ -268,26 +268,35 @@ export const KNOWLEDGE_CONFIG = {
 
 export const SYSTEM_PROMPTS = {
   // Assessment analysis prompt
-  ASSESSMENT_ANALYSIS: `You are a psychological assessment AI analyzing responses for behavioral indicators.
+  ASSESSMENT_ANALYSIS: `You are a compassionate psychological assessment AI analyzing behavioral assessment results.
 
-You will receive one or more domains with associated scores (0–100).
-
-Domain names may vary between assessments (e.g., “EMOTIONAL,” “MOOD,” “ANGER,” “STRESS”).
-
+You will receive one or more domains with associated scores (0–100). 
+Domain names may vary between assessments (e.g., "EMOTIONAL," "MOOD," "ANGER," "STRESS"). 
 Each domain will always provide a score.
 
-Your task is to generate a conversational, empathetic summary of the user’s results.
-Always follow this structure in your response:
+Your task is to generate a **conversational, empathetic summary** of the user’s results, following this exact structure:
 
-Overview: Provide a supportive summary of the main findings, highlighting domains that appear higher. Use the domain names provided in the input.
+1. **Overview:** Provide a supportive summary of the main findings. Highlight domains that appear higher, using the exact domain names provided in the input. Write in a tone that is understanding and encouraging.
 
-Domain Interactions: If certain higher-scoring domains tend to interact (e.g., high EMOTIONAL + high ATTENTION), explain how they may influence each other.
+2. **Domain Interactions:** If any higher-scoring domains tend to interact (e.g., high EMOTIONAL + high ATTENTION), explain how they may influence each other in practical terms. Keep it clear and relatable.
 
-Trusted Resources: Provide a short list of practical, easy-to-understand resources (articles, guides, or tools) only from trusted sources such as Mayo Clinic, CDC, American Psychological Association (APA), or NIH. Include clickable links.
+3. **Trusted Resources:** Provide a short list of practical, easy-to-understand resources for the user. Only include resources from trusted sources such as Mayo Clinic, CDC, American Psychological Association (APA), or NIH.  
+   - Format each resource as a **clickable link with a descriptive title**.  
+   - Phrase them naturally in the text so they can also be **saved or bookmarked** by the user.  
+   - Example format in the text: “You may find the [Mayo Clinic Guide to Attention](https://www.mayoclinic.org/healthy-lifestyle/childrens-health) helpful.”
 
-Disclaimer: Always include a clear statement that this is not medical advice, and encourage the user to consult a licensed mental health professional if concerns are significant.
+4. **Disclaimer:** Include a clear statement that this is not medical advice, and encourage the user to consult a licensed mental health professional if any concerns are significant.
 
-Do not return JSON, raw scores, or risk levels. Only return a conversational response in this structured format.`,
+**Important Instructions:**
+- Do NOT return JSON, raw scores, percentages, or risk levels.  
+- The response should be purely conversational and easy to read.  
+- Use the domain names exactly as provided.  
+- Make the clickable resources feel like natural suggestions, not a list of links.  
+- Ensure resources are relevant to the higher-scoring domains.
+
+Here is the assessment input for you to analyze:
+
+[Insert domains and scores here]`,
 
   // Assessment question generation prompt
   ASSESSMENT_QUESTIONS: `You are conducting a psychological assessment interview. Based on the conversation history and current assessment needs, generate the next most appropriate question.
@@ -369,6 +378,172 @@ export const SUCCESS_MESSAGES = {
     SESSION_UPDATED: "Session updated successfully",
   },
 } as const;
+
+// =============================================================================
+// MOCK RECOMMENDATIONS CONFIGURATION
+// =============================================================================
+
+export const MOCK_RECOMMENDATIONS = {
+  // Enable/disable mock responses
+  ENABLED: true,
+
+  // Mock response template based on assessment domains
+  generateMockResponse: (
+    domains: { domain: string; riskLevel: string; score: number }[]
+  ) => {
+    const highRiskDomains = domains.filter(
+      (d) => d.riskLevel === "HIGH" || d.riskLevel === "VERY_HIGH"
+    );
+    const moderateRiskDomains = domains.filter(
+      (d) => d.riskLevel === "MODERATE"
+    );
+
+    const domainNames = {
+      ANTISOCIAL: "SOCIAL",
+      VIOLENCE: "AGGRESSION",
+      ATTENTION: "ATTENTION",
+      EMOTIONAL: "EMOTIONAL",
+      CONDUCT: "CONDUCT",
+    };
+
+    const primaryDomains =
+      highRiskDomains.length > 0 ? highRiskDomains : moderateRiskDomains;
+    const domainList = primaryDomains
+      .map((d) => domainNames[d.domain as keyof typeof domainNames] || d.domain)
+      .join(" and ");
+
+    return `# Assessment Recommendations Summary
+
+## 📊 Overview
+Based on your assessment results, **${domainList}** ${primaryDomains.length > 1 ? "are the primary areas" : "is the primary area"} that could benefit from focused attention. ${getDomainInsight(primaryDomains)}. 
+
+${getOverallAssessment(domains)}
+
+---
+
+## 🔗 Domain Interactions
+${getDomainInteractions(primaryDomains)}
+
+---
+
+## 📚 Trusted Resources & Support
+These evidence-based resources can provide practical guidance and support:
+
+${getResourceLinks(primaryDomains)}
+
+---
+
+## ⚠️ Important Notice
+*This assessment provides general insights and is not a substitute for professional medical advice. If you have concerns about mental health, please consult with a licensed mental health professional for personalized guidance and support.*`;
+  },
+} as const;
+
+// Helper functions for mock responses
+function getDomainInsight(
+  domains: { domain: string; riskLevel: string }[]
+): string {
+  const insights = {
+    EMOTIONAL:
+      "moments of strong emotions may sometimes make it harder to manage daily activities, and developing emotional regulation skills could be beneficial",
+    ATTENTION:
+      "difficulties with attention and focus may impact daily tasks, and structured routines could provide helpful support",
+    ANTISOCIAL:
+      "social interactions may present some challenges, and building social skills could enhance relationships",
+    VIOLENCE:
+      "managing anger and aggressive feelings may need attention, and learning coping strategies could be helpful",
+    CONDUCT:
+      "following rules and expectations may sometimes be challenging, and consistent structure could provide support",
+  };
+
+  return domains
+    .map(
+      (d) =>
+        insights[d.domain as keyof typeof insights] ||
+        "attention to this area may be beneficial"
+    )
+    .join(", and ");
+}
+
+function getOverallAssessment(
+  domains: { domain: string; riskLevel: string }[]
+): string {
+  const lowRisk = domains.filter((d) => d.riskLevel === "LOW").length;
+  if (lowRisk > domains.length / 2) {
+    return "Many areas show positive functioning, which is encouraging.";
+  }
+  return "Understanding these patterns can help in developing effective support strategies.";
+}
+
+function getDomainInteractions(
+  domains: { domain: string; riskLevel: string }[]
+): string {
+  if (
+    domains.some((d) => d.domain === "EMOTIONAL") &&
+    domains.some((d) => d.domain === "ATTENTION")
+  ) {
+    return "High EMOTIONAL scores can influence ATTENTION, making it harder to concentrate during emotionally intense moments. Conversely, struggles with focus can amplify emotional responses. Being aware of this interaction can help in planning structured routines and coping strategies to support both domains.";
+  }
+
+  if (
+    domains.some((d) => d.domain === "EMOTIONAL") &&
+    domains.some((d) => d.domain === "ANTISOCIAL")
+  ) {
+    return "Emotional challenges can impact social interactions, while social difficulties may increase emotional stress. Working on both emotional regulation and social skills together can create positive reinforcement between these areas.";
+  }
+
+  return "The identified domains often influence each other. Addressing multiple areas simultaneously with consistent strategies can create positive momentum across different aspects of behavior and well-being.";
+}
+
+function getResourceLinks(
+  domains: { domain: string; riskLevel: string }[]
+): string {
+  const generalResources = [
+    "### 🏥 General Support Resources",
+    "• [Mayo Clinic - Child Mental Health](https://www.mayoclinic.org/healthy-lifestyle/childrens-health) - Comprehensive strategies for attention and focus improvement",
+    "• [CDC Child Development Resources](https://www.cdc.gov/child-development/emotional-wellbeing) - Evidence-based guidance for emotional well-being",
+    "• [American Psychological Association - Child Development](https://www.apa.org/topics/child-development/social-skills) - Activities to foster positive social interactions",
+  ];
+
+  const domainSpecificResources: Record<string, string[]> = {
+    EMOTIONAL: [
+      "### 💭 Emotional Regulation",
+      "• [NIMH Emotional Wellness Guide](https://www.nimh.nih.gov/health/topics/emotional-wellness) - Comprehensive emotional regulation strategies",
+      "• [Mindfulness for Children](https://www.mindful.org/mindfulness-for-kids/) - Age-appropriate mindfulness techniques",
+    ],
+    ATTENTION: [
+      "### 🎯 Attention & Focus",
+      "• [ADHD Foundation Resources](https://www.adhdfoundation.org.uk/what-is-adhd/parents-carers/) - Practical attention management tools",
+      "• [CHADD (Children and Adults with ADHD)](https://chadd.org/for-parents/) - Evidence-based strategies and support networks",
+    ],
+    ANTISOCIAL: [
+      "### 🤝 Social Skills Development",
+      "• [Social Skills Development Guide](https://www.understood.org/en/learning-thinking-differences/child-learning-disabilities/social-skills-issues) - Building social connections",
+      "• [Child Mind Institute - Social Skills](https://childmind.org/topics/concerns/social-skills-issues/) - Age-appropriate social activities",
+    ],
+    VIOLENCE: [
+      "### 😤 Anger Management",
+      "• [APA Anger Management for Children](https://www.apa.org/topics/anger/children-anger) - Strategies for managing aggressive feelings",
+      "• [Crisis Text Line](https://www.crisistextline.org/) - 24/7 confidential support (Text HOME to 741741)",
+    ],
+    CONDUCT: [
+      "### 📋 Behavioral Support",
+      "• [Positive Behavior Support](https://www.pbis.org/family) - Evidence-based behavioral strategies",
+      "• [Child Development Institute](https://childdevelopmentinfo.com/behavior/) - Practical behavior management techniques",
+    ],
+  };
+
+  let resources = [...generalResources];
+
+  // Add domain-specific resources
+  domains.forEach((d) => {
+    const domainResources = domainSpecificResources[d.domain];
+    if (domainResources) {
+      resources.push("", ...domainResources);
+    }
+  });
+
+  return resources.join("\n");
+}
 
 // =============================================================================
 // UTILITY FUNCTIONS

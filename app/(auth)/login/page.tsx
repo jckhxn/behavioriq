@@ -1,47 +1,53 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { signIn } from "next-auth/react"
-import { useRouter, useSearchParams } from "next/navigation"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { toast } from "sonner"
+import { useState, Suspense } from "react";
+import { signIn } from "next-auth/react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { toast } from "sonner";
 
-export default function LoginPage() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
+function LoginForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const from = searchParams.get("from") || "/"
+  const from = searchParams.get("from") || "/";
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
+    e.preventDefault();
+    setIsLoading(true);
 
     try {
       const result = await signIn("credentials", {
         email,
         password,
-        redirect: false
-      })
+        redirect: false,
+      });
 
       if (result?.error) {
-        toast.error("Invalid email or password")
+        toast.error("Invalid email or password");
       } else {
-        router.push(from)
-        router.refresh()
+        router.push(from);
+        router.refresh();
       }
     } catch (error) {
-      toast.error("An error occurred. Please try again.")
+      toast.error("An error occurred. Please try again.");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
@@ -90,5 +96,13 @@ export default function LoginPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LoginForm />
+    </Suspense>
+  );
 }

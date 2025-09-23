@@ -1,7 +1,20 @@
+"use client";
+
+import { useState } from "react";
 import { UnifiedChat } from "@/components/chat/UnifiedChat";
 import { Button } from "@/components/ui/button";
 import { auth, signOut } from "@/lib/auth/config";
-import { Brain, LogOut, Settings, Menu } from "lucide-react";
+import {
+  Brain,
+  LogOut,
+  Settings,
+  Menu,
+  FileText,
+  Lightbulb,
+  Star,
+  Shield,
+  ChevronDown,
+} from "lucide-react";
 import Link from "next/link";
 import {
   SidebarProvider,
@@ -14,41 +27,23 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { ScoringSidebar } from "@/components/scoring/ScoringSidebar";
+import { LandingPage } from "@/components/landing/LandingPage";
+import { UserDashboard } from "@/components/dashboard/UserDashboard";
+import { CompactRecommendationsWithModal } from "@/components/recommendations/CompactRecommendationsWithModal";
+import { ThemeToggle } from "@/components/theme-toggle";
+import SettingsPane from "@/components/settings/SettingsPane";
 
 export default async function Home() {
   const session = await auth();
 
   if (!session?.user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <div className="text-center space-y-6 animate-fade-in">
-          <div className="flex items-center justify-center gap-3 mb-8">
-            <div className="p-2 rounded-xl gradient-primary">
-              <Brain className="h-8 w-8 text-white" />
-            </div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              AI Assessment & Document Chat
-            </h1>
-          </div>
-          <p className="text-muted-foreground text-lg mb-8 max-w-md mx-auto">
-            Conversational AI behavioral assessments with intelligent
-            document-based chat
-          </p>
-          <div className="space-x-4">
-            <Button
-              asChild
-              className="gradient-primary text-white hover:opacity-90 transition-opacity"
-            >
-              <Link href="/login">Sign In</Link>
-            </Button>
-            <Button variant="outline" asChild className="hover-lift">
-              <Link href="/register">Create Account</Link>
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
+    return <LandingPage />;
   }
 
   return (
@@ -68,7 +63,7 @@ export default async function Home() {
                 <Brain className="h-5 w-5 text-white" />
               </div>
               <h1 className="text-lg font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                AI Assessment & Document Chat
+                AI Assessment Dashboard
               </h1>
             </div>
 
@@ -94,31 +89,22 @@ export default async function Home() {
                   </Button>
                 )}
 
-                <form
-                  action={async () => {
-                    "use server";
-                    await signOut({ redirectTo: "/login" });
-                  }}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => signOut({ redirectTo: "/login" })}
+                  className="hover-lift"
                 >
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    type="submit"
-                    className="hover-lift"
-                  >
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Sign Out
-                  </Button>
-                </form>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sign Out
+                </Button>
               </div>
             </div>
           </header>
 
           {/* Content Area */}
-          <div className="flex-1 p-4 md:p-6">
-            <div className="animate-fade-in">
-              <UnifiedChat />
-            </div>
+          <div className="flex-1">
+            <UserDashboard />
           </div>
         </main>
       </div>
@@ -127,6 +113,8 @@ export default async function Home() {
 }
 
 function AppSidebar({ user }: { user: any }) {
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
   return (
     <Sidebar className="border-r">
       <SidebarHeader className="border-b p-4">
@@ -138,51 +126,84 @@ function AppSidebar({ user }: { user: any }) {
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="p-4">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <Link href="/" className="flex items-center gap-2">
-                <Brain className="h-4 w-4" />
-                Assessment
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          {user.role === "ADMIN" && (
+      <SidebarContent className="flex flex-col h-full">
+        <div className="p-4">
+          <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton asChild>
-                <Link href="/admin" className="flex items-center gap-2">
-                  <Settings className="h-4 w-4" />
-                  Admin
+                <Link href="/" className="flex items-center gap-2">
+                  <Brain className="h-4 w-4" />
+                  Dashboard
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-          )}
-        </SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <Link href="/assessments" className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Previous Assessments
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
+              <SidebarMenuItem>
+                <CollapsibleTrigger asChild>
+                  <SidebarMenuButton className="flex items-center gap-2 w-full">
+                    <Settings className="h-4 w-4" />
+                    Settings
+                    <ChevronDown className="ml-auto h-4 w-4 transition-transform data-[state=open]:rotate-180" />
+                  </SidebarMenuButton>
+                </CollapsibleTrigger>
+              </SidebarMenuItem>
+              <CollapsibleContent>
+                <div className="mt-2 border rounded-lg bg-muted/30">
+                  <SettingsPane />
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+            {user.role === "ADMIN" && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <Link href="/admin" className="flex items-center gap-2">
+                    <Shield className="h-4 w-4" />
+                    Admin
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+          </SidebarMenu>
+        </div>
+
+        {/* Recommendations Section */}
+        <div className="flex-1 border-t px-4 py-2 overflow-hidden">
+          <h3 className="text-sm font-medium text-muted-foreground mb-3">
+            Recommendations
+          </h3>
+          <div className="h-full overflow-y-auto">
+            <CompactRecommendationsWithModal />
+          </div>
+        </div>
       </SidebarContent>
 
       <SidebarFooter className="border-t p-4">
         <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <div className="text-xs text-muted-foreground">Theme</div>
+            <ThemeToggle />
+          </div>
           <div className="text-xs text-muted-foreground">Signed in as:</div>
           <div className="text-sm font-medium truncate">
             {user.name || user.email}
           </div>
-          <form
-            action={async () => {
-              "use server";
-              await signOut({ redirectTo: "/login" });
-            }}
-          >
             <Button
               variant="outline"
               size="sm"
-              type="submit"
+              onClick={() => signOut({ redirectTo: "/login" })}
               className="w-full justify-start"
             >
               <LogOut className="h-4 w-4 mr-2" />
               Sign Out
             </Button>
-          </form>
         </div>
       </SidebarFooter>
     </Sidebar>

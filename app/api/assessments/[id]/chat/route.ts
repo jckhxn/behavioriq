@@ -71,6 +71,9 @@ export async function POST(
           );
         }
 
+        // Get actual progress calculation instead of hardcoded zeros
+        const progress = await assessmentAI.getCurrentProgress();
+
         return NextResponse.json({
           message:
             "Welcome to the behavioral assessment. You'll be asked a series of yes/no questions across different behavioral domains. Please answer honestly - there are no right or wrong answers.",
@@ -79,12 +82,7 @@ export async function POST(
           currentDomain: initialQuestion.domain,
           scores: [],
           isComplete: false,
-          progress: {
-            totalQuestions: 0,
-            answeredQuestions: 0,
-            completedDomains: 0,
-            overallProgress: 0,
-          },
+          progress,
         });
       }
 
