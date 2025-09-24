@@ -5,22 +5,7 @@
  */
 
 import { AssessmentDomain, Score } from "@prisma/client";
-
-const DOMAIN_LABELS = {
-  [AssessmentDomain.ANTISOCIAL]: "Antisocial",
-  [AssessmentDomain.VIOLENCE]: "Violence",
-  [AssessmentDomain.ATTENTION]: "Attention",
-  [AssessmentDomain.EMOTIONAL]: "Emotional",
-  [AssessmentDomain.CONDUCT]: "Conduct",
-};
-
-const DOMAIN_ORDER = [
-  AssessmentDomain.ANTISOCIAL,
-  AssessmentDomain.VIOLENCE,
-  AssessmentDomain.ATTENTION,
-  AssessmentDomain.EMOTIONAL,
-  AssessmentDomain.CONDUCT,
-];
+import { DOMAIN_LABELS_SHORT, DOMAIN_ORDER } from "@/lib/constants/domains";
 
 export interface ChartData {
   domain: string;
@@ -46,7 +31,7 @@ export class ChartGenerator {
     const chartData: ChartData[] = DOMAIN_ORDER.map((domain) => {
       const score = scores.find((s) => s.domain === domain);
       return {
-        domain: DOMAIN_LABELS[domain],
+        domain: DOMAIN_LABELS_SHORT[domain],
         score: score ? score.rawScore : 0,
         totalPossible: score ? score.totalPossible : 10,
       };
@@ -55,7 +40,7 @@ export class ChartGenerator {
       return scores.some(
         (s) =>
           s.domain ===
-          DOMAIN_ORDER.find((d) => DOMAIN_LABELS[d] === item.domain)
+          DOMAIN_ORDER.find((d) => DOMAIN_LABELS_SHORT[d] === item.domain)
       );
     });
 

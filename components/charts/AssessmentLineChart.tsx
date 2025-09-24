@@ -18,6 +18,7 @@ import {
 } from "recharts";
 import { AssessmentDomain, RiskLevel } from "@prisma/client";
 import { TrendingUp } from "lucide-react";
+import { DOMAIN_LABELS_SHORT, DOMAIN_ORDER } from "@/lib/constants/domains";
 
 interface Score {
   domain: AssessmentDomain;
@@ -32,22 +33,6 @@ interface AssessmentLineChartProps {
   showTitle?: boolean;
   height?: number;
 }
-
-const DOMAIN_LABELS = {
-  [AssessmentDomain.ANTISOCIAL]: "Antisocial",
-  [AssessmentDomain.VIOLENCE]: "Violence",
-  [AssessmentDomain.ATTENTION]: "Attention",
-  [AssessmentDomain.EMOTIONAL]: "Emotional",
-  [AssessmentDomain.CONDUCT]: "Conduct",
-};
-
-const DOMAIN_ORDER = [
-  AssessmentDomain.ANTISOCIAL,
-  AssessmentDomain.VIOLENCE,
-  AssessmentDomain.ATTENTION,
-  AssessmentDomain.EMOTIONAL,
-  AssessmentDomain.CONDUCT,
-];
 
 const chartConfig = {
   score: {
@@ -87,7 +72,7 @@ export function AssessmentLineChart({
   const chartData = DOMAIN_ORDER.map((domain) => {
     const score = scores.find((s) => s.domain === domain);
     return {
-      domain: DOMAIN_LABELS[domain],
+      domain: DOMAIN_LABELS_SHORT[domain],
       score: score ? score.rawScore : 0,
       percentage:
         score && score.totalPossible
@@ -98,7 +83,8 @@ export function AssessmentLineChart({
     // Only include domains that have actual scores
     const hasScore = scores.some(
       (s) =>
-        s.domain === DOMAIN_ORDER.find((d) => DOMAIN_LABELS[d] === item.domain)
+        s.domain ===
+        DOMAIN_ORDER.find((d) => DOMAIN_LABELS_SHORT[d] === item.domain)
     );
     return hasScore;
   });

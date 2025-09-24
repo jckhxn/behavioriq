@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
 import { prisma } from "@/lib/db/prisma";
+import { getAssessmentByIdentifier } from "@/lib/utils/assessmentResolver";
 
 export async function GET(
   request: NextRequest,
@@ -14,12 +15,10 @@ export async function GET(
 
     const { id: assessmentId } = await params;
 
-    const assessment = await prisma.assessment.findUnique({
-      where: {
-        id: assessmentId,
-        userId: session.user.id, // Ensure user owns this assessment
-      },
-    });
+    const assessment = await getAssessmentByIdentifier(
+      assessmentId,
+      session.user.id
+    );
 
     if (!assessment) {
       return NextResponse.json(
@@ -51,13 +50,8 @@ export async function DELETE(
 
     const { id } = await params;
 
-    // Verify the user owns the assessment
-    const existing = await prisma.assessment.findFirst({
-      where: {
-        id,
-        userId: session.user.id,
-      },
-    });
+    // Verify the user owns the assessment and get internal ID
+    const existing = await getAssessmentByIdentifier(id, session.user.id);
 
     if (!existing) {
       return NextResponse.json(
@@ -66,27 +60,29 @@ export async function DELETE(
       );
     }
 
+    const internalId = existing.id;
+
     // Delete related records first (due to foreign key constraints)
     await prisma.$transaction(async (tx) => {
       // Delete chat messages
       await tx.chatMessage.deleteMany({
-        where: { assessmentId: id },
+        where: { assessmentId: internalId },
       });
 
       // Delete scores
       await tx.score.deleteMany({
-        where: { assessmentId: id },
+        where: { assessmentId: internalId },
       });
 
       // Delete recommendations
       // @ts-ignore - Temporary workaround for Prisma type issue
       await tx.recommendation.deleteMany({
-        where: { assessmentId: id },
+        where: { assessmentId: internalId },
       });
 
       // Delete the assessment
       await tx.assessment.delete({
-        where: { id },
+        where: { id: internalId },
       });
     });
 

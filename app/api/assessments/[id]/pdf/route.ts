@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
 import { prisma } from "@/lib/db/prisma";
 import { generateAssessmentPDF } from "@/lib/pdf/generator";
+import { resolveAssessmentId } from "@/lib/utils/assessmentResolver";
 
 export async function POST(
   req: NextRequest,
@@ -13,7 +14,16 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id: assessmentId } = await params;
+    const identifier = (await params).id;
+
+    // Resolve shortId to UUID if needed
+    const assessmentId = await resolveAssessmentId(identifier, session.user.id);
+    if (!assessmentId) {
+      return NextResponse.json(
+        { error: "Assessment not found" },
+        { status: 404 }
+      );
+    }
 
     // Get assessment with all related data
     const assessment = await prisma.assessment.findFirst({

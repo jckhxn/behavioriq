@@ -32,6 +32,7 @@ import {
   Scatter,
 } from "recharts";
 import { AssessmentDomain, RiskLevel } from "@prisma/client";
+import { DOMAIN_LABELS_SHORT, RISK_COLORS } from "@/lib/constants/domains";
 import {
   Download,
   TrendingUp,
@@ -56,21 +57,6 @@ interface EnhancedVisualizationsProps {
   assessmentId: string;
   subjectName?: string;
 }
-
-const DOMAIN_LABELS = {
-  [AssessmentDomain.ANTISOCIAL]: "Antisocial Behavior",
-  [AssessmentDomain.VIOLENCE]: "Violence Risk",
-  [AssessmentDomain.ATTENTION]: "Attention Issues",
-  [AssessmentDomain.EMOTIONAL]: "Emotional Regulation",
-  [AssessmentDomain.CONDUCT]: "Conduct Problems",
-};
-
-const RISK_COLORS = {
-  [RiskLevel.LOW]: "#10b981",
-  [RiskLevel.MODERATE]: "#f59e0b",
-  [RiskLevel.HIGH]: "#ef4444",
-  [RiskLevel.VERY_HIGH]: "#dc2626",
-};
 
 const chartConfig = {
   score: {
@@ -118,7 +104,7 @@ export function EnhancedVisualizations({
 
   // Prepare data for different chart types
   const barChartData = scores.map((score) => ({
-    domain: DOMAIN_LABELS[score.domain],
+    domain: DOMAIN_LABELS_SHORT[score.domain],
     score: score.rawScore,
     maxScore: score.totalPossible || 10,
     percentage: score.totalPossible
@@ -126,13 +112,13 @@ export function EnhancedVisualizations({
       : 0,
     confidence: Math.round(score.confidence * 100),
     riskLevel: score.riskLevel,
-    color: RISK_COLORS[score.riskLevel],
+    color: RISK_COLORS[score.riskLevel].chart,
   }));
 
   const pieChartData = scores.map((score) => ({
-    name: DOMAIN_LABELS[score.domain],
+    name: DOMAIN_LABELS_SHORT[score.domain],
     value: score.rawScore,
-    color: RISK_COLORS[score.riskLevel],
+    color: RISK_COLORS[score.riskLevel].chart,
   }));
 
   const radarChartData = [
@@ -140,7 +126,7 @@ export function EnhancedVisualizations({
       domain: "Overall Profile",
       ...Object.fromEntries(
         scores.map((score) => [
-          DOMAIN_LABELS[score.domain].replace(" ", ""),
+          DOMAIN_LABELS_SHORT[score.domain].replace(" ", ""),
           score.totalPossible
             ? Math.round((score.rawScore / score.totalPossible) * 100)
             : 0,
@@ -150,7 +136,7 @@ export function EnhancedVisualizations({
   ];
 
   const confidenceData = scores.map((score) => ({
-    domain: DOMAIN_LABELS[score.domain],
+    domain: DOMAIN_LABELS_SHORT[score.domain],
     confidence: Math.round(score.confidence * 100),
     score: score.rawScore,
   }));
@@ -166,7 +152,7 @@ export function EnhancedVisualizations({
         "Confidence",
       ],
       ...scores.map((score) => [
-        DOMAIN_LABELS[score.domain],
+        DOMAIN_LABELS_SHORT[score.domain],
         score.rawScore,
         score.totalPossible || "N/A",
         score.totalPossible

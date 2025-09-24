@@ -5,16 +5,36 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth/config";
 import { prisma } from "@/lib/db/prisma";
 import {
   PDFReportGenerator,
   generateAIRecommendations,
   type ReportOptions,
 } from "@/lib/reports/pdf-generator";
+import { resolveAssessmentId } from "@/lib/utils/assessmentResolver";
 
-export async function POST(request: NextRequest) {
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const { assessmentId, options } = await request.json();
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const identifier = (await params).id;
+    const body = await request.json();
+
+    // Resolve shortId to UUID if needed
+    const assessmentId = await resolveAssessmentId(identifier, session.user.id);
+    if (!assessmentId) {
+      return NextResponse.json(
+        { error: "Assessment not found" },
+        { status: 404 }
+      );
+    }
 
     // Default report options
     const reportOptions: ReportOptions = {
@@ -24,12 +44,15 @@ export async function POST(request: NextRequest) {
       includeTrends: false,
       organizationName: "AI Diagnostic System",
       reportTitle: "Behavioral Assessment Report",
-      ...options,
+      ...body.options,
     };
 
     // Fetch assessment with complete data
     const assessment = await prisma.assessment.findUnique({
-      where: { id: assessmentId },
+      where: {
+        id: assessmentId,
+        userId: session.user.id, // Ensure user owns the assessment
+      },
       include: {
         scores: {
           orderBy: { timestamp: "asc" },

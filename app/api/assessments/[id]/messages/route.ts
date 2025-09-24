@@ -1,52 +1,60 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/lib/auth/config'
-import { prisma } from '@/lib/db/prisma'
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth/config";
+import { prisma } from "@/lib/db/prisma";
+import { resolveAssessmentId } from "@/lib/utils/assessmentResolver";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth()
+    const session = await auth();
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const assessmentId = (await params).id
+    const assessmentId = (await params).id;
 
-    // Verify assessment belongs to user
-    const assessment = await prisma.assessment.findFirst({
-      where: {
-        id: assessmentId,
-        userId: session.user.id
-      }
-    })
+    // Resolve and verify assessment belongs to user
+    const internalAssessmentId = await resolveAssessmentId(
+      assessmentId,
+      session.user.id
+    );
 
-    if (!assessment) {
-      return NextResponse.json({ error: 'Assessment not found' }, { status: 404 })
+    if (!internalAssessmentId) {
+      return NextResponse.json(
+        { error: "Assessment not found" },
+        { status: 404 }
+      );
     }
 
     // Get messages
     const messages = await prisma.chatMessage.findMany({
-      where: { assessmentId },
-      orderBy: { timestamp: 'asc' },
+      where: { assessmentId: internalAssessmentId },
+      orderBy: { timestamp: "asc" },
       select: {
         id: true,
         role: true,
         content: true,
-        timestamp: true
-      }
-    })
+        timestamp: true,
+      },
+    });
+
+    // Get assessment status
+    const assessment = await prisma.assessment.findUnique({
+      where: { id: internalAssessmentId },
+      select: { status: true },
+    });
 
     return NextResponse.json({
       messages,
-      status: assessment.status
-    })
+      status: assessment?.status,
+    });
   } catch (error) {
-    console.error('Get assessment messages error:', error)
+    console.error("Get assessment messages error:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch messages' },
+      { error: "Failed to fetch messages" },
       { status: 500 }
-    )
+    );
   }
 }

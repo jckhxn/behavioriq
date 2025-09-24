@@ -27,6 +27,7 @@ import {
 import { format } from "date-fns";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { DOMAIN_LABELS } from "@/lib/constants/domains";
 import {
   LineChart,
   Line,
@@ -424,7 +425,7 @@ export function UserDashboard() {
                                                     ? "bg-orange-500"
                                                     : "bg-red-500"
                                             }`}
-                                            title={`${score.domain}: ${score.riskLevel}`}
+                                            title={`${(DOMAIN_LABELS as any)[score.domain] || score.domain}: ${score.riskLevel}`}
                                           />
                                         ))}
                                     </div>

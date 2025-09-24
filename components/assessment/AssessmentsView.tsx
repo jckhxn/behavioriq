@@ -21,12 +21,17 @@ import {
   Play,
   Clock,
   CheckCircle,
+  Plus,
+  TrendingUp,
+  Target,
 } from "lucide-react";
 import { format } from "date-fns";
 import Link from "next/link";
+import { AssessmentDomain } from "@prisma/client";
 
 interface Assessment {
   id: string;
+  shortId?: string;
   subjectName: string;
   status: "IN_PROGRESS" | "COMPLETED";
   startedAt: string;
@@ -36,6 +41,8 @@ interface Assessment {
     rawScore: number;
     totalPossible: number;
     riskLevel: string;
+    timestamp?: string;
+    domainDisplayName?: string;
   }>;
 }
 
@@ -135,6 +142,31 @@ export function AssessmentsView() {
     return "Low";
   };
 
+  const getCompletedCount = () =>
+    assessments.filter((a) => a.status === "COMPLETED").length;
+
+  const getInProgressCount = () =>
+    assessments.filter((a) => a.status === "IN_PROGRESS").length;
+
+  const getAverageScore = () => {
+    const completed = assessments.filter(
+      (a) => a.status === "COMPLETED" && a.scores
+    );
+    if (completed.length === 0) return 0;
+
+    const totalScore = completed.reduce((sum, assessment) => {
+      if (!assessment.scores) return sum;
+      const avgScore =
+        assessment.scores.reduce(
+          (scoreSum, score) => scoreSum + score.rawScore / score.totalPossible,
+          0
+        ) / assessment.scores.length;
+      return sum + avgScore;
+    }, 0);
+
+    return Math.round((totalScore / completed.length) * 100);
+  };
+
   if (loading) {
     return (
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -158,9 +190,50 @@ export function AssessmentsView() {
             Manage and view your assessment history
           </p>
         </div>
-        <Link href="/">
-          <Button variant="outline">Back to Dashboard</Button>
+        <Link href="/assessment/new">
+          <Button className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90">
+            <Plus className="mr-2 h-4 w-4" />
+            New Assessment
+          </Button>
         </Link>
+      </div>
+
+      {/* Statistics Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="dark:bg-gray-800">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Assessments
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{assessments.length}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="dark:bg-gray-800">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Completed / In Progress
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {getCompletedCount()} / {getInProgressCount()}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="dark:bg-gray-800">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Average Score
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{getAverageScore()}%</div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filters */}
@@ -243,6 +316,11 @@ export function AssessmentsView() {
                       <h3 className="text-lg font-semibold">
                         {assessment.subjectName}
                       </h3>
+                      {assessment.shortId && (
+                        <Badge variant="outline" className="text-xs">
+                          {assessment.shortId}
+                        </Badge>
+                      )}
                       <Badge
                         variant={
                           assessment.status === "COMPLETED"
@@ -297,16 +375,35 @@ export function AssessmentsView() {
 
                     {assessment.scores && assessment.scores.length > 0 && (
                       <div className="flex flex-wrap gap-2 mb-3">
-                        {assessment.scores.map((score) => (
-                          <Badge
-                            key={score.domain}
-                            variant="outline"
-                            className="text-xs"
-                          >
-                            {score.domain}: {score.rawScore}/
-                            {score.totalPossible}
-                          </Badge>
-                        ))}
+                        {(() => {
+                          // Deduplicate scores by domain, keeping the latest score per domain
+                          const latestScoresByDomain: Record<string, any> = {};
+                          assessment.scores.forEach((score) => {
+                            if (
+                              !latestScoresByDomain[score.domain] ||
+                              new Date(score.timestamp || 0) >
+                                new Date(
+                                  latestScoresByDomain[score.domain]
+                                    .timestamp || 0
+                                )
+                            ) {
+                              latestScoresByDomain[score.domain] = score;
+                            }
+                          });
+
+                          return Object.values(latestScoresByDomain).map(
+                            (score, index) => (
+                              <Badge
+                                key={`${assessment.id}-${score.domain}-latest`}
+                                variant="outline"
+                                className="text-xs"
+                              >
+                                {score.domainDisplayName || score.domain}:{" "}
+                                {score.rawScore}/{score.totalPossible}
+                              </Badge>
+                            )
+                          );
+                        })()}
                       </div>
                     )}
                   </div>

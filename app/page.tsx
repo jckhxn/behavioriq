@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useSession, signOut } from "next-auth/react";
 import { UnifiedChat } from "@/components/chat/UnifiedChat";
 import { Button } from "@/components/ui/button";
-import { auth, signOut } from "@/lib/auth/config";
 import {
   Brain,
   LogOut,
@@ -34,13 +34,24 @@ import {
 } from "@/components/ui/collapsible";
 import { ScoringSidebar } from "@/components/scoring/ScoringSidebar";
 import { LandingPage } from "@/components/landing/LandingPage";
-import { UserDashboard } from "@/components/dashboard/UserDashboard";
+import { AssessmentsView } from "@/components/assessment/AssessmentsView";
 import { CompactRecommendationsWithModal } from "@/components/recommendations/CompactRecommendationsWithModal";
 import { ThemeToggle } from "@/components/theme-toggle";
 import SettingsPane from "@/components/settings/SettingsPane";
 
-export default async function Home() {
-  const session = await auth();
+export default function Home() {
+  const { data: session, status } = useSession();
+
+  if (status === "loading") {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Brain className="h-12 w-12 animate-pulse mx-auto text-primary" />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!session?.user) {
     return <LandingPage />;
@@ -63,7 +74,7 @@ export default async function Home() {
                 <Brain className="h-5 w-5 text-white" />
               </div>
               <h1 className="text-lg font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                AI Assessment Dashboard
+                AI Assessment Platform
               </h1>
             </div>
 
@@ -104,7 +115,7 @@ export default async function Home() {
 
           {/* Content Area */}
           <div className="flex-1">
-            <UserDashboard />
+            <AssessmentsView />
           </div>
         </main>
       </div>
@@ -132,16 +143,8 @@ function AppSidebar({ user }: { user: any }) {
             <SidebarMenuItem>
               <SidebarMenuButton asChild>
                 <Link href="/" className="flex items-center gap-2">
-                  <Brain className="h-4 w-4" />
-                  Dashboard
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <Link href="/assessments" className="flex items-center gap-2">
                   <FileText className="h-4 w-4" />
-                  Previous Assessments
+                  Assessments
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -195,15 +198,15 @@ function AppSidebar({ user }: { user: any }) {
           <div className="text-sm font-medium truncate">
             {user.name || user.email}
           </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => signOut({ redirectTo: "/login" })}
-              className="w-full justify-start"
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Sign Out
-            </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => signOut({ redirectTo: "/login" })}
+            className="w-full justify-start"
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Sign Out
+          </Button>
         </div>
       </SidebarFooter>
     </Sidebar>

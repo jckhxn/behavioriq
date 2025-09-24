@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
 import { prisma } from "@/lib/db/prisma";
+import { resolveAssessmentId } from "@/lib/utils/assessmentResolver";
 
 export async function GET(
   request: NextRequest,
@@ -14,15 +15,13 @@ export async function GET(
 
     const assessmentId = (await params).id;
 
-    // Verify assessment belongs to user
-    const assessment = await prisma.assessment.findFirst({
-      where: {
-        id: assessmentId,
-        userId: session.user.id,
-      },
-    });
+    // Resolve and verify assessment belongs to user
+    const internalAssessmentId = await resolveAssessmentId(
+      assessmentId,
+      session.user.id
+    );
 
-    if (!assessment) {
+    if (!internalAssessmentId) {
       return NextResponse.json(
         { error: "Assessment not found" },
         { status: 404 }
@@ -31,7 +30,7 @@ export async function GET(
 
     // Get all scores
     const scores = await prisma.score.findMany({
-      where: { assessmentId },
+      where: { assessmentId: internalAssessmentId },
       orderBy: { timestamp: "desc" },
       select: {
         id: true,
@@ -49,14 +48,20 @@ export async function GET(
     // Get message count
     const messageCount = await prisma.chatMessage.count({
       where: {
-        assessmentId,
+        assessmentId: internalAssessmentId,
         role: "USER",
       },
     });
 
+    // Get assessment status
+    const assessment = await prisma.assessment.findUnique({
+      where: { id: internalAssessmentId },
+      select: { status: true },
+    });
+
     return NextResponse.json({
       scores,
-      status: assessment.status,
+      status: assessment?.status,
       messageCount,
     });
   } catch (error) {

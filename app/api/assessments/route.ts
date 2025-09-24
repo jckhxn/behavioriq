@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
 import { prisma } from "@/lib/db/prisma";
 import { AssessmentAI } from "@/lib/ai/AssessmentAI";
+import { getDynamicDomainNames } from "@/lib/utils/domainNames";
 import { z } from "zod";
 
 const createAssessmentSchema = z.object({
@@ -28,13 +29,14 @@ export async function POST(request: NextRequest) {
     const { subjectName } = validation.data;
 
     // Create new assessment
-    const assessmentId = await AssessmentAI.createNewAssessment(
+    const assessment = await AssessmentAI.createNewAssessment(
       session.user.id,
       subjectName
     );
 
     return NextResponse.json({
-      id: assessmentId,
+      id: assessment.shortId, // Return shortId as the primary ID
+      shortId: assessment.shortId,
       message: "Assessment created successfully",
     });
   } catch (error) {
@@ -62,14 +64,22 @@ export async function GET(request: NextRequest) {
       orderBy: { startedAt: "desc" },
       take: limit,
       skip: offset,
-      include: {
+      select: {
+        id: true,
+        shortId: true,
+        subjectName: true,
+        status: true,
+        startedAt: true,
+        completedAt: true,
         scores: {
           select: {
             domain: true,
             rawScore: true,
             totalPossible: true,
             riskLevel: true,
+            timestamp: true,
           },
+          orderBy: { timestamp: "desc" }, // Latest scores first
         },
         _count: {
           select: {
@@ -80,7 +90,19 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(assessments);
+    // Get dynamic domain names from assessment configurations
+    const domainNames = await getDynamicDomainNames();
+
+    return NextResponse.json(
+      assessments.map((assessment) => ({
+        ...assessment,
+        id: assessment.shortId || assessment.id, // Use shortId as primary ID, fallback to UUID
+        scores: assessment.scores.map((score) => ({
+          ...score,
+          domainDisplayName: domainNames[score.domain] || score.domain,
+        })),
+      }))
+    );
   } catch (error) {
     console.error("Get assessments error:", error);
     return NextResponse.json(

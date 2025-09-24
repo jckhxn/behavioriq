@@ -10,6 +10,7 @@ import {
   type QuestionResponse,
   type DomainScore,
 } from "../assessment/scoring";
+import { generateUniqueShortAssessmentId } from "@/lib/utils/shortId";
 
 export interface AssessmentScores {
   [key: string]: number;
@@ -540,18 +541,31 @@ Keep the response professional, empathetic, and actionable.`;
   static async createNewAssessment(
     userId: string,
     subjectName: string
-  ): Promise<string> {
+  ): Promise<{ id: string; shortId: string }> {
     try {
+      // Helper function to check if shortId exists
+      const shortIdExists = async (shortId: string): Promise<boolean> => {
+        const existing = await prisma.assessment.findUnique({
+          where: { shortId },
+          select: { id: true },
+        });
+        return !!existing;
+      };
+
+      // Generate unique shortId
+      const shortId = await generateUniqueShortAssessmentId(shortIdExists);
+
       const assessment = await prisma.assessment.create({
         data: {
           userId,
           subjectName,
+          shortId,
           status: "IN_PROGRESS",
           currentDomain: AssessmentDomain.ANTISOCIAL, // Use valid enum value
         },
       });
 
-      return assessment.id;
+      return { id: assessment.id, shortId };
     } catch (error) {
       console.error("Error creating assessment:", error);
       throw new Error("Failed to create new assessment");

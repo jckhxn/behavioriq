@@ -60,7 +60,7 @@ export default function AssessmentPage() {
 
   if (status === "loading" || loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 dark:from-background dark:via-background dark:to-muted/20 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
           <p className="text-muted-foreground">Loading assessment...</p>
@@ -71,10 +71,10 @@ export default function AssessmentPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 dark:from-background dark:via-background dark:to-muted/20 flex items-center justify-center">
         <Card className="max-w-md w-full mx-4">
           <CardContent className="pt-6 text-center">
-            <div className="text-red-500 mb-4">
+            <div className="text-destructive mb-4">
               <svg
                 className="h-12 w-12 mx-auto"
                 fill="none"
@@ -91,10 +91,10 @@ export default function AssessmentPage() {
             </div>
             <h3 className="text-lg font-semibold mb-2">Error</h3>
             <p className="text-muted-foreground mb-4">{error}</p>
-            <Link href="/dashboard">
+            <Link href="/">
               <Button variant="outline">
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Dashboard
+                Back to Assessments
               </Button>
             </Link>
           </CardContent>
@@ -108,15 +108,15 @@ export default function AssessmentPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 dark:from-background dark:via-background dark:to-muted/20">
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
-            <Link href="/dashboard">
+            <Link href="/">
               <Button variant="ghost" size="sm">
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Dashboard
+                Back to Assessments
               </Button>
             </Link>
             <div className="text-right">
@@ -126,8 +126,8 @@ export default function AssessmentPage() {
               <div
                 className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                   assessment.status === "COMPLETED"
-                    ? "bg-green-100 text-green-800"
-                    : "bg-blue-100 text-blue-800"
+                    ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+                    : "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
                 }`}
               >
                 {assessment.status === "COMPLETED"
@@ -154,7 +154,7 @@ export default function AssessmentPage() {
         </div>
 
         {/* Assessment Chat Interface */}
-        <Card className="shadow-lg border-0">
+        <Card className="shadow-lg dark:shadow-xl border dark:border-border">
           <CardContent className="p-0">
             <AssessmentChat assessmentId={assessmentId} />
           </CardContent>

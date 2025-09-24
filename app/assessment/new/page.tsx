@@ -57,24 +57,24 @@ export default function NewAssessmentPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 dark:from-background dark:via-background dark:to-muted/20">
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-md mx-auto">
           {/* Header */}
           <div className="flex items-center mb-8">
-            <Link href="/dashboard">
+            <Link href="/">
               <Button variant="ghost" size="sm" className="mr-4">
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Dashboard
+                Back to Assessments
               </Button>
             </Link>
           </div>
 
           {/* Main Card */}
-          <Card className="shadow-lg border-0">
+          <Card className="shadow-lg dark:shadow-xl border dark:border-border">
             <CardHeader className="text-center">
-              <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center">
-                <Brain className="h-6 w-6 text-white" />
+              <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center">
+                <Brain className="h-6 w-6 text-primary-foreground" />
               </div>
               <CardTitle className="text-2xl font-bold">
                 Start New Assessment
@@ -103,12 +103,12 @@ export default function NewAssessmentPage() {
                 <Button
                   onClick={createAssessment}
                   disabled={!subjectName.trim() || isCreating}
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg py-6"
+                  className="w-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-primary-foreground text-lg py-6"
                 >
                   {isCreating ? "Creating Assessment..." : "Start Assessment"}
                 </Button>
 
-                <Link href="/dashboard" className="block">
+                <Link href="/" className="block">
                   <Button
                     variant="outline"
                     className="w-full"

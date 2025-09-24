@@ -146,6 +146,7 @@ model DocumentChunk {
 
 model Assessment {
   id            String           @id @default(cuid())
+  shortId       String?          @unique // Short, user-friendly ID like "ASS-ABC123"
   user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId        String
   subjectName   String
@@ -162,6 +163,7 @@ model Assessment {
 
   @@index([userId])
   @@index([status])
+  @@index([shortId])
   @@map("assessments")
 }
 

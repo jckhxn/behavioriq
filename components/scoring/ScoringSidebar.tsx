@@ -10,6 +10,10 @@ import { AssessmentDomain, RiskLevel } from "@prisma/client";
 import { AlertTriangle, CheckCircle, XCircle, Clock } from "lucide-react";
 import { PDFReportButton } from "@/components/reports/PDFReportButton";
 import { AssessmentLineChart } from "@/components/charts/AssessmentLineChart";
+import {
+  DOMAIN_LABELS_SHORT,
+  RISK_COLORS_GRADIENT,
+} from "@/lib/constants/domains";
 
 interface Score {
   domain: AssessmentDomain;
@@ -23,21 +27,6 @@ interface ScoringSidebarProps {
   assessmentId: string;
   subjectName?: string;
 }
-
-const DOMAIN_LABELS = {
-  [AssessmentDomain.ANTISOCIAL]: "Antisocial",
-  [AssessmentDomain.VIOLENCE]: "Violence",
-  [AssessmentDomain.ATTENTION]: "Attention",
-  [AssessmentDomain.EMOTIONAL]: "Emotional",
-  [AssessmentDomain.CONDUCT]: "Conduct",
-};
-
-const RISK_COLORS = {
-  [RiskLevel.LOW]: "from-green-400 to-green-600",
-  [RiskLevel.MODERATE]: "from-yellow-400 to-orange-500",
-  [RiskLevel.HIGH]: "from-orange-500 to-red-500",
-  [RiskLevel.VERY_HIGH]: "from-red-500 to-red-700",
-};
 
 const RISK_VARIANTS = {
   [RiskLevel.LOW]: "secondary" as const,
@@ -203,7 +192,7 @@ export function ScoringSidebar({
           </div>
           <div className="flex items-center gap-2">
             <div
-              className={`w-3 h-3 rounded-full bg-gradient-to-r ${RISK_COLORS[overallRisk]} shadow-sm`}
+              className={`w-3 h-3 rounded-full bg-gradient-to-r ${RISK_COLORS_GRADIENT[overallRisk]} shadow-sm`}
             />
             <Badge
               variant={RISK_VARIANTS[overallRisk]}
@@ -219,7 +208,7 @@ export function ScoringSidebar({
         {/* Domain Scores */}
         <ScrollArea className="h-[400px]">
           <div className="space-y-4">
-            {Object.entries(DOMAIN_LABELS).map(([domain, label]) => {
+            {Object.entries(DOMAIN_LABELS_SHORT).map(([domain, label]) => {
               const score = latestScores[domain as AssessmentDomain];
 
               return (
@@ -244,7 +233,7 @@ export function ScoringSidebar({
                       <div className="flex items-center gap-2">
                         <div
                           className={`w-2 h-2 rounded-full bg-gradient-to-r ${
-                            RISK_COLORS[score.riskLevel]
+                            RISK_COLORS_GRADIENT[score.riskLevel]
                           } shadow-sm`}
                         />
                         <Badge
@@ -282,7 +271,7 @@ export function ScoringSidebar({
                     .map((score, index) => (
                       <div key={index} className="text-xs p-2 bg-muted rounded">
                         <div className="flex justify-between">
-                          <span>{DOMAIN_LABELS[score.domain]}</span>
+                          <span>{DOMAIN_LABELS_SHORT[score.domain]}</span>
                           <span>{Math.round(score.rawScore)}</span>
                         </div>
                         <div className="text-muted-foreground">

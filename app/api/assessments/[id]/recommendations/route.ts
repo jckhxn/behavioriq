@@ -5,6 +5,7 @@ import { openai } from "@ai-sdk/openai";
 import { streamText } from "ai";
 import { MOCK_RECOMMENDATIONS } from "@/lib/config/ai-config";
 import { checkAIRateLimit, recordAICall } from "@/lib/ai/rateLimiter";
+import { resolveAssessmentId } from "@/lib/utils/assessmentResolver";
 
 export async function POST(
   request: NextRequest,
@@ -29,7 +30,16 @@ export async function POST(
       );
     }
 
-    const { id: assessmentId } = await params;
+    const identifier = (await params).id;
+
+    // Resolve shortId to UUID if needed
+    const assessmentId = await resolveAssessmentId(identifier, session.user.id);
+    if (!assessmentId) {
+      return NextResponse.json(
+        { error: "Assessment not found" },
+        { status: 404 }
+      );
+    }
 
     // Fetch assessment with scores
     const assessment = await prisma.assessment.findUnique({

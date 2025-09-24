@@ -21,6 +21,7 @@ import {
   Eye,
 } from "lucide-react";
 import { format } from "date-fns";
+import { DOMAIN_LABELS_SHORT } from "@/lib/constants/domains";
 
 interface Recommendation {
   id: string;
@@ -121,14 +122,7 @@ export function RecommendationsSidebar() {
   };
 
   const getDomainDisplayName = (domain: string) => {
-    const domainNames: Record<string, string> = {
-      ANTISOCIAL: "Social",
-      VIOLENCE: "Aggression",
-      ATTENTION: "Attention",
-      EMOTIONAL: "Emotional",
-      CONDUCT: "Conduct",
-    };
-    return domainNames[domain] || domain;
+    return (DOMAIN_LABELS_SHORT as any)[domain] || domain;
   };
 
   const extractDomainSpecificContent = (content: string, domain?: string) => {

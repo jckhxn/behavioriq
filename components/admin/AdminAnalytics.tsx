@@ -34,6 +34,7 @@ import {
   Area,
 } from "recharts";
 import { AssessmentDomain, RiskLevel } from "@prisma/client";
+import { DOMAIN_LABELS_SHORT, RISK_COLORS } from "@/lib/constants/domains";
 import {
   Download,
   TrendingUp,
@@ -64,21 +65,6 @@ interface AdminAnalyticsData {
     completed: number;
   }>;
 }
-
-const DOMAIN_LABELS = {
-  [AssessmentDomain.ANTISOCIAL]: "Antisocial Behavior",
-  [AssessmentDomain.VIOLENCE]: "Violence Risk",
-  [AssessmentDomain.ATTENTION]: "Attention Issues",
-  [AssessmentDomain.EMOTIONAL]: "Emotional Regulation",
-  [AssessmentDomain.CONDUCT]: "Conduct Problems",
-};
-
-const RISK_COLORS = {
-  [RiskLevel.LOW]: "#10b981",
-  [RiskLevel.MODERATE]: "#f59e0b",
-  [RiskLevel.HIGH]: "#ef4444",
-  [RiskLevel.VERY_HIGH]: "#dc2626",
-};
 
 const chartConfig = {
   assessments: {
@@ -130,7 +116,7 @@ export function AdminAnalytics() {
       [""],
       ["Domain", "Avg Score", "Total Possible", "Assessment Count"],
       ...data.avgScoresByDomain.map((d) => [
-        DOMAIN_LABELS[d.domain],
+        DOMAIN_LABELS_SHORT[d.domain],
         d.avgScore.toFixed(2),
         d.totalPossible,
         d.assessmentCount,
@@ -185,7 +171,7 @@ export function AdminAnalytics() {
   }
 
   const domainChartData = data.avgScoresByDomain.map((d) => ({
-    domain: DOMAIN_LABELS[d.domain],
+    domain: DOMAIN_LABELS_SHORT[d.domain],
     avgScore: Number(d.avgScore.toFixed(1)),
     percentage: Math.round((d.avgScore / d.totalPossible) * 100),
     count: d.assessmentCount,
@@ -194,7 +180,7 @@ export function AdminAnalytics() {
   const riskChartData = data.riskDistribution.map((r) => ({
     name: r.riskLevel,
     value: r.count,
-    color: RISK_COLORS[r.riskLevel],
+    color: RISK_COLORS[r.riskLevel].chart,
   }));
 
   return (

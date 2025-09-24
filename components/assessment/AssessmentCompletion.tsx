@@ -32,6 +32,7 @@ import {
 } from "recharts";
 import { useAIRecommendations } from "@/lib/hooks/useAIRecommendations";
 import { InteractiveText, ParsedLink } from "@/lib/utils/linkParser";
+import { DOMAIN_LABELS, RISK_COLORS } from "@/lib/constants/domains";
 
 interface Score {
   id: string;
@@ -50,37 +51,6 @@ interface AssessmentCompletionProps {
   subjectName: string;
   aiRecommendations?: string;
 }
-
-const DOMAIN_LABELS = {
-  [AssessmentDomain.ANTISOCIAL]: "Antisocial Behavior",
-  [AssessmentDomain.VIOLENCE]: "Violence Risk",
-  [AssessmentDomain.ATTENTION]: "Attention Issues",
-  [AssessmentDomain.EMOTIONAL]: "Emotional Regulation",
-  [AssessmentDomain.CONDUCT]: "Conduct Disorder",
-};
-
-const RISK_COLORS = {
-  [RiskLevel.LOW]: {
-    bg: "bg-green-100",
-    text: "text-green-800",
-    chart: "#10b981",
-  },
-  [RiskLevel.MODERATE]: {
-    bg: "bg-yellow-100",
-    text: "text-yellow-800",
-    chart: "#f59e0b",
-  },
-  [RiskLevel.HIGH]: {
-    bg: "bg-orange-100",
-    text: "text-orange-800",
-    chart: "#ea580c",
-  },
-  [RiskLevel.VERY_HIGH]: {
-    bg: "bg-red-100",
-    text: "text-red-800",
-    chart: "#dc2626",
-  },
-};
 
 export function AssessmentCompletion({
   assessmentId,
@@ -328,15 +298,15 @@ export function AssessmentCompletion({
   return (
     <div className="w-full max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <Card className="border-green-200 bg-green-50">
+      <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20">
         <CardHeader className="text-center">
           <div className="flex items-center justify-center mb-4">
-            <CheckCircle className="h-12 w-12 text-green-600 mr-3" />
+            <CheckCircle className="h-12 w-12 text-green-600 dark:text-green-400 mr-3" />
             <div>
-              <CardTitle className="text-3xl text-green-800">
+              <CardTitle className="text-3xl text-green-800 dark:text-green-400">
                 Assessment Complete!
               </CardTitle>
-              <p className="text-green-700 mt-2">
+              <p className="text-green-700 dark:text-green-300 mt-2">
                 Assessment results for <strong>{subjectName}</strong>
               </p>
             </div>
@@ -473,31 +443,31 @@ export function AssessmentCompletion({
                 {hasExistingReport &&
                 !aiRecommendations &&
                 !isGeneratingRecommendations ? (
-                  <div className="bg-green-50 p-4 rounded-lg border-l-4 border-green-400">
+                  <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border-l-4 border-green-400 dark:border-green-600">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h4 className="text-green-800 font-semibold mb-2">
+                        <h4 className="text-green-800 dark:text-green-400 font-semibold mb-2">
                           Recommendations Already Available
                         </h4>
-                        <p className="text-green-700 text-sm">
+                        <p className="text-green-700 dark:text-green-300 text-sm">
                           AI-generated recommendations for this assessment
                           already exist. Check your saved recommendations in the
                           sidebar or dashboard.
                         </p>
                       </div>
-                      <div className="text-green-600">
+                      <div className="text-green-600 dark:text-green-400">
                         <CheckCircle className="h-6 w-6" />
                       </div>
                     </div>
-                    <div className="mt-3 pt-3 border-t border-green-200">
-                      <p className="text-xs text-green-600">
+                    <div className="mt-3 pt-3 border-t border-green-200 dark:border-green-800">
+                      <p className="text-xs text-green-600 dark:text-green-400">
                         💡 This prevents duplicate AI calls and reduces costs
                         while keeping your previous recommendations accessible.
                       </p>
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-400">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border-l-4 border-blue-400 dark:border-blue-600">
                     {isGeneratingRecommendations &&
                       !recommendationsComplete && (
                         <div className="flex justify-end mb-2">
@@ -519,7 +489,7 @@ export function AssessmentCompletion({
                         savedLinks={savedLinks}
                       />
                       {isGeneratingRecommendations && (
-                        <span className="inline-block w-2 h-4 bg-blue-600 animate-pulse ml-1">
+                        <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-1">
                           |
                         </span>
                       )}
@@ -536,11 +506,11 @@ export function AssessmentCompletion({
                 <Button
                   onClick={handleGenerateRecommendations}
                   disabled={isGeneratingRecommendations}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="bg-primary hover:bg-primary/90"
                 >
                   {isGeneratingRecommendations ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2"></div>
                       Generating...
                     </>
                   ) : (

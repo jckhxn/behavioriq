@@ -27,6 +27,7 @@ import {
   Bookmark,
 } from "lucide-react";
 import { format } from "date-fns";
+import { DOMAIN_LABELS_SHORT } from "@/lib/constants/domains";
 import { InteractiveText } from "@/lib/utils/linkParser";
 
 interface RecommendationDetail {
@@ -124,14 +125,7 @@ export function RecommendationDetailModal({
   };
 
   const getDomainDisplayName = (domain: string) => {
-    const domainNames: Record<string, string> = {
-      ANTISOCIAL: "Social Interactions",
-      VIOLENCE: "Aggression Management",
-      ATTENTION: "Attention & Focus",
-      EMOTIONAL: "Emotional Regulation",
-      CONDUCT: "Behavioral Conduct",
-    };
-    return domainNames[domain] || domain;
+    return (DOMAIN_LABELS_SHORT as any)[domain] || domain;
   };
 
   const getScorePercentage = (score: number, total: number) => {
@@ -168,12 +162,19 @@ export function RecommendationDetailModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-6xl w-[95vw] max-h-[90vh] p-0 overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center h-96">
-            <div className="text-center space-y-4">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="text-muted-foreground">
-                Loading recommendation details...
-              </p>
+          <div className="flex flex-col h-full">
+            <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
+              <DialogTitle className="text-xl font-semibold">
+                Loading Recommendation...
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex items-center justify-center h-96">
+              <div className="text-center space-y-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="text-muted-foreground">
+                  Loading recommendation details...
+                </p>
+              </div>
             </div>
           </div>
         ) : recommendation ? (
@@ -387,10 +388,17 @@ export function RecommendationDetailModal({
             </div>
           </div>
         ) : (
-          <div className="flex items-center justify-center h-96">
-            <p className="text-muted-foreground">
-              Failed to load recommendation details
-            </p>
+          <div className="flex flex-col h-full">
+            <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
+              <DialogTitle className="text-xl font-semibold">
+                Error Loading Recommendation
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex items-center justify-center h-96">
+              <p className="text-muted-foreground">
+                Failed to load recommendation details
+              </p>
+            </div>
           </div>
         )}
       </DialogContent>

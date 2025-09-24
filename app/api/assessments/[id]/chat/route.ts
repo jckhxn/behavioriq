@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth/config";
 import { prisma } from "@/lib/db/prisma";
 import { AssessmentAI } from "@/lib/ai/AssessmentAI";
 import { ASSESSMENT_CONFIG } from "@/lib/config/ai-config";
+import { resolveAssessmentId } from "@/lib/utils/assessmentResolver";
 import { z } from "zod";
 
 const chatSchema = z.object({
@@ -24,7 +25,16 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const assessmentId = (await params).id;
+    const identifier = (await params).id;
+
+    // Resolve shortId to UUID if needed
+    const assessmentId = await resolveAssessmentId(identifier, session.user.id);
+    if (!assessmentId) {
+      return NextResponse.json(
+        { error: "Assessment not found" },
+        { status: 404 }
+      );
+    }
 
     // Verify assessment belongs to user
     const assessment = await prisma.assessment.findFirst({
