@@ -114,7 +114,7 @@ export default function Home() {
           </header>
 
           {/* Content Area */}
-          <div className="flex-1">
+          <div className="flex-1 overflow-hidden">
             <AssessmentsView />
           </div>
         </main>

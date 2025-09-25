@@ -750,6 +750,33 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - **Database Changes**: Always create migrations for schema changes
 - **Testing**: Add tests for new business logic and API endpoints
 
+## Documentation
+
+### Assessment Development
+
+Comprehensive documentation for creating and managing assessment content:
+
+- **[Assessment Overview](docs/README.md)** - Complete guide to assessment documentation and tools
+- **[JSON Schema Reference](docs/ASSESSMENT_JSON_SCHEMA.md)** - Technical schema documentation with TypeScript interfaces
+- **[Assessment Creation Guide](docs/ASSESSMENT_CREATION_GUIDE.md)** - Step-by-step guide with examples and best practices
+- **[Assessment Validation](scripts/validate-assessments.js)** - Automated validation tool for assessment files
+
+### Additional Guides
+
+- **[Assessment Writing Guide](docs/ASSESSMENT_WRITING_GUIDE.md)** - Clinical best practices for question development
+- **[Configuration System](docs/CONFIG_SYSTEM.md)** - System configuration and environment setup
+- **[Document Processing](docs/DOCUMENT_GUIDE.md)** - File upload and processing capabilities
+
+### Validation Tools
+
+```bash
+# Validate all assessment files
+npm run validate-assessments
+
+# Validate specific assessment
+npm run validate-assessment assessments/domain.json
+```
+
 ## Project Roadmap & Future Enhancements
 
 ### Completed Features ✅

@@ -11,12 +11,69 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Brain, CreditCard, Shield, CheckCircle, Clock } from "lucide-react";
-import Link from "next/link";
+import { Brain, CreditCard, Shield, CheckCircle, Star } from "lucide-react";
 import { Suspense } from "react";
+import { useSession } from "next-auth/react";
+
+type PricingPlan = {
+  id: string;
+  name: string;
+  price: number;
+  description: string;
+  features: string[];
+  popular?: boolean;
+};
+
+const PRICING_PLANS: PricingPlan[] = [
+  {
+    id: "BASIC",
+    name: "Basic Report",
+    price: 29.99,
+    description: "Single comprehensive assessment report",
+    features: [
+      "Detailed behavioral analysis with visual charts",
+      "Personalized AI-powered recommendations",
+      "Professional-grade PDF download",
+      "Resource library access (90 days)",
+      "Next steps guidance",
+    ],
+  },
+  {
+    id: "PREMIUM",
+    name: "Premium Package",
+    price: 49.99,
+    description: "Up to 5 assessments with advanced features",
+    features: [
+      "Everything in Basic",
+      "Up to 5 assessment reports",
+      "Advanced analytics and trends",
+      "Priority email support",
+      "Extended resource access (1 year)",
+      "Custom recommendations",
+      "Family comparison charts",
+    ],
+    popular: true,
+  },
+  {
+    id: "UNLIMITED",
+    name: "Unlimited Access",
+    price: 99.99,
+    description: "Unlimited assessments for the whole family",
+    features: [
+      "Everything in Premium",
+      "Unlimited assessment reports",
+      "Multi-child tracking dashboard",
+      "Educational milestone tracking",
+      "Phone consultation (30 min)",
+      "Lifetime access to resources",
+      "Priority customer support",
+    ],
+  },
+];
 
 function PaymentForm() {
   const searchParams = useSearchParams();
+  const { data: session } = useSession();
   const [childName, setChildName] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -27,21 +84,43 @@ function PaymentForm() {
     }
   }, [searchParams]);
 
-  const handlePayment = async () => {
+  const handlePayment = async (planId: string) => {
+    if (!session?.user?.id) {
+      window.location.href = "/login?redirect=/payment";
+      return;
+    }
+
     setIsProcessing(true);
 
-    // Simulate payment processing
-    setTimeout(() => {
-      // Redirect to success page or dashboard
-      window.location.href =
-        "/payment-success?childName=" + encodeURIComponent(childName);
-    }, 2000);
+    try {
+      const response = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          planId,
+          childName,
+          planType: "ONE_TIME",
+        }),
+      });
+
+      const { url } = await response.json();
+
+      if (url) {
+        window.location.href = url;
+      } else {
+        throw new Error("Failed to create checkout session");
+      }
+    } catch (error) {
+      console.error("Payment error:", error);
+      setIsProcessing(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-background p-4">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
+      <div className="max-w-6xl mx-auto">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-4">
             <div className="p-2 rounded-xl gradient-primary">
@@ -49,138 +128,92 @@ function PaymentForm() {
             </div>
             <span className="text-2xl font-bold">AI Diagnostic</span>
           </div>
-          <h1 className="text-3xl font-bold mb-2">Complete Your Order</h1>
+          <h1 className="text-3xl font-bold mb-2">Choose Your Plan</h1>
           <p className="text-muted-foreground">
-            Final step to get {childName ? `${childName}'s` : "the"}{" "}
-            comprehensive report
+            Get {childName ? `${childName}'s` : "the"} comprehensive assessment
+            report
           </p>
           <Badge variant="secondary" className="mt-2">
             Step 2 of 2
           </Badge>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8">
-          {/* Order Summary */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Order Summary</CardTitle>
-              <CardDescription>
-                Your comprehensive behavioral assessment report
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between items-center py-2 border-b">
-                <span>Comprehensive Assessment Report</span>
-                <span className="font-medium">$29.00</span>
-              </div>
+        <div className="grid md:grid-cols-3 gap-6 mb-8">
+          {PRICING_PLANS.map((plan) => (
+            <Card
+              key={plan.id}
+              className={`relative ${plan.popular ? "border-primary ring-2 ring-primary/20" : ""}`}
+            >
+              {plan.popular && (
+                <Badge className="absolute -top-2 left-1/2 transform -translate-x-1/2">
+                  <Star className="h-3 w-3 mr-1" />
+                  Most Popular
+                </Badge>
+              )}
 
-              <div className="space-y-3 pt-2">
-                <h4 className="font-medium">Includes:</h4>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    <span>Detailed behavioral analysis with visual charts</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    <span>Personalized AI-powered recommendations</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    <span>Professional-grade PDF download</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    <span>Resource library access (90 days)</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    <span>Next steps guidance</span>
-                  </div>
+              <CardHeader className="text-center pb-2">
+                <CardTitle className="text-xl">{plan.name}</CardTitle>
+                <div className="text-3xl font-bold">
+                  ${plan.price}
+                  <span className="text-sm font-normal text-muted-foreground">
+                    {" "}
+                    one-time
+                  </span>
                 </div>
-              </div>
+                <CardDescription>{plan.description}</CardDescription>
+              </CardHeader>
 
-              <div className="pt-4 border-t">
-                <div className="flex justify-between items-center font-medium text-lg">
-                  <span>Total</span>
-                  <span>$29.00</span>
-                </div>
-              </div>
+              <CardContent className="space-y-4">
+                <ul className="space-y-2">
+                  {plan.features.map((feature, index) => (
+                    <li key={index} className="flex items-center gap-2 text-sm">
+                      <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
 
-              <div className="flex items-center gap-2 text-sm text-muted-foreground pt-2">
-                <Clock className="h-4 w-4" />
-                <span>Instant dashboard access</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Payment Form */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5" />
-                Payment Information
-              </CardTitle>
-              <CardDescription>
-                Secure payment powered by Stripe
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Placeholder for Stripe payment form */}
-              <div className="space-y-4">
-                <div className="p-8 border-2 border-dashed border-muted-foreground/20 rounded-lg text-center bg-muted/30">
-                  <CreditCard className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                  <h3 className="font-medium mb-2">
-                    Stripe Payment Integration
-                  </h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    In production, this would be the Stripe payment form
-                  </p>
-
-                  {/* Demo payment button */}
-                  <Button
-                    onClick={handlePayment}
-                    disabled={isProcessing}
-                    className="w-full"
-                    size="lg"
-                  >
-                    {isProcessing ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Processing Payment...
-                      </>
-                    ) : (
-                      <>
-                        <CreditCard className="h-4 w-4 mr-2" />
-                        Pay $29.00 (Demo)
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Security badges */}
-              <div className="flex items-center justify-center gap-4 pt-4 border-t text-sm text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  <Shield className="h-4 w-4" />
-                  <span>SSL Encrypted</span>
-                </div>
-                <span>•</span>
-                <div className="flex items-center gap-1">
-                  <CheckCircle className="h-4 w-4" />
-                  <span>PCI Compliant</span>
-                </div>
-              </div>
-
-              <div className="text-center text-xs text-muted-foreground">
-                By completing your purchase, you agree to our Terms of Service
-                and Privacy Policy. 30-day money-back guarantee.
-              </div>
-            </CardContent>
-          </Card>
+                <Button
+                  onClick={() => handlePayment(plan.id)}
+                  disabled={isProcessing}
+                  className="w-full"
+                  variant={plan.popular ? "default" : "outline"}
+                  size="lg"
+                >
+                  {isProcessing ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      Get {plan.name}
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
-        {/* Support */}
+        <div className="flex items-center justify-center gap-4 pt-4 border-t text-sm text-muted-foreground">
+          <div className="flex items-center gap-1">
+            <Shield className="h-4 w-4" />
+            <span>SSL Encrypted</span>
+          </div>
+          <span>•</span>
+          <div className="flex items-center gap-1">
+            <CheckCircle className="h-4 w-4" />
+            <span>PCI Compliant</span>
+          </div>
+        </div>
+
+        <div className="text-center text-xs text-muted-foreground mt-4">
+          By completing your purchase, you agree to our Terms of Service and
+          Privacy Policy. 30-day money-back guarantee.
+        </div>
+
         <div className="text-center mt-8">
           <p className="text-sm text-muted-foreground">
             Need help? Contact our support team at{" "}

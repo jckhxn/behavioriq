@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 // GET /api/recommendations/[id] - Get a specific recommendation with optional assessment details
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -13,7 +13,7 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const { searchParams } = new URL(request.url);
     const includeAssessment = searchParams.get("includeAssessment") === "true";
 
@@ -54,7 +54,7 @@ export async function GET(
 // PUT /api/recommendations/[id] - Update a recommendation
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -62,7 +62,7 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
 
     // Validate required fields and prepare update data
@@ -113,7 +113,7 @@ export async function PUT(
 // DELETE /api/recommendations/[id] - Delete a recommendation
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -121,7 +121,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Verify the user owns the recommendation
     // @ts-ignore - Temporary workaround for Prisma type issue

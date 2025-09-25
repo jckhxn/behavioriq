@@ -1,8 +1,15 @@
 import { auth } from "@/lib/auth/config";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { handleCustomDomain } from "@/lib/branding/domain-middleware";
 
 export default auth(async function middleware(req: NextRequest) {
+  // Handle custom domain routing first
+  const customDomainResponse = await handleCustomDomain(req);
+  if (customDomainResponse && customDomainResponse !== NextResponse.next()) {
+    return customDomainResponse;
+  }
+
   const session = await auth();
   const isAuth = !!session?.user;
   const isAuthPage =
@@ -15,18 +22,19 @@ export default auth(async function middleware(req: NextRequest) {
     req.nextUrl.pathname.startsWith("/trial-assessment") ||
     req.nextUrl.pathname.startsWith("/trial-results") ||
     req.nextUrl.pathname.startsWith("/payment") ||
-    req.nextUrl.pathname.startsWith("/payment-success");
+    req.nextUrl.pathname.startsWith("/payment-success") ||
+    req.nextUrl.pathname.startsWith("/share"); // Allow shared assessments
 
   if (isAuthPage) {
     if (isAuth) {
       return NextResponse.redirect(new URL("/", req.url));
     }
-    return null;
+    return customDomainResponse || null;
   }
 
   // Allow access to public pages without authentication
   if (isPublicPage) {
-    return null;
+    return customDomainResponse || null;
   }
 
   if (!isAuth && !isAuthPage && !isPublicPage) {
@@ -46,6 +54,8 @@ export default auth(async function middleware(req: NextRequest) {
       return NextResponse.redirect(new URL("/", req.url));
     }
   }
+
+  return customDomainResponse || null;
 });
 
 export const config = {
