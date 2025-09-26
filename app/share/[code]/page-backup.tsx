@@ -16,56 +16,16 @@ export default function SharedAssessmentPage() {
 
   useEffect(() => {
     console.log("useEffect running, code:", code);
-    if (code) {
-      fetchShareMetadata();
-    }
+    // Force show dialog after 1 second for testing
+    setTimeout(() => {
+      console.log("Setting showPasswordDialog to true");
+      setShowPasswordDialog(true);
+      setLoading(false);
+    }, 1000);
   }, [code]);
 
-  // Fetch metadata to check if password is required
-  const fetchShareMetadata = async () => {
-    try {
-      console.log("Fetching share metadata for code:", code);
-      const response = await fetch(`/api/share/${code}`);
-      const data = await response.json();
-      
-      console.log("Share metadata response:", data);
-      
-      if (data.requiresPassword) {
-        console.log("Password required, showing dialog");
-        setShowPasswordDialog(true);
-        setLoading(false);
-        return;
-      }
-      
-      // If no password required, show the success page
-      setLoading(false);
-    } catch (error) {
-      console.error("Error fetching share metadata:", error);
-      setLoading(false);
-    }
-  };
-
-  const handlePasswordSubmit = async () => {
-    try {
-      console.log("Submitting password:", password);
-      const response = await fetch(`/api/share/${code}?action=view&password=${encodeURIComponent(password)}`);
-      
-      const data = await response.json();
-      console.log("Password validation response:", data);
-      
-      if (response.ok && data.assessment) {
-        console.log("Password correct! Assessment data received");
-        setShowPasswordDialog(false);
-        // Here you would set the assessment data and show the results
-        alert("Password correct! Assessment loaded successfully.");
-      } else {
-        console.error("Password incorrect:", data.error);
-        alert("Incorrect password: " + (data.error || "Please try again"));
-      }
-    } catch (error) {
-      console.error("Error validating password:", error);
-      alert("Error validating password. Please try again.");
-    }
+  const handlePasswordSubmit = () => {
+    alert("Password submitted: " + password);
   };
 
   console.log("Component rendering, showPasswordDialog:", showPasswordDialog);

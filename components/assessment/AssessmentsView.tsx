@@ -57,6 +57,7 @@ import { format } from "date-fns";
 import Link from "next/link";
 import { AssessmentDomain } from "@prisma/client";
 import { AssessmentDetailSidebar } from "./AssessmentDetailSidebar";
+import { toast } from "sonner";
 
 interface Assessment {
   id: string;
@@ -104,6 +105,9 @@ export function AssessmentsView() {
   const [shareExpiresAt, setShareExpiresAt] = useState("");
   const [isCreatingShare, setIsCreatingShare] = useState(false);
   const [shareableLinks, setShareableLinks] = useState<any[]>([]);
+  const [existingShareLinks, setExistingShareLinks] = useState<any[]>([]);
+  const [showExistingLinksDialog, setShowExistingLinksDialog] = useState(false);
+  const [editingShareLink, setEditingShareLink] = useState<any>(null);
   const [shareableLink, setShareableLink] = useState<string>("");
   const [isSharing, setIsSharing] = useState(false);
 
@@ -193,8 +197,8 @@ export function AssessmentsView() {
         setDeleteDialogOpen(false);
         setAssessmentToDelete(null);
 
-        // Show success message (you might want to add a toast notification here)
-        console.log("Assessment deleted successfully");
+        // Show success message with toast notification
+        toast.success("Assessment deleted successfully");
       } else {
         const error = await response.json();
         console.error("Failed to delete assessment:", error);
@@ -214,8 +218,30 @@ export function AssessmentsView() {
   };
 
   // Share functions
-  const handleShareClick = (assessmentId: string) => {
+  const handleShareClick = async (assessmentId: string) => {
     setAssessmentToShare(assessmentId);
+
+    // Check for existing share links for this assessment
+    try {
+      const response = await fetch("/api/share");
+      if (response.ok) {
+        const allLinks = await response.json();
+        const existingLinks = allLinks.filter(
+          (link: any) => link.assessment.id === assessmentId || link.assessment.shortId === assessmentId
+        );
+        
+        if (existingLinks.length > 0) {
+          // Show existing links with options to edit
+          setExistingShareLinks(existingLinks);
+          setShowExistingLinksDialog(true);
+          return;
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching existing share links:", error);
+    }
+
+    // No existing links, show create dialog
     setShareDialogOpen(true);
     // Reset form state
     setSharePrivacy("PRIVATE");
@@ -237,8 +263,13 @@ export function AssessmentsView() {
 
     setIsCreatingShare(true);
     try {
-      const response = await fetch("/api/share", {
-        method: "POST",
+      // Determine if we're editing or creating
+      const isEditing = editingShareLink !== null;
+      const method = isEditing ? "PUT" : "POST";
+      const url = isEditing ? `/api/share/${editingShareLink.shareCode}` : "/api/share";
+
+      const response = await fetch(url, {
+        method,
         headers: {
           "Content-Type": "application/json",
         },
@@ -257,24 +288,44 @@ export function AssessmentsView() {
         // Copy share URL to clipboard
         await navigator.clipboard.writeText(shareLink.shareUrl);
 
-        // Add to local state
-        setShareableLinks((prev) => [shareLink, ...prev]);
+        if (isEditing) {
+          // Update existing link in both lists
+          setExistingShareLinks((prev) =>
+            prev.map((link) =>
+              link.id === editingShareLink.id ? { ...shareLink, assessment: editingShareLink.assessment } : link
+            )
+          );
+          setShareableLinks((prev) =>
+            prev.map((link) =>
+              link.id === editingShareLink.id ? { ...shareLink, assessment: editingShareLink.assessment } : link
+            )
+          );
+
+          toast.success("Share link updated and copied to clipboard!", {
+            description: shareLink.shareUrl,
+            duration: 5000,
+          });
+        } else {
+          // Add new link to local state
+          setShareableLinks((prev) => [shareLink, ...prev]);
+
+          toast.success("Share link created and copied to clipboard!", {
+            description: shareLink.shareUrl,
+            duration: 5000,
+          });
+        }
 
         setShareDialogOpen(false);
         setAssessmentToShare(null);
-
-        // Show success message (you might want to add a toast notification here)
-        alert(
-          `Share link created and copied to clipboard!\n${shareLink.shareUrl}`
-        );
+        setEditingShareLink(null); // Clear editing state
       } else {
         const error = await response.json();
-        console.error("Failed to create share link:", error);
-        alert("Failed to create share link. Please try again.");
+        console.error(`Failed to ${isEditing ? 'update' : 'create'} share link:`, error);
+        toast.error(`Failed to ${isEditing ? 'update' : 'create'} share link. Please try again.`);
       }
     } catch (error) {
-      console.error("Error creating share link:", error);
-      alert("Failed to create share link. Please try again.");
+      console.error(`Error ${editingShareLink ? 'updating' : 'creating'} share link:`, error);
+      toast.error(`Failed to ${editingShareLink ? 'update' : 'create'} share link. Please try again.`);
     } finally {
       setIsCreatingShare(false);
     }
@@ -283,9 +334,49 @@ export function AssessmentsView() {
   const handleShareCancel = () => {
     setShareDialogOpen(false);
     setAssessmentToShare(null);
+    setEditingShareLink(null); // Clear editing state
     setSharePrivacy("PRIVATE");
     setSharePassword("");
     setShareExpiresAt("");
+  };
+
+  const handleEditShareLink = (link: any) => {
+    setShowExistingLinksDialog(false);
+    setEditingShareLink(link); // Store the link being edited
+    setAssessmentToShare(link.assessment.id);
+    setSharePrivacy(link.privacy);
+    setSharePassword(link.password || "");
+    setShareExpiresAt(link.expiresAt ? new Date(link.expiresAt).toISOString().split('T')[0] : "");
+    setShareDialogOpen(true);
+  };
+
+  const handleDeleteShareLink = async (link: any) => {
+    if (!confirm(`Are you sure you want to delete this share link?\n\nPrivacy: ${link.privacy}\nViews: ${link.viewCount}\n\nThis action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/share/${link.shareCode}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        // Remove from existing links list
+        setExistingShareLinks(prev => prev.filter(l => l.id !== link.id));
+        
+        // Also remove from main shareable links list
+        setShareableLinks(prev => prev.filter(l => l.id !== link.id));
+
+        toast.success("Share link deleted successfully!");
+      } else {
+        const error = await response.json();
+        console.error("Failed to delete share link:", error);
+        toast.error("Failed to delete share link. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error deleting share link:", error);
+      toast.error("Failed to delete share link. Please try again.");
+    }
   };
 
   const getRiskLevelColor = (riskLevel: string) => {
@@ -750,7 +841,7 @@ export function AssessmentsView() {
                       variant="outline"
                       onClick={() => {
                         navigator.clipboard.writeText(shareableLink);
-                        // You might want to add a toast notification here
+                        toast.success("Share link copied to clipboard!");
                       }}
                     >
                       Copy
@@ -763,12 +854,100 @@ export function AssessmentsView() {
               <Button variant="outline" onClick={handleShareCancel}>
                 Cancel
               </Button>
-              <Button onClick={handleShareConfirm} disabled={isSharing}>
-                {isSharing
-                  ? "Creating..."
-                  : shareableLink
+              <Button onClick={handleShareConfirm} disabled={isCreatingShare}>
+                {isCreatingShare
+                  ? editingShareLink ? "Updating..." : "Creating..."
+                  : editingShareLink
                     ? "Update Link"
                     : "Create Link"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Existing Share Links Dialog */}
+        <Dialog open={showExistingLinksDialog} onOpenChange={setShowExistingLinksDialog}>
+          <DialogContent className="sm:max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Existing Share Links</DialogTitle>
+              <DialogDescription>
+                This assessment already has share links. You can manage existing links or create a new one.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              {existingShareLinks.map((link: any, index: number) => (
+                <Card key={link.id} className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <div className="flex items-center space-x-2">
+                        {link.privacy === "PUBLIC" ? (
+                          <Globe className="h-4 w-4" />
+                        ) : (
+                          <Lock className="h-4 w-4" />
+                        )}
+                        <span className="font-medium">{link.privacy}</span>
+                        <Badge variant={link.isActive ? "default" : "secondary"}>
+                          {link.isActive ? "Active" : "Inactive"}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {link.viewCount} views • Created {new Date(link.createdAt).toLocaleDateString()}
+                      </p>
+                      {link.expiresAt && (
+                        <p className="text-sm text-muted-foreground">
+                          Expires {new Date(link.expiresAt).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const url = `${window.location.origin}/share/${link.shareCode}`;
+                          navigator.clipboard.writeText(url);
+                          toast.success("Share link copied to clipboard!");
+                        }}
+                      >
+                        Copy Link
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEditShareLink(link)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDeleteShareLink(link)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowExistingLinksDialog(false)}
+              >
+                Close
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowExistingLinksDialog(false);
+                  setEditingShareLink(null); // Clear editing state for new link
+                  setShareDialogOpen(true);
+                  setSharePrivacy("PRIVATE");
+                  setSharePassword("");
+                  setShareExpiresAt("");
+                }}
+              >
+                Create New Link
               </Button>
             </DialogFooter>
           </DialogContent>

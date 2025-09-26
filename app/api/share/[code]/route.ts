@@ -55,58 +55,81 @@ export async function GET(
       );
     }
 
-    // Handle password protection
-    if (shareableLink.privacy === "PASSWORD_PROTECTED") {
-      if (!password) {
+    // Handle privacy settings
+    if (shareableLink.privacy === "PRIVATE") {
+      // PRIVATE means only accessible by the user who created the assessment
+      const session = await auth();
+
+      if (!session?.user?.id) {
         return NextResponse.json(
           {
-            error: "Password required",
-            requiresPassword: true,
+            error: "This is a private assessment. Please log in to view.",
+            requiresAuth: true,
           },
           { status: 401 }
         );
       }
 
-      if (password !== shareableLink.password) {
+      // Check if the current user is the owner of the assessment
+      if (session.user.id !== shareableLink.createdById) {
         return NextResponse.json(
-          { error: "Invalid password" },
-          { status: 401 }
+          {
+            error:
+              "You don't have permission to view this assessment. Only the creator can access private assessments.",
+            requiresAuth: true,
+          },
+          { status: 403 }
         );
       }
     }
 
-    // Handle privacy settings for non-public links
-    if (shareableLink.privacy === "PRIVATE") {
-      // PRIVATE means accessible by anyone with the link, but not discoverable
-      // No additional authentication required - the share code itself is the access control
-      // Note: If you want to restrict to owner only, that would be a different privacy level
-    }
+    // PUBLIC links don't require any additional checks - accessible by anyone with the link
 
     // If action is 'view', increment view count and return full assessment data
     if (action === "view") {
+      // Handle password protection only for view requests
+      if (shareableLink.privacy === "PASSWORD_PROTECTED") {
+        if (!password) {
+          return NextResponse.json(
+            {
+              error: "Password required",
+              requiresPassword: true,
+            },
+            { status: 401 }
+          );
+        }
+
+        if (password !== shareableLink.password) {
+          return NextResponse.json(
+            { error: "Invalid password" },
+            { status: 401 }
+          );
+        }
+      }
+
       await prisma.shareableLink.update({
         where: { id: shareableLink.id },
         data: { viewCount: { increment: 1 } },
       });
 
       return NextResponse.json({
+        id: shareableLink.id,
+        shareCode: shareableLink.shareCode,
+        privacy: shareableLink.privacy,
+        isActive: shareableLink.isActive,
+        expiresAt: shareableLink.expiresAt,
+        viewCount: shareableLink.viewCount + 1,
         assessment: {
           id: shareableLink.assessment.shortId || shareableLink.assessment.id,
           subjectName: shareableLink.assessment.subjectName,
           status: shareableLink.assessment.status,
-          startedAt: shareableLink.assessment.startedAt,
-          completedAt: shareableLink.assessment.completedAt,
+          createdAt: shareableLink.assessment.startedAt,
+          updatedAt: shareableLink.assessment.completedAt || shareableLink.assessment.startedAt,
           scores: shareableLink.assessment.scores,
           responses: shareableLink.assessment.responses,
         },
-        shareInfo: {
-          shareCode: shareableLink.shareCode,
-          privacy: shareableLink.privacy,
-          viewCount: shareableLink.viewCount + 1,
-          createdAt: shareableLink.createdAt,
-          createdBy:
-            shareableLink.createdBy.name || shareableLink.createdBy.email,
-        },
+        createdAt: shareableLink.createdAt,
+        createdBy: shareableLink.createdBy.name || shareableLink.createdBy.email,
       });
     }
 
@@ -149,7 +172,7 @@ export async function PUT(
 
     const { code } = await params;
     const body = await request.json();
-    const { isActive, expiresAt } = body;
+    const { privacy, password, isActive, expiresAt } = body;
 
     // Verify the user owns the shareable link
     const shareableLink = await prisma.shareableLink.findUnique({
@@ -175,6 +198,8 @@ export async function PUT(
     const updatedLink = await prisma.shareableLink.update({
       where: { id: shareableLink.id },
       data: {
+        ...(privacy !== undefined && { privacy }),
+        ...(password !== undefined && { password }),
         ...(isActive !== undefined && { isActive }),
         ...(expiresAt !== undefined && {
           expiresAt: expiresAt ? new Date(expiresAt) : null,

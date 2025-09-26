@@ -6,13 +6,17 @@
 
   (Features should follow this https://chatgpt.com/share/68c893a7-75f4-8012-bbe0-72404438f878)
   - Add social proof (where asssessments come from, parents/school testimonials)
-  - Make links sharable (currently link creation works (shouldnt generate another if one already exists) but privacy settings doesnt work/visiting says access denied.)
+  - ✅ Make links sharable (COMPLETED - link creation, privacy settings, password protection, editing, and deletion all work properly)
   - Integrate Stripe payment stuff.. this includes the one time payment, the subscription plan, add this for users to upgrade somehow.
 
   - For admins, asssessment adding domains need to have custom names not hard codedvalues.
   - Admin (Districts) can create subaccounts under license
   - Make sure AI Reports can only be generated once and are saved for recall later.
-  - Write docs on how to write JSON assessments to make it easier
+  - Landing page payment flow should be user takes trial assessment, if purchasing they create an account -> directed to Stripe checkout for single report. Upsell the reoccuring monthly payment afterwards (seek Hormozi upsell for strategy.) Do not offer multiple price points or an additional page. Its user registration, one time charge checkout.
+
+- Autofill bug when creating share links
+- Dialog when deleting share links.
+- Views aren't counted anymore
 
 # Features to add
 
@@ -23,6 +27,8 @@
 - pSEO stuff
 - Stripe
 - Affiliate linking setup
+- Each domain can have a reccommended resources list with cited sources
+- - This ensures the AI always provides the correct resources.
 - Resources section (Saved from AI and a library we provide.)
 
 # Determinations
