@@ -7,6 +7,7 @@ import { z } from "zod";
 
 const createAssessmentSchema = z.object({
   subjectName: z.string().min(1, "Subject name is required"),
+  assessmentTemplateId: z.string().optional(), // Optional, will use active template if not provided
 });
 
 export async function POST(request: NextRequest) {
@@ -26,12 +27,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { subjectName } = validation.data;
+    const { subjectName, assessmentTemplateId } = validation.data;
+
+    // If no template specified, get the active template
+    let templateId = assessmentTemplateId;
+    if (!templateId) {
+      const activeTemplate = await prisma.assessmentTemplate.findFirst({
+        where: { isActive: true },
+        select: { id: true },
+      });
+
+      if (!activeTemplate) {
+        return NextResponse.json(
+          { error: "No active assessment template available" },
+          { status: 400 }
+        );
+      }
+
+      templateId = activeTemplate.id;
+    }
 
     // Create new assessment
     const assessment = await AssessmentAI.createNewAssessment(
       session.user.id,
-      subjectName
+      subjectName,
+      templateId
     );
 
     return NextResponse.json({

@@ -20,6 +20,7 @@ import {
   CheckCircle,
   FileText,
   Sparkles,
+  AlertTriangle,
 } from "lucide-react";
 import { AssessmentDomain, RiskLevel } from "@prisma/client";
 import {
@@ -74,6 +75,7 @@ export function AssessmentCompletion({
     generateRecommendations,
     skipToEnd,
     isComplete: recommendationsComplete,
+    isExistingReport,
   } = useAIRecommendations({
     assessmentId,
     onComplete: (recommendations) => {
@@ -314,6 +316,49 @@ export function AssessmentCompletion({
         </CardHeader>
       </Card>
 
+      {/* Assessment Disclaimer */}
+      <Card className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20">
+        <CardContent className="pt-6">
+          <div className="flex items-start space-x-3">
+            <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+            <div className="space-y-2 text-sm">
+              <p className="font-medium text-amber-800 dark:text-amber-200">
+                Important Assessment Information
+              </p>
+              <p className="text-amber-700 dark:text-amber-300">
+                The assessments on this page screen for different areas of
+                mental health. They are not diagnostic tools and should not be
+                used as the sole measure of risk for any condition. These
+                results are intended for informational and educational purposes
+                only.
+              </p>
+              <p className="text-amber-700 dark:text-amber-300">
+                <strong>
+                  If you or someone you know is experiencing a mental health
+                  crisis, please contact:
+                </strong>
+              </p>
+              <ul className="text-amber-700 dark:text-amber-300 ml-4 space-y-1">
+                <li>
+                  • <strong>Emergency Services:</strong> 911
+                </li>
+                <li>
+                  • <strong>National Suicide Prevention Lifeline:</strong> 988
+                </li>
+                <li>
+                  • <strong>Crisis Text Line:</strong> Text HOME to 741741
+                </li>
+              </ul>
+              <p className="text-amber-700 dark:text-amber-300">
+                For professional evaluation and support, please consult with a
+                qualified mental health professional who can provide proper
+                assessment, diagnosis, and treatment recommendations.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Scores Chart */}
       <Card>
         <CardHeader>
@@ -468,6 +513,19 @@ export function AssessmentCompletion({
                   </div>
                 ) : (
                   <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border-l-4 border-blue-400 dark:border-blue-600">
+                    {/* Show indicator for existing vs new recommendations */}
+                    {isExistingReport && !isGeneratingRecommendations && (
+                      <div className="flex items-center gap-2 mb-3 p-2 bg-green-100 dark:bg-green-900/30 rounded text-sm">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        <span className="text-green-700 dark:text-green-300 font-medium">
+                          Previously Generated Report
+                        </span>
+                        <span className="text-green-600 dark:text-green-400 text-xs">
+                          (Saved • No additional AI costs)
+                        </span>
+                      </div>
+                    )}
+
                     {isGeneratingRecommendations &&
                       !recommendationsComplete && (
                         <div className="flex justify-end mb-2">

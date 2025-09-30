@@ -35,6 +35,10 @@ model User {
   managedSubAccounts SubAccount[]  @relation("ManagedBy")
   subAccountProfile SubAccount?    @relation("SubAccountUser")
   generatedAIReports AIReport[]
+  createdAssessmentTemplates AssessmentTemplate[] @relation("AssessmentTemplatesCreated")
+  createdDomainTemplates DomainTemplate[] @relation("DomainTemplatesCreated")
+  createdAssessmentVersions AssessmentTemplateVersion[] @relation("AssessmentVersionsCreated")
+  createdDomainVersions DomainTemplateVersion[] @relation("DomainVersionsCreated")
 
   @@index([organizationId])
   @@index([parentUserId])
@@ -108,10 +112,12 @@ model Assessment {
   status               AssessmentStatus   @default(IN_PROGRESS)
   startedAt            DateTime           @default(now())
   completedAt          DateTime?
-  currentDomain        AssessmentDomain?
+  currentDomain        AssessmentDomain?  // Keep for backward compatibility during migration
   currentQuestionOrder Int?
   shortId              String?            @unique
+  assessmentTemplateId String?            // Reference to the template this assessment was created from
   user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assessmentTemplate   AssessmentTemplate? @relation("AssessmentFromTemplate", fields: [assessmentTemplateId], references: [id])
   messages             ChatMessage[]
   responses            QuestionResponse[]
   recommendations      Recommendation[]
@@ -122,6 +128,7 @@ model Assessment {
   @@index([userId])
   @@index([status])
   @@index([shortId])
+  @@index([assessmentTemplateId])
   @@map("assessments")
 }
 
@@ -147,6 +154,125 @@ model AIReport {
   @@index([generatedByUserId])
   @@index([generatedAt])
   @@map("ai_reports")
+}
+
+// Assessment Templates - Admin-created assessment configurations
+model AssessmentTemplate {
+  id                    String                        @id @default(cuid())
+  name                  String                        // Assessment display name
+  slug                  String                        @unique // URL-friendly identifier
+  description           String?                       // Assessment description
+  instructions          String?                       // Instructions for taking the assessment
+  isActive              Boolean                       @default(true) // Whether users can see/take this assessment
+  version               Int                           @default(1) // Version number
+  createdById           String                        // Admin who created this template
+  createdAt             DateTime                      @default(now())
+  updatedAt             DateTime                      @updatedAt
+  
+  // Relationships
+  createdBy             User                          @relation("AssessmentTemplatesCreated", fields: [createdById], references: [id])
+  domains               AssessmentTemplateDomain[]    // Many-to-many with domains
+  assessments           Assessment[]                  @relation("AssessmentFromTemplate") // User assessments taken from this template
+  versions              AssessmentTemplateVersion[]   // Version history
+  
+  // Global platform settings relations
+  globalTrialSettings   PlatformSettings[]            @relation("GlobalTrialAssessment")
+  globalRegularSettings PlatformSettings[]            @relation("GlobalRegularAssessment")
+
+  @@index([createdById])
+  @@index([isActive])
+  @@index([slug])
+  @@map("assessment_templates")
+}
+
+// Domain Templates - Reusable domain configurations
+model DomainTemplate {
+  id                    String                        @id @default(cuid())
+  name                  String                        // Domain display name (e.g., "Attention", "Violence Risk")
+  slug                  String                        @unique // URL-friendly identifier
+  description           String?                       // Domain description
+  questions             Json                          // Array of question objects with scoring rules
+  resources             Json?                         // Recommended resources and citations for this domain
+  scoringConfig         Json                          // Scoring configuration (thresholds, risk levels, etc.)
+  version               Int                           @default(1) // Version number
+  createdById           String                        // Admin who created this domain
+  createdAt             DateTime                      @default(now())
+  updatedAt             DateTime                      @updatedAt
+  
+  // Relationships  
+  createdBy             User                          @relation("DomainTemplatesCreated", fields: [createdById], references: [id])
+  assessmentTemplates   AssessmentTemplateDomain[]    // Many-to-many with assessment templates
+  versions              DomainTemplateVersion[]       // Version history
+
+  @@index([createdById])
+  @@index([slug])
+  @@map("domain_templates")
+}
+
+// Junction table for Assessment Templates <-> Domain Templates (many-to-many)
+model AssessmentTemplateDomain {
+  id                    String              @id @default(cuid())
+  assessmentTemplateId  String
+  domainTemplateId      String
+  order                 Int                 // Order in which domains appear in the assessment
+  isRequired            Boolean             @default(true) // Whether this domain is required for the assessment
+  
+  // Relationships
+  assessmentTemplate    AssessmentTemplate  @relation(fields: [assessmentTemplateId], references: [id], onDelete: Cascade)
+  domainTemplate        DomainTemplate      @relation(fields: [domainTemplateId], references: [id], onDelete: Cascade)
+
+  @@unique([assessmentTemplateId, domainTemplateId])
+  @@index([assessmentTemplateId])
+  @@index([domainTemplateId])
+  @@map("assessment_template_domains")
+}
+
+// Assessment Template Version History
+model AssessmentTemplateVersion {
+  id                    String                        @id @default(cuid())
+  assessmentTemplateId  String                        // Reference to current template
+  version               Int                           // Version number
+  name                  String                        // Name at this version
+  slug                  String                        // Slug at this version
+  description           String?                       // Description at this version
+  instructions          String?                       // Instructions at this version
+  isActive              Boolean                       // Active status at this version
+  domainSnapshot        Json                          // Snapshot of domain configuration at this version
+  changeDescription     String?                       // Description of what changed
+  createdById           String                        // Who made this version
+  createdAt             DateTime                      @default(now())
+  
+  // Relationships
+  assessmentTemplate    AssessmentTemplate            @relation(fields: [assessmentTemplateId], references: [id], onDelete: Cascade)
+  createdBy             User                          @relation("AssessmentVersionsCreated", fields: [createdById], references: [id])
+
+  @@unique([assessmentTemplateId, version])
+  @@index([assessmentTemplateId])
+  @@map("assessment_template_versions")
+}
+
+// Domain Template Version History
+model DomainTemplateVersion {
+  id                    String                        @id @default(cuid())
+  domainTemplateId      String                        // Reference to current template
+  version               Int                           // Version number
+  name                  String                        // Name at this version
+  slug                  String                        // Slug at this version
+  description           String?                       // Description at this version
+  questions             Json                          // Questions at this version
+  resources             Json?                         // Resources at this version
+  scoringConfig         Json?                         // Scoring config at this version
+  changeDescription     String?                       // Description of what changed
+  createdById           String                        // Who made this version
+  createdAt             DateTime                      @default(now())
+  
+  // Relationships
+  domainTemplate        DomainTemplate                @relation(fields: [domainTemplateId], references: [id], onDelete: Cascade)
+  createdBy             User                          @relation("DomainVersionsCreated", fields: [createdById], references: [id])
+
+  @@unique([domainTemplateId, version])
+  @@index([domainTemplateId])
+  @@map("domain_template_versions")
 }
 
 model ShareableLink {
@@ -434,11 +560,40 @@ model UsageMetrics {
   @@map("usage_metrics")
 }
 
+model PlatformSettings {
+  id                    String   @id @default(cuid())
+  
+  // Global Assessment Configuration
+  globalTrialAssessmentId     String?  // Assessment template for trial users
+  globalRegularAssessmentId   String?  // Assessment template for regular users
+  
+  // Platform-wide settings
+  maintenanceMode       Boolean  @default(false)
+  registrationEnabled   Boolean  @default(true)
+  trialAssessmentsEnabled Boolean @default(true)
+  
+  // AI Configuration
+  aiReportsEnabled      Boolean  @default(true)
+  maxAiReportsPerUser   Int      @default(10)
+  
+  // Timestamps
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  updatedBy            String   // User ID who made the change
+  
+  // Relations
+  globalTrialAssessment   AssessmentTemplate? @relation("GlobalTrialAssessment", fields: [globalTrialAssessmentId], references: [id])
+  globalRegularAssessment AssessmentTemplate? @relation("GlobalRegularAssessment", fields: [globalRegularAssessmentId], references: [id])
+  
+  @@map("platform_settings")
+}
+
 enum Role {
   USER
   ADMIN
   DISTRICT_ADMIN  // Can manage sub-accounts within their organization
   SUB_ACCOUNT     // Sub-account user under a district
+  SUPER_ADMIN     // Platform super admin with global access
 }
 
 enum AssessmentStatus {

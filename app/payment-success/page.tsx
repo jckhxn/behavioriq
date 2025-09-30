@@ -20,10 +20,12 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
+import { toast } from "sonner";
 
 function PaymentSuccessContent() {
   const searchParams = useSearchParams();
   const [childName, setChildName] = useState("");
+  const [isUpgrading, setIsUpgrading] = useState(false);
 
   useEffect(() => {
     const childNameParam = searchParams.get("childName");
@@ -31,6 +33,39 @@ function PaymentSuccessContent() {
       setChildName(decodeURIComponent(childNameParam));
     }
   }, [searchParams]);
+
+  const handleUpgrade = async () => {
+    setIsUpgrading(true);
+
+    try {
+      const response = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          planType: "subscription",
+          plan: "MONTHLY",
+          childName: childName,
+          isSubscription: true,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.url) {
+        // Redirect to Stripe checkout for subscription
+        window.location.href = data.url;
+      } else {
+        throw new Error(data.error || "Failed to create upgrade session");
+      }
+    } catch (error) {
+      console.error("Upgrade error:", error);
+      toast.error("Failed to process upgrade. Please try again.");
+    } finally {
+      setIsUpgrading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background p-4">
@@ -56,8 +91,8 @@ function PaymentSuccessContent() {
             </CardTitle>
             <CardDescription className="text-green-700 text-lg">
               Thank you for your purchase.{" "}
-              {childName ? `${childName}'s` : "The"} comprehensive assessment
-              report is now being generated.
+              {childName ? `${childName}'s` : "The"} full AI assessment report
+              is now being generated with cited recommendations.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -208,6 +243,129 @@ function PaymentSuccessContent() {
                     Browse Help Articles
                   </Link>
                 </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Special Upgrade Offer - Hormozi Style Upsell */}
+        <Card className="border-2 border-primary bg-gradient-to-br from-primary/5 to-accent/10 mb-8">
+          <CardHeader className="text-center">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <Brain className="h-8 w-8 text-primary" />
+            </div>
+            <CardTitle className="text-2xl mb-2">
+              🎉 Congratulations! You've Just Saved Your Family $1,000s
+            </CardTitle>
+            <CardDescription className="text-lg">
+              But wait... I have something even better for you
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              <div className="text-center">
+                <p className="text-lg font-medium mb-4">
+                  Since you just experienced the power of our AI assessment
+                  system...
+                </p>
+                <p className="text-muted-foreground mb-6">
+                  What if I told you there's a way to get UNLIMITED assessments,
+                  track progress over time, and receive ongoing AI insights for
+                  less than the cost of ONE traditional consultation?
+                </p>
+              </div>
+
+              <div className="bg-white/50 dark:bg-black/20 p-6 rounded-lg border">
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <h4 className="font-bold text-lg mb-3 text-red-600">
+                      ❌ Traditional Route (What Most Parents Do)
+                    </h4>
+                    <ul className="space-y-2 text-sm">
+                      <li>• Wait 3-6 months for specialist appointment</li>
+                      <li>• Pay $300-500 per session</li>
+                      <li>• Limited to specific timeframes</li>
+                      <li>• One-time snapshot only</li>
+                      <li>• No progress tracking</li>
+                      <li>• No school-ready documentation</li>
+                    </ul>
+                    <div className="mt-4 p-3 bg-red-50 dark:bg-red-950/20 rounded">
+                      <p className="font-bold text-red-700 dark:text-red-400">
+                        Total Cost: $2,000-5,000+ per year
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-bold text-lg mb-3 text-green-600">
+                      ✅ Our Monthly Membership (Smart Parents Choose This)
+                    </h4>
+                    <ul className="space-y-2 text-sm">
+                      <li>• 1 fresh assessment report every month</li>
+                      <li>• Progress tracking graphs over time</li>
+                      <li>• School-ready updates anytime</li>
+                      <li>• Complete parent resource library</li>
+                      <li>• Identify changes before they become problems</li>
+                      <li>• Add conversational AI sessions for $9 each</li>
+                    </ul>
+                    <div className="mt-4 p-3 bg-green-50 dark:bg-green-950/20 rounded">
+                      <p className="font-bold text-green-700 dark:text-green-400">
+                        Your Cost: Just $29/month
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-center bg-gradient-to-r from-primary/10 to-accent/10 p-6 rounded-lg">
+                <h4 className="font-bold text-xl mb-2">
+                  Limited Time: 50% OFF Your First 3 Months
+                </h4>
+                <p className="text-lg mb-1">
+                  <span className="line-through text-muted-foreground">
+                    $87.00
+                  </span>
+                  <span className="font-bold text-primary ml-2">
+                    Just $43.50
+                  </span>
+                </p>
+                <p className="text-sm text-muted-foreground mb-4">
+                  That's less than what you'd pay for ONE hour with a
+                  traditional specialist
+                </p>
+
+                <Button
+                  size="lg"
+                  className="text-lg px-8 mb-4"
+                  onClick={handleUpgrade}
+                  disabled={isUpgrading}
+                >
+                  {isUpgrading
+                    ? "Processing..."
+                    : "Yes! Upgrade to Membership for $14.50/month"}
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <p>✅ Cancel anytime</p>
+                  <p>✅ 30-day money-back guarantee</p>
+                  <p>✅ Keep all your reports forever</p>
+                </div>
+              </div>
+
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground mb-2">
+                  This offer expires in 24 hours and won't be available at this
+                  price again.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  <Link
+                    href="/dashboard"
+                    className="text-primary hover:underline"
+                  >
+                    No thanks, I'll just use my single report
+                  </Link>
+                </p>
               </div>
             </div>
           </CardContent>

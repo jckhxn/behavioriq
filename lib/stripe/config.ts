@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { BUSINESS_CONFIG } from "@/lib/config/business-config";
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error("STRIPE_SECRET_KEY is required");
@@ -11,16 +12,11 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 
 export const PRICING_PLANS = {
   BASIC: {
-    name: "Basic Plan",
-    description: "Single assessment with AI analysis",
-    price: 2999, // $29.99 in cents
+    name: BUSINESS_CONFIG.PRICING.CORE_OFFER.name,
+    description: BUSINESS_CONFIG.PRICING.CORE_OFFER.description,
+    price: BUSINESS_CONFIG.PRICING.CORE_OFFER.amount,
     priceId: process.env.STRIPE_BASIC_PRICE_ID,
-    features: [
-      "Single comprehensive assessment",
-      "AI-powered behavioral analysis",
-      "Detailed PDF report",
-      "Email support",
-    ],
+    features: BUSINESS_CONFIG.FEATURES.CORE_OFFER,
     maxAssessments: 1,
   },
   PREMIUM: {
@@ -59,19 +55,12 @@ export const PRICING_PLANS = {
 
 export const SUBSCRIPTION_PLANS = {
   MONTHLY: {
-    name: "Monthly Subscription",
-    description: "Unlimited access for $19.99/month",
-    price: 1999, // $19.99 in cents
+    name: BUSINESS_CONFIG.PRICING.MEMBERSHIP.name,
+    description: BUSINESS_CONFIG.PRICING.MEMBERSHIP.description,
+    price: BUSINESS_CONFIG.PRICING.MEMBERSHIP.amount,
     priceId: process.env.STRIPE_MONTHLY_PRICE_ID,
     interval: "month",
-    features: [
-      "Unlimited assessments",
-      "AI-powered behavioral analysis",
-      "Detailed PDF reports",
-      "Share results with professionals",
-      "Priority support",
-      "Assessment history",
-    ],
+    features: BUSINESS_CONFIG.FEATURES.MEMBERSHIP,
   },
   YEARLY: {
     name: "Yearly Subscription",
@@ -91,5 +80,17 @@ export const SUBSCRIPTION_PLANS = {
   },
 } as const;
 
+export const ADD_ON_PLANS = {
+  CONVERSATIONAL_AI: {
+    name: BUSINESS_CONFIG.PRICING.CONVERSATIONAL_AI.name,
+    description: BUSINESS_CONFIG.PRICING.CONVERSATIONAL_AI.description,
+    price: BUSINESS_CONFIG.PRICING.CONVERSATIONAL_AI.amount,
+    priceId: process.env.STRIPE_CONVERSATIONAL_AI_PRICE_ID,
+    features: BUSINESS_CONFIG.FEATURES.CONVERSATIONAL_AI,
+    sessionBased: true,
+  },
+} as const;
+
 export type PricingPlan = keyof typeof PRICING_PLANS;
 export type SubscriptionPlan = keyof typeof SUBSCRIPTION_PLANS;
+export type AddOnPlan = keyof typeof ADD_ON_PLANS;

@@ -68,7 +68,55 @@ export async function POST(
       );
     }
 
-    // Generate streaming AI recommendations based on scores
+    // Check if AI recommendations already exist for this assessment
+    const existingRecommendation = await prisma.recommendation.findFirst({
+      where: {
+        assessmentId: assessmentId,
+        category: "AI Generated",
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    // If recommendations already exist, return them instead of generating new ones
+    if (existingRecommendation) {
+      console.log("Found existing AI recommendations, returning saved content");
+
+      // Create a streaming response from the saved content
+      const savedContent = existingRecommendation.content;
+      const stream = new ReadableStream({
+        start(controller) {
+          const encoder = new TextEncoder();
+          let index = 0;
+
+          const streamChunk = () => {
+            if (index < savedContent.length) {
+              // Stream character by character for consistent UX
+              const chunk = savedContent[index];
+              controller.enqueue(encoder.encode(chunk));
+              index++;
+              setTimeout(streamChunk, 10); // Faster replay of saved content
+            } else {
+              controller.close();
+              console.log("Saved recommendations stream completed");
+            }
+          };
+
+          streamChunk();
+        },
+      });
+
+      return new Response(stream, {
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+          "X-AI-Report-Status": "existing", // Header to indicate this is saved content
+        },
+      });
+    }
+
+    // Generate streaming AI recommendations based on scores (first time only)
+    console.log("No existing AI recommendations found, generating new ones");
     const result = await streamRecommendations(assessment, session.user.id);
 
     // If it's already a Response (mock), return it directly

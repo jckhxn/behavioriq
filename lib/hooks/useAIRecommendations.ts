@@ -14,6 +14,7 @@ export function useAIRecommendations({
   const [recommendations, setRecommendations] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [isExistingReport, setIsExistingReport] = useState(false);
 
   const generateRecommendations = useCallback(async () => {
     console.log("generateRecommendations called for assessment:", assessmentId);
@@ -35,6 +36,10 @@ export function useAIRecommendations({
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
+
+      // Check if this is an existing report
+      const aiReportStatus = response.headers.get("X-AI-Report-Status");
+      setIsExistingReport(aiReportStatus === "existing");
 
       const reader = response.body?.getReader();
       if (!reader) {
@@ -75,5 +80,6 @@ export function useAIRecommendations({
     generateRecommendations,
     skipToEnd,
     isComplete: !isGenerating && recommendations.length > 0,
+    isExistingReport,
   };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { UnifiedChat } from "@/components/chat/UnifiedChat";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,6 @@ import {
   Lightbulb,
   Star,
   Shield,
-  ChevronDown,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -27,20 +26,26 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import { ScoringSidebar } from "@/components/scoring/ScoringSidebar";
 import { LandingPage } from "@/components/landing/LandingPage";
 import { AssessmentsView } from "@/components/assessment/AssessmentsView";
 import { CompactRecommendationsWithModal } from "@/components/recommendations/CompactRecommendationsWithModal";
 import { ThemeToggle } from "@/components/theme-toggle";
 import SettingsPane from "@/components/settings/SettingsPane";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Home() {
   const { data: session, status } = useSession();
+  const [activeTab, setActiveTab] = useState("dashboard");
+
+  useEffect(() => {
+    // Check URL parameters for tab
+    const urlParams = new URLSearchParams(window.location.search);
+    const tab = urlParams.get("tab");
+    if (tab === "settings") {
+      setActiveTab("settings");
+    }
+  }, []);
 
   if (status === "loading") {
     return (
@@ -86,6 +91,17 @@ export default function Home() {
               </div>
 
               <div className="flex items-center gap-2">
+                {(session.user.role as string) === "SUPER_ADMIN" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setActiveTab("settings")}
+                    className="hover-lift"
+                  >
+                    <Settings className="h-4 w-4 mr-2" />
+                    Super Admin
+                  </Button>
+                )}
                 {session.user.role === "ADMIN" && (
                   <Button
                     variant="outline"
@@ -115,7 +131,48 @@ export default function Home() {
 
           {/* Content Area */}
           <div className="flex-1 overflow-hidden">
-            <AssessmentsView />
+            <Tabs
+              value={activeTab}
+              onValueChange={setActiveTab}
+              className="h-full flex flex-col"
+            >
+              <div className="border-b px-6 py-3">
+                <TabsList className="grid w-fit grid-cols-2">
+                  <TabsTrigger
+                    value="dashboard"
+                    className="flex items-center gap-2"
+                  >
+                    <FileText className="h-4 w-4" />
+                    Dashboard
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="settings"
+                    className="flex items-center gap-2"
+                  >
+                    <Settings className="h-4 w-4" />
+                    {(session.user.role as string) === "SUPER_ADMIN"
+                      ? "Super Admin"
+                      : "Settings"}
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+
+              <TabsContent
+                value="dashboard"
+                className="flex-1 overflow-hidden mt-0"
+              >
+                <AssessmentsView />
+              </TabsContent>
+
+              <TabsContent
+                value="settings"
+                className="flex-1 overflow-auto mt-0 p-6"
+              >
+                <div className="max-w-4xl mx-auto">
+                  <SettingsPane />
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
         </main>
       </div>
@@ -124,8 +181,6 @@ export default function Home() {
 }
 
 function AppSidebar({ user }: { user: any }) {
-  const [settingsOpen, setSettingsOpen] = useState(false);
-
   return (
     <Sidebar className="border-r">
       <SidebarHeader className="border-b p-4">
@@ -144,26 +199,10 @@ function AppSidebar({ user }: { user: any }) {
               <SidebarMenuButton asChild>
                 <Link href="/" className="flex items-center gap-2">
                   <FileText className="h-4 w-4" />
-                  Assessments
+                  Dashboard
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-            <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
-              <SidebarMenuItem>
-                <CollapsibleTrigger asChild>
-                  <SidebarMenuButton className="flex items-center gap-2 w-full">
-                    <Settings className="h-4 w-4" />
-                    Settings
-                    <ChevronDown className="ml-auto h-4 w-4 transition-transform data-[state=open]:rotate-180" />
-                  </SidebarMenuButton>
-                </CollapsibleTrigger>
-              </SidebarMenuItem>
-              <CollapsibleContent>
-                <div className="mt-2 border rounded-lg bg-muted/30">
-                  <SettingsPane />
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
             {user.role === "ADMIN" && (
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>

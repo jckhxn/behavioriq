@@ -3,6 +3,7 @@ import { getChatCompletion } from "./openai";
 import { AssessmentDomain, RiskLevel, MessageRole } from "@prisma/client";
 import {
   loadAssessmentConfigs,
+  loadAssessmentConfigFromTemplate,
   QuestionSetConfig,
 } from "@/lib/assessment/db-loader";
 import {
@@ -72,8 +73,21 @@ export class AssessmentAI {
 
   async initialize(): Promise<void> {
     try {
-      // Load assessment configurations dynamically
-      this.assessmentConfigs = await loadAssessmentConfigs();
+      // Get the assessment to find its template
+      const assessment = await prisma.assessment.findUnique({
+        where: { id: this.assessmentId },
+        select: { assessmentTemplateId: true },
+      });
+
+      if (assessment && (assessment as any).assessmentTemplateId) {
+        // Load configuration from the specific template
+        this.assessmentConfigs = await loadAssessmentConfigFromTemplate(
+          (assessment as any).assessmentTemplateId
+        );
+      } else {
+        // Fallback to legacy configuration loading
+        this.assessmentConfigs = await loadAssessmentConfigs();
+      }
 
       // Create scoring calculator with loaded configs
       this.scoringCalculator = new ScoringCalculator(this.assessmentConfigs); // Load existing conversation history
@@ -540,7 +554,8 @@ Keep the response professional, empathetic, and actionable.`;
 
   static async createNewAssessment(
     userId: string,
-    subjectName: string
+    subjectName: string,
+    assessmentTemplateId?: string
   ): Promise<{ id: string; shortId: string }> {
     try {
       // Helper function to check if shortId exists
@@ -562,7 +577,8 @@ Keep the response professional, empathetic, and actionable.`;
           shortId,
           status: "IN_PROGRESS",
           currentDomain: AssessmentDomain.ANTISOCIAL, // Use valid enum value
-        },
+          ...(assessmentTemplateId && { assessmentTemplateId }), // Associate with the template if provided
+        } as any, // Type assertion to handle the assessmentTemplateId field
       });
 
       return { id: assessment.id, shortId };

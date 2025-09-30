@@ -261,9 +261,9 @@ export function TrialResults() {
               Want the complete picture?
             </CardTitle>
             <CardDescription className="text-lg">
-              Get a comprehensive assessment dashboard with instant access to
-              personalized AI recommendations, detailed analysis, and actionable
-              next steps.
+              Get a comprehensive static assessment (30-50 questions) with
+              instant AI-generated report, personalized recommendations with
+              cited sources, and school-ready PDF format.
             </CardDescription>
           </CardHeader>
 
@@ -273,10 +273,9 @@ export function TrialResults() {
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
                   <FileText className="h-6 w-6 text-primary" />
                 </div>
-                <h4 className="font-medium mb-2">Detailed Report</h4>
+                <h4 className="font-medium mb-2">Comprehensive Assessment</h4>
                 <p className="text-sm text-muted-foreground">
-                  Comprehensive analysis with charts, trends, and professional
-                  insights
+                  30-50 targeted questions with instant AI-generated report
                 </p>
               </div>
 
@@ -284,10 +283,10 @@ export function TrialResults() {
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
                   <Brain className="h-6 w-6 text-primary" />
                 </div>
-                <h4 className="font-medium mb-2">AI Recommendations</h4>
+                <h4 className="font-medium mb-2">Cited Recommendations</h4>
                 <p className="text-sm text-muted-foreground">
-                  Personalized strategies and resources tailored to{" "}
-                  {results.childName}
+                  Personalized strategies with sources from Mayo Clinic, CDC,
+                  APA
                 </p>
               </div>
 
@@ -295,9 +294,9 @@ export function TrialResults() {
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
                   <Users className="h-6 w-6 text-primary" />
                 </div>
-                <h4 className="font-medium mb-2">Professional Connect</h4>
+                <h4 className="font-medium mb-2">School-Ready PDF</h4>
                 <p className="text-sm text-muted-foreground">
-                  Optional consultation with qualified child development
+                  Professional format ready to share with educators and
                   specialists
                 </p>
               </div>
@@ -306,9 +305,9 @@ export function TrialResults() {
             <div className="text-center space-y-4">
               <Button size="lg" asChild className="text-lg px-8">
                 <Link
-                  href={`/register?source=trial&childName=${encodeURIComponent(results.childName)}`}
+                  href={`/register?source=trial&childName=${encodeURIComponent(results.childName)}&redirect=checkout`}
                 >
-                  Get Your Complete Report - $29
+                  Get Your Full AI Report - $97
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
               </Button>

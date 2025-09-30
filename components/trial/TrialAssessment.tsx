@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,71 +10,127 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Brain, ArrowLeft, ArrowRight } from "lucide-react";
+import { Brain, ArrowLeft, ArrowRight, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-const TRIAL_QUESTIONS = [
-  {
-    id: 1,
-    text: "Does your child have difficulty paying attention to details or makes careless mistakes?",
-    domain: "ATTENTION",
-  },
-  {
-    id: 2,
-    text: "Does your child have trouble keeping attention on tasks or play activities?",
-    domain: "ATTENTION",
-  },
-  {
-    id: 3,
-    text: "Does your child seem not to listen when spoken to directly?",
-    domain: "ATTENTION",
-  },
-  {
-    id: 4,
-    text: "Does your child often lose things necessary for tasks or activities?",
-    domain: "ATTENTION",
-  },
-  {
-    id: 5,
-    text: "Does your child often argue with adults or refuses to comply with rules?",
-    domain: "CONDUCT",
-  },
-  {
-    id: 6,
-    text: "Does your child often lose temper or has angry outbursts?",
-    domain: "EMOTIONAL",
-  },
-  {
-    id: 7,
-    text: "Does your child often seem angry or resentful?",
-    domain: "EMOTIONAL",
-  },
-];
+interface TrialQuestion {
+  id: string;
+  text: string;
+  order: number;
+  domain: string;
+  domainSlug: string;
+  weight: number;
+  required: boolean;
+}
+
+interface TrialAssessmentData {
+  assessment: {
+    id: string;
+    name: string;
+    description: string;
+    instructions: string;
+    totalQuestions: number;
+  };
+  domains: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    description: string;
+    order: number;
+  }>;
+  questions: TrialQuestion[];
+}
 
 export function TrialAssessment() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [responses, setResponses] = useState<Record<number, boolean>>({});
+  const [responses, setResponses] = useState<Record<string, number>>({});
   const [childName, setChildName] = useState("");
   const [showNameInput, setShowNameInput] = useState(true);
+  const [trialData, setTrialData] = useState<TrialAssessmentData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  const currentQuestion = TRIAL_QUESTIONS[currentQuestionIndex];
-  const progress = ((currentQuestionIndex + 1) / TRIAL_QUESTIONS.length) * 100;
+  useEffect(() => {
+    fetchTrialAssessment();
+  }, []);
+
+  const fetchTrialAssessment = async () => {
+    try {
+      const response = await fetch("/api/assessments/trial");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to load trial assessment");
+      }
+      const data = await response.json();
+      setTrialData(data);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to load trial assessment"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <Card className="w-full max-w-2xl mx-4">
+          <CardContent className="p-8 text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+            <p className="text-lg text-muted-foreground">
+              Loading trial assessment...
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (error || !trialData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <Card className="w-full max-w-2xl mx-4">
+          <CardContent className="p-8 text-center">
+            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">
+              Assessment Unavailable
+            </h2>
+            <p className="text-muted-foreground mb-4">
+              {error || "The trial assessment is currently unavailable."}
+            </p>
+            <Link href="/">
+              <Button variant="outline">Return Home</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const currentQuestion = trialData.questions[currentQuestionIndex];
+  const progress =
+    ((currentQuestionIndex + 1) / trialData.questions.length) * 100;
 
   const handleResponse = (response: boolean) => {
+    // Convert boolean to score (Yes = 3, No = 0 for scoring)
+    const score = response ? 3 : 0;
+
     setResponses((prev) => ({
       ...prev,
-      [currentQuestion.id]: response,
+      [currentQuestion.id]: score,
     }));
 
-    if (currentQuestionIndex < TRIAL_QUESTIONS.length - 1) {
+    if (currentQuestionIndex < trialData.questions.length - 1) {
       setCurrentQuestionIndex((prev) => prev + 1);
     } else {
       // Assessment complete, redirect to results
       const queryParams = new URLSearchParams({
         responses: JSON.stringify(responses),
         childName: childName,
+        assessmentId: trialData.assessment.id,
       });
       router.push(`/trial-results?${queryParams.toString()}`);
     }
@@ -105,11 +161,10 @@ export function TrialAssessment() {
               <span className="text-2xl font-bold">AI Diagnostic</span>
             </div>
             <h1 className="text-3xl font-bold mb-2">
-              Free Behavioral Assessment
+              {trialData.assessment.name}
             </h1>
             <p className="text-muted-foreground">
-              Get insights into your child's behavioral patterns in just 5
-              minutes
+              {trialData.assessment.description}
             </p>
           </div>
 
@@ -144,10 +199,18 @@ export function TrialAssessment() {
               <div className="mt-6 p-4 bg-muted rounded-lg">
                 <h4 className="font-medium mb-2">What to expect:</h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• 7 simple yes/no questions</li>
-                  <li>• Takes about 5 minutes to complete</li>
-                  <li>• Immediate snapshot of key indicators</li>
-                  <li>• No diagnosis - just helpful insights</li>
+                  <li>
+                    • {trialData.questions.length} simple yes/no questions
+                  </li>
+                  <li>
+                    • Takes about {Math.ceil(trialData.questions.length / 2)}{" "}
+                    minutes to complete
+                  </li>
+                  <li>
+                    • Covers {trialData.domains.length} key behavioral areas
+                  </li>
+                  <li>• Immediate insights and recommendations</li>
+                  <li>• No diagnosis - just helpful guidance</li>
                 </ul>
               </div>
             </CardContent>
@@ -182,7 +245,8 @@ export function TrialAssessment() {
           </h1>
           <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
             <span>
-              Question {currentQuestionIndex + 1} of {TRIAL_QUESTIONS.length}
+              Question {currentQuestionIndex + 1} of{" "}
+              {trialData.questions.length}
             </span>
             <span>•</span>
             <span>{Math.round(progress)}% complete</span>
@@ -194,9 +258,29 @@ export function TrialAssessment() {
           <Progress value={progress} className="h-2" />
         </div>
 
+        {/* Instructions */}
+        {currentQuestionIndex === 0 && (
+          <Card className="mb-6 border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20">
+            <CardContent className="p-4">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                <strong>Instructions:</strong>{" "}
+                {trialData.assessment.instructions}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Question Card */}
         <Card className="mb-8">
           <CardHeader>
+            <div className="flex items-start justify-between mb-2">
+              <div className="text-sm text-muted-foreground font-medium">
+                {currentQuestion.domain}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Question {currentQuestionIndex + 1}
+              </div>
+            </div>
             <CardTitle className="text-xl leading-relaxed">
               {currentQuestion.text}
             </CardTitle>
@@ -238,7 +322,7 @@ export function TrialAssessment() {
           </Button>
 
           <div className="text-sm text-muted-foreground">
-            {TRIAL_QUESTIONS.length - currentQuestionIndex - 1} questions
+            {trialData.questions.length - currentQuestionIndex - 1} questions
             remaining
           </div>
         </div>

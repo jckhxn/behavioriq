@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +16,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Brain, FileText, Clock, CheckCircle } from "lucide-react";
+import { Brain, FileText, Clock, CheckCircle, Eye, EyeOff } from "lucide-react";
 import { Suspense } from "react";
 
 function RegisterForm() {
@@ -30,6 +31,8 @@ function RegisterForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [isTrialUser, setIsTrialUser] = useState(false);
   const [childName, setChildName] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     const source = searchParams.get("source");
@@ -84,13 +87,40 @@ function RegisterForm() {
 
       if (response.ok) {
         toast.success("Account created successfully!");
-        if (isTrialUser) {
-          // Redirect to payment/report generation
-          router.push(
-            "/payment?report=true&childName=" + encodeURIComponent(childName)
-          );
+
+        // After successful registration, sign in the user automatically using NextAuth
+        const signInResult = await signIn("credentials", {
+          email: formData.email,
+          password: formData.password,
+          redirect: false,
+        });
+
+        if (signInResult?.ok && !signInResult.error) {
+          // Successful auto-login
+          toast.success("Welcome! Redirecting to checkout...");
+
+          if (isTrialUser && searchParams.get("redirect") === "checkout") {
+            // Redirect directly to checkout
+            router.push(
+              `/checkout-direct?childName=${encodeURIComponent(childName)}&plan=BASIC`
+            );
+          } else if (isTrialUser) {
+            // Redirect to payment page
+            router.push(
+              `/payment?report=true&childName=${encodeURIComponent(childName)}`
+            );
+          } else {
+            router.push("/dashboard");
+          }
         } else {
-          router.push("/login");
+          // Auto-login failed, redirect to login with message
+          console.error("Auto-login failed:", signInResult?.error);
+          toast.success("Account created! Please log in to continue.");
+          const loginUrl =
+            isTrialUser && searchParams.get("redirect") === "checkout"
+              ? `/login?callbackUrl=${encodeURIComponent(`/checkout-direct?childName=${encodeURIComponent(childName)}&plan=BASIC`)}`
+              : "/login";
+          router.push(loginUrl);
         }
       } else {
         toast.error(data.error || "Failed to create account");
@@ -133,33 +163,34 @@ function RegisterForm() {
                   What's Included
                 </CardTitle>
                 <CardDescription>
-                  Your $29 comprehensive report includes:
+                  Your $97 Full AI Report includes:
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex items-center gap-3">
                   <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
                   <span className="text-sm">
-                    Detailed behavioral analysis with charts
+                    Comprehensive static assessment (30-50 questions)
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
                   <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
                   <span className="text-sm">
-                    Personalized AI recommendations
+                    AI recommendations with cited sources (Mayo Clinic, CDC,
+                    APA)
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
                   <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
-                  <span className="text-sm">Professional-grade PDF report</span>
+                  <span className="text-sm">School-ready PDF format</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
-                  <span className="text-sm">Resource library access</span>
+                  <span className="text-sm">Instant report generation</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
-                  <span className="text-sm">Next steps guidance</span>
+                  <span className="text-sm">Professional-grade analysis</span>
                 </div>
 
                 <div className="pt-4 border-t">
@@ -210,26 +241,62 @@ function RegisterForm() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="password">Password</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder="Min. 6 characters"
-                      value={formData.password}
-                      onChange={handleChange}
-                      required
-                      disabled={isLoading}
-                    />
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Min. 6 characters"
+                        value={formData.password}
+                        onChange={handleChange}
+                        required
+                        disabled={isLoading}
+                        className="pr-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                        disabled={isLoading}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="confirmPassword">Confirm Password</Label>
-                    <Input
-                      id="confirmPassword"
-                      type="password"
-                      value={formData.confirmPassword}
-                      onChange={handleChange}
-                      required
-                      disabled={isLoading}
-                    />
+                    <div className="relative">
+                      <Input
+                        id="confirmPassword"
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={formData.confirmPassword}
+                        onChange={handleChange}
+                        required
+                        disabled={isLoading}
+                        className="pr-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() =>
+                          setShowConfirmPassword(!showConfirmPassword)
+                        }
+                        disabled={isLoading}
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? "Creating account..." : "Continue to Payment"}
@@ -306,25 +373,59 @@ function RegisterForm() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={formData.password}
-                onChange={handleChange}
-                required
-                disabled={isLoading}
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                  disabled={isLoading}
+                  className="pr-10"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowPassword(!showPassword)}
+                  disabled={isLoading}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                required
-                disabled={isLoading}
-              />
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  required
+                  disabled={isLoading}
+                  className="pr-10"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  disabled={isLoading}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
+              </div>
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? "Creating account..." : "Create account"}

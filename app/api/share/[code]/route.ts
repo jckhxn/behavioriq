@@ -124,12 +124,15 @@ export async function GET(
           subjectName: shareableLink.assessment.subjectName,
           status: shareableLink.assessment.status,
           createdAt: shareableLink.assessment.startedAt,
-          updatedAt: shareableLink.assessment.completedAt || shareableLink.assessment.startedAt,
+          updatedAt:
+            shareableLink.assessment.completedAt ||
+            shareableLink.assessment.startedAt,
           scores: shareableLink.assessment.scores,
           responses: shareableLink.assessment.responses,
         },
         createdAt: shareableLink.createdAt,
-        createdBy: shareableLink.createdBy.name || shareableLink.createdBy.email,
+        createdBy:
+          shareableLink.createdBy.name || shareableLink.createdBy.email,
       });
     }
 

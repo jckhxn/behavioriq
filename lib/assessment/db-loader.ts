@@ -27,7 +27,72 @@ export type {
 };
 
 /**
- * Load all active assessment configurations from the database
+ * Load assessment configuration from a specific assessment template
+ */
+export async function loadAssessmentConfigFromTemplate(
+  assessmentTemplateId: string
+): Promise<QuestionSetConfig[]> {
+  try {
+    const template = await prisma.assessmentTemplate.findUnique({
+      where: { id: assessmentTemplateId },
+      include: {
+        domains: {
+          include: {
+            domainTemplate: true,
+          },
+          orderBy: { order: "asc" },
+        },
+      },
+    });
+
+    if (!template) {
+      throw new Error(`Assessment template not found: ${assessmentTemplateId}`);
+    }
+
+    // Convert domain templates to QuestionSetConfig format
+    return template.domains.map((domain, index) => {
+      const domainTemplate = domain.domainTemplate;
+      const questions = Array.isArray(domainTemplate.questions)
+        ? domainTemplate.questions
+        : [];
+      const scoringConfig = domainTemplate.scoringConfig || {};
+
+      return {
+        id: domainTemplate.id,
+        name: domainTemplate.name,
+        displayName: domainTemplate.name,
+        description: domainTemplate.description || "",
+        domain: domainTemplate.slug as any, // Use slug directly instead of mapping to enum
+        isActive: true,
+        order: index,
+        totalPossibleScore:
+          (scoringConfig as any)?.maxScore || questions.length,
+        clinicallySignificantScore:
+          (scoringConfig as any)?.significantScore ||
+          Math.ceil(questions.length * 0.6),
+        questions: questions.map((q: any) => ({
+          id: q.id,
+          text: q.text,
+          weight: q.weight || 1,
+          order: q.order,
+          isGatingQuestion: q.isGatingQuestion || false,
+          skipLogic: q.skipLogic || null,
+          category: q.category || null,
+        })),
+        skipConditions: [],
+        prerequisites: [],
+        multiPartLogic: undefined,
+        terminationRules: [],
+      };
+    });
+  } catch (error) {
+    console.error("Error loading assessment config from template:", error);
+    throw error;
+  }
+}
+
+/**
+ * Load all active assessment configurations from the database (legacy)
  */
 export async function loadAssessmentConfigs(): Promise<QuestionSetConfig[]> {
   try {

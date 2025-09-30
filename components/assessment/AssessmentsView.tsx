@@ -227,9 +227,11 @@ export function AssessmentsView() {
       if (response.ok) {
         const allLinks = await response.json();
         const existingLinks = allLinks.filter(
-          (link: any) => link.assessment.id === assessmentId || link.assessment.shortId === assessmentId
+          (link: any) =>
+            link.assessment.id === assessmentId ||
+            link.assessment.shortId === assessmentId
         );
-        
+
         if (existingLinks.length > 0) {
           // Show existing links with options to edit
           setExistingShareLinks(existingLinks);
@@ -266,7 +268,9 @@ export function AssessmentsView() {
       // Determine if we're editing or creating
       const isEditing = editingShareLink !== null;
       const method = isEditing ? "PUT" : "POST";
-      const url = isEditing ? `/api/share/${editingShareLink.shareCode}` : "/api/share";
+      const url = isEditing
+        ? `/api/share/${editingShareLink.shareCode}`
+        : "/api/share";
 
       const response = await fetch(url, {
         method,
@@ -292,12 +296,16 @@ export function AssessmentsView() {
           // Update existing link in both lists
           setExistingShareLinks((prev) =>
             prev.map((link) =>
-              link.id === editingShareLink.id ? { ...shareLink, assessment: editingShareLink.assessment } : link
+              link.id === editingShareLink.id
+                ? { ...shareLink, assessment: editingShareLink.assessment }
+                : link
             )
           );
           setShareableLinks((prev) =>
             prev.map((link) =>
-              link.id === editingShareLink.id ? { ...shareLink, assessment: editingShareLink.assessment } : link
+              link.id === editingShareLink.id
+                ? { ...shareLink, assessment: editingShareLink.assessment }
+                : link
             )
           );
 
@@ -320,12 +328,22 @@ export function AssessmentsView() {
         setEditingShareLink(null); // Clear editing state
       } else {
         const error = await response.json();
-        console.error(`Failed to ${isEditing ? 'update' : 'create'} share link:`, error);
-        toast.error(`Failed to ${isEditing ? 'update' : 'create'} share link. Please try again.`);
+        console.error(
+          `Failed to ${isEditing ? "update" : "create"} share link:`,
+          error
+        );
+        toast.error(
+          `Failed to ${isEditing ? "update" : "create"} share link. Please try again.`
+        );
       }
     } catch (error) {
-      console.error(`Error ${editingShareLink ? 'updating' : 'creating'} share link:`, error);
-      toast.error(`Failed to ${editingShareLink ? 'update' : 'create'} share link. Please try again.`);
+      console.error(
+        `Error ${editingShareLink ? "updating" : "creating"} share link:`,
+        error
+      );
+      toast.error(
+        `Failed to ${editingShareLink ? "update" : "create"} share link. Please try again.`
+      );
     } finally {
       setIsCreatingShare(false);
     }
@@ -346,12 +364,18 @@ export function AssessmentsView() {
     setAssessmentToShare(link.assessment.id);
     setSharePrivacy(link.privacy);
     setSharePassword(link.password || "");
-    setShareExpiresAt(link.expiresAt ? new Date(link.expiresAt).toISOString().split('T')[0] : "");
+    setShareExpiresAt(
+      link.expiresAt ? new Date(link.expiresAt).toISOString().split("T")[0] : ""
+    );
     setShareDialogOpen(true);
   };
 
   const handleDeleteShareLink = async (link: any) => {
-    if (!confirm(`Are you sure you want to delete this share link?\n\nPrivacy: ${link.privacy}\nViews: ${link.viewCount}\n\nThis action cannot be undone.`)) {
+    if (
+      !confirm(
+        `Are you sure you want to delete this share link?\n\nPrivacy: ${link.privacy}\nViews: ${link.viewCount}\n\nThis action cannot be undone.`
+      )
+    ) {
       return;
     }
 
@@ -362,10 +386,10 @@ export function AssessmentsView() {
 
       if (response.ok) {
         // Remove from existing links list
-        setExistingShareLinks(prev => prev.filter(l => l.id !== link.id));
-        
+        setExistingShareLinks((prev) => prev.filter((l) => l.id !== link.id));
+
         // Also remove from main shareable links list
-        setShareableLinks(prev => prev.filter(l => l.id !== link.id));
+        setShareableLinks((prev) => prev.filter((l) => l.id !== link.id));
 
         toast.success("Share link deleted successfully!");
       } else {
@@ -565,8 +589,8 @@ export function AssessmentsView() {
                     : "Try adjusting your search or filter criteria."}
                 </p>
                 {assessments.length === 0 && (
-                  <Link href="/">
-                    <Button className="mt-4">Create Assessment</Button>
+                  <Link href="/assessment/new">
+                    <Button className="mt-4">Start New Assessment</Button>
                   </Link>
                 )}
               </div>
@@ -856,7 +880,9 @@ export function AssessmentsView() {
               </Button>
               <Button onClick={handleShareConfirm} disabled={isCreatingShare}>
                 {isCreatingShare
-                  ? editingShareLink ? "Updating..." : "Creating..."
+                  ? editingShareLink
+                    ? "Updating..."
+                    : "Creating..."
                   : editingShareLink
                     ? "Update Link"
                     : "Create Link"}
@@ -866,12 +892,16 @@ export function AssessmentsView() {
         </Dialog>
 
         {/* Existing Share Links Dialog */}
-        <Dialog open={showExistingLinksDialog} onOpenChange={setShowExistingLinksDialog}>
+        <Dialog
+          open={showExistingLinksDialog}
+          onOpenChange={setShowExistingLinksDialog}
+        >
           <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
               <DialogTitle>Existing Share Links</DialogTitle>
               <DialogDescription>
-                This assessment already has share links. You can manage existing links or create a new one.
+                This assessment already has share links. You can manage existing
+                links or create a new one.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
@@ -886,16 +916,20 @@ export function AssessmentsView() {
                           <Lock className="h-4 w-4" />
                         )}
                         <span className="font-medium">{link.privacy}</span>
-                        <Badge variant={link.isActive ? "default" : "secondary"}>
+                        <Badge
+                          variant={link.isActive ? "default" : "secondary"}
+                        >
                           {link.isActive ? "Active" : "Inactive"}
                         </Badge>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        {link.viewCount} views • Created {new Date(link.createdAt).toLocaleDateString()}
+                        {link.viewCount} views • Created{" "}
+                        {new Date(link.createdAt).toLocaleDateString()}
                       </p>
                       {link.expiresAt && (
                         <p className="text-sm text-muted-foreground">
-                          Expires {new Date(link.expiresAt).toLocaleDateString()}
+                          Expires{" "}
+                          {new Date(link.expiresAt).toLocaleDateString()}
                         </p>
                       )}
                     </div>

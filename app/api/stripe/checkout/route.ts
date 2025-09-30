@@ -31,8 +31,15 @@ export async function POST(request: NextRequest) {
     }
 
     if (!priceId) {
+      console.error("Missing price ID for plan:", {
+        plan,
+        planDetails,
+        isSubscription,
+      });
       return NextResponse.json(
-        { error: "Invalid plan selected" },
+        {
+          error: `Price ID not configured for plan ${plan}. Please check Stripe environment variables.`,
+        },
         { status: 400 }
       );
     }

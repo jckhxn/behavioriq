@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
+import { Role } from "@prisma/client";
 import {
   Card,
   CardContent,
@@ -27,6 +28,7 @@ import {
   Database,
   Activity,
 } from "lucide-react";
+import SuperAdminPanel from "@/components/admin/SuperAdminPanel";
 
 interface UserSettings {
   compactView: boolean;
@@ -48,10 +50,26 @@ const SettingsPane: React.FC = () => {
   const { theme, setTheme } = useTheme();
   const [loading, setLoading] = useState(false);
 
+  // Helper function to check if user is admin
+  const isAdmin = () => {
+    const userRole = session?.user?.role as string;
+    return userRole === "ADMIN" || userRole === "SUPER_ADMIN";
+  };
+
   const [profileData, setProfileData] = useState({
     name: session?.user?.name || "",
     email: session?.user?.email || "",
   });
+
+  // Update profile data when session changes
+  useEffect(() => {
+    if (session?.user) {
+      setProfileData({
+        name: session.user.name || "",
+        email: session.user.email || "",
+      });
+    }
+  }, [session]);
 
   const [userSettings, setUserSettings] = useState<UserSettings>({
     compactView: false,
@@ -80,8 +98,8 @@ const SettingsPane: React.FC = () => {
         setUserSettings(JSON.parse(saved));
       }
 
-      // Load system settings if admin
-      if (session?.user?.role === "ADMIN") {
+      // Load system settings if admin or super admin
+      if (isAdmin()) {
         // In a real app, this would fetch from an API
         setSystemSettings({
           maxDailyAICalls: 1000,
@@ -118,18 +136,37 @@ const SettingsPane: React.FC = () => {
   const updateProfile = async () => {
     setLoading(true);
     try {
-      // In a real app, this would update the user profile
-      console.log("Profile update requested:", profileData);
+      const response = await fetch("/api/user/profile", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: profileData.name,
+        }),
+      });
 
-      // Update the session if needed
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update profile");
+      }
+
+      const data = await response.json();
+
+      // Update local state first
+      setProfileData((prev) => ({ ...prev, name: data.user.name }));
+
+      // Update the session with the new data
       await update({
-        name: profileData.name,
+        name: data.user.name,
       });
 
       alert("Profile updated successfully!");
     } catch (error) {
       console.error("Failed to update profile:", error);
-      alert("Failed to update profile. Please try again.");
+      alert(
+        `Failed to update profile: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
     } finally {
       setLoading(false);
     }
@@ -190,7 +227,7 @@ const SettingsPane: React.FC = () => {
           </TabsTrigger>
           <TabsTrigger value="preferences" className="text-xs">
             <Settings className="h-3 w-3 mr-1" />
-            Prefs
+            {isAdmin() ? "Admin Settings" : "Preferences"}
           </TabsTrigger>
         </TabsList>
 
@@ -205,11 +242,18 @@ const SettingsPane: React.FC = () => {
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="grid gap-2">
-                <Label htmlFor="name" className="text-xs">Display Name</Label>
+                <Label htmlFor="name" className="text-xs">
+                  Display Name
+                </Label>
                 <Input
                   id="name"
                   value={profileData.name}
-                  onChange={(e) => setProfileData(prev => ({ ...prev, name: e.target.value }))}
+                  onChange={(e) =>
+                    setProfileData((prev) => ({
+                      ...prev,
+                      name: e.target.value,
+                    }))
+                  }
                   placeholder="Your display name"
                   className="h-8 text-xs"
                 />
@@ -217,11 +261,16 @@ const SettingsPane: React.FC = () => {
               <div className="grid gap-2">
                 <Label className="text-xs">Account Role</Label>
                 <Badge variant="secondary" className="w-fit text-xs">
-                  {session?.user?.role || 'USER'}
+                  {session?.user?.role || "USER"}
                 </Badge>
               </div>
-              <Button onClick={updateProfile} disabled={loading} size="sm" className="w-full">
-                {loading ? 'Saving...' : 'Save Changes'}
+              <Button
+                onClick={updateProfile}
+                disabled={loading}
+                size="sm"
+                className="w-full"
+              >
+                {loading ? "Saving..." : "Save Changes"}
               </Button>
             </CardContent>
           </Card>
@@ -229,46 +278,83 @@ const SettingsPane: React.FC = () => {
 
         {/* Preferences Tab */}
         <TabsContent value="preferences" className="space-y-3">
-          <Card className="border-border bg-card">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm">Preferences</CardTitle>
-              <CardDescription className="text-xs">
-                Customize application settings
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label className="text-xs">Dark Mode</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Switch theme
-                  </p>
+          {/* Super Admin Settings - Main Content */}
+          {isAdmin() && <SuperAdminPanel />}
+
+          {/* User Preferences - Secondary for Admins */}
+          {!isAdmin() && (
+            <Card className="border-border bg-card">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">User Preferences</CardTitle>
+                <CardDescription className="text-xs">
+                  Customize your personal application settings
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-xs">Dark Mode</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Switch theme
+                    </p>
+                  </div>
+                  <Switch
+                    checked={theme === "dark"}
+                    onCheckedChange={(checked) => {
+                      setTheme(checked ? "dark" : "light");
+                    }}
+                  />
                 </div>
-                <Switch
-                  checked={theme === 'dark'}
-                  onCheckedChange={(checked) => {
-                    setTheme(checked ? 'dark' : 'light');
-                  }}
-                />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label className="text-xs">Compact View</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Show more info
-                  </p>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-xs">Compact View</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Show more info
+                    </p>
+                  </div>
+                  <Switch
+                    checked={userSettings.compactView}
+                    onCheckedChange={(checked) => {
+                      const newSettings = {
+                        ...userSettings,
+                        compactView: checked,
+                      };
+                      saveUserSettings(newSettings);
+                    }}
+                  />
                 </div>
-                <Switch
-                  checked={userSettings.compactView}
-                  onCheckedChange={(checked) => {
-                    const newSettings = { ...userSettings, compactView: checked };
-                    saveUserSettings(newSettings);
-                  }}
-                />
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Basic Theme Settings for Admins */}
+          {isAdmin() && (
+            <Card className="border-border bg-card">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Personal Preferences</CardTitle>
+                <CardDescription className="text-xs">
+                  Your personal settings
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-xs">Dark Mode</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Switch theme
+                    </p>
+                  </div>
+                  <Switch
+                    checked={theme === "dark"}
+                    onCheckedChange={(checked) => {
+                      setTheme(checked ? "dark" : "light");
+                    }}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </div>
