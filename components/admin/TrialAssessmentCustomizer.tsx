@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Card,
   CardContent,
@@ -73,6 +73,39 @@ const TrialAssessmentCustomizer: React.FC = () => {
   const [editingDomain, setEditingDomain] = useState<Domain | null>(null);
   const [showQuestionDialog, setShowQuestionDialog] = useState(false);
   const [showDomainDialog, setShowDomainDialog] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Debounced auto-save function
+  const debouncedAutoSave = useCallback(() => {
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+
+    autoSaveTimeoutRef.current = setTimeout(async () => {
+      if (assessment) {
+        setIsSaving(true);
+        try {
+          await saveTrialAssessmentSilent();
+        } finally {
+          setIsSaving(false);
+        }
+      }
+    }, 2000); // Auto-save after 2 seconds of inactivity
+  }, [assessment]);
+
+  // Auto-save when assessment changes
+  useEffect(() => {
+    if (assessment) {
+      debouncedAutoSave();
+    }
+
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, [assessment, debouncedAutoSave]);
 
   useEffect(() => {
     loadTrialAssessment();
@@ -147,14 +180,132 @@ const TrialAssessmentCustomizer: React.FC = () => {
 
     setLoading(true);
     try {
-      // In a real implementation, this would save to the API
-      console.log("Saving trial assessment:", assessment);
-      alert("Trial assessment updated successfully!");
+      // Save assessment template metadata
+      const assessmentResponse = await fetch(
+        `/api/admin/assessment-templates`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            id: assessment.id,
+            name: assessment.name,
+            description: assessment.description,
+          }),
+        }
+      );
+
+      if (!assessmentResponse.ok) {
+        throw new Error("Failed to save assessment metadata");
+      }
+
+      // Save each domain template's questions
+      for (const domain of assessment.domains) {
+        const domainResponse = await fetch(`/api/admin/domain-templates`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            id: domain.id,
+            name: domain.name,
+            description: domain.description,
+            questions: domain.questions.map((q) => ({
+              id: q.id,
+              text: q.text,
+              type: q.type,
+              options: q.options || [],
+              required: q.isRequired,
+              order: q.order,
+              weight: 1,
+            })),
+          }),
+        });
+
+        if (!domainResponse.ok) {
+          throw new Error(`Failed to save domain: ${domain.name}`);
+        }
+      }
+
+      console.log("Trial assessment saved successfully");
+      // Show success message
+      const successDiv = document.createElement("div");
+      successDiv.className =
+        "fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg z-50";
+      successDiv.textContent = "Assessment saved successfully!";
+      document.body.appendChild(successDiv);
+      setTimeout(() => successDiv.remove(), 3000);
     } catch (error) {
       console.error("Error saving trial assessment:", error);
-      alert("Failed to save trial assessment");
+      // Show error message
+      const errorDiv = document.createElement("div");
+      errorDiv.className =
+        "fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded shadow-lg z-50";
+      errorDiv.textContent = "Failed to save assessment";
+      document.body.appendChild(errorDiv);
+      setTimeout(() => errorDiv.remove(), 3000);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Silent save function for auto-save (no UI feedback)
+  const saveTrialAssessmentSilent = async () => {
+    if (!assessment) return;
+
+    try {
+      // Save assessment template metadata
+      const assessmentResponse = await fetch(
+        `/api/admin/assessment-templates`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            id: assessment.id,
+            name: assessment.name,
+            description: assessment.description,
+          }),
+        }
+      );
+
+      if (!assessmentResponse.ok) {
+        throw new Error("Failed to auto-save assessment metadata");
+      }
+
+      // Save each domain template's questions
+      for (const domain of assessment.domains) {
+        const domainResponse = await fetch(`/api/admin/domain-templates`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            id: domain.id,
+            name: domain.name,
+            description: domain.description,
+            questions: domain.questions.map((q) => ({
+              id: q.id,
+              text: q.text,
+              type: q.type,
+              options: q.options || [],
+              required: q.isRequired,
+              order: q.order,
+              weight: 1,
+            })),
+          }),
+        });
+
+        if (!domainResponse.ok) {
+          throw new Error(`Failed to auto-save domain: ${domain.name}`);
+        }
+      }
+
+      console.log("Assessment auto-saved successfully");
+    } catch (error) {
+      console.error("Error auto-saving trial assessment:", error);
     }
   };
 
@@ -317,12 +468,20 @@ const TrialAssessmentCustomizer: React.FC = () => {
   return (
     <Card className="border-border bg-card">
       <CardHeader className="pb-3">
-        <CardTitle className="text-sm flex items-center">
-          <FileText className="h-4 w-4 mr-2" />
-          Trial Assessment Customization
+        <CardTitle className="text-sm flex items-center justify-between">
+          <div className="flex items-center">
+            <FileText className="h-4 w-4 mr-2" />
+            Trial Assessment Customization
+          </div>
+          {isSaving && (
+            <Badge variant="secondary" className="text-xs">
+              Auto-saving...
+            </Badge>
+          )}
         </CardTitle>
         <CardDescription className="text-xs">
           Customize the trial assessment that users see on the frontend
+          (auto-saves changes)
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

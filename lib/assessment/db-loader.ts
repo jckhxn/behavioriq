@@ -27,14 +27,93 @@ export type {
 };
 
 /**
- * Load assessment configuration from a specific assessment template
+ * Validate domain template structure
+ */
+function validateDomainTemplate(
+  domainTemplate: any,
+  domainIndex: number
+): boolean {
+  const validationIssues: string[] = [];
+
+  if (!domainTemplate) {
+    validationIssues.push(`Domain ${domainIndex}: Missing domain template`);
+    return false;
+  }
+
+  if (!domainTemplate.id || typeof domainTemplate.id !== "string") {
+    validationIssues.push(
+      `Domain ${domainIndex}: Missing or invalid domain template ID`
+    );
+  }
+
+  if (!domainTemplate.name || typeof domainTemplate.name !== "string") {
+    validationIssues.push(
+      `Domain ${domainIndex}: Missing or invalid domain template name`
+    );
+  }
+
+  if (!domainTemplate.slug || typeof domainTemplate.slug !== "string") {
+    validationIssues.push(
+      `Domain ${domainIndex}: Missing or invalid domain template slug`
+    );
+  }
+
+  if (!Array.isArray(domainTemplate.questions)) {
+    validationIssues.push(`Domain ${domainIndex}: Questions must be an array`);
+  } else if (domainTemplate.questions.length === 0) {
+    validationIssues.push(
+      `Domain ${domainIndex}: No questions found in domain template`
+    );
+  } else {
+    // Validate each question
+    domainTemplate.questions.forEach((question: any, qIndex: number) => {
+      if (!question || typeof question !== "object") {
+        validationIssues.push(
+          `Domain ${domainIndex}, Question ${qIndex}: Invalid question object`
+        );
+        return;
+      }
+      if (!question.id || typeof question.id !== "string") {
+        validationIssues.push(
+          `Domain ${domainIndex}, Question ${qIndex}: Missing or invalid question ID`
+        );
+      }
+      if (!question.text || typeof question.text !== "string") {
+        validationIssues.push(
+          `Domain ${domainIndex}, Question ${qIndex}: Missing or invalid question text`
+        );
+      }
+      if (question.order === undefined || typeof question.order !== "number") {
+        validationIssues.push(
+          `Domain ${domainIndex}, Question ${qIndex}: Missing or invalid question order`
+        );
+      }
+    });
+  }
+
+  if (validationIssues.length > 0) {
+    console.warn(`Domain template validation issues:`, validationIssues);
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Load assessment configuration from a template (with domains)
  */
 export async function loadAssessmentConfigFromTemplate(
-  assessmentTemplateId: string
+  templateId: string
 ): Promise<QuestionSetConfig[]> {
   try {
+    if (!templateId || typeof templateId !== "string") {
+      throw new Error("Invalid template ID provided");
+    }
+
+    console.log(`Loading assessment template: ${templateId}`);
+
     const template = await prisma.assessmentTemplate.findUnique({
-      where: { id: assessmentTemplateId },
+      where: { id: templateId },
       include: {
         domains: {
           include: {
@@ -46,48 +125,163 @@ export async function loadAssessmentConfigFromTemplate(
     });
 
     if (!template) {
-      throw new Error(`Assessment template not found: ${assessmentTemplateId}`);
+      throw new Error(`Assessment template with id ${templateId} not found`);
     }
 
-    // Convert domain templates to QuestionSetConfig format
-    return template.domains.map((domain, index) => {
-      const domainTemplate = domain.domainTemplate;
-      const questions = Array.isArray(domainTemplate.questions)
-        ? domainTemplate.questions
-        : [];
-      const scoringConfig = domainTemplate.scoringConfig || {};
+    if (!template.domains || template.domains.length === 0) {
+      console.warn(`Assessment template ${templateId} has no domains`);
+      return [];
+    }
 
-      return {
-        id: domainTemplate.id,
-        name: domainTemplate.name,
-        displayName: domainTemplate.name,
-        description: domainTemplate.description || "",
-        domain: domainTemplate.slug as any, // Use slug directly instead of mapping to enum
-        isActive: true,
-        order: index,
-        totalPossibleScore:
-          (scoringConfig as any)?.maxScore || questions.length,
-        clinicallySignificantScore:
-          (scoringConfig as any)?.significantScore ||
-          Math.ceil(questions.length * 0.6),
-        questions: questions.map((q: any) => ({
-          id: q.id,
-          text: q.text,
-          weight: q.weight || 1,
-          order: q.order,
-          isGatingQuestion: q.isGatingQuestion || false,
-          skipLogic: q.skipLogic || null,
-          category: q.category || null,
-        })),
-        skipConditions: [],
-        prerequisites: [],
-        multiPartLogic: undefined,
-        terminationRules: [],
-      };
-    });
+    console.log(
+      `Found ${template.domains.length} domains in template ${templateId}`
+    );
+
+    // Convert domain templates to QuestionSetConfig format with validation
+    const validConfigs: QuestionSetConfig[] = [];
+    const errors: string[] = [];
+
+    for (let index = 0; index < template.domains.length; index++) {
+      const domain = template.domains[index];
+
+      try {
+        if (!domain || !domain.domainTemplate) {
+          errors.push(`Domain ${index}: Missing domain or domain template`);
+          continue;
+        }
+
+        const domainTemplate = domain.domainTemplate;
+
+        // Validate domain template structure
+        if (!validateDomainTemplate(domainTemplate, index)) {
+          errors.push(`Domain ${index}: Failed validation checks`);
+          continue;
+        }
+
+        // Safely parse questions array
+        let questions: any[] = [];
+        try {
+          if (Array.isArray(domainTemplate.questions)) {
+            questions = domainTemplate.questions;
+          } else if (typeof domainTemplate.questions === "string") {
+            // Handle case where questions might be stored as JSON string
+            questions = JSON.parse(domainTemplate.questions);
+            if (!Array.isArray(questions)) {
+              throw new Error("Parsed questions is not an array");
+            }
+          } else {
+            throw new Error(
+              "Questions field is not an array or valid JSON string"
+            );
+          }
+        } catch (parseError) {
+          errors.push(
+            `Domain ${index}: Failed to parse questions - ${parseError instanceof Error ? parseError.message : "Unknown error"}`
+          );
+          continue;
+        }
+
+        // Safely parse scoring config
+        let scoringConfig: any = {};
+        try {
+          if (domainTemplate.scoringConfig) {
+            if (typeof domainTemplate.scoringConfig === "object") {
+              scoringConfig = domainTemplate.scoringConfig;
+            } else if (typeof domainTemplate.scoringConfig === "string") {
+              scoringConfig = JSON.parse(domainTemplate.scoringConfig);
+            }
+          }
+        } catch (parseError) {
+          console.warn(
+            `Domain ${index}: Failed to parse scoring config, using defaults - ${parseError instanceof Error ? parseError.message : "Unknown error"}`
+          );
+          scoringConfig = {};
+        }
+
+        // Create question set config with safe defaults
+        const questionSetConfig: QuestionSetConfig = {
+          name: domainTemplate.name,
+          displayName: domainTemplate.name,
+          description: domainTemplate.description || "",
+          domain: domainTemplate.slug as any, // Use slug directly instead of mapping to enum
+          order: domain.order !== undefined ? domain.order : index,
+          totalPossibleScore:
+            (scoringConfig as any)?.maxScore || questions.length,
+          clinicallySignificantScore:
+            (scoringConfig as any)?.significantScore ||
+            Math.ceil(questions.length * 0.6),
+          questions: questions.map((q: any, qIndex: number) => {
+            try {
+              return {
+                id: q.id || `question_${qIndex}`,
+                text: q.text || `Question ${qIndex + 1}`,
+                weight: typeof q.weight === "number" ? q.weight : 1,
+                order: typeof q.order === "number" ? q.order : qIndex,
+                isGatingQuestion: Boolean(q.isGatingQuestion),
+                skipLogic: q.skipLogic || null,
+                category: q.category || null,
+              };
+            } catch (questionError) {
+              console.warn(
+                `Domain ${index}, Question ${qIndex}: Error processing question, using defaults - ${questionError instanceof Error ? questionError.message : "Unknown error"}`
+              );
+              return {
+                id: `question_${qIndex}`,
+                text: `Question ${qIndex + 1}`,
+                weight: 1,
+                order: qIndex,
+                isGatingQuestion: false,
+                skipLogic: null,
+                category: null,
+              };
+            }
+          }),
+          skipConditions: [],
+          prerequisites: [],
+          multiPartLogic: undefined,
+          terminationRules: [],
+        };
+
+        validConfigs.push(questionSetConfig);
+        console.log(
+          `Successfully processed domain ${index}: ${domainTemplate.name} with ${questions.length} questions`
+        );
+      } catch (domainError) {
+        const errorMessage = `Domain ${index}: Error processing domain - ${domainError instanceof Error ? domainError.message : "Unknown error"}`;
+        errors.push(errorMessage);
+        console.error(errorMessage, domainError);
+      }
+    }
+
+    // Log summary
+    console.log(
+      `Assessment template ${templateId} processing complete: ${validConfigs.length} valid domains, ${errors.length} errors`
+    );
+
+    if (errors.length > 0) {
+      console.warn(
+        `Errors encountered while loading template ${templateId}:`,
+        errors
+      );
+    }
+
+    if (validConfigs.length === 0 && template.domains.length > 0) {
+      throw new Error(
+        `All domains in template ${templateId} failed validation. Check domain template structure and questions.`
+      );
+    }
+
+    return validConfigs;
   } catch (error) {
-    console.error("Error loading assessment config from template:", error);
-    throw error;
+    const errorMessage = `Error loading assessment config from template ${templateId}`;
+    console.error(errorMessage, error);
+
+    // Re-throw with more context
+    if (error instanceof Error) {
+      throw new Error(`${errorMessage}: ${error.message}`);
+    } else {
+      throw new Error(`${errorMessage}: Unknown error occurred`);
+    }
   }
 }
 

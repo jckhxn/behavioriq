@@ -457,7 +457,8 @@ export function LandingPage() {
               Simple, transparent pricing
             </h2>
             <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-              Start free, upgrade when you need more
+              Professional-grade reports that cost 95% less than traditional
+              assessments
             </p>
           </div>
 
@@ -471,12 +472,12 @@ export function LandingPage() {
               <CardContent>
                 <ul className="space-y-2">
                   <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />1
-                    assessment snapshot
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    Complete assessment
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-green-500" />
-                    Basic insights
+                    Basic insights & scoring
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-green-500" />
@@ -492,66 +493,106 @@ export function LandingPage() {
             <Card className="hover:shadow-lg transition-shadow border-primary">
               <CardHeader>
                 <Badge className="w-fit mb-2">Most Popular</Badge>
-                <CardTitle>Basic Report</CardTitle>
-                <CardDescription>Comprehensive analysis</CardDescription>
-                <div className="text-3xl font-bold">$29</div>
+                <CardTitle>Full AI Report</CardTitle>
+                <CardDescription>
+                  Comprehensive professional-grade analysis
+                </CardDescription>
+                <div className="text-3xl font-bold">$97</div>
+                <div className="text-sm text-muted-foreground">one-time</div>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2">
                   <li className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-green-500" />
-                    Full assessment report
+                    30-50 question comprehensive assessment
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-green-500" />
-                    AI-powered recommendations
+                    AI-generated professional report
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-green-500" />
-                    PDF download
+                    Personalized recommendations with sources
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-green-500" />
-                    Resource library access
+                    School-ready PDF format
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    Instant delivery
                   </li>
                 </ul>
                 <Button asChild className="w-full mt-6">
-                  <Link href="/register">Get Started</Link>
+                  <Link href="/register">Get Full Report</Link>
                 </Button>
               </CardContent>
             </Card>
 
             <Card className="hover:shadow-lg transition-shadow">
               <CardHeader>
-                <CardTitle>Professional</CardTitle>
-                <CardDescription>For ongoing monitoring</CardDescription>
-                <div className="text-3xl font-bold">$99</div>
+                <CardTitle>Monthly Membership</CardTitle>
+                <CardDescription>For ongoing progress tracking</CardDescription>
+                <div className="text-3xl font-bold">$29</div>
                 <div className="text-sm text-muted-foreground">/month</div>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2">
                   <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    Unlimited assessments
+                    <CheckCircle className="h-4 w-4 text-green-500" />1 fresh
+                    full report per month
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-green-500" />
-                    Progress tracking
+                    Progress tracking graphs over time
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-green-500" />
-                    Professional consultation
+                    School-ready updates anytime
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-green-500" />
-                    Priority support
+                    Parent resource library access
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    Assessment history and trends
                   </li>
                 </ul>
                 <Button asChild variant="outline" className="w-full mt-6">
-                  <Link href="/register">Contact Sales</Link>
+                  <Link href="/register">Start Membership</Link>
                 </Button>
               </CardContent>
             </Card>
+          </div>
+
+          {/* Add-on Information */}
+          <div className="mt-16 text-center">
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-2xl p-8 border border-blue-200/50 dark:border-blue-800/50">
+              <div className="flex items-center justify-center gap-3 mb-3">
+                <div className="p-2 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg">
+                  <SparklesIcon className="h-5 w-5 text-white" />
+                </div>
+                <h3 className="text-xl font-semibold">Optional Enhancement</h3>
+              </div>
+              <h4 className="text-2xl font-bold mb-2">
+                Conversational AI Mode
+              </h4>
+              <p className="text-gray-600 dark:text-gray-300 mb-4">
+                Let your child interact directly with AI for richer behavioral
+                insights
+              </p>
+              <div className="flex items-center justify-center gap-4 text-sm">
+                <span className="text-2xl font-bold text-blue-600">+$9</span>
+                <span className="text-gray-500">per session</span>
+                <Badge
+                  variant="secondary"
+                  className="bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
+                >
+                  Add-on
+                </Badge>
+              </div>
+            </div>
           </div>
         </div>
       </section>

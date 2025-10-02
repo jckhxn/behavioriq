@@ -69,6 +69,30 @@ function RegisterForm() {
     setIsLoading(true);
 
     try {
+      // For trial users going to checkout, skip account creation and go directly to payment
+      if (isTrialUser && searchParams.get("redirect") === "checkout") {
+        toast.success("Redirecting to secure checkout...");
+
+        // Store user data temporarily and redirect to checkout
+        const checkoutData = {
+          email: formData.email,
+          name: formData.name,
+          password: formData.password,
+          childName: childName,
+          source: "trial",
+        };
+
+        // Encode user data to pass to checkout
+        const encodedUserData = encodeURIComponent(
+          JSON.stringify(checkoutData)
+        );
+        router.push(
+          `/checkout-anonymous?plan=BASIC&userData=${encodedUserData}&childName=${encodeURIComponent(childName)}`
+        );
+        return;
+      }
+
+      // For non-trial users, create account immediately (existing flow)
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: {
@@ -96,15 +120,8 @@ function RegisterForm() {
         });
 
         if (signInResult?.ok && !signInResult.error) {
-          // Successful auto-login
-          toast.success("Welcome! Redirecting to checkout...");
-
-          if (isTrialUser && searchParams.get("redirect") === "checkout") {
-            // Redirect directly to checkout
-            router.push(
-              `/checkout-direct?childName=${encodeURIComponent(childName)}&plan=BASIC`
-            );
-          } else if (isTrialUser) {
+          // Successful auto-login for non-trial users
+          if (isTrialUser) {
             // Redirect to payment page
             router.push(
               `/payment?report=true&childName=${encodeURIComponent(childName)}`
@@ -116,11 +133,7 @@ function RegisterForm() {
           // Auto-login failed, redirect to login with message
           console.error("Auto-login failed:", signInResult?.error);
           toast.success("Account created! Please log in to continue.");
-          const loginUrl =
-            isTrialUser && searchParams.get("redirect") === "checkout"
-              ? `/login?callbackUrl=${encodeURIComponent(`/checkout-direct?childName=${encodeURIComponent(childName)}&plan=BASIC`)}`
-              : "/login";
-          router.push(loginUrl);
+          router.push("/login");
         }
       } else {
         toast.error(data.error || "Failed to create account");

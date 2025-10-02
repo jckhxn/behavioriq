@@ -66,18 +66,163 @@ interface AssessmentTemplate {
   };
 }
 
+interface DomainEditDialogProps {
+  domain: DomainTemplate;
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (domain: DomainTemplate) => void;
+}
+
+const DomainEditDialog: React.FC<DomainEditDialogProps> = ({
+  domain,
+  isOpen,
+  onClose,
+  onSave,
+}) => {
+  const [editedDomain, setEditedDomain] = useState<DomainTemplate>(domain);
+
+  useEffect(() => {
+    setEditedDomain(domain);
+  }, [domain]);
+
+  const handleSave = () => {
+    onSave(editedDomain);
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Edit Domain: {domain.name}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="domain-name">Domain Name</Label>
+              <Input
+                id="domain-name"
+                value={editedDomain.name}
+                onChange={(e) =>
+                  setEditedDomain({ ...editedDomain, name: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <Label htmlFor="domain-slug">Domain Slug</Label>
+              <Input
+                id="domain-slug"
+                value={editedDomain.slug}
+                onChange={(e) =>
+                  setEditedDomain({ ...editedDomain, slug: e.target.value })
+                }
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="domain-description">Description</Label>
+            <Textarea
+              id="domain-description"
+              value={editedDomain.description || ""}
+              onChange={(e) =>
+                setEditedDomain({
+                  ...editedDomain,
+                  description: e.target.value,
+                })
+              }
+              rows={3}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="domain-questions">Questions (JSON)</Label>
+            <Textarea
+              id="domain-questions"
+              value={JSON.stringify(editedDomain.questions, null, 2)}
+              onChange={(e) => {
+                try {
+                  const questions = JSON.parse(e.target.value);
+                  setEditedDomain({ ...editedDomain, questions });
+                } catch (error) {
+                  // Invalid JSON, don't update
+                }
+              }}
+              rows={15}
+              className="font-mono text-sm"
+            />
+          </div>
+
+          {editedDomain.resources && (
+            <div>
+              <Label htmlFor="domain-resources">Resources (JSON)</Label>
+              <Textarea
+                id="domain-resources"
+                value={JSON.stringify(editedDomain.resources, null, 2)}
+                onChange={(e) => {
+                  try {
+                    const resources = JSON.parse(e.target.value);
+                    setEditedDomain({ ...editedDomain, resources });
+                  } catch (error) {
+                    // Invalid JSON, don't update
+                  }
+                }}
+                rows={10}
+                className="font-mono text-sm"
+              />
+            </div>
+          )}
+
+          {editedDomain.scoringConfig && (
+            <div>
+              <Label htmlFor="domain-scoring">Scoring Config (JSON)</Label>
+              <Textarea
+                id="domain-scoring"
+                value={JSON.stringify(editedDomain.scoringConfig, null, 2)}
+                onChange={(e) => {
+                  try {
+                    const scoringConfig = JSON.parse(e.target.value);
+                    setEditedDomain({ ...editedDomain, scoringConfig });
+                  } catch (error) {
+                    // Invalid JSON, don't update
+                  }
+                }}
+                rows={10}
+                className="font-mono text-sm"
+              />
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 pt-4">
+            <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave}>Save Changes</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 const AssessmentTemplateManager: React.FC = () => {
   const [assessmentTemplates, setAssessmentTemplates] = useState<
     AssessmentTemplate[]
   >([]);
   const [domainTemplates, setDomainTemplates] = useState<DomainTemplate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [trialAssessmentId, setTrialAssessmentId] = useState<string | null>(
+    null
+  );
   const [selectedTemplate, setSelectedTemplate] =
     useState<AssessmentTemplate | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false);
+  const [isDomainEditDialogOpen, setIsDomainEditDialogOpen] = useState(false);
+  const [editingDomain, setEditingDomain] = useState<DomainTemplate | null>(
+    null
+  );
 
   // Upload state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -103,6 +248,7 @@ const AssessmentTemplateManager: React.FC = () => {
   useEffect(() => {
     fetchAssessmentTemplates();
     fetchDomainTemplates();
+    fetchPlatformSettings();
   }, []);
 
   const fetchAssessmentTemplates = async () => {
@@ -132,6 +278,20 @@ const AssessmentTemplateManager: React.FC = () => {
       toast.error("Error fetching domain templates");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPlatformSettings = async () => {
+    try {
+      const response = await fetch("/api/admin/platform-settings");
+      if (response.ok) {
+        const data = await response.json();
+        if (data.settings?.globalTrialAssessment?.id) {
+          setTrialAssessmentId(data.settings.globalTrialAssessment.id);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching platform settings:", error);
     }
   };
 
@@ -194,10 +354,12 @@ const AssessmentTemplateManager: React.FC = () => {
         body: JSON.stringify({
           id: selectedTemplate.id,
           ...formData,
-          domainIds: formData.selectedDomains.map((d) => ({
-            id: d.id,
-            order: d.order,
-          })),
+          domains: formData.selectedDomains
+            .sort((a, b) => a.order - b.order)
+            .map((d) => ({
+              domainTemplateId: d.id,
+              order: d.order,
+            })),
         }),
       });
 
@@ -481,9 +643,42 @@ const AssessmentTemplateManager: React.FC = () => {
     }
   };
 
+  const handleEditDomain = (domain: DomainTemplate) => {
+    setEditingDomain(domain);
+    setIsDomainEditDialogOpen(true);
+  };
+
+  const handleUpdateDomain = async (updatedDomain: DomainTemplate) => {
+    try {
+      const response = await fetch("/api/admin/domain-templates", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedDomain),
+      });
+
+      if (response.ok) {
+        toast.success("Domain updated successfully");
+        setIsDomainEditDialogOpen(false);
+        setEditingDomain(null);
+        fetchDomainTemplates();
+        fetchAssessmentTemplates(); // Refresh to show updated domain names
+      } else {
+        const error = await response.json();
+        toast.error(error.error || "Failed to update domain");
+      }
+    } catch (error) {
+      toast.error("Error updating domain");
+    }
+  };
+
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">Loading...</div>
+      <div className="flex justify-center items-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
     );
   }
 
@@ -493,7 +688,8 @@ const AssessmentTemplateManager: React.FC = () => {
         <div>
           <h2 className="text-2xl font-bold">Assessment Templates</h2>
           <p className="text-muted-foreground">
-            Manage assessment templates and their associated domains
+            Manage assessment templates and their associated domains. The trial
+            assessment appears here as a regular template.
           </p>
         </div>
         <div className="flex gap-2">
@@ -807,6 +1003,14 @@ const AssessmentTemplateManager: React.FC = () => {
                   <div>
                     <CardTitle className="flex items-center gap-2">
                       {template.name}
+                      {template.id === trialAssessmentId && (
+                        <Badge
+                          variant="outline"
+                          className="bg-blue-50 text-blue-700 border-blue-200"
+                        >
+                          Trial
+                        </Badge>
+                      )}
                       <Badge
                         variant={template.isActive ? "default" : "secondary"}
                       >
@@ -873,9 +1077,27 @@ const AssessmentTemplateManager: React.FC = () => {
                   </p>
                   <div className="flex flex-wrap gap-1">
                     {template.domains.map(({ domainTemplate }) => (
-                      <Badge key={domainTemplate.id} variant="outline">
-                        {domainTemplate.name}
-                      </Badge>
+                      <div
+                        key={domainTemplate.id}
+                        className="flex items-center gap-1"
+                      >
+                        <Badge
+                          variant="outline"
+                          className="flex items-center gap-1"
+                        >
+                          {domainTemplate.name}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditDomain(domainTemplate);
+                            }}
+                            className="ml-1 p-0.5 hover:bg-gray-200 rounded"
+                            title={`Edit ${domainTemplate.name} domain`}
+                          >
+                            <Edit className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -960,24 +1182,49 @@ const AssessmentTemplateManager: React.FC = () => {
 
             <div>
               <Label>Select Domains *</Label>
-              <div className="grid grid-cols-2 gap-2 mt-2 max-h-32 overflow-y-auto">
+              <div className="grid grid-cols-1 gap-2 mt-2 max-h-32 overflow-y-auto">
                 {domainTemplates.map((domain) => (
-                  <div key={domain.id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`edit-domain-${domain.id}`}
-                      checked={formData.selectedDomains.some(
-                        (d) => d.id === domain.id
-                      )}
-                      onCheckedChange={(checked) =>
-                        handleDomainToggle(domain.id, !!checked)
-                      }
-                    />
-                    <Label
-                      htmlFor={`edit-domain-${domain.id}`}
-                      className="text-sm"
+                  <div
+                    key={domain.id}
+                    className="flex items-center justify-between p-2 rounded hover:bg-gray-50"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`edit-domain-${domain.id}`}
+                        checked={formData.selectedDomains.some(
+                          (d) => d.id === domain.id
+                        )}
+                        onCheckedChange={(checked) =>
+                          handleDomainToggle(domain.id, !!checked)
+                        }
+                      />
+                      <div>
+                        <Label
+                          htmlFor={`edit-domain-${domain.id}`}
+                          className="text-sm font-medium"
+                        >
+                          {domain.name}
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          {Array.isArray(domain.questions)
+                            ? domain.questions.length
+                            : 0}{" "}
+                          questions
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        handleEditDomain(domain);
+                      }}
+                      className="h-8 w-8 p-0"
+                      title={`Edit ${domain.name} questions`}
                     >
-                      {domain.name}
-                    </Label>
+                      <Edit className="h-3 w-3" />
+                    </Button>
                   </div>
                 ))}
               </div>
@@ -1002,6 +1249,19 @@ const AssessmentTemplateManager: React.FC = () => {
           template={selectedTemplate}
           isOpen={isPreviewDialogOpen}
           onClose={() => setIsPreviewDialogOpen(false)}
+        />
+      )}
+
+      {/* Domain Edit Dialog */}
+      {editingDomain && (
+        <DomainEditDialog
+          domain={editingDomain}
+          isOpen={isDomainEditDialogOpen}
+          onClose={() => {
+            setIsDomainEditDialogOpen(false);
+            setEditingDomain(null);
+          }}
+          onSave={handleUpdateDomain}
         />
       )}
     </div>

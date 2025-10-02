@@ -1,12 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth/config";
 import { prisma } from "@/lib/db/prisma";
 
 /**
- * GET /api/assessments/trial - Get trial assessment based on platform settings
- * Returns the globally configured trial assessment or a fallback message
+ * GET /api/assessments/trial - Get trial assessment for anonymous users only
+ * Returns the globally configured trial assessment or redirects authenticated users
  */
 export async function GET(request: NextRequest) {
   try {
+    // Check if user is authenticated - trial is only for anonymous users
+    const session = await auth();
+
+    if (session?.user) {
+      return NextResponse.json(
+        {
+          error:
+            "Trial assessment is only available to anonymous users. Please use the regular assessment system.",
+          redirect: "/assessment/new",
+        },
+        { status: 403 }
+      );
+    }
     // Get platform settings to find the global trial assessment
     const platformSettings = await prisma.platformSettings.findFirst({
       include: {
@@ -40,6 +54,14 @@ export async function GET(request: NextRequest) {
     }
 
     const trialAssessment = platformSettings.globalTrialAssessment;
+
+    // CRITICAL: Check if the trial assessment is actually active
+    if (!trialAssessment.isActive) {
+      return NextResponse.json(
+        { error: "Trial assessment is currently inactive" },
+        { status: 403 }
+      );
+    }
 
     // Flatten the questions from all domains into a single array
     const questions = trialAssessment.domains.flatMap(

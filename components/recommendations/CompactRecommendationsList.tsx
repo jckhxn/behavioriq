@@ -70,8 +70,9 @@ export function CompactRecommendationsList() {
 
   if (loading) {
     return (
-      <div className="text-center py-4 text-muted-foreground text-xs">
-        Loading...
+      <div className="text-center py-4">
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto mb-2"></div>
+        <p className="text-xs text-muted-foreground">Loading...</p>
       </div>
     );
   }

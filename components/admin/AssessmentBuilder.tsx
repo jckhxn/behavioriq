@@ -22,11 +22,12 @@ export function AssessmentBuilder() {
       {/* Header */}
       <div>
         <h2 className="text-3xl font-bold tracking-tight">
-          Assessment Builder
+          Assessment Management
         </h2>
         <p className="text-muted-foreground">
-          Create and manage assessment templates and domain libraries for your
-          organization
+          Create and manage all assessment templates and domain libraries for
+          your organization. All assessments are database-driven and fully
+          customizable.
         </p>
       </div>
 

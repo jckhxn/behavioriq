@@ -14,6 +14,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
       defaultTheme="system"
       enableSystem
       disableTransitionOnChange
+      storageKey="theme"
     >
       {children}
     </NextThemesProvider>

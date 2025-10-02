@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
 import { Role } from "@prisma/client";
+import { toast } from "sonner";
 import {
   Card,
   CardContent,
@@ -69,7 +70,7 @@ const SettingsPane: React.FC = () => {
         email: session.user.email || "",
       });
     }
-  }, [session]);
+  }, [session?.user?.name, session?.user?.email]);
 
   const [userSettings, setUserSettings] = useState<UserSettings>({
     compactView: false,
@@ -88,7 +89,23 @@ const SettingsPane: React.FC = () => {
 
   useEffect(() => {
     loadSettings();
+    loadProfileFromDatabase();
   }, []);
+
+  const loadProfileFromDatabase = async () => {
+    try {
+      const response = await fetch("/api/user/profile");
+      if (response.ok) {
+        const data = await response.json();
+        setProfileData({
+          name: data.user.name || "",
+          email: data.user.email || "",
+        });
+      }
+    } catch (error) {
+      console.error("Failed to load profile from database:", error);
+    }
+  };
 
   const loadSettings = async () => {
     try {
@@ -135,6 +152,8 @@ const SettingsPane: React.FC = () => {
 
   const updateProfile = async () => {
     setLoading(true);
+    const loadingToast = toast.loading("Updating profile...");
+
     try {
       const response = await fetch("/api/user/profile", {
         method: "PUT",
@@ -143,6 +162,7 @@ const SettingsPane: React.FC = () => {
         },
         body: JSON.stringify({
           name: profileData.name,
+          email: profileData.email,
         }),
       });
 
@@ -153,19 +173,31 @@ const SettingsPane: React.FC = () => {
 
       const data = await response.json();
 
-      // Update local state first
-      setProfileData((prev) => ({ ...prev, name: data.user.name }));
-
       // Update the session with the new data
       await update({
-        name: data.user.name,
+        ...session,
+        user: {
+          ...session?.user,
+          name: data.user.name,
+          email: data.user.email,
+        },
       });
 
-      alert("Profile updated successfully!");
+      // Reload profile from database to ensure UI is in sync
+      await loadProfileFromDatabase();
+
+      toast.success("Profile updated successfully!", {
+        id: loadingToast,
+        duration: 3000,
+      });
     } catch (error) {
       console.error("Failed to update profile:", error);
-      alert(
-        `Failed to update profile: ${error instanceof Error ? error.message : "Unknown error"}`
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update profile",
+        {
+          id: loadingToast,
+          duration: 4000,
+        }
       );
     } finally {
       setLoading(false);
@@ -255,6 +287,24 @@ const SettingsPane: React.FC = () => {
                     }))
                   }
                   placeholder="Your display name"
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="email" className="text-xs">
+                  Email Address
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={profileData.email}
+                  onChange={(e) =>
+                    setProfileData((prev) => ({
+                      ...prev,
+                      email: e.target.value,
+                    }))
+                  }
+                  placeholder="your.email@example.com"
                   className="h-8 text-xs"
                 />
               </div>

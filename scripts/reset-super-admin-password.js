@@ -10,7 +10,7 @@ const prisma = new PrismaClient();
 
 async function resetSuperAdminPassword() {
   const SUPER_ADMIN_EMAIL = "tjhixon@gmail.com";
-  const NEW_PASSWORD = "Apple11258a!";
+  const NEW_PASSWORD = "Apple112358a!";
 
   console.log("🔄 Resetting Super Admin password...");
 
@@ -28,7 +28,7 @@ async function resetSuperAdminPassword() {
       const newUser = await prisma.user.create({
         data: {
           email: SUPER_ADMIN_EMAIL,
-          name: "Tyler Hixon",
+          name: "Jack Hixon",
           password: hashedPassword,
           role: "SUPER_ADMIN",
           isActive: true,

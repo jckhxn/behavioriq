@@ -11,7 +11,10 @@ import {
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user?.id || session.user.role !== "ADMIN") {
+    if (
+      !session?.user?.id ||
+      !["ADMIN", "SUPER_ADMIN", "DISTRICT_ADMIN"].includes(session.user.role)
+    ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -45,7 +48,10 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user?.id || session.user.role !== "ADMIN") {
+    if (
+      !session?.user?.id ||
+      !["ADMIN", "SUPER_ADMIN", "DISTRICT_ADMIN"].includes(session.user.role)
+    ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

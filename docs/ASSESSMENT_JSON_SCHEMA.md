@@ -195,7 +195,7 @@ Examples:
 
 ## Example Complete Assessment
 
-See `assessments/antisocial.json` for a complete example that demonstrates all schema features.
+See the Assessment Template Manager in the admin interface to create complete assessments using this schema.
 
 ## Schema Validation
 
@@ -207,11 +207,26 @@ The system automatically validates assessment JSON files on startup. Common vali
 - Invalid order sequences
 - Clinical significance scores higher than total possible scores
 
+## Question Format Requirements
+
+**IMPORTANT**: All questions in the AI Diagnostic system use a **Yes/No format only**.
+
+- Questions should be designed to elicit boolean (true/false) responses
+- UI components present these as "Yes" and "No" buttons
+- Backend systems expect boolean values (true for "Yes", false for "No")
+- Scoring is calculated based on Yes/No responses with configurable weights
+
+This standardized format ensures:
+
+- Consistent user experience across all assessments
+- Simplified scoring algorithms
+- Clear data interpretation
+- Streamlined assessment taking process
+
 ## Future Enhancements
 
 Planned schema additions:
 
-- Question types beyond yes/no (Likert scales, multiple choice)
 - Adaptive scoring based on response patterns
 - Multi-language support with translation keys
 - Question branching based on demographic data
@@ -219,4 +234,4 @@ Planned schema additions:
 
 ---
 
-For implementation details and usage examples, see `ASSESSMENT_GUIDE.md` and the example files in the `assessments/` directory.
+For implementation details and usage examples, see `ASSESSMENT_GUIDE.md` and the Assessment Template Manager in the admin interface.

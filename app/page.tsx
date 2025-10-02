@@ -32,6 +32,7 @@ import { AssessmentsView } from "@/components/assessment/AssessmentsView";
 import { CompactRecommendationsWithModal } from "@/components/recommendations/CompactRecommendationsWithModal";
 import { ThemeToggle } from "@/components/theme-toggle";
 import SettingsPane from "@/components/settings/SettingsPane";
+import { AdminDashboard } from "@/components/admin/AdminDashboard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Home() {
@@ -52,7 +53,10 @@ export default function Home() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4">
           <Brain className="h-12 w-12 animate-pulse mx-auto text-primary" />
-          <p className="text-muted-foreground">Loading...</p>
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
         </div>
       </div>
     );
@@ -95,11 +99,11 @@ export default function Home() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setActiveTab("settings")}
+                    onClick={() => setActiveTab("admin")}
                     className="hover-lift"
                   >
-                    <Settings className="h-4 w-4 mr-2" />
-                    Super Admin
+                    <Brain className="h-4 w-4 mr-2" />
+                    Admin Tools
                   </Button>
                 )}
                 {session.user.role === "ADMIN" && (
@@ -137,7 +141,9 @@ export default function Home() {
               className="h-full flex flex-col"
             >
               <div className="border-b px-6 py-3">
-                <TabsList className="grid w-fit grid-cols-2">
+                <TabsList
+                  className={`grid w-fit ${(session.user.role as string) === "SUPER_ADMIN" ? "grid-cols-3" : "grid-cols-2"}`}
+                >
                   <TabsTrigger
                     value="dashboard"
                     className="flex items-center gap-2"
@@ -145,6 +151,15 @@ export default function Home() {
                     <FileText className="h-4 w-4" />
                     Dashboard
                   </TabsTrigger>
+                  {(session.user.role as string) === "SUPER_ADMIN" && (
+                    <TabsTrigger
+                      value="admin"
+                      className="flex items-center gap-2"
+                    >
+                      <Brain className="h-4 w-4" />
+                      Admin Tools
+                    </TabsTrigger>
+                  )}
                   <TabsTrigger
                     value="settings"
                     className="flex items-center gap-2"
@@ -163,6 +178,15 @@ export default function Home() {
               >
                 <AssessmentsView />
               </TabsContent>
+
+              {(session.user.role as string) === "SUPER_ADMIN" && (
+                <TabsContent
+                  value="admin"
+                  className="flex-1 overflow-auto mt-0 p-6"
+                >
+                  <AdminDashboard />
+                </TabsContent>
+              )}
 
               <TabsContent
                 value="settings"

@@ -307,7 +307,10 @@ export function UserDashboard() {
           </CardHeader>
           <CardContent className="pl-2">
             {loading ? (
-              <div className="text-center py-8">Loading...</div>
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                <p className="text-muted-foreground">Loading...</p>
+              </div>
             ) : assessments.length === 0 ? (
               <div className="text-center py-8 space-y-4">
                 <Brain className="mx-auto h-16 w-16 text-muted-foreground" />

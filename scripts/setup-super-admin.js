@@ -11,7 +11,7 @@ const prisma = new PrismaClient();
 async function setupSuperAdmin() {
   const SUPER_ADMIN_EMAIL = "tjhixon@gmail.com";
   const SUPER_ADMIN_PASSWORD = "Apple11258a!";
-  const SUPER_ADMIN_NAME = "Tyler Hixon";
+  const SUPER_ADMIN_NAME = "Jack Hixon";
 
   console.log("🚀 Setting up Super Admin user...");
 

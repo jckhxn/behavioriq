@@ -379,11 +379,20 @@ After seeding, you can use these test accounts:
 - `POST /api/admin/licenses` - Create new license with specified features
 - `POST /api/admin/licenses/[licenseId]/assign` - Assign license to user
 
-#### Assessment Administration
+#### Assessment Template Administration
 
-- `GET /api/admin/assessments/[id]` - Get detailed assessment information
-- `DELETE /api/admin/assessments/[id]` - Delete assessment and related data
-- `GET /api/admin/assessments/[id]/export` - Export assessment data as JSON/CSV
+- `GET /api/admin/assessment-templates` - Get all assessment templates
+- `POST /api/admin/assessment-templates` - Create new assessment template
+- `PUT /api/admin/assessment-templates` - Update assessment template
+- `DELETE /api/admin/assessment-templates/[id]` - Delete assessment template
+- `GET /api/admin/assessment-templates/[id]/export` - Export template as JSON
+
+#### Domain Template Administration
+
+- `GET /api/admin/domain-templates` - Get all domain templates
+- `POST /api/admin/domain-templates` - Create new domain template
+- `PUT /api/admin/domain-templates` - Update domain template
+- `DELETE /api/admin/domain-templates/[id]` - Delete domain template
 
 #### System Analytics & Monitoring
 
@@ -774,7 +783,7 @@ Comprehensive documentation for creating and managing assessment content:
 npm run validate-assessments
 
 # Validate specific assessment
-npm run validate-assessment assessments/domain.json
+npm run validate-assessment
 ```
 
 ## Project Roadmap & Future Enhancements

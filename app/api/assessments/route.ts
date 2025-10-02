@@ -91,6 +91,8 @@ export async function GET(request: NextRequest) {
         status: true,
         startedAt: true,
         completedAt: true,
+        isConversational: true,
+        hasEnhancedReport: true,
         scores: {
           select: {
             domain: true,

@@ -6,11 +6,23 @@ import { prisma } from "@/lib/db/prisma";
 export async function GET() {
   try {
     const session = await auth();
-    if (!session?.user || session.user.role !== "ADMIN") {
+    if (
+      !session?.user ||
+      !["ADMIN", "SUPER_ADMIN", "DISTRICT_ADMIN"].includes(session.user.role)
+    ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Build where clause based on user role
+    let whereClause = {};
+    if (session.user.role === "DISTRICT_ADMIN") {
+      // District admins can only see domain templates they created
+      whereClause = { createdById: session.user.id };
+    }
+    // SUPER_ADMIN and ADMIN can see all domain templates
+
     const templates = await prisma.domainTemplate.findMany({
+      where: whereClause,
       include: {
         createdBy: {
           select: { name: true, email: true },
@@ -36,7 +48,10 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user || session.user.role !== "ADMIN") {
+    if (
+      !session?.user ||
+      !["ADMIN", "SUPER_ADMIN", "DISTRICT_ADMIN"].includes(session.user.role)
+    ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -93,7 +108,10 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user || session.user.role !== "ADMIN") {
+    if (
+      !session?.user ||
+      !["ADMIN", "SUPER_ADMIN", "DISTRICT_ADMIN"].includes(session.user.role)
+    ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

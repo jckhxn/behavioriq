@@ -64,6 +64,16 @@ export async function POST(request: NextRequest) {
         childName: childName || "",
         isSubscription: isSubscription.toString(),
       },
+      // Apply discount coupon for subscription upgrades from payment success page
+      ...(isSubscription &&
+        plan === "MONTHLY" &&
+        process.env.STRIPE_FIRST_3_MONTHS_50_COUPON && {
+          discounts: [
+            {
+              coupon: process.env.STRIPE_FIRST_3_MONTHS_50_COUPON, // Apply 50% off first 3 months
+            },
+          ],
+        }),
       // For subscriptions, include trial if needed
       ...(isSubscription && {
         subscription_data: {

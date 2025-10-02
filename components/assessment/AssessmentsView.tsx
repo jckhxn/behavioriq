@@ -58,6 +58,7 @@ import Link from "next/link";
 import { AssessmentDomain } from "@prisma/client";
 import { AssessmentDetailSidebar } from "./AssessmentDetailSidebar";
 import { toast } from "sonner";
+import ConversationalTrialModule from "@/components/dashboard/ConversationalTrialModule";
 
 interface Assessment {
   id: string;
@@ -66,6 +67,8 @@ interface Assessment {
   status: "IN_PROGRESS" | "COMPLETED";
   startedAt: string;
   completedAt?: string;
+  isConversational?: boolean;
+  hasEnhancedReport?: boolean;
   scores?: Array<{
     domain: string;
     rawScore: number;
@@ -490,6 +493,32 @@ export function AssessmentsView() {
           </Link>
         </div>
 
+        {/* Conversational Trial Module - Always show for registered users */}
+        {(() => {
+          const conversationalAssessment = assessments.find((a) => a.isConversational);
+          
+          if (conversationalAssessment) {
+            // User has started/completed a conversational trial
+            const hasCompletedTrial = conversationalAssessment.status === "COMPLETED";
+            return (
+              <ConversationalTrialModule
+                hasCompletedTrial={hasCompletedTrial}
+                hasEnhancedReport={conversationalAssessment.hasEnhancedReport || false}
+                assessmentId={conversationalAssessment.id}
+              />
+            );
+          }
+          
+          // No conversational trial yet - show teaser to start one
+          return (
+            <ConversationalTrialModule
+              hasCompletedTrial={false}
+              hasEnhancedReport={false}
+              assessmentId={undefined}
+            />
+          );
+        })()}
+
         {/* Statistics Overview */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="dark:bg-gray-800">
@@ -613,6 +642,11 @@ export function AssessmentsView() {
                         {assessment.shortId && (
                           <Badge variant="outline" className="text-xs">
                             {assessment.shortId}
+                          </Badge>
+                        )}
+                        {assessment.hasEnhancedReport && (
+                          <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white">
+                            ✨ Enhanced
                           </Badge>
                         )}
                         <Badge

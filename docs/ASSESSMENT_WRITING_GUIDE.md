@@ -163,13 +163,11 @@ Termination rules allow assessments to end early when certain conditions are met
 ### Writing Effective Questions
 
 1. **Clarity and Simplicity**
-
    - Use simple, direct language
    - Avoid double-barreled questions
    - One concept per question
 
 2. **Clinical Relevance**
-
    - Base questions on diagnostic criteria
    - Focus on observable behaviors
    - Include timeframe specifications when relevant
@@ -187,12 +185,28 @@ Better: "In the past 6 months, have you often had trouble sitting still when req
 Best: "In the past 6 months, have you often had trouble sitting still during activities where you're expected to remain seated (like meetings, classes, or meals)?"
 ```
 
+### Question Format Requirements
+
+**ALL QUESTIONS MUST USE YES/NO FORMAT**
+
+The AI Diagnostic system requires all questions to be answerable with a simple "Yes" or "No" response:
+
+✅ **Correct**: "Do you often have trouble concentrating during tasks?"
+✅ **Correct**: "Have you experienced difficulty sleeping in the past month?"
+✅ **Correct**: "Do you find it hard to control your temper when frustrated?"
+
+❌ **Incorrect**: "How often do you have trouble concentrating?" (requires multiple choice)
+❌ **Incorrect**: "Rate your sleep quality from 1-10" (requires scale rating)
+❌ **Incorrect**: "What triggers your anger?" (requires open-ended response)
+
 ### Question Types to Avoid
 
 - **Leading questions**: "Don't you think violence is wrong?"
 - **Double negatives**: "Is it not true that you don't avoid conflicts?"
 - **Vague timeframes**: "Do you sometimes feel angry?"
 - **Judgment-laden**: "Are you a violent person?"
+- **Multiple choice formats**: Questions requiring more than Yes/No responses
+- **Scale ratings**: Questions asking for numerical or Likert scale responses
 
 ## Advanced Features
 
@@ -240,7 +254,7 @@ For assessments requiring complex scoring across question groups:
 
 ### Step 1: Create the JSON File
 
-1. Create a new file in the `/assessments/` directory
+1. Use the Assessment Template Manager in the admin interface to create assessments
 2. Follow the naming convention: `domain_name.json`
 3. Use the complete JSON structure with all required fields
 
@@ -253,7 +267,7 @@ If creating a new domain, update:
 
 ### Step 3: Validate Structure
 
-1. Check JSON syntax: `npx jsonlint assessments/your_file.json`
+1. Use the built-in validation in the Assessment Template Manager interface
 2. Verify all required fields are present
 3. Confirm question IDs are unique
 

@@ -106,29 +106,35 @@ model DocumentChunk {
 }
 
 model Assessment {
-  id                   String             @id @default(cuid())
-  userId               String
-  subjectName          String
-  status               AssessmentStatus   @default(IN_PROGRESS)
-  startedAt            DateTime           @default(now())
-  completedAt          DateTime?
-  currentDomain        AssessmentDomain?  // Keep for backward compatibility during migration
-  currentQuestionOrder Int?
-  shortId              String?            @unique
-  assessmentTemplateId String?            // Reference to the template this assessment was created from
-  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  assessmentTemplate   AssessmentTemplate? @relation("AssessmentFromTemplate", fields: [assessmentTemplateId], references: [id])
-  messages             ChatMessage[]
-  responses            QuestionResponse[]
-  recommendations      Recommendation[]
-  scores               Score[]
-  shareableLinks       ShareableLink[]
-  aiReport             AIReport?
+  id                      String             @id @default(cuid())
+  userId                  String
+  subjectName             String
+  status                  AssessmentStatus   @default(IN_PROGRESS)
+  startedAt               DateTime           @default(now())
+  completedAt             DateTime?
+  currentDomain           AssessmentDomain?  // Keep for backward compatibility during migration
+  currentQuestionOrder    Int?
+  shortId                 String?            @unique
+  assessmentTemplateId    String?            // Reference to the template this assessment was created from
+  isConversational        Boolean            @default(false) // Whether this is a conversational trial
+  hasEnhancedReport       Boolean            @default(false) // Whether user purchased enhanced report
+  enhancedReportPurchasedAt DateTime?       // When enhanced report was purchased
+  childResponses          Json?              // Store child's conversational responses
+  enhancedAnalysis        Json?              // Store AI-generated enhanced analysis
+  user                    User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assessmentTemplate      AssessmentTemplate? @relation("AssessmentFromTemplate", fields: [assessmentTemplateId], references: [id])
+  messages                ChatMessage[]
+  responses               QuestionResponse[]
+  recommendations         Recommendation[]
+  scores                  Score[]
+  shareableLinks          ShareableLink[]
+  aiReport                AIReport?
 
   @@index([userId])
   @@index([status])
   @@index([shortId])
   @@index([assessmentTemplateId])
+  @@index([hasEnhancedReport])
   @@map("assessments")
 }
 

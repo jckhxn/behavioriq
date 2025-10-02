@@ -25,7 +25,6 @@ import {
   FileText,
   Save,
 } from "lucide-react";
-import TrialAssessmentCustomizer from "./TrialAssessmentCustomizer";
 
 interface PlatformSettings {
   maintenanceMode: boolean;
@@ -344,9 +343,6 @@ const SuperAdminPanel: React.FC = () => {
           </Button>
         </CardContent>
       </Card>
-
-      {/* Trial Assessment Customizer */}
-      <TrialAssessmentCustomizer />
 
       {/* Data Export */}
       <Card className="border-border bg-card">

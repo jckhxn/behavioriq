@@ -183,16 +183,19 @@ export function SuperAdminPlatformSettings() {
                 Trial Assessment (Free Users)
               </Label>
               <Select
-                value={settings.globalTrialAssessmentId || ""}
+                value={settings.globalTrialAssessmentId || "none"}
                 onValueChange={(value) =>
-                  updateSetting("globalTrialAssessmentId", value || null)
+                  updateSetting(
+                    "globalTrialAssessmentId",
+                    value === "none" ? null : value
+                  )
                 }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select trial assessment..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">
+                  <SelectItem value="none">
                     None (Disable trial assessments)
                   </SelectItem>
                   {availableAssessments.map((assessment) => (
@@ -215,16 +218,19 @@ export function SuperAdminPlatformSettings() {
                 Regular Assessment (Paid Users)
               </Label>
               <Select
-                value={settings.globalRegularAssessmentId || ""}
+                value={settings.globalRegularAssessmentId || "none"}
                 onValueChange={(value) =>
-                  updateSetting("globalRegularAssessmentId", value || null)
+                  updateSetting(
+                    "globalRegularAssessmentId",
+                    value === "none" ? null : value
+                  )
                 }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select regular assessment..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">
+                  <SelectItem value="none">
                     None (Use district-specific assessments)
                   </SelectItem>
                   {availableAssessments.map((assessment) => (

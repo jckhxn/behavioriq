@@ -80,293 +80,231 @@ function PaymentSuccessContent() {
           </div>
         </div>
 
-        {/* Success Card */}
-        <Card className="border-green-200 bg-green-50/50 mb-8">
+        {/* Hero / Confirmation Section */}
+        <Card className="border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20 mb-8">
           <CardHeader className="text-center pb-6">
-            <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-              <CheckCircle className="h-8 w-8 text-green-600" />
+            <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
             </div>
-            <CardTitle className="text-2xl text-green-800 mb-2">
-              Payment Successful!
+            <CardTitle className="text-3xl text-green-800 dark:text-green-200 mb-2">
+              🎉 Payment Successful!
             </CardTitle>
-            <CardDescription className="text-green-700 text-lg">
-              Thank you for your purchase.{" "}
-              {childName ? `${childName}'s` : "The"} full AI assessment report
-              is now being generated with cited recommendations.
+            <CardDescription className="text-green-700 dark:text-green-300 text-lg mb-6">
+              Your account is ready, and your child's full AI assessment report
+              is available instantly.
             </CardDescription>
-          </CardHeader>
-        </Card>
-
-        {/* What's Next */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>What happens next?</CardTitle>
-            <CardDescription>
-              You now have instant access to your assessment dashboard
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              <div className="flex items-start gap-4">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
-                  <span className="text-sm font-medium text-primary">1</span>
-                </div>
-                <div>
-                  <h4 className="font-medium mb-2">
-                    Immediate: Email Confirmation
-                  </h4>
-                  <p className="text-sm text-muted-foreground">
-                    You'll receive a confirmation email with your order details
-                    and account login information.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
-                  <span className="text-sm font-medium text-primary">2</span>
-                </div>
-                <div>
-                  <h4 className="font-medium mb-2">
-                    Within 24 hours: AI Analysis
-                  </h4>
-                  <p className="text-sm text-muted-foreground">
-                    Our AI system will analyze{" "}
-                    {childName ? `${childName}'s` : "the"} assessment responses
-                    and generate personalized recommendations.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
-                  <span className="text-sm font-medium text-primary">3</span>
-                </div>
-                <div>
-                  <h4 className="font-medium mb-2">
-                    Instant Access: Full Assessment Dashboard
-                  </h4>
-                  <p className="text-sm text-muted-foreground">
-                    Your comprehensive assessment dashboard is now available in
-                    your account with detailed analysis and recommendations.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Account Access */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Access Your Account
-            </CardTitle>
-            <CardDescription>
-              You can track your report status and access resources anytime
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Your account has been created and you now have access to:
-              </p>
-              <ul className="space-y-2 text-sm">
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                  <span>Assessment history and results</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                  <span>Resource library (90-day access)</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                  <span>Progress tracking tools</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                  <span>Additional assessment options</span>
-                </li>
-              </ul>
-
-              <div className="pt-4">
-                <Button asChild className="w-full md:w-auto">
-                  <Link href="/login">
-                    Access Your Dashboard
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Support */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Mail className="h-5 w-5" />
-              Need Help?
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Our support team is here to help you every step of the way.
-              </p>
-
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <h4 className="font-medium mb-2">Email Support</h4>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Get help via email within 24 hours
-                  </p>
-                  <a
-                    href="mailto:support@aidiagnostic.com"
-                    className="text-primary hover:underline text-sm"
-                  >
-                    support@aidiagnostic.com
-                  </a>
-                </div>
-
-                <div>
-                  <h4 className="font-medium mb-2">Knowledge Base</h4>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Find answers to common questions
-                  </p>
-                  <Link
-                    href="/help"
-                    className="text-primary hover:underline text-sm"
-                  >
-                    Browse Help Articles
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Special Upgrade Offer - Hormozi Style Upsell */}
-        <Card className="border-2 border-primary bg-gradient-to-br from-primary/5 to-accent/10 mb-8">
-          <CardHeader className="text-center">
-            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-              <Brain className="h-8 w-8 text-primary" />
-            </div>
-            <CardTitle className="text-2xl mb-2">
-              🎉 Congratulations! You've Just Saved Your Family $1,000s
-            </CardTitle>
-            <CardDescription className="text-lg">
-              But wait... I have something even better for you
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              <div className="text-center">
-                <p className="text-lg font-medium mb-4">
-                  Since you just experienced the power of our AI assessment
-                  system...
-                </p>
-                <p className="text-muted-foreground mb-6">
-                  What if I told you there's a way to get UNLIMITED assessments,
-                  track progress over time, and receive ongoing AI insights for
-                  less than the cost of ONE traditional consultation?
-                </p>
-              </div>
-
-              <div className="bg-white/50 dark:bg-black/20 p-6 rounded-lg border">
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div>
-                    <h4 className="font-bold text-lg mb-3 text-red-600">
-                      ❌ Traditional Route (What Most Parents Do)
-                    </h4>
-                    <ul className="space-y-2 text-sm">
-                      <li>• Wait 3-6 months for specialist appointment</li>
-                      <li>• Pay $300-500 per session</li>
-                      <li>• Limited to specific timeframes</li>
-                      <li>• One-time snapshot only</li>
-                      <li>• No progress tracking</li>
-                      <li>• No school-ready documentation</li>
-                    </ul>
-                    <div className="mt-4 p-3 bg-red-50 dark:bg-red-950/20 rounded">
-                      <p className="font-bold text-red-700 dark:text-red-400">
-                        Total Cost: $2,000-5,000+ per year
-                      </p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-bold text-lg mb-3 text-green-600">
-                      ✅ Our Monthly Membership (Smart Parents Choose This)
-                    </h4>
-                    <ul className="space-y-2 text-sm">
-                      <li>• 1 fresh assessment report every month</li>
-                      <li>• Progress tracking graphs over time</li>
-                      <li>• School-ready updates anytime</li>
-                      <li>• Complete parent resource library</li>
-                      <li>• Identify changes before they become problems</li>
-                      <li>• Add conversational AI sessions for $9 each</li>
-                    </ul>
-                    <div className="mt-4 p-3 bg-green-50 dark:bg-green-950/20 rounded">
-                      <p className="font-bold text-green-700 dark:text-green-400">
-                        Your Cost: Just $29/month
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="text-center bg-gradient-to-r from-primary/10 to-accent/10 p-6 rounded-lg">
-                <h4 className="font-bold text-xl mb-2">
-                  Limited Time: 50% OFF Your First 3 Months
-                </h4>
-                <p className="text-lg mb-1">
-                  <span className="line-through text-muted-foreground">
-                    $87.00
-                  </span>
-                  <span className="font-bold text-primary ml-2">
-                    Just $43.50
-                  </span>
-                </p>
-                <p className="text-sm text-muted-foreground mb-4">
-                  That's less than what you'd pay for ONE hour with a
-                  traditional specialist
-                </p>
-
-                <Button
-                  size="lg"
-                  className="text-lg px-8 mb-4"
-                  onClick={handleUpgrade}
-                  disabled={isUpgrading}
-                >
-                  {isUpgrading
-                    ? "Processing..."
-                    : "Yes! Upgrade to Membership for $14.50/month"}
+            <div className="pt-4">
+              <Button
+                asChild
+                className="w-full md:w-auto text-lg px-8"
+                size="lg"
+              >
+                <Link href="/login">
+                  👉 Access Your Report Now
                   <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
+                </Link>
+              </Button>
+            </div>
+          </CardHeader>
+        </Card>
 
-                <div className="text-xs text-muted-foreground space-y-1">
-                  <p>✅ Cancel anytime</p>
-                  <p>✅ 30-day money-back guarantee</p>
-                  <p>✅ Keep all your reports forever</p>
+        {/* What Happens Next (3-Step Section) */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>What Happens Next</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center flex-shrink-0">
+                  <Mail className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <h4 className="font-medium mb-2">Immediate</h4>
+                  <p className="text-muted-foreground">
+                    A confirmation email with your login details is on the way.
+                  </p>
                 </div>
               </div>
 
-              <div className="text-center">
-                <p className="text-sm text-muted-foreground mb-2">
-                  This offer expires in 24 hours and won't be available at this
-                  price again.
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  <Link
-                    href="/dashboard"
-                    className="text-primary hover:underline"
-                  >
-                    No thanks, I'll just use my single report
-                  </Link>
-                </p>
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center flex-shrink-0">
+                  <FileText className="h-6 w-6 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <h4 className="font-medium mb-2">Right Now</h4>
+                  <p className="text-muted-foreground">
+                    Log in to your dashboard to view your full report,
+                    recommendations, and school-ready PDF.
+                  </p>
+                </div>
               </div>
+
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center flex-shrink-0">
+                  <Clock className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                </div>
+                <div>
+                  <h4 className="font-medium mb-2">Ongoing</h4>
+                  <p className="text-muted-foreground">
+                    Use your dashboard to track results, access resources, and
+                    add more assessments anytime.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Upsell Intro Section (Pattern Interrupt) */}
+        <Card className="border-2 border-yellow-200 dark:border-yellow-700 bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-950/30 dark:to-orange-950/30 mb-8">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl mb-4">
+              🎁 Special Upgrade Offer (One-Time Only)
+            </CardTitle>
+            <CardDescription className="text-lg text-gray-700 dark:text-gray-300">
+              You just saved $1,500–$3,000 compared to a traditional evaluation.
+              <br />
+              But what if you could get ongoing clarity instead of a one-time
+              snapshot?
+            </CardDescription>
+          </CardHeader>
+        </Card>
+
+        {/* Comparison Section (Two-Column Layout) */}
+        <Card className="border-2 border-primary bg-gradient-to-br from-primary/5 to-accent/10 mb-8">
+          <CardContent className="p-6">
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="bg-red-50 dark:bg-red-950/20 p-6 rounded-lg border border-red-200 dark:border-red-800">
+                <h4 className="font-bold text-lg mb-4 text-red-600 dark:text-red-400 flex items-center gap-2">
+                  ❌ The Old Way (Traditional)
+                </h4>
+                <ul className="space-y-3 text-sm">
+                  <li className="flex items-start gap-2">
+                    <span className="text-red-500 dark:text-red-400 mt-0.5">
+                      •
+                    </span>
+                    <span>Wait 6–12 months for a specialist</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-red-500 dark:text-red-400 mt-0.5">
+                      •
+                    </span>
+                    <span>Pay $1,500–$3,000 per evaluation</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-red-500 dark:text-red-400 mt-0.5">
+                      •
+                    </span>
+                    <span>Only get a one-time snapshot</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-red-500 dark:text-red-400 mt-0.5">
+                      •
+                    </span>
+                    <span>No ongoing tracking</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-red-500 dark:text-red-400 mt-0.5">
+                      •
+                    </span>
+                    <span>No school-ready updates</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="bg-green-50 dark:bg-green-950/20 p-6 rounded-lg border border-green-200 dark:border-green-800">
+                <h4 className="font-bold text-lg mb-4 text-green-600 dark:text-green-400 flex items-center gap-2">
+                  ✅ The Smart Way (BehaviorIQ™ Membership)
+                </h4>
+                <ul className="space-y-3 text-sm">
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-500 dark:text-green-400 mt-0.5">
+                      •
+                    </span>
+                    <span>1 fresh assessment every month</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-500 dark:text-green-400 mt-0.5">
+                      •
+                    </span>
+                    <span>Progress tracking graphs over time</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-500 dark:text-green-400 mt-0.5">
+                      •
+                    </span>
+                    <span>School-ready PDF updates anytime</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-500 dark:text-green-400 mt-0.5">
+                      •
+                    </span>
+                    <span>Complete parent resource library</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-500 dark:text-green-400 mt-0.5">
+                      •
+                    </span>
+                    <span>Add conversational AI sessions for just $9 each</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-500 dark:text-green-400 mt-0.5">
+                      •
+                    </span>
+                    <span>Cancel anytime</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Offer & Pricing Section (Highlight Box) */}
+        <Card className="border-2 border-primary bg-gradient-to-br from-primary/10 to-accent/20 mb-8">
+          <CardContent className="p-8">
+            <div className="text-center">
+              <h4 className="font-bold text-2xl mb-4 text-primary">
+                🔥 Limited-Time Offer
+              </h4>
+              <p className="text-lg mb-2">
+                <span className="line-through text-muted-foreground">
+                  Normally $29/month
+                </span>
+                <span className="font-bold text-2xl text-primary ml-2">
+                  → First 3 months 50% off
+                </span>
+              </p>
+              <p className="text-xl font-bold mb-4">
+                That's just $14.50/month — less than 1% of the cost of a
+                traditional evaluation.
+              </p>
+
+              <Button
+                size="lg"
+                className="text-lg px-8 mb-6"
+                onClick={handleUpgrade}
+                disabled={isUpgrading}
+              >
+                {isUpgrading ? "Processing..." : "👉 Upgrade My Membership Now"}
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+
+              <div className="text-sm text-muted-foreground space-y-1 mb-4">
+                <p>✅ Cancel anytime</p>
+                <p>✅ 30-day money-back guarantee</p>
+                <p>✅ Keep all reports forever</p>
+              </div>
+
+              {/* Rejection Option (Gray Link at Bottom) */}
+              <p className="text-sm">
+                <Link
+                  href="/dashboard"
+                  className="text-gray-500 dark:text-gray-400 hover:underline hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  No thanks, I'll just keep my single report
+                </Link>
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -392,7 +330,10 @@ function PaymentSuccessWithSuspense() {
         <div className="min-h-screen bg-background flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading...</p>
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Loading...</p>
+            </div>
           </div>
         </div>
       }

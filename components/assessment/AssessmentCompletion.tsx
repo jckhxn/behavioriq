@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import EnhancedReportView from "@/components/reports/EnhancedReportView";
 import {
   ChartContainer,
   ChartTooltip,
@@ -67,6 +68,9 @@ export function AssessmentCompletion({
     []
   );
   const [hasExistingReport, setHasExistingReport] = useState(false);
+  const [isConversational, setIsConversational] = useState(false);
+  const [hasEnhancedReport, setHasEnhancedReport] = useState(false);
+  const [assessmentData, setAssessmentData] = useState<any>(null);
 
   // Use AI SDK for streaming recommendations
   const {
@@ -90,10 +94,25 @@ export function AssessmentCompletion({
   });
 
   useEffect(() => {
+    fetchAssessmentData();
     fetchScores();
     fetchSavedLinks();
     checkExistingRecommendations();
   }, [assessmentId]);
+
+  const fetchAssessmentData = async () => {
+    try {
+      const response = await fetch(`/api/assessments/${assessmentId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setAssessmentData(data);
+        setIsConversational(data.isConversational || false);
+        setHasEnhancedReport(data.hasEnhancedReport || false);
+      }
+    } catch (error) {
+      console.error("Error fetching assessment data:", error);
+    }
+  };
 
   const checkExistingRecommendations = async () => {
     try {
@@ -294,6 +313,50 @@ export function AssessmentCompletion({
           <span>Loading assessment results...</span>
         </CardContent>
       </Card>
+    );
+  }
+
+  // Show enhanced report for conversational assessments with purchased report
+  if (isConversational && hasEnhancedReport && assessmentData?.childResponses) {
+    const childResponses = assessmentData.childResponses;
+    const enhancedAnalysis = assessmentData.enhancedAnalysis || {
+      overallAlignment: "No analysis available yet.",
+      keyDifferences: [],
+      insights: [],
+      recommendations: [],
+      quotes: [],
+    };
+
+    const handleDownloadPdf = async () => {
+      try {
+        const res = await fetch(`/api/assessment/${assessmentId}/download-enhanced-pdf`);
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `enhanced-report-${assessmentId}.pdf`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error("PDF download failed:", err);
+      }
+    };
+
+    return (
+      <div className="w-full max-w-6xl mx-auto">
+        <EnhancedReportView
+          assessment={{
+            id: assessmentId,
+            title: subjectName,
+            completedAt: assessmentData.completedAt,
+            score: 0,
+            enhancedReportPurchasedAt: assessmentData.enhancedReportPurchasedAt,
+          }}
+          childResponses={childResponses}
+          enhancedAnalysis={enhancedAnalysis}
+          onDownloadPdf={handleDownloadPdf}
+        />
+      </div>
     );
   }
 

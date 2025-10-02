@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AssessmentManager } from "./AssessmentManager";
 import { SystemStats } from "./SystemStats";
 import { AssessmentBuilder } from "./AssessmentBuilder";
+import TrialAssessmentCustomizer from "./TrialAssessmentCustomizer";
 import { UserManagement } from "./UserManagement";
 import { SystemSettings } from "./SystemSettings";
-import { Users, BarChart3, Brain, Key, FileText } from "lucide-react";
+import { Users, BarChart3, Key, FileText, Brain } from "lucide-react";
 
 export function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("builder");
@@ -30,11 +30,11 @@ export function AdminDashboard() {
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="builder" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
-            Assessment Builder
+            Assessment Management
           </TabsTrigger>
-          <TabsTrigger value="assessments" className="flex items-center gap-2">
+          <TabsTrigger value="trial" className="flex items-center gap-2">
             <Brain className="h-4 w-4" />
-            Active Assessments
+            Trial Assessment
           </TabsTrigger>
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
@@ -54,8 +54,8 @@ export function AdminDashboard() {
           <AssessmentBuilder />
         </TabsContent>
 
-        <TabsContent value="assessments">
-          <AssessmentManager />
+        <TabsContent value="trial">
+          <TrialAssessmentCustomizer />
         </TabsContent>
 
         <TabsContent value="users">

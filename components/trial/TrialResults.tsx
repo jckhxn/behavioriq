@@ -2,6 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -30,10 +31,12 @@ interface TrialResults {
   conductConcerns: number;
   emotionalConcerns: number;
   riskLevel: "low" | "moderate" | "high";
+  isConversational?: boolean;
 }
 
 export function TrialResults() {
   const searchParams = useSearchParams();
+  const { data: session, status } = useSession();
   const [results, setResults] = useState<TrialResults | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -41,6 +44,7 @@ export function TrialResults() {
     const responsesStr = searchParams.get("responses");
     const childName = searchParams.get("childName") || "your child";
 
+    // First, try to load from URL params (regular trial assessment)
     if (responsesStr) {
       try {
         const responses = JSON.parse(responsesStr);
@@ -82,6 +86,65 @@ export function TrialResults() {
         });
       } catch (error) {
         console.error("Error parsing results:", error);
+      }
+    } else {
+      // Try to load from localStorage (conversational assessment)
+      try {
+        const storedResults = localStorage.getItem(
+          "conversationalTrialResults"
+        );
+        if (storedResults) {
+          const data = JSON.parse(storedResults);
+
+          // Count positive responses
+          const yesResponses = Object.values(data.responses || {}).filter(
+            (response: any) => response === true
+          ).length;
+
+          // For conversational, we can use the scoresByDomain to calculate concerns
+          const scoresByDomain = data.scoresByDomain || {};
+          const totalQuestions = data.totalQuestions || 7;
+
+          // Estimate concerns by domain (simplified)
+          const attentionConcerns = Math.round(
+            (scoresByDomain.attention?.score || 0) /
+              (scoresByDomain.attention?.total || 1)
+          );
+          const conductConcerns = Math.round(
+            (scoresByDomain.conduct?.score || 0) /
+              (scoresByDomain.conduct?.total || 1)
+          );
+          const emotionalConcerns = Math.round(
+            (scoresByDomain.emotional?.score || 0) /
+              (scoresByDomain.emotional?.total || 1)
+          );
+
+          // Determine risk level
+          let riskLevel: "low" | "moderate" | "high";
+          if (yesResponses <= 2) {
+            riskLevel = "low";
+          } else if (yesResponses <= 4) {
+            riskLevel = "moderate";
+          } else {
+            riskLevel = "high";
+          }
+
+          setResults({
+            childName,
+            totalIndicators: totalQuestions,
+            identifiedIndicators: yesResponses,
+            attentionConcerns,
+            conductConcerns,
+            emotionalConcerns,
+            riskLevel,
+            isConversational: true,
+          });
+
+          // Clear localStorage after loading
+          localStorage.removeItem("conversationalTrialResults");
+        }
+      } catch (error) {
+        console.error("Error loading conversational results:", error);
       }
     }
     setLoading(false);
@@ -303,14 +366,29 @@ export function TrialResults() {
             </div>
 
             <div className="text-center space-y-4">
-              <Button size="lg" asChild className="text-lg px-8">
-                <Link
-                  href={`/register?source=trial&childName=${encodeURIComponent(results.childName)}&redirect=checkout`}
-                >
-                  Get Your Full AI Report - $97
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Link>
-              </Button>
+              {status === "loading" ? (
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : session?.user ? (
+                // Registered user - go directly to checkout
+                <Button size="lg" asChild className="text-lg px-8">
+                  <Link href="/checkout-direct">
+                    Get Your Full AI Report - $97
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Link>
+                </Button>
+              ) : (
+                // Not logged in - go to registration first
+                <Button size="lg" asChild className="text-lg px-8">
+                  <Link
+                    href={`/register?source=trial&childName=${encodeURIComponent(results.childName)}&redirect=checkout`}
+                  >
+                    Get Your Full AI Report - $97
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Link>
+                </Button>
+              )}
 
               <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1">
@@ -333,7 +411,15 @@ export function TrialResults() {
           </div>
           <div className="space-x-4">
             <Button variant="outline" asChild>
-              <Link href="/trial-assessment">Retake Assessment</Link>
+              <Link
+                href={
+                  results.isConversational
+                    ? "/conversational-trial"
+                    : "/trial-assessment"
+                }
+              >
+                Retake Assessment
+              </Link>
             </Button>
             <Button variant="outline" asChild>
               <Link href="/">Learn More</Link>

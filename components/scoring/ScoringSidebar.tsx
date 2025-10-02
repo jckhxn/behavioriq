@@ -159,8 +159,8 @@ export function ScoringSidebar({
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center h-32">
-            <Clock className="h-6 w-6 animate-spin" />
-            <span className="ml-2">Loading...</span>
+            <Clock className="h-6 w-6 animate-spin text-primary" />
+            <span className="ml-2 text-muted-foreground">Loading...</span>
           </div>
         </CardContent>
       </Card>

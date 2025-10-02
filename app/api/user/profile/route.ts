@@ -10,16 +10,54 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name } = body;
+    const { name, email } = body;
 
     if (!name?.trim()) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
+    // Prepare update data
+    const updateData: { name: string; email?: string } = {
+      name: name.trim(),
+    };
+
+    // If email is provided, validate and update
+    if (email && email.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email.trim())) {
+        return NextResponse.json(
+          { error: "Invalid email format" },
+          { status: 400 }
+        );
+      }
+
+      // Get current user from database to check current email
+      const currentUser = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { email: true },
+      });
+
+      // Only check for duplicates if email is actually changing
+      if (currentUser && email.trim() !== currentUser.email) {
+        const existingUser = await prisma.user.findUnique({
+          where: { email: email.trim() },
+        });
+
+        if (existingUser && existingUser.id !== session.user.id) {
+          return NextResponse.json(
+            { error: "Email already in use" },
+            { status: 409 }
+          );
+        }
+
+        updateData.email = email.trim();
+      }
+    }
+
     // Update user in database
     const updatedUser = await prisma.user.update({
       where: { id: session.user.id },
-      data: { name: name.trim() },
+      data: updateData,
       select: {
         id: true,
         name: true,

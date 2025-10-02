@@ -2,15 +2,29 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
 import { prisma } from "@/lib/db/prisma";
 
-// GET /api/admin/assessment-templates - Get all assessment templates
+// GET /api/admin/assessment-templates - Get assessment templates based on user role
 export async function GET() {
   try {
     const session = await auth();
-    if (!session?.user || session.user.role !== "ADMIN") {
+    if (
+      !session?.user ||
+      !["ADMIN", "SUPER_ADMIN", "DISTRICT_ADMIN"].includes(session.user.role)
+    ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    let whereClause = {};
+
+    // District Admins can only see templates they created for their sub-accounts
+    if (session.user.role === "DISTRICT_ADMIN") {
+      whereClause = {
+        createdById: session.user.id,
+      };
+    }
+    // Super Admins and regular Admins can see all templates
+
     const templates = await prisma.assessmentTemplate.findMany({
+      where: whereClause,
       include: {
         domains: {
           include: {
@@ -42,7 +56,10 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user || session.user.role !== "ADMIN") {
+    if (
+      !session?.user ||
+      !["ADMIN", "SUPER_ADMIN", "DISTRICT_ADMIN"].includes(session.user.role)
+    ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -70,10 +87,27 @@ export async function POST(request: NextRequest) {
 
     const willBeActive = isActive !== undefined ? isActive : true;
 
-    // If creating as active, deactivate all other assessments
+    // If creating as active, deactivate all other assessments (EXCEPT the trial assessment)
     if (willBeActive) {
+      // Get platform settings to identify the trial assessment
+      const platformSettings = await (prisma as any).platformSettings.findFirst(
+        {
+          select: { globalTrialAssessmentId: true },
+        }
+      );
+
+      const whereClause: any = { isActive: true };
+
+      // Exclude the trial assessment from deactivation
+      if (platformSettings?.globalTrialAssessmentId) {
+        whereClause.id = { not: platformSettings.globalTrialAssessmentId };
+        console.log(
+          `[ASSESSMENT-TEMPLATES] Preserving trial assessment (${platformSettings.globalTrialAssessmentId}) while deactivating other regular assessments`
+        );
+      }
+
       await prisma.assessmentTemplate.updateMany({
-        where: { isActive: true },
+        where: whereClause,
         data: { isActive: false },
       });
     }
@@ -119,7 +153,10 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user || session.user.role !== "ADMIN") {
+    if (
+      !session?.user ||
+      !["ADMIN", "SUPER_ADMIN", "DISTRICT_ADMIN"].includes(session.user.role)
+    ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -131,6 +168,7 @@ export async function PUT(request: NextRequest) {
       instructions,
       isActive,
       domainIds,
+      domains,
       changeDescription,
     } = await request.json();
 
@@ -154,20 +192,39 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Create version snapshot before updating
-    await createVersionSnapshot(
-      currentTemplate,
-      session.user.id,
-      changeDescription
-    );
+    // TODO: Fix version snapshot system - temporarily disabled
+    // await createVersionSnapshot(
+    //   currentTemplate,
+    //   session.user.id,
+    //   changeDescription
+    // );
 
-    // If setting this assessment to active, deactivate all other assessments
+    // If setting this assessment to active, deactivate all other assessments (EXCEPT the trial assessment)
     if (isActive && !currentTemplate.isActive) {
+      // Get platform settings to identify the trial assessment
+      const platformSettings = await (prisma as any).platformSettings.findFirst(
+        {
+          select: { globalTrialAssessmentId: true },
+        }
+      );
+
+      const whereClause: any = {
+        id: { not: id },
+        isActive: true,
+      };
+
+      // Exclude the trial assessment from deactivation
+      if (platformSettings?.globalTrialAssessmentId) {
+        whereClause.id = {
+          notIn: [id, platformSettings.globalTrialAssessmentId],
+        };
+        console.log(
+          `[ASSESSMENT-TEMPLATES] Preserving trial assessment (${platformSettings.globalTrialAssessmentId}) while deactivating other regular assessments`
+        );
+      }
+
       await prisma.assessmentTemplate.updateMany({
-        where: {
-          id: { not: id },
-          isActive: true,
-        },
+        where: whereClause,
         data: { isActive: false },
       });
     }
@@ -178,17 +235,22 @@ export async function PUT(request: NextRequest) {
       description,
       instructions,
       isActive,
-      version: currentTemplate.version + 1, // Increment version
+      // version: currentTemplate.version + 1, // Version increment disabled with snapshot system
     };
 
-    // If domainIds are provided, update the domain relationships
-    if (domainIds) {
+    // If domains or domainIds are provided, update the domain relationships
+    if (domains || domainIds) {
       updateData.domains = {
         deleteMany: {}, // Remove all existing domain relationships
-        create: domainIds.map((domainId: string, index: number) => ({
-          domainTemplateId: domainId,
-          order: index,
-        })),
+        create: domains
+          ? domains.map((domain: any) => ({
+              domainTemplateId: domain.domainTemplateId,
+              order: domain.order,
+            }))
+          : domainIds.map((domainId: string, index: number) => ({
+              domainTemplateId: domainId,
+              order: index + 1, // Use 1-based ordering
+            })),
       };
     }
 
@@ -223,27 +285,40 @@ async function createVersionSnapshot(
   userId: string,
   changeDescription?: string
 ) {
-  // Create domain snapshot
-  const domainSnapshot = {
-    domains: template.domains.map((domain: any) => ({
-      domainTemplateId: domain.domainTemplateId,
-      order: domain.order,
-      isRequired: domain.isRequired,
-    })),
-  };
-
-  await prisma.assessmentTemplateVersion.create({
-    data: {
-      assessmentTemplateId: template.id,
-      version: template.version,
-      name: template.name,
-      slug: template.slug,
-      description: template.description,
-      instructions: template.instructions,
-      isActive: template.isActive,
-      domainSnapshot,
-      changeDescription,
-      createdById: userId,
+  // Check if version snapshot already exists
+  const existingVersion = await prisma.assessmentTemplateVersion.findUnique({
+    where: {
+      assessmentTemplateId_version: {
+        assessmentTemplateId: template.id,
+        version: template.version,
+      },
     },
   });
+
+  // Only create snapshot if it doesn't exist
+  if (!existingVersion) {
+    // Create domain snapshot
+    const domainSnapshot = {
+      domains: template.domains.map((domain: any) => ({
+        domainTemplateId: domain.domainTemplateId,
+        order: domain.order,
+        isRequired: domain.isRequired,
+      })),
+    };
+
+    await prisma.assessmentTemplateVersion.create({
+      data: {
+        assessmentTemplateId: template.id,
+        version: template.version,
+        name: template.name,
+        slug: template.slug,
+        description: template.description,
+        instructions: template.instructions,
+        isActive: template.isActive,
+        domainSnapshot,
+        changeDescription,
+        createdById: userId,
+      },
+    });
+  }
 }

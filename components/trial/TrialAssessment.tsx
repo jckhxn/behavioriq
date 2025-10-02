@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -43,6 +44,7 @@ interface TrialAssessmentData {
 }
 
 export function TrialAssessment() {
+  const { data: session, status } = useSession();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [responses, setResponses] = useState<Record<string, number>>({});
   const [childName, setChildName] = useState("");
@@ -52,9 +54,17 @@ export function TrialAssessment() {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
+  // Redirect authenticated users to regular assessment
   useEffect(() => {
-    fetchTrialAssessment();
-  }, []);
+    if (status === "authenticated" && session?.user) {
+      router.push("/assessment/new");
+      return;
+    }
+
+    if (status !== "loading") {
+      fetchTrialAssessment();
+    }
+  }, [status, session, router]);
 
   const fetchTrialAssessment = async () => {
     try {
@@ -74,14 +84,17 @@ export function TrialAssessment() {
     }
   };
 
-  if (loading) {
+  // Show loading while checking authentication or loading trial data
+  if (status === "loading" || loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="w-full max-w-2xl mx-4">
           <CardContent className="p-8 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
             <p className="text-lg text-muted-foreground">
-              Loading trial assessment...
+              {status === "loading"
+                ? "Checking access..."
+                : "Loading trial assessment..."}
             </p>
           </CardContent>
         </Card>
@@ -89,12 +102,17 @@ export function TrialAssessment() {
     );
   }
 
+  // Don't render anything if user is authenticated (will redirect)
+  if (session?.user) {
+    return null;
+  }
+
   if (error || !trialData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="w-full max-w-2xl mx-4">
           <CardContent className="p-8 text-center">
-            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
             <h2 className="text-xl font-semibold mb-2">
               Assessment Unavailable
             </h2>
@@ -294,7 +312,7 @@ export function TrialAssessment() {
                 size="lg"
                 variant="outline"
                 onClick={() => handleResponse(false)}
-                className="h-16 text-lg hover:bg-green-50 hover:border-green-200"
+                className="h-16 text-lg hover:bg-green-50 hover:border-green-200 dark:hover:bg-green-900/20 dark:hover:border-green-800"
               >
                 No
               </Button>
