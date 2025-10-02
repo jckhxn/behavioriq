@@ -1,6 +1,12 @@
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -58,19 +64,22 @@ export default function EnhancedReportView({
   onDownloadPdf,
 }: EnhancedReportViewProps) {
   // Extract responses array from the JSON structure
-  const responses: Response[] = Array.isArray(childResponses) 
-    ? childResponses 
-    : (childResponses?.responses || []);
+  const responses: Response[] = Array.isArray(childResponses)
+    ? childResponses
+    : childResponses?.responses || [];
 
   // Group responses by category if possible
-  const groupedResponses = responses.reduce((acc: Record<string, Response[]>, response: Response) => {
-    const category = response.question?.split(":")[0] || "General";
-    if (!acc[category]) {
-      acc[category] = [];
-    }
-    acc[category].push(response);
-    return acc;
-  }, {} as Record<string, Response[]>);
+  const groupedResponses = responses.reduce(
+    (acc: Record<string, Response[]>, response: Response) => {
+      const category = response.question?.split(":")[0] || "General";
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push(response);
+      return acc;
+    },
+    {} as Record<string, Response[]>
+  );
 
   return (
     <div className="space-y-6">
@@ -84,7 +93,9 @@ export default function EnhancedReportView({
           {assessment.enhancedReportPurchasedAt && (
             <p className="text-sm text-muted-foreground mt-1">
               Unlocked on{" "}
-              {new Date(assessment.enhancedReportPurchasedAt).toLocaleDateString()}
+              {new Date(
+                assessment.enhancedReportPurchasedAt
+              ).toLocaleDateString()}
             </p>
           )}
         </div>
@@ -145,7 +156,10 @@ export default function EnhancedReportView({
                       {/* Parent Response */}
                       <div className="border rounded-lg p-4 bg-blue-50/50 dark:bg-blue-950/20">
                         <div className="flex items-center gap-2 mb-2">
-                          <Badge variant="outline" className="bg-blue-100 dark:bg-blue-900">
+                          <Badge
+                            variant="outline"
+                            className="bg-blue-100 dark:bg-blue-900"
+                          >
                             Parent
                           </Badge>
                         </div>
@@ -155,7 +169,10 @@ export default function EnhancedReportView({
                       {/* Child Response */}
                       <div className="border rounded-lg p-4 bg-green-50/50 dark:bg-green-950/20">
                         <div className="flex items-center gap-2 mb-2">
-                          <Badge variant="outline" className="bg-green-100 dark:bg-green-900">
+                          <Badge
+                            variant="outline"
+                            className="bg-green-100 dark:bg-green-900"
+                          >
                             Child
                           </Badge>
                         </div>
@@ -231,7 +248,9 @@ export default function EnhancedReportView({
               <ul className="space-y-3">
                 {enhancedAnalysis.recommendations.map((rec, idx) => (
                   <li key={idx} className="flex gap-3">
-                    <span className="text-primary font-bold mt-1">{idx + 1}.</span>
+                    <span className="text-primary font-bold mt-1">
+                      {idx + 1}.
+                    </span>
                     <div className="prose prose-sm dark:prose-invert">
                       <ReactMarkdown>{rec}</ReactMarkdown>
                     </div>
@@ -251,7 +270,11 @@ export default function EnhancedReportView({
                   "{quote.text}"
                 </blockquote>
                 <div className="flex items-center justify-between text-sm">
-                  <Badge variant={quote.speaker === "parent" ? "outline" : "secondary"}>
+                  <Badge
+                    variant={
+                      quote.speaker === "parent" ? "outline" : "secondary"
+                    }
+                  >
                     {quote.speaker === "parent" ? "Parent" : "Child"}
                   </Badge>
                   <span className="text-muted-foreground">{quote.context}</span>

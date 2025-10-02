@@ -1,10 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, MessageCircle, CheckCircle, Download, Eye } from "lucide-react";
+import {
+  Sparkles,
+  MessageCircle,
+  CheckCircle,
+  Download,
+  Eye,
+} from "lucide-react";
 import Link from "next/link";
 import ConversationalChatWidget from "./ConversationalChatWidget";
 
@@ -22,9 +34,9 @@ export default function ConversationalTrialModule({
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [showSuccessBanner, setShowSuccessBanner] = useState(() => {
     // Check if we should show the success banner (just after purchase)
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const urlParams = new URLSearchParams(window.location.search);
-      return urlParams.get('enhanced_unlocked') === 'true';
+      return urlParams.get("enhanced_unlocked") === "true";
     }
     return false;
   });
@@ -45,7 +57,8 @@ export default function ConversationalTrialModule({
                       🎉 Enhanced Report Unlocked!
                     </h3>
                     <p className="text-sm text-green-800 dark:text-green-200 mt-1">
-                      Your child's voice has been added to the assessment. View the enhanced report below.
+                      Your child's voice has been added to the assessment. View
+                      the enhanced report below.
                     </p>
                   </div>
                 </div>
@@ -56,8 +69,8 @@ export default function ConversationalTrialModule({
                     setShowSuccessBanner(false);
                     // Remove the query parameter
                     const url = new URL(window.location.href);
-                    url.searchParams.delete('enhanced_unlocked');
-                    window.history.replaceState({}, '', url.toString());
+                    url.searchParams.delete("enhanced_unlocked");
+                    window.history.replaceState({}, "", url.toString());
                   }}
                   className="text-green-700 hover:text-green-900 dark:text-green-300"
                 >
@@ -73,8 +86,13 @@ export default function ConversationalTrialModule({
           <CardHeader>
             <div className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
-              <CardTitle className="text-lg">Enhanced Conversational Report</CardTitle>
-              <Badge variant="secondary" className="bg-green-500/10 text-green-700 dark:text-green-400">
+              <CardTitle className="text-lg">
+                Enhanced Conversational Report
+              </CardTitle>
+              <Badge
+                variant="secondary"
+                className="bg-green-500/10 text-green-700 dark:text-green-400"
+              >
                 ✓ Active
               </Badge>
             </div>
@@ -110,18 +128,23 @@ export default function ConversationalTrialModule({
           <CardHeader>
             <div className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
-              <CardTitle className="text-lg">Preview of Your Child's Responses</CardTitle>
+              <CardTitle className="text-lg">
+                Preview of Your Child's Responses
+              </CardTitle>
               <Badge variant="secondary">Trial Complete</Badge>
             </div>
             <CardDescription className="text-sm">
               Here's a sample of how your child answered the 15 trial questions.
-              Want to unlock the full Conversational Report Add-On with AI insights, direct quotes, and a school-ready PDF?
+              Want to unlock the full Conversational Report Add-On with AI
+              insights, direct quotes, and a school-ready PDF?
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* What's Inside Box */}
             <div className="rounded-lg border p-4 bg-muted/50">
-              <p className="text-sm font-medium mb-3">What's Inside the $9 Upgrade:</p>
+              <p className="text-sm font-medium mb-3">
+                What's Inside the $9 Upgrade:
+              </p>
               <ul className="text-sm space-y-2 text-muted-foreground">
                 <li className="flex items-start gap-2">
                   <CheckCircle className="h-4 w-4 mt-0.5 text-primary shrink-0" />
@@ -176,19 +199,23 @@ export default function ConversationalTrialModule({
         <CardHeader>
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            <CardTitle className="text-lg">✨ Try Conversational Mode</CardTitle>
+            <CardTitle className="text-lg">
+              ✨ Try Conversational Mode
+            </CardTitle>
           </div>
           <CardDescription className="text-sm">
-            Children often reveal things in conversation that don't show up in parent-only questionnaires.
-            Let your child answer the full 15-question trial in a friendly, child-safe AI chat.
+            Children often reveal things in conversation that don't show up in
+            parent-only questionnaires. Let your child answer the full
+            15-question trial in a friendly, child-safe AI chat.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-4">
-            See their perspective — <span className="font-semibold text-foreground">free</span>.
+            See their perspective —{" "}
+            <span className="font-semibold text-foreground">free</span>.
           </p>
-          <Button 
-            className="w-full" 
+          <Button
+            className="w-full"
             size="lg"
             onClick={() => setIsChatOpen(true)}
           >

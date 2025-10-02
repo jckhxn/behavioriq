@@ -22,7 +22,9 @@ export default function ClientEnhancedReportWrapper({
 }: ClientEnhancedReportWrapperProps) {
   const handleDownloadPdf = async () => {
     try {
-      const res = await fetch(`/api/assessment/${assessment.id}/download-enhanced-pdf`);
+      const res = await fetch(
+        `/api/assessment/${assessment.id}/download-enhanced-pdf`
+      );
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");

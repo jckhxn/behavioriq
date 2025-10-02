@@ -30,14 +30,14 @@ export async function POST(
       );
     }
 
-        // Verify assessment exists and belongs to user
-    const assessment = await prisma.assessment.findFirst({
+    // Verify assessment exists and belongs to user
+    const assessment = (await prisma.assessment.findFirst({
       where: {
         id: assessmentId,
         userId: session.user.id,
         isConversational: true,
       },
-    }) as any; // TypeScript cache workaround
+    })) as any; // TypeScript cache workaround
 
     if (!assessment) {
       return NextResponse.json(
@@ -63,8 +63,7 @@ export async function POST(
             currency: "usd",
             product_data: {
               name: "Enhanced Conversational Report",
-              description:
-                "Child's voice + AI analysis + School-ready PDF",
+              description: "Child's voice + AI analysis + School-ready PDF",
               images: [],
             },
             unit_amount: 900, // $9.00

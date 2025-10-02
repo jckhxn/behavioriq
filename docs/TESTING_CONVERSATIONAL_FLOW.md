@@ -100,6 +100,7 @@ WHERE "id" = 'YOUR_ASSESSMENT_ID';
 ## Verification Checklist
 
 ### Before Purchase:
+
 - [ ] Dashboard shows "Try Conversational Mode" widget
 - [ ] Clicking "Start Free Trial" opens chat dialog
 - [ ] "Create Real Mock" button creates assessment in database
@@ -107,12 +108,14 @@ WHERE "id" = 'YOUR_ASSESSMENT_ID';
 - [ ] "Unlock Enhanced Report" button links to correct checkout URL
 
 ### During Purchase:
+
 - [ ] Checkout page loads with assessment ID in URL
 - [ ] Stripe checkout session created successfully
 - [ ] Payment completes with test card
 - [ ] Redirects to success URL
 
 ### After Purchase:
+
 - [ ] Webhook receives `checkout.session.completed` event
 - [ ] Webhook updates `hasEnhancedReport: true`
 - [ ] Webhook creates payment record for $9
@@ -121,6 +124,7 @@ WHERE "id" = 'YOUR_ASSESSMENT_ID';
 - [ ] "View Enhanced Report" button appears
 
 ### Enhanced Report View:
+
 - [ ] Report page loads with assessment data
 - [ ] All 4 tabs render correctly
 - [ ] Comparison tab shows side-by-side responses
@@ -134,8 +138,9 @@ WHERE "id" = 'YOUR_ASSESSMENT_ID';
 ## Database Queries for Testing
 
 ### Check Assessment Status:
+
 ```sql
-SELECT 
+SELECT
   id,
   "subjectName",
   status,
@@ -150,8 +155,9 @@ LIMIT 5;
 ```
 
 ### Check Payment Record:
+
 ```sql
-SELECT 
+SELECT
   id,
   "userId",
   amount,
@@ -165,6 +171,7 @@ ORDER BY "createdAt" DESC;
 ```
 
 ### Manually Mark Assessment as Purchased (Testing Only):
+
 ```sql
 UPDATE "Assessment"
 SET "hasEnhancedReport" = true,
@@ -177,18 +184,22 @@ WHERE "id" = 'YOUR_ASSESSMENT_ID';
 ## Troubleshooting
 
 ### Error: "Assessment not found or not eligible"
+
 **Cause:** Assessment doesn't exist, isn't conversational, or doesn't belong to user
 
 **Fix:**
+
 1. Verify assessment exists in database
 2. Check `isConversational = true`
 3. Check `userId` matches logged-in user
 4. Check assessment not already purchased (`hasEnhancedReport = false`)
 
 ### Error: "Already purchased"
+
 **Cause:** `hasEnhancedReport` is already `true`
 
 **Fix:**
+
 ```sql
 UPDATE "Assessment"
 SET "hasEnhancedReport" = false,
@@ -197,16 +208,20 @@ WHERE "id" = 'YOUR_ASSESSMENT_ID';
 ```
 
 ### Widget Not Showing
+
 **Cause:** No assessments in database OR all assessments have `isConversational = false`
 
 **Fix:**
+
 1. Create assessment using "Create Real Mock" button
 2. OR manually update existing assessment to `isConversational = true`
 
 ### Webhook Not Processing
+
 **Cause:** Webhook secret mismatch or Stripe not configured
 
 **Fix:**
+
 1. Check `STRIPE_WEBHOOK_SECRET` in `.env.local`
 2. Verify Stripe webhook endpoint configured in dashboard
 3. Check webhook logs in Stripe dashboard
@@ -217,6 +232,7 @@ WHERE "id" = 'YOUR_ASSESSMENT_ID';
 ## Test Page
 
 Visit `http://localhost:3000/test-conversational-flow` for a guided testing interface with:
+
 - Step-by-step instructions
 - One-click assessment creation
 - SQL queries to copy/paste
@@ -227,11 +243,11 @@ Visit `http://localhost:3000/test-conversational-flow` for a guided testing inte
 
 ## Expected Behavior Summary
 
-| State | Dashboard Widget | Actions |
-|-------|------------------|---------|
-| **No conversational assessment** | "✨ Try Conversational Mode" teaser | "Start Free Trial" button |
+| State                              | Dashboard Widget                    | Actions                            |
+| ---------------------------------- | ----------------------------------- | ---------------------------------- |
+| **No conversational assessment**   | "✨ Try Conversational Mode" teaser | "Start Free Trial" button          |
 | **Trial completed, not purchased** | "Preview of Your Child's Responses" | "$9 Unlock" button + benefits list |
-| **Enhanced report purchased** | "Enhanced Report Active ✅" | "View Report" + "Download PDF" |
+| **Enhanced report purchased**      | "Enhanced Report Active ✅"         | "View Report" + "Download PDF"     |
 
 ## Payment Flow
 

@@ -32,21 +32,25 @@ export async function POST(request: NextRequest) {
               questionId: "q1",
               question: "How do you feel about school?",
               parentAnswer: "They seem anxious about going to school",
-              childAnswer: "I don't like it because the work is too hard and I don't have many friends",
+              childAnswer:
+                "I don't like it because the work is too hard and I don't have many friends",
               timestamp: new Date().toISOString(),
             },
             {
               questionId: "q2",
               question: "What makes you feel happy?",
               parentAnswer: "Playing video games and being with family",
-              childAnswer: "When I play Minecraft with my friends online and when we go to the park",
+              childAnswer:
+                "When I play Minecraft with my friends online and when we go to the park",
               timestamp: new Date().toISOString(),
             },
             {
               questionId: "q3",
               question: "How do you handle when things don't go your way?",
-              parentAnswer: "They get very frustrated and sometimes have meltdowns",
-              childAnswer: "I get really mad and sometimes I cry because it's not fair",
+              parentAnswer:
+                "They get very frustrated and sometimes have meltdowns",
+              childAnswer:
+                "I get really mad and sometimes I cry because it's not fair",
               timestamp: new Date().toISOString(),
             },
           ],

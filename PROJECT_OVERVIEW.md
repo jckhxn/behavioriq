@@ -271,7 +271,7 @@ stripe listen --forward-to localhost:3000/api/stripe/webhook
 
 - **Not a Questionnaire**: Natural conversation feels less clinical
 - **Child-Centric**: Puts child's voice first, not just parent observations
-- **Affordable**: $9 vs. $100+ therapy sessions
+- **Affordable**: $79 vs. $1,000+ therapy sessions
 - **Instant**: Results in minutes, not weeks
 - **Privacy-First**: HIPAA-ready, secure data handling
 - **Beautiful UX**: Modern design, not dated medical software

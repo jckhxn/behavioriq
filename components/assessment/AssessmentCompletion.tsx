@@ -329,7 +329,9 @@ export function AssessmentCompletion({
 
     const handleDownloadPdf = async () => {
       try {
-        const res = await fetch(`/api/assessment/${assessmentId}/download-enhanced-pdf`);
+        const res = await fetch(
+          `/api/assessment/${assessmentId}/download-enhanced-pdf`
+        );
         const blob = await res.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");

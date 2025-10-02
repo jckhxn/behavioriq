@@ -4,7 +4,7 @@ import Stripe from "stripe";
 import { prisma } from "@/lib/db/prisma";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-11-20.acacia",
+  apiVersion: "2025-08-27.basil",
 });
 
 export async function POST(request: NextRequest) {
@@ -126,8 +126,10 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 
   // Handle enhanced report purchase
   if (productType === "enhanced_report" && assessmentId) {
-    console.log(`[Webhook] Processing enhanced report purchase for assessment: ${assessmentId}`);
-    
+    console.log(
+      `[Webhook] Processing enhanced report purchase for assessment: ${assessmentId}`
+    );
+
     await prisma.assessment.update({
       where: { id: assessmentId },
       data: {
@@ -154,7 +156,9 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       },
     });
 
-    console.log(`[Webhook] ✅ Enhanced report unlocked for assessment: ${assessmentId}`);
+    console.log(
+      `[Webhook] ✅ Enhanced report unlocked for assessment: ${assessmentId}`
+    );
     return;
   }
 

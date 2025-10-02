@@ -3,11 +3,21 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-export default function EnhancedCheckoutPage({ params }: { params: Promise<{ assessmentId: string }> }) {
+export default function EnhancedCheckoutPage({
+  params,
+}: {
+  params: Promise<{ assessmentId: string }>;
+}) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [assessmentId, setAssessmentId] = useState<string | null>(null);
@@ -21,12 +31,15 @@ export default function EnhancedCheckoutPage({ params }: { params: Promise<{ ass
 
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/stripe/checkout-enhanced/${assessmentId}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      const response = await fetch(
+        `/api/stripe/checkout-enhanced/${assessmentId}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       if (!response.ok) {
         const error = await response.json();

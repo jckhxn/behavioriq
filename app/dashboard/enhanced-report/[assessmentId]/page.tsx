@@ -18,7 +18,7 @@ export default async function EnhancedReportPage({
   }
 
   // Fetch assessment with enhanced report data
-  const assessment = await prisma.assessment.findFirst({
+  const assessment = (await prisma.assessment.findFirst({
     where: {
       id: assessmentId,
       userId: session.user.id,
@@ -33,7 +33,7 @@ export default async function EnhancedReportPage({
       enhancedAnalysis: true,
       isConversational: true,
     },
-  }) as any; // TypeScript cache workaround - these fields exist in DB
+  })) as any; // TypeScript cache workaround - these fields exist in DB
 
   if (!assessment) {
     return (
@@ -52,7 +52,9 @@ export default async function EnhancedReportPage({
   if (!assessment.hasEnhancedReport) {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
-        <h1 className="text-2xl font-bold mb-4">Enhanced Report Not Available</h1>
+        <h1 className="text-2xl font-bold mb-4">
+          Enhanced Report Not Available
+        </h1>
         <p className="text-muted-foreground mb-6">
           This assessment doesn't have an enhanced report yet.
         </p>
@@ -71,8 +73,8 @@ export default async function EnhancedReportPage({
   }
 
   // Parse JSON fields
-  const childResponses = assessment.childResponses as any[] || [];
-  const enhancedAnalysis = assessment.enhancedAnalysis as any || {
+  const childResponses = (assessment.childResponses as any[]) || [];
+  const enhancedAnalysis = (assessment.enhancedAnalysis as any) || {
     overallAlignment: "No analysis available yet.",
     keyDifferences: [],
     insights: [],

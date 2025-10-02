@@ -2,7 +2,13 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 import { CheckCircle, Loader2 } from "lucide-react";
 
@@ -31,13 +37,14 @@ export default function TestConversationalFlowPage() {
       }
 
       const data = await response.json();
-      
+
       // Now mark it as conversational and completed (you'll need to add this endpoint or use database directly)
       // For now, just get the ID
       setAssessmentId(data.id);
-      
-      alert(`Assessment created! ID: ${data.id}\n\nNow you need to:\n1. Mark it as conversational in the database\n2. Add completedAt date\n3. Then you can test the $9 upgrade`);
 
+      alert(
+        `Assessment created! ID: ${data.id}\n\nNow you need to:\n1. Mark it as conversational in the database\n2. Add completedAt date\n3. Then you can test the $9 upgrade`
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -50,7 +57,9 @@ export default function TestConversationalFlowPage() {
       <div className="max-w-4xl mx-auto space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">🐛 Test Conversational Flow</CardTitle>
+            <CardTitle className="text-2xl">
+              🐛 Test Conversational Flow
+            </CardTitle>
             <CardDescription>
               Complete testing guide for the $9 enhanced report upgrade flow
             </CardDescription>
@@ -61,25 +70,45 @@ export default function TestConversationalFlowPage() {
                 Quick Test Instructions:
               </h3>
               <ol className="text-sm space-y-2 text-yellow-800 dark:text-yellow-200">
-                <li><strong>Step 1:</strong> Click the green "Create Real Mock" button on the dashboard widget</li>
-                <li><strong>Step 2:</strong> It will create a conversational assessment in the database</li>
-                <li><strong>Step 3:</strong> The upsell screen will appear with a real assessment ID</li>
-                <li><strong>Step 4:</strong> Click "Unlock Enhanced Report – $9"</li>
-                <li><strong>Step 5:</strong> Complete Stripe checkout (use test card: 4242 4242 4242 4242)</li>
-                <li><strong>Step 6:</strong> Webhook will mark hasEnhancedReport = true</li>
-                <li><strong>Step 7:</strong> Dashboard widget shows "Enhanced Report Active ✅"</li>
+                <li>
+                  <strong>Step 1:</strong> Click the green "Create Real Mock"
+                  button on the dashboard widget
+                </li>
+                <li>
+                  <strong>Step 2:</strong> It will create a conversational
+                  assessment in the database
+                </li>
+                <li>
+                  <strong>Step 3:</strong> The upsell screen will appear with a
+                  real assessment ID
+                </li>
+                <li>
+                  <strong>Step 4:</strong> Click "Unlock Enhanced Report – $9"
+                </li>
+                <li>
+                  <strong>Step 5:</strong> Complete Stripe checkout (use test
+                  card: 4242 4242 4242 4242)
+                </li>
+                <li>
+                  <strong>Step 6:</strong> Webhook will mark hasEnhancedReport =
+                  true
+                </li>
+                <li>
+                  <strong>Step 7:</strong> Dashboard widget shows "Enhanced
+                  Report Active ✅"
+                </li>
               </ol>
             </div>
 
             <div className="space-y-4">
               <h3 className="font-semibold">Manual Test (if needed):</h3>
-              
+
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">
                   1. Create a basic assessment first:
                 </p>
-                <Button 
-                  onClick={createMockAssessment} 
+                <Button
+                  onClick={createMockAssessment}
                   disabled={isCreating}
                   variant="outline"
                 >
@@ -103,13 +132,16 @@ export default function TestConversationalFlowPage() {
                     </span>
                   </div>
                   <p className="text-sm text-green-800 dark:text-green-200 mb-2">
-                    ID: <code className="bg-green-100 dark:bg-green-900 px-2 py-1 rounded">{assessmentId}</code>
+                    ID:{" "}
+                    <code className="bg-green-100 dark:bg-green-900 px-2 py-1 rounded">
+                      {assessmentId}
+                    </code>
                   </p>
                   <p className="text-sm text-green-800 dark:text-green-200">
                     Now run this in your database to make it conversational:
                   </p>
                   <pre className="bg-gray-900 text-green-400 p-3 rounded mt-2 text-xs overflow-x-auto">
-{`UPDATE "Assessment"
+                    {`UPDATE "Assessment"
 SET "isConversational" = true,
     "status" = 'COMPLETED',
     "completedAt" = NOW()
@@ -156,7 +188,9 @@ WHERE "id" = '${assessmentId}';`}
                 </div>
                 <div className="flex items-start gap-2">
                   <span className="text-green-500">✓</span>
-                  <span>Dashboard widget shows "Enhanced Report Active ✅"</span>
+                  <span>
+                    Dashboard widget shows "Enhanced Report Active ✅"
+                  </span>
                 </div>
                 <div className="flex items-start gap-2">
                   <span className="text-green-500">✓</span>
@@ -165,8 +199,8 @@ WHERE "id" = '${assessmentId}';`}
               </div>
             </div>
 
-            <Button 
-              onClick={() => router.push("/")} 
+            <Button
+              onClick={() => router.push("/")}
               variant="outline"
               className="w-full"
             >

@@ -495,20 +495,25 @@ export function AssessmentsView() {
 
         {/* Conversational Trial Module - Always show for registered users */}
         {(() => {
-          const conversationalAssessment = assessments.find((a) => a.isConversational);
-          
+          const conversationalAssessment = assessments.find(
+            (a) => a.isConversational
+          );
+
           if (conversationalAssessment) {
             // User has started/completed a conversational trial
-            const hasCompletedTrial = conversationalAssessment.status === "COMPLETED";
+            const hasCompletedTrial =
+              conversationalAssessment.status === "COMPLETED";
             return (
               <ConversationalTrialModule
                 hasCompletedTrial={hasCompletedTrial}
-                hasEnhancedReport={conversationalAssessment.hasEnhancedReport || false}
+                hasEnhancedReport={
+                  conversationalAssessment.hasEnhancedReport || false
+                }
                 assessmentId={conversationalAssessment.id}
               />
             );
           }
-          
+
           // No conversational trial yet - show teaser to start one
           return (
             <ConversationalTrialModule
