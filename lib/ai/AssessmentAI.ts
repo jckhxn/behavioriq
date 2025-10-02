@@ -483,38 +483,134 @@ Keep the response professional, empathetic, and actionable.`;
   }
 
   private mapDomainToEnum(domainName: string): AssessmentDomain {
-    // Map our custom domain names to existing Prisma enum values
+    // Map domain names (from templates or hardcoded) to Prisma enum values
+    // This is a temporary solution - ideally Score table should store template ID instead of enum
+    const normalizedName = domainName.toUpperCase().replace(/[^A-Z]/g, "");
+
     const domainMapping: Record<string, AssessmentDomain> = {
+      // Hardcoded domain names
       SUICIDALITY: AssessmentDomain.EMOTIONAL,
-      SELF_HARM: AssessmentDomain.VIOLENCE,
+      SELFHARM: AssessmentDomain.VIOLENCE,
       ANTISOCIAL: AssessmentDomain.ANTISOCIAL,
+
+      // Template-based domain names (try to map intelligently)
+      ATTENTION: AssessmentDomain.ATTENTION,
+      VIOLENCE: AssessmentDomain.VIOLENCE,
+      EMOTIONAL: AssessmentDomain.EMOTIONAL,
+      CONDUCT: AssessmentDomain.CONDUCT,
+
+      // Common variations
+      ANXIETY: AssessmentDomain.EMOTIONAL,
+      DEPRESSION: AssessmentDomain.EMOTIONAL,
+      MOOD: AssessmentDomain.EMOTIONAL,
+      ADHD: AssessmentDomain.ATTENTION,
+      FOCUS: AssessmentDomain.ATTENTION,
+      HYPERACTIVITY: AssessmentDomain.ATTENTION,
+      AGGRESSION: AssessmentDomain.VIOLENCE,
+      BEHAVIORAL: AssessmentDomain.CONDUCT,
+      OPPOSITIONAL: AssessmentDomain.CONDUCT,
+      ODD: AssessmentDomain.CONDUCT,
     };
 
-    return domainMapping[domainName] || AssessmentDomain.ANTISOCIAL;
+    // Try exact match first
+    if (domainMapping[normalizedName]) {
+      return domainMapping[normalizedName];
+    }
+
+    // Try partial match
+    for (const [key, value] of Object.entries(domainMapping)) {
+      if (normalizedName.includes(key) || key.includes(normalizedName)) {
+        return value;
+      }
+    }
+
+    // Default fallback - use ANTISOCIAL
+    console.warn(
+      `No mapping found for domain "${domainName}", defaulting to ANTISOCIAL`
+    );
+    return AssessmentDomain.ANTISOCIAL;
   }
 
   private async updateStructuredScores(
     domainScores: DomainScore[]
   ): Promise<void> {
     try {
-      const baseTimestamp = new Date();
-      const scoreUpdates = domainScores.map((domainScore, index) => ({
-        assessmentId: this.assessmentId,
-        domain: this.mapDomainToEnum(domainScore.domain),
-        rawScore: domainScore.score,
-        totalPossible: domainScore.totalPossible,
-        questionsAnswered: domainScore.questionsAnswered,
-        riskLevel: this.scoringCalculator!.mapScoreToRiskLevel(domainScore),
-        confidence: domainScore.isClinicallySignificant ? 0.9 : 0.7,
-        timestamp: new Date(baseTimestamp.getTime() + index), // Add milliseconds to make unique
-      }));
+      // Get assessment to find template
+      const assessment = await prisma.assessment.findUnique({
+        where: { id: this.assessmentId },
+        select: {
+          id: true,
+          assessmentTemplateId: true,
+        },
+      });
 
-      // Delete existing scores for these domains to avoid duplicates
-      const domains = scoreUpdates.map((s) => s.domain);
+      // Build domain name to template ID mapping
+      const domainNameToTemplateId: Record<string, string> = {};
+
+      if (assessment && (assessment as any).assessmentTemplateId) {
+        // Fetch domain templates from assessment template
+        const templateWithDomains = await (
+          prisma as any
+        ).assessmentTemplate.findUnique({
+          where: { id: (assessment as any).assessmentTemplateId },
+          include: {
+            domains: {
+              include: {
+                domainTemplate: {
+                  select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                  },
+                },
+              },
+              orderBy: {
+                order: "asc",
+              },
+            },
+          },
+        });
+
+        if (templateWithDomains?.domains) {
+          templateWithDomains.domains.forEach((domainLink: any) => {
+            const templateName = domainLink.domainTemplate.name;
+            const templateId = domainLink.domainTemplate.id;
+            // Create mapping by both name and normalized name for flexibility
+            domainNameToTemplateId[templateName] = templateId;
+            domainNameToTemplateId[templateName.toUpperCase()] = templateId;
+            domainNameToTemplateId[templateName.toLowerCase()] = templateId;
+          });
+        }
+      }
+
+      const baseTimestamp = new Date();
+      const scoreUpdates = domainScores.map((domainScore, index) => {
+        // Find matching domain template ID
+        const domainTemplateId =
+          domainNameToTemplateId[domainScore.domain] ||
+          domainNameToTemplateId[domainScore.domain.toUpperCase()] ||
+          domainNameToTemplateId[domainScore.domain.toLowerCase()];
+
+        return {
+          assessmentId: this.assessmentId,
+          domainTemplateId: domainTemplateId || null,
+          domainName: domainScore.domain, // Store the domain name directly
+          domain: domainTemplateId
+            ? null
+            : this.mapDomainToEnum(domainScore.domain), // Only use enum as fallback for legacy
+          rawScore: domainScore.score,
+          totalPossible: domainScore.totalPossible,
+          questionsAnswered: domainScore.questionsAnswered,
+          riskLevel: this.scoringCalculator!.mapScoreToRiskLevel(domainScore),
+          confidence: domainScore.isClinicallySignificant ? 0.9 : 0.7,
+          timestamp: new Date(baseTimestamp.getTime() + index), // Add milliseconds to make unique
+        };
+      });
+
+      // Delete existing scores for this assessment
       await prisma.score.deleteMany({
         where: {
           assessmentId: this.assessmentId,
-          domain: { in: domains },
         },
       });
 

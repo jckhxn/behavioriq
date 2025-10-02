@@ -39,6 +39,7 @@ import { DOMAIN_LABELS, RISK_COLORS } from "@/lib/constants/domains";
 interface Score {
   id: string;
   domain: AssessmentDomain;
+  domainName?: string; // Dynamic domain name from template
   rawScore: number;
   totalPossible: number;
   riskLevel: RiskLevel;
@@ -289,7 +290,7 @@ export function AssessmentCompletion({
 
   // Prepare chart data for Recharts
   const chartData = scores.map((score) => ({
-    domain: DOMAIN_LABELS[score.domain],
+    domain: score.domainName || DOMAIN_LABELS[score.domain], // Use dynamic domain name if available
     score: (score.rawScore / score.totalPossible) * 100,
     riskLevel: score.riskLevel,
     rawScore: score.rawScore,
@@ -506,7 +507,7 @@ export function AssessmentCompletion({
               >
                 <div className="flex-1">
                   <h4 className="font-semibold">
-                    {DOMAIN_LABELS[score.domain]}
+                    {score.domainName || DOMAIN_LABELS[score.domain]}
                   </h4>
                   <p className="text-sm text-muted-foreground">
                     Score: {score.rawScore} / {score.totalPossible} (

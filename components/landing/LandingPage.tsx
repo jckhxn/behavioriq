@@ -462,7 +462,7 @@ export function LandingPage() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
             <Card className="hover:shadow-lg transition-shadow">
               <CardHeader>
                 <CardTitle>Free Trial</CardTitle>
@@ -561,6 +561,56 @@ export function LandingPage() {
                 </ul>
                 <Button asChild variant="outline" className="w-full mt-6">
                   <Link href="/register">Start Membership</Link>
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-lg transition-shadow border-green-500">
+              <CardHeader>
+                <Badge className="w-fit mb-2 bg-green-500">Best Value</Badge>
+                <CardTitle>Annual Membership</CardTitle>
+                <CardDescription>
+                  Save $58/year - 2 months free!
+                </CardDescription>
+                <div className="flex items-baseline gap-2">
+                  <div className="text-3xl font-bold">$290</div>
+                  <div className="text-sm text-muted-foreground line-through">
+                    $348
+                  </div>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  /year ($24.17/mo)
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2">
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    Everything in Monthly
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <strong>3 FREE Conversational AI sessions</strong>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    Save $58 per year
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    12 months of tracking
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    Priority support
+                  </li>
+                </ul>
+                <Button
+                  asChild
+                  variant="default"
+                  className="w-full mt-6 bg-green-600 hover:bg-green-700"
+                >
+                  <Link href="/register">Get Annual Plan</Link>
                 </Button>
               </CardContent>
             </Card>

@@ -209,6 +209,7 @@ model DomainTemplate {
   createdBy             User                          @relation("DomainTemplatesCreated", fields: [createdById], references: [id])
   assessmentTemplates   AssessmentTemplateDomain[]    // Many-to-many with assessment templates
   versions              DomainTemplateVersion[]       // Version history
+  scores                Score[]                       // Scores that reference this domain template
 
   @@index([createdById])
   @@index([slug])
@@ -335,20 +336,23 @@ model ChatMessage {
 }
 
 model Score {
-  id                 String           @id @default(cuid())
+  id                 String            @id @default(cuid())
   assessmentId       String
-  domain             AssessmentDomain
+  domain             AssessmentDomain? // Made optional for backward compatibility
+  domainTemplateId   String?           // New: Reference to domain template
+  domainName         String?           // Denormalized domain name for performance
   rawScore           Float
   riskLevel          RiskLevel
   confidence         Float
-  timestamp          DateTime         @default(now())
+  timestamp          DateTime          @default(now())
   questionsAnswered  Int
   totalPossible      Int
-  wasTerminatedEarly Boolean          @default(false)
-  assessment         Assessment       @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  wasTerminatedEarly Boolean           @default(false)
+  assessment         Assessment        @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  domainTemplate     DomainTemplate?   @relation(fields: [domainTemplateId], references: [id], onDelete: SetNull)
 
-  @@unique([assessmentId, domain, timestamp])
   @@index([assessmentId])
+  @@index([domainTemplateId])
   @@map("scores")
 }
 
@@ -635,10 +639,11 @@ enum AssessmentDomain {
 }
 
 enum LicenseType {
-  TRIAL
-  BASIC
-  PROFESSIONAL
-  ENTERPRISE
+  FREE          // Read-only account, can view past assessments
+  TRIAL         // Trial period
+  BASIC         // Single assessment
+  PROFESSIONAL  // Monthly/Annual subscription with conversational AI
+  ENTERPRISE    // District license with conversational AI included
 }
 
 enum LicenseStatus {

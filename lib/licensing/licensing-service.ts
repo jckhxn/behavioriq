@@ -5,9 +5,7 @@
  */
 
 import { prisma } from "@/lib/db/prisma";
-
-// Type definitions
-type LicenseType = "TRIAL" | "BASIC" | "PROFESSIONAL" | "ENTERPRISE";
+import { LicenseType } from "@prisma/client";
 type LicenseStatus = "ACTIVE" | "SUSPENDED" | "EXPIRED" | "CANCELLED";
 
 interface User {
@@ -49,6 +47,8 @@ export interface LicenseFeatures {
   bulkUpload?: boolean;
   customBranding?: boolean;
   prioritySupport?: boolean;
+  conversationalAI?: boolean;
+  conversationalAISessions?: number;
 }
 
 export interface UserWithLicense extends User {
@@ -130,6 +130,21 @@ export class LicensingService {
    */
   static getLicenseFeatures(licenseType: LicenseType): LicenseFeatures {
     switch (licenseType) {
+      case "FREE":
+        return {
+          maxAssessments: 0,
+          maxPDFReports: 0,
+          maxUsers: 1,
+          aiRecommendations: false,
+          advancedReports: false,
+          apiAccess: false,
+          bulkUpload: false,
+          customBranding: false,
+          prioritySupport: false,
+          conversationalAI: false,
+          conversationalAISessions: 0,
+        };
+
       case "TRIAL":
         return {
           maxAssessments: 5,
@@ -141,6 +156,8 @@ export class LicensingService {
           bulkUpload: false,
           customBranding: false,
           prioritySupport: false,
+          conversationalAI: false,
+          conversationalAISessions: 0,
         };
 
       case "BASIC":
@@ -154,6 +171,8 @@ export class LicensingService {
           bulkUpload: false,
           customBranding: false,
           prioritySupport: false,
+          conversationalAI: false,
+          conversationalAISessions: 0,
         };
 
       case "PROFESSIONAL":
@@ -167,6 +186,8 @@ export class LicensingService {
           bulkUpload: true,
           customBranding: true,
           prioritySupport: true,
+          conversationalAI: true,
+          conversationalAISessions: undefined, // Unlimited
         };
 
       case "ENTERPRISE":
@@ -180,6 +201,8 @@ export class LicensingService {
           bulkUpload: true,
           customBranding: true,
           prioritySupport: true,
+          conversationalAI: true,
+          conversationalAISessions: undefined, // Unlimited
         };
 
       default:
@@ -193,6 +216,8 @@ export class LicensingService {
           bulkUpload: false,
           customBranding: false,
           prioritySupport: false,
+          conversationalAI: false,
+          conversationalAISessions: 0,
         };
     }
   }

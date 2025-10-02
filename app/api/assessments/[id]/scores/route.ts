@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
 import { prisma } from "@/lib/db/prisma";
 import { resolveAssessmentId } from "@/lib/utils/assessmentResolver";
+import { DOMAIN_LABELS } from "@/lib/constants/domains";
 
 export async function GET(
   request: NextRequest,
@@ -28,22 +29,44 @@ export async function GET(
       );
     }
 
-    // Get all scores
-    const scores = await prisma.score.findMany({
+    // Get assessment status
+    const assessment = await prisma.assessment.findUnique({
+      where: { id: internalAssessmentId },
+      select: { status: true },
+    });
+
+    // Get all scores with domain template names
+    const rawScores = await (prisma.score as any).findMany({
       where: { assessmentId: internalAssessmentId },
       orderBy: { timestamp: "desc" },
-      select: {
-        id: true,
-        domain: true,
-        rawScore: true,
-        totalPossible: true,
-        questionsAnswered: true,
-        riskLevel: true,
-        confidence: true,
-        wasTerminatedEarly: true,
-        timestamp: true,
+      include: {
+        domainTemplate: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
       },
     });
+
+    // Map scores to response format
+    const scores = rawScores.map((score: any) => ({
+      id: score.id,
+      domain: score.domain,
+      // Use domainName if stored, otherwise use template name, fallback to enum label
+      domainName:
+        score.domainName ||
+        score.domainTemplate?.name ||
+        (score.domain ? (DOMAIN_LABELS as any)[score.domain] : "Unknown"),
+      rawScore: score.rawScore,
+      totalPossible: score.totalPossible,
+      questionsAnswered: score.questionsAnswered,
+      riskLevel: score.riskLevel,
+      confidence: score.confidence,
+      wasTerminatedEarly: score.wasTerminatedEarly,
+      timestamp: score.timestamp,
+    }));
 
     // Get message count
     const messageCount = await prisma.chatMessage.count({
@@ -51,12 +74,6 @@ export async function GET(
         assessmentId: internalAssessmentId,
         role: "USER",
       },
-    });
-
-    // Get assessment status
-    const assessment = await prisma.assessment.findUnique({
-      where: { id: internalAssessmentId },
-      select: { status: true },
     });
 
     return NextResponse.json({

@@ -82,6 +82,7 @@ async function generateSampleAssessment() {
         data: {
           assessmentId: assessment.id,
           domain: domain,
+          domainName: domainDisplayNames[domain], // Store domain name for display
           rawScore: rawScore,
           riskLevel: riskLevel,
           confidence: confidence,

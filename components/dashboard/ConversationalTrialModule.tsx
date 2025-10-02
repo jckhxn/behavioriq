@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -32,6 +32,7 @@ export default function ConversationalTrialModule({
   assessmentId,
 }: ConversationalTrialModuleProps) {
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [hasConversationalAI, setHasConversationalAI] = useState(false);
   const [showSuccessBanner, setShowSuccessBanner] = useState(() => {
     // Check if we should show the success banner (just after purchase)
     if (typeof window !== "undefined") {
@@ -40,6 +41,26 @@ export default function ConversationalTrialModule({
     }
     return false;
   });
+
+  useEffect(() => {
+    // Check if user has conversational AI included in their subscription
+    const checkLicense = async () => {
+      try {
+        const response = await fetch("/api/user/license");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.hasLicense && data.license?.features) {
+            setHasConversationalAI(
+              data.license.features.conversationalAI === true
+            );
+          }
+        }
+      } catch (error) {
+        console.error("Failed to check license:", error);
+      }
+    };
+    checkLicense();
+  }, []);
 
   // Enhanced Report Active State
   if (hasEnhancedReport && assessmentId) {
@@ -142,8 +163,16 @@ export default function ConversationalTrialModule({
           <CardContent className="space-y-4">
             {/* What's Inside Box */}
             <div className="rounded-lg border p-4 bg-muted/50">
-              <p className="text-sm font-medium mb-3">
-                What's Inside the $9 Upgrade:
+              <p className="text-sm font-medium mb-3 flex items-center justify-between">
+                <span>
+                  What's Inside the {hasConversationalAI ? "Included" : "$9"}{" "}
+                  Upgrade:
+                </span>
+                {hasConversationalAI && (
+                  <Badge className="bg-green-500/10 text-green-700 dark:text-green-400">
+                    ✓ Included in Subscription
+                  </Badge>
+                )}
               </p>
               <ul className="text-sm space-y-2 text-muted-foreground">
                 <li className="flex items-start gap-2">
@@ -170,7 +199,9 @@ export default function ConversationalTrialModule({
               <Button asChild size="lg" className="w-full">
                 <Link href={`/checkout-enhanced/${assessmentId}`}>
                   <Sparkles className="mr-2 h-4 w-4" />
-                  Unlock Enhanced Report – $9
+                  {hasConversationalAI
+                    ? "Activate Enhanced Report (Included)"
+                    : "Unlock Enhanced Report – $9"}
                 </Link>
               </Button>
               <Button asChild variant="ghost" size="sm" className="w-full">

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
 import { prisma } from "@/lib/db/prisma";
+import { LicensingService } from "@/lib/licensing/licensing-service";
 import Stripe from "stripe";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -52,6 +53,23 @@ export async function POST(
         { error: "Enhanced report already purchased" },
         { status: 400 }
       );
+    }
+
+    // Check if user has conversational AI included in their subscription
+    const userLicense = await LicensingService.getUserLicense(session.user.id);
+    const hasConversationalAI = userLicense?.features.conversationalAI === true;
+
+    // If user has conversational AI included, activate it for free
+    if (hasConversationalAI) {
+      await prisma.assessment.update({
+        where: { id: assessmentId },
+        data: { hasEnhancedReport: true },
+      });
+
+      return NextResponse.json({
+        message: "Enhanced report activated (included in subscription)",
+        redirectUrl: `${process.env.NEXTAUTH_URL}/dashboard?enhanced_unlocked=true`,
+      });
     }
 
     // Create Stripe checkout session for $9 enhanced report

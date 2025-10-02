@@ -96,6 +96,12 @@ export function AssessmentsView() {
   );
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // License state
+  const [userLicense, setUserLicense] = useState<{
+    type: string;
+    features: string[];
+  } | null>(null);
+
   // Share dialog state
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [assessmentToShare, setAssessmentToShare] = useState<string | null>(
@@ -121,6 +127,7 @@ export function AssessmentsView() {
 
   useEffect(() => {
     fetchAssessments();
+    fetchLicenseInfo();
   }, []);
 
   useEffect(() => {
@@ -154,6 +161,23 @@ export function AssessmentsView() {
       console.error("Failed to fetch assessments:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchLicenseInfo = async () => {
+    try {
+      const response = await fetch("/api/user/license");
+      if (response.ok) {
+        const data = await response.json();
+        if (data.hasLicense && data.license) {
+          setUserLicense({
+            type: data.license.type,
+            features: data.license.features,
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch license info:", error);
     }
   };
 
@@ -485,13 +509,74 @@ export function AssessmentsView() {
               Manage and view your assessment history
             </p>
           </div>
-          <Link href="/assessment/new">
-            <Button className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90">
+          {userLicense?.type === "FREE" ? (
+            <Button
+              disabled
+              className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 opacity-50 cursor-not-allowed"
+            >
               <Plus className="mr-2 h-4 w-4" />
               New Assessment
             </Button>
-          </Link>
+          ) : (
+            <Link href="/assessment/new">
+              <Button className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90">
+                <Plus className="mr-2 h-4 w-4" />
+                New Assessment
+              </Button>
+            </Link>
+          )}
         </div>
+
+        {/* FREE Account Banner */}
+        {userLicense?.type === "FREE" && (
+          <Card className="border-amber-500 bg-amber-50 dark:bg-amber-900/20">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-4">
+                <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/40">
+                  <Lock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-amber-900 dark:text-amber-100">
+                    Free Account - View Only Access
+                  </h3>
+                  <p className="text-sm text-amber-700 dark:text-amber-200 mt-1">
+                    You can view your past assessments, but need to upgrade to
+                    take new assessments.
+                  </p>
+                  <div className="flex gap-3 mt-4">
+                    <Link href="/register?upgrade=single">
+                      <Button
+                        size="sm"
+                        variant="default"
+                        className="bg-amber-600 hover:bg-amber-700"
+                      >
+                        Buy Single Report - $97
+                      </Button>
+                    </Link>
+                    <Link href="/register?upgrade=monthly">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-amber-600 text-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/40"
+                      >
+                        Subscribe - $29/month
+                      </Button>
+                    </Link>
+                    <Link href="/register?upgrade=annual">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-amber-600 text-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/40"
+                      >
+                        Subscribe - $290/year (Save $58!)
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Conversational Trial Module - Always show for registered users */}
         {(() => {
