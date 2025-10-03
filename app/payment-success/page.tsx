@@ -115,7 +115,11 @@ function PaymentSuccessContent() {
       const success = await tryLogin();
 
       // Always turn off loading state, whether success or failure
-      console.log(success ? "Auto-login completed successfully" : "Auto-login failed after all attempts");
+      console.log(
+        success
+          ? "Auto-login completed successfully"
+          : "Auto-login failed after all attempts"
+      );
       setIsLoggingIn(false);
     };
 

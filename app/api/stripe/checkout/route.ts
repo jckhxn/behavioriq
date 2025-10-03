@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { planType, plan, childName, isSubscription = false } = body;
+    const { planType, plan, childName, isSubscription } = body;
 
     if (!planType || !plan) {
       return NextResponse.json(
@@ -19,10 +19,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Determine if this is a subscription based on planType or isSubscription flag
+    const isSubscriptionCheckout = isSubscription !== undefined 
+      ? isSubscription 
+      : planType === "subscription";
+
     let priceId: string | undefined;
     let planDetails: any;
 
-    if (isSubscription) {
+    if (isSubscriptionCheckout) {
       planDetails = SUBSCRIPTION_PLANS[plan as keyof typeof SUBSCRIPTION_PLANS];
       priceId = planDetails?.priceId;
     } else {
@@ -34,7 +39,8 @@ export async function POST(request: NextRequest) {
       console.error("Missing price ID for plan:", {
         plan,
         planDetails,
-        isSubscription,
+        isSubscriptionCheckout,
+        planType,
       });
       return NextResponse.json(
         {
@@ -54,12 +60,12 @@ export async function POST(request: NextRequest) {
           quantity: 1,
         },
       ],
-      mode: isSubscription ? "subscription" : "payment",
+      mode: isSubscriptionCheckout ? "subscription" : "payment",
       // For subscription upgrades, redirect to dashboard; for one-time payments, go to payment-success
-      success_url: isSubscription
+      success_url: isSubscriptionCheckout
         ? `${process.env.NEXTAUTH_URL}/dashboard?upgraded=true`
         : `${process.env.NEXTAUTH_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}${childName ? `&childName=${encodeURIComponent(childName)}` : ""}`,
-      cancel_url: isSubscription
+      cancel_url: isSubscriptionCheckout
         ? `${process.env.NEXTAUTH_URL}/payment-success?upgrade_cancelled=true`
         : `${process.env.NEXTAUTH_URL}/payment?cancelled=true`,
       metadata: {
@@ -67,10 +73,10 @@ export async function POST(request: NextRequest) {
         planType,
         plan,
         childName: childName || "",
-        isSubscription: isSubscription.toString(),
+        isSubscription: isSubscriptionCheckout.toString(),
       },
       // Apply discount coupon for subscription upgrades from payment success page
-      ...(isSubscription &&
+      ...(isSubscriptionCheckout &&
         plan === "MONTHLY" &&
         process.env.STRIPE_FIRST_3_MONTHS_50_COUPON && {
           discounts: [
@@ -80,7 +86,7 @@ export async function POST(request: NextRequest) {
           ],
         }),
       // For subscriptions, include trial if needed
-      ...(isSubscription && {
+      ...(isSubscriptionCheckout && {
         subscription_data: {
           metadata: {
             userId: session.user.id,
@@ -90,7 +96,7 @@ export async function POST(request: NextRequest) {
         },
       }),
       // For one-time payments
-      ...(!isSubscription && {
+      ...(!isSubscriptionCheckout && {
         payment_intent_data: {
           metadata: {
             userId: session.user.id,

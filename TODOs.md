@@ -13,7 +13,6 @@
     - Users get redirected to login page after successful payment
 
 - Drag and Drop components on dashboard?
-
 - Fancy tutorial onboarding for dashboard
 
 - Account Upgrade from dashboard or redirect to checkout if coming from landing page.

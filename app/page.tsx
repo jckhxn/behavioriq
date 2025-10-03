@@ -44,7 +44,7 @@ export default function Home() {
     const urlParams = new URLSearchParams(window.location.search);
     const tab = urlParams.get("tab");
     const upgraded = urlParams.get("upgraded");
-    
+
     if (tab === "settings") {
       setActiveTab("settings");
     }
@@ -53,7 +53,8 @@ export default function Home() {
     if (upgraded === "true") {
       const { toast } = require("sonner");
       toast.success("🎉 Membership Upgraded!", {
-        description: "Welcome to your BehaviorIQ™ Membership! You can now create unlimited assessments.",
+        description:
+          "Welcome to your BehaviorIQ™ Membership! You can now create unlimited assessments.",
         duration: 5000,
       });
 
