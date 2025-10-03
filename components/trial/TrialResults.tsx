@@ -48,12 +48,17 @@ export function TrialResults() {
     if (responsesStr) {
       try {
         const responses = JSON.parse(responsesStr);
+        
+        // Count total questions and yes responses
+        const totalQuestions = Object.keys(responses).length;
         const yesResponses = Object.values(responses).filter(Boolean).length;
 
-        // Calculate domain-specific concerns
-        const attentionQuestions = [1, 2, 3, 4]; // Questions 1-4 are attention-related
-        const conductQuestions = [5]; // Question 5 is conduct-related
-        const emotionalQuestions = [6, 7]; // Questions 6-7 are emotional-related
+        // Calculate domain-specific concerns (scaled to actual question distribution)
+        // Assuming roughly equal distribution across domains
+        const questionsPerDomain = Math.ceil(totalQuestions / 3);
+        const attentionQuestions = Array.from({length: questionsPerDomain}, (_, i) => i + 1);
+        const conductQuestions = Array.from({length: questionsPerDomain}, (_, i) => i + questionsPerDomain + 1);
+        const emotionalQuestions = Array.from({length: totalQuestions - (questionsPerDomain * 2)}, (_, i) => i + (questionsPerDomain * 2) + 1);
 
         const attentionConcerns = attentionQuestions.filter(
           (q) => responses[q]
@@ -65,11 +70,12 @@ export function TrialResults() {
           (q) => responses[q]
         ).length;
 
-        // Determine risk level
+        // Determine risk level based on percentage of yes responses
+        const yesPercentage = (yesResponses / totalQuestions) * 100;
         let riskLevel: "low" | "moderate" | "high";
-        if (yesResponses <= 2) {
+        if (yesPercentage <= 30) {
           riskLevel = "low";
-        } else if (yesResponses <= 4) {
+        } else if (yesPercentage <= 60) {
           riskLevel = "moderate";
         } else {
           riskLevel = "high";
@@ -77,7 +83,7 @@ export function TrialResults() {
 
         setResults({
           childName,
-          totalIndicators: 7,
+          totalIndicators: totalQuestions,
           identifiedIndicators: yesResponses,
           attentionConcerns,
           conductConcerns,

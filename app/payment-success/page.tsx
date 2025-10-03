@@ -99,6 +99,17 @@ function PaymentSuccessContent() {
     setIsUpgrading(true);
 
     try {
+      // Check if user has a session first
+      const { getSession } = await import("next-auth/react");
+      const session = await getSession();
+
+      if (!session) {
+        // No session - redirect to login with return URL
+        toast.error("Please log in to upgrade your account");
+        window.location.href = `/login?callbackUrl=${encodeURIComponent(window.location.href)}`;
+        return;
+      }
+
       const response = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: {

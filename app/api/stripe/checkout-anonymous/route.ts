@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe/config";
 import { PRICING_PLANS } from "@/lib/stripe/config";
+import { prisma } from "@/lib/db/prisma";
 import bcrypt from "bcryptjs";
 
 export async function POST(request: NextRequest) {
@@ -20,6 +21,18 @@ export async function POST(request: NextRequest) {
     if (!email || !name || !password) {
       return NextResponse.json(
         { error: "Email, name, and password are required" },
+        { status: 400 }
+      );
+    }
+
+    // Check if email already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      return NextResponse.json(
+        { error: "An account with this email already exists. Please log in instead." },
         { status: 400 }
       );
     }

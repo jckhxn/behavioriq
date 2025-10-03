@@ -145,17 +145,37 @@ export class PaymentService {
       throw new Error("No user identifier provided in checkout session");
     }
 
-    return tx.user.upsert({
+    // Check if user exists
+    const existingUser = await tx.user.findUnique({
       where: { email: userEmail },
-      create: {
+    });
+
+    if (existingUser) {
+      // User already exists - just activate and return
+      console.log(`[PaymentService] User already exists: ${userEmail}, activating...`);
+      
+      if (!existingUser.isActive) {
+        return tx.user.update({
+          where: { id: existingUser.id },
+          data: { isActive: true },
+        });
+      }
+      
+      return existingUser;
+    }
+
+    // Create new user
+    if (!userPasswordHash) {
+      throw new Error("Password required for new user registration");
+    }
+
+    return tx.user.create({
+      data: {
         email: userEmail,
         name: userName || null,
-        password: userPasswordHash!,
+        password: userPasswordHash,
         role: "USER",
         isActive: true,
-      },
-      update: {
-        isActive: true, // Activate if exists
       },
     });
   }
