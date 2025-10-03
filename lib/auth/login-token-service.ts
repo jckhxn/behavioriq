@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/db/prisma";
-import { randomBytes } from "crypto";
 
 export class LoginTokenService {
   /**
@@ -7,8 +6,10 @@ export class LoginTokenService {
    * Token expires in 15 minutes
    */
   async generateToken(userId: string): Promise<string> {
-    // Generate a cryptographically secure random token
-    const token = randomBytes(32).toString("hex");
+    // Generate a cryptographically secure random token using Web Crypto API (Edge Runtime compatible)
+    const array = new Uint8Array(32);
+    crypto.getRandomValues(array);
+    const token = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
     
     // Token expires in 15 minutes
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);

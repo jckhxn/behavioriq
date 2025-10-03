@@ -31,6 +31,12 @@
 - Results page inaccurately shows data (Clicking yes on every trial question says 14 out of 7 for example)
 - No validation that email already exists on registration after trial (or post checkout.)
 - Failed to process upgrade when attempting account upgrade on post checkout screen
+- Test auto login post checkout
+- Trial Banner after completetion/nopurchase should be hidden
+- Hide "View Enhanced report" after viewed.
+- Account upgrade from dash doesnt work?
+- Implement District Admin Signup Links.
+
 
   # Double Check things it said it did lol
 

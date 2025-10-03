@@ -3,7 +3,6 @@ import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db/prisma";
-import { loginTokenService } from "@/lib/auth/login-token-service";
 import type { Role } from "@prisma/client";
 
 declare module "next-auth" {
@@ -37,6 +36,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       async authorize(credentials) {
         // Check if using login token
         if (credentials?.loginToken) {
+          // Dynamic import to avoid Edge Runtime issues
+          const { loginTokenService } = await import("@/lib/auth/login-token-service");
+          
           const userId = await loginTokenService.validateAndConsumeToken(
             credentials.loginToken as string
           );
