@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { CreditCard, Zap, Crown, Building2, CheckCircle, ArrowUpCircle } from "lucide-react";
 import Link from "next/link";
-import { formatPrice } from "@/lib/config/pricing";
+import { formatPrice, PRICING } from "@/lib/config/pricing";
 import { toast } from "sonner";
 
 interface License {
@@ -22,55 +22,54 @@ interface License {
   };
 }
 
-const LICENSE_INFO = {
-  FREE: {
-    name: "Free Account",
-    icon: Crown,
-    color: "text-gray-500",
-    bgColor: "bg-gray-100 dark:bg-gray-800",
-    features: ["View-only access", "No assessments allowed"],
-  },
-  TRIAL: {
-    name: "Trial Account",
-    icon: Zap,
-    color: "text-blue-500",
-    bgColor: "bg-blue-100 dark:bg-blue-900/30",
-    features: ["5 trial assessments", "Limited features", "Temporary access"],
-  },
-  BASIC: {
-    name: "Basic",
-    icon: CheckCircle,
-    color: "text-green-500",
-    bgColor: "bg-green-100 dark:bg-green-900/30",
-    features: ["Single assessment purchase", "Full AI recommendations", "$97 per assessment"],
-  },
-  PROFESSIONAL: {
-    name: "Professional",
-    icon: Crown,
-    color: "text-purple-500",
-    bgColor: "bg-purple-100 dark:bg-purple-900/30",
-    features: [
-      "Unlimited assessments",
-      "3 FREE Conversational AI sessions",
-      "$9/session after",
-      "$29/month or $290/year",
-    ],
-  },
-  ENTERPRISE: {
-    name: "Enterprise",
-    icon: Building2,
-    color: "text-orange-500",
-    bgColor: "bg-orange-100 dark:bg-orange-900/30",
-    features: [
-      "Unlimited assessments",
-      "Unlimited Conversational AI",
-      "Multi-user support",
-      "District-wide access",
-    ],
-  },
-};
-
 export default function BillingSection() {
+  const LICENSE_INFO = {
+    FREE: {
+      name: "Free Account",
+      icon: Crown,
+      color: "text-gray-500",
+      bgColor: "bg-gray-100 dark:bg-gray-800",
+      features: ["View-only access", "No assessments allowed"],
+    },
+    TRIAL: {
+      name: "Trial Account",
+      icon: Zap,
+      color: "text-blue-500",
+      bgColor: "bg-blue-100 dark:bg-blue-900/30",
+      features: ["5 trial assessments", "Limited features", "Temporary access"],
+    },
+    BASIC: {
+      name: "Basic",
+      icon: CheckCircle,
+      color: "text-green-500",
+      bgColor: "bg-green-100 dark:bg-green-900/30",
+      features: ["Single assessment purchase", "Full AI recommendations", `${formatPrice(PRICING.SINGLE_ASSESSMENT)} per assessment`],
+    },
+    PROFESSIONAL: {
+      name: "Professional",
+      icon: Crown,
+      color: "text-purple-500",
+      bgColor: "bg-purple-100 dark:bg-purple-900/30",
+      features: [
+        "Unlimited assessments",
+        "3 FREE Conversational AI sessions",
+        `${formatPrice(PRICING.ENHANCED_REPORT)}/session after`,
+        `${formatPrice(PRICING.MONTHLY_SUBSCRIPTION)}/month or ${formatPrice(PRICING.ANNUAL_SUBSCRIPTION)}/year`,
+      ],
+    },
+    ENTERPRISE: {
+      name: "Enterprise",
+      icon: Building2,
+      color: "text-orange-500",
+      bgColor: "bg-orange-100 dark:bg-orange-900/30",
+      features: [
+        "Unlimited assessments",
+        "Unlimited Conversational AI",
+        "Multi-user support",
+        "District-wide access",
+      ],
+    },
+  };
   const [license, setLicense] = useState<License | null>(null);
   const [loading, setLoading] = useState(true);
   const [upgrading, setUpgrading] = useState(false);
@@ -220,7 +219,7 @@ export default function BillingSection() {
               <div className="border rounded-lg p-4 hover:border-primary transition-colors">
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="font-semibold">Single Assessment</h4>
-                  <span className="text-2xl font-bold">$97</span>
+                  <span className="text-2xl font-bold">{formatPrice(PRICING.SINGLE_ASSESSMENT)}</span>
                 </div>
                 <ul className="text-sm space-y-1 mb-4 text-muted-foreground">
                   <li>• One complete assessment</li>
@@ -244,14 +243,14 @@ export default function BillingSection() {
               <div className="flex items-center justify-between mb-2">
                 <h4 className="font-semibold">Professional Monthly</h4>
                 <div className="text-right">
-                  <span className="text-2xl font-bold">$29</span>
+                  <span className="text-2xl font-bold">{formatPrice(PRICING.MONTHLY_SUBSCRIPTION)}</span>
                   <span className="text-muted-foreground text-sm">/month</span>
                 </div>
               </div>
               <ul className="text-sm space-y-1 mb-4 text-muted-foreground">
                 <li>• Unlimited assessments</li>
                 <li>• 3 FREE Conversational AI sessions</li>
-                <li>• $9/session after that</li>
+                <li>• {formatPrice(PRICING.ENHANCED_REPORT)}/session after that</li>
                 <li>• Priority support</li>
               </ul>
               <Button
@@ -264,18 +263,18 @@ export default function BillingSection() {
             </div>
 
             <div className="border-2 border-green-500 rounded-lg p-4">
-              <Badge className="mb-2 bg-green-500">Best Value - Save $58/year</Badge>
+              <Badge className="mb-2 bg-green-500">Best Value - Save ${(PRICING.MONTHLY_SUBSCRIPTION * 12 - PRICING.ANNUAL_SUBSCRIPTION) / 100}/year</Badge>
               <div className="flex items-center justify-between mb-2">
                 <h4 className="font-semibold">Professional Annual</h4>
                 <div className="text-right">
-                  <span className="text-2xl font-bold">$290</span>
+                  <span className="text-2xl font-bold">{formatPrice(PRICING.ANNUAL_SUBSCRIPTION)}</span>
                   <span className="text-muted-foreground text-sm">/year</span>
                 </div>
               </div>
               <ul className="text-sm space-y-1 mb-4 text-muted-foreground">
                 <li>• All Monthly features</li>
-                <li>• Save $58 per year</li>
-                <li>• Equivalent to ~$24/month</li>
+                <li>• Save ${(PRICING.MONTHLY_SUBSCRIPTION * 12 - PRICING.ANNUAL_SUBSCRIPTION) / 100} per year</li>
+                <li>• Equivalent to ~${(PRICING.ANNUAL_SUBSCRIPTION / 100 / 12).toFixed(2)}/month</li>
               </ul>
               <Button
                 onClick={() => handleUpgrade("ANNUAL")}

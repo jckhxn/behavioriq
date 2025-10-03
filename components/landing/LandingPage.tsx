@@ -24,6 +24,7 @@ import {
   Award,
   BarChart3,
 } from "lucide-react";
+import { formatPrice, PRICING } from "@/lib/config/pricing";
 
 export function LandingPage() {
   return (
@@ -798,7 +799,7 @@ export function LandingPage() {
                 <CardDescription>
                   Comprehensive professional-grade analysis
                 </CardDescription>
-                <div className="text-3xl font-bold">$97</div>
+                <div className="text-3xl font-bold">{formatPrice(PRICING.SINGLE_ASSESSMENT)}</div>
                 <div className="text-sm text-muted-foreground">one-time</div>
               </CardHeader>
               <CardContent>
@@ -834,7 +835,7 @@ export function LandingPage() {
               <CardHeader>
                 <CardTitle>Monthly Membership</CardTitle>
                 <CardDescription>For ongoing progress tracking</CardDescription>
-                <div className="text-3xl font-bold">$29</div>
+                <div className="text-3xl font-bold">{formatPrice(PRICING.MONTHLY_SUBSCRIPTION)}</div>
                 <div className="text-sm text-muted-foreground">/month</div>
               </CardHeader>
               <CardContent>
@@ -874,13 +875,13 @@ export function LandingPage() {
                   Save $58/year - 2 months free!
                 </CardDescription>
                 <div className="flex items-baseline gap-2">
-                  <div className="text-3xl font-bold">$290</div>
+                  <div className="text-3xl font-bold">{formatPrice(PRICING.ANNUAL_SUBSCRIPTION)}</div>
                   <div className="text-sm text-muted-foreground line-through">
-                    $348
+                    {formatPrice(PRICING.MONTHLY_SUBSCRIPTION * 12)}
                   </div>
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  /year ($24.17/mo)
+                  /year (${(PRICING.ANNUAL_SUBSCRIPTION / 100 / 12).toFixed(2)}/mo)
                 </div>
               </CardHeader>
               <CardContent>
@@ -934,7 +935,7 @@ export function LandingPage() {
                 insights
               </p>
               <div className="flex items-center justify-center gap-4 text-sm">
-                <span className="text-2xl font-bold text-blue-600">+$9</span>
+                <span className="text-2xl font-bold text-blue-600">+{formatPrice(PRICING.ENHANCED_REPORT)}</span>
                 <span className="text-gray-500">per session</span>
                 <Badge
                   variant="secondary"

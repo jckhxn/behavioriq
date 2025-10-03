@@ -59,6 +59,7 @@ import { AssessmentDomain } from "@prisma/client";
 import { AssessmentDetailSidebar } from "./AssessmentDetailSidebar";
 import { toast } from "sonner";
 import ConversationalTrialModule from "@/components/dashboard/ConversationalTrialModule";
+import { formatPrice, PRICING } from "@/lib/config/pricing";
 
 interface Assessment {
   id: string;
@@ -555,7 +556,7 @@ export function AssessmentsView() {
                         variant="default"
                         className="bg-amber-600 hover:bg-amber-700"
                       >
-                        Buy Single Report - $97
+                        Buy Single Report - {formatPrice(PRICING.SINGLE_ASSESSMENT)}
                       </Button>
                     </Link>
                     <Link href="/register?upgrade=monthly">
@@ -564,7 +565,7 @@ export function AssessmentsView() {
                         variant="outline"
                         className="border-amber-600 text-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/40"
                       >
-                        Subscribe - $29/month
+                        Subscribe - {formatPrice(PRICING.MONTHLY_SUBSCRIPTION)}/month
                       </Button>
                     </Link>
                     <Link href="/register?upgrade=annual">
@@ -573,7 +574,7 @@ export function AssessmentsView() {
                         variant="outline"
                         className="border-amber-600 text-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/40"
                       >
-                        Subscribe - $290/year (Save $58!)
+                        Subscribe - {formatPrice(PRICING.ANNUAL_SUBSCRIPTION)}/year (Save ${(PRICING.MONTHLY_SUBSCRIPTION * 12 - PRICING.ANNUAL_SUBSCRIPTION) / 100}!)
                       </Button>
                     </Link>
                   </div>

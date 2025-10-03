@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import ConversationalChatWidget from "./ConversationalChatWidget";
+import { formatPrice, PRICING } from "@/lib/config/pricing";
 
 interface ConversationalTrialModuleProps {
   hasCompletedTrial: boolean;
@@ -165,7 +166,7 @@ export default function ConversationalTrialModule({
             <div className="rounded-lg border p-4 bg-muted/50">
               <p className="text-sm font-medium mb-3 flex items-center justify-between">
                 <span>
-                  What's Inside the {hasConversationalAI ? "Included" : "$9"}{" "}
+                  What's Inside the {hasConversationalAI ? "Included" : formatPrice(PRICING.ENHANCED_REPORT)}{" "}
                   Upgrade:
                 </span>
                 {hasConversationalAI && (
@@ -201,7 +202,7 @@ export default function ConversationalTrialModule({
                   <Sparkles className="mr-2 h-4 w-4" />
                   {hasConversationalAI
                     ? "Activate Enhanced Report (Included)"
-                    : "Unlock Enhanced Report – $9"}
+                    : `Unlock Enhanced Report – ${formatPrice(PRICING.ENHANCED_REPORT)}`}
                 </Link>
               </Button>
               <Button asChild variant="ghost" size="sm" className="w-full">
