@@ -420,7 +420,9 @@ export function AssessmentsView() {
         );
 
         // Also remove from main shareable links list
-        setShareableLinks((prev) => prev.filter((l) => l.id !== linkToDelete.id));
+        setShareableLinks((prev) =>
+          prev.filter((l) => l.id !== linkToDelete.id)
+        );
 
         toast.success("Share link deleted successfully!");
         setDeleteConfirmOpen(false);
@@ -556,7 +558,8 @@ export function AssessmentsView() {
                         variant="default"
                         className="bg-amber-600 hover:bg-amber-700"
                       >
-                        Buy Single Report - {formatPrice(PRICING.SINGLE_ASSESSMENT)}
+                        Buy Single Report -{" "}
+                        {formatPrice(PRICING.SINGLE_ASSESSMENT)}
                       </Button>
                     </Link>
                     <Link href="/register?upgrade=monthly">
@@ -565,7 +568,8 @@ export function AssessmentsView() {
                         variant="outline"
                         className="border-amber-600 text-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/40"
                       >
-                        Subscribe - {formatPrice(PRICING.MONTHLY_SUBSCRIPTION)}/month
+                        Subscribe - {formatPrice(PRICING.MONTHLY_SUBSCRIPTION)}
+                        /month
                       </Button>
                     </Link>
                     <Link href="/register?upgrade=annual">
@@ -574,7 +578,12 @@ export function AssessmentsView() {
                         variant="outline"
                         className="border-amber-600 text-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/40"
                       >
-                        Subscribe - {formatPrice(PRICING.ANNUAL_SUBSCRIPTION)}/year (Save ${(PRICING.MONTHLY_SUBSCRIPTION * 12 - PRICING.ANNUAL_SUBSCRIPTION) / 100}!)
+                        Subscribe - {formatPrice(PRICING.ANNUAL_SUBSCRIPTION)}
+                        /year (Save $
+                        {(PRICING.MONTHLY_SUBSCRIPTION * 12 -
+                          PRICING.ANNUAL_SUBSCRIPTION) /
+                          100}
+                        !)
                       </Button>
                     </Link>
                   </div>
@@ -594,7 +603,8 @@ export function AssessmentsView() {
             // User has started/completed a conversational trial
             const hasCompletedTrial =
               conversationalAssessment.status === "COMPLETED";
-            const hasEnhancedReport = conversationalAssessment.hasEnhancedReport || false;
+            const hasEnhancedReport =
+              conversationalAssessment.hasEnhancedReport || false;
 
             // Hide the module entirely if trial is complete but enhanced report not purchased
             if (hasCompletedTrial && !hasEnhancedReport) {
@@ -1162,8 +1172,8 @@ export function AssessmentsView() {
           <DialogHeader>
             <DialogTitle>Delete Share Link</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this share link? This action cannot
-              be undone.
+              Are you sure you want to delete this share link? This action
+              cannot be undone.
             </DialogDescription>
           </DialogHeader>
           {linkToDelete && (
@@ -1174,7 +1184,9 @@ export function AssessmentsView() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-500">Views:</span>
-                <span className="font-medium">{linkToDelete.viewCount || 0}</span>
+                <span className="font-medium">
+                  {linkToDelete.viewCount || 0}
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-500">Status:</span>

@@ -52,7 +52,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate login token
-    const { loginTokenService } = await import("@/lib/auth/login-token-service");
+    const { loginTokenService } = await import(
+      "@/lib/auth/login-token-service"
+    );
     const loginToken = await loginTokenService.generateToken(user.id);
 
     return NextResponse.json({

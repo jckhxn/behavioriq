@@ -64,9 +64,9 @@ async function handleWebhookEvent(event: Stripe.Event) {
       const result = await paymentService.processCheckout(
         event.data.object as Stripe.Checkout.Session
       );
-      
+
       // Store login token in session metadata for retrieval on success page
-      if (result && 'loginToken' in result && result.loginToken) {
+      if (result && "loginToken" in result && result.loginToken) {
         const session = event.data.object as Stripe.Checkout.Session;
         try {
           await stripe.checkout.sessions.update(session.id, {
@@ -77,7 +77,10 @@ async function handleWebhookEvent(event: Stripe.Event) {
           });
           console.log(`[Webhook] Login token stored in session metadata`);
         } catch (error) {
-          console.error(`[Webhook] Failed to update session with login token:`, error);
+          console.error(
+            `[Webhook] Failed to update session with login token:`,
+            error
+          );
         }
       }
       break;

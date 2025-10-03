@@ -48,7 +48,7 @@ export function TrialResults() {
     if (responsesStr) {
       try {
         const responses = JSON.parse(responsesStr);
-        
+
         // Count total questions and yes responses
         const totalQuestions = Object.keys(responses).length;
         const yesResponses = Object.values(responses).filter(Boolean).length;
@@ -56,9 +56,18 @@ export function TrialResults() {
         // Calculate domain-specific concerns (scaled to actual question distribution)
         // Assuming roughly equal distribution across domains
         const questionsPerDomain = Math.ceil(totalQuestions / 3);
-        const attentionQuestions = Array.from({length: questionsPerDomain}, (_, i) => i + 1);
-        const conductQuestions = Array.from({length: questionsPerDomain}, (_, i) => i + questionsPerDomain + 1);
-        const emotionalQuestions = Array.from({length: totalQuestions - (questionsPerDomain * 2)}, (_, i) => i + (questionsPerDomain * 2) + 1);
+        const attentionQuestions = Array.from(
+          { length: questionsPerDomain },
+          (_, i) => i + 1
+        );
+        const conductQuestions = Array.from(
+          { length: questionsPerDomain },
+          (_, i) => i + questionsPerDomain + 1
+        );
+        const emotionalQuestions = Array.from(
+          { length: totalQuestions - questionsPerDomain * 2 },
+          (_, i) => i + questionsPerDomain * 2 + 1
+        );
 
         const attentionConcerns = attentionQuestions.filter(
           (q) => responses[q]

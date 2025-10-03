@@ -9,8 +9,10 @@ export class LoginTokenService {
     // Generate a cryptographically secure random token using Web Crypto API (Edge Runtime compatible)
     const array = new Uint8Array(32);
     crypto.getRandomValues(array);
-    const token = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
-    
+    const token = Array.from(array, (byte) =>
+      byte.toString(16).padStart(2, "0")
+    ).join("");
+
     // Token expires in 15 minutes
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
@@ -63,10 +65,7 @@ export class LoginTokenService {
   async cleanupExpiredTokens(): Promise<number> {
     const result = await prisma.loginToken.deleteMany({
       where: {
-        OR: [
-          { expiresAt: { lt: new Date() } },
-          { usedAt: { not: null } },
-        ],
+        OR: [{ expiresAt: { lt: new Date() } }, { usedAt: { not: null } }],
       },
     });
 

@@ -37,7 +37,7 @@ function PaymentSuccessContent() {
     // Attempt auto-login with retry logic for webhook processing
     const attemptAutoLogin = async () => {
       const sessionId = searchParams.get("session_id");
-      
+
       if (!sessionId) {
         setIsLoggingIn(false);
         return;
@@ -65,18 +65,20 @@ function PaymentSuccessContent() {
           if (!tokenResponse.ok) {
             // User not found yet - webhook still processing
             if (tokenResponse.status === 404 && attempts < maxAttempts) {
-              console.log("User not found, webhook still processing. Retrying in 3 seconds...");
-              await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3 seconds
+              console.log(
+                "User not found, webhook still processing. Retrying in 3 seconds..."
+              );
+              await new Promise((resolve) => setTimeout(resolve, 3000)); // Wait 3 seconds
               return tryLogin();
             }
-            
+
             console.error("Token generation failed:", tokenData.error);
             return false;
           }
 
           if (tokenData.success && tokenData.loginToken) {
             console.log("Login token received, attempting sign in...");
-            
+
             // Sign in with NextAuth
             const { signIn } = await import("next-auth/react");
             const result = await signIn("credentials", {
@@ -87,7 +89,9 @@ function PaymentSuccessContent() {
             });
 
             if (result?.ok) {
-              console.log("Auto-login successful! Staying on payment success page...");
+              console.log(
+                "Auto-login successful! Staying on payment success page..."
+              );
               // Stay on this page to show upgrade options and let user click "Start Full Report"
               return true;
             } else {
@@ -101,7 +105,7 @@ function PaymentSuccessContent() {
           console.error("Auto-login error:", error);
           if (attempts < maxAttempts) {
             console.log("Error occurred, retrying in 3 seconds...");
-            await new Promise(resolve => setTimeout(resolve, 3000));
+            await new Promise((resolve) => setTimeout(resolve, 3000));
             return tryLogin();
           }
           return false;
@@ -109,11 +113,10 @@ function PaymentSuccessContent() {
       };
 
       const success = await tryLogin();
-      
-      if (!success) {
-        console.log("Auto-login failed after all attempts");
-        setIsLoggingIn(false);
-      }
+
+      // Always turn off loading state, whether success or failure
+      console.log(success ? "Auto-login completed successfully" : "Auto-login failed after all attempts");
+      setIsLoggingIn(false);
     };
 
     attemptAutoLogin();
@@ -172,8 +175,12 @@ function PaymentSuccessContent() {
             <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
               <Brain className="h-8 w-8 text-primary animate-pulse" />
             </div>
-            <h3 className="text-xl font-semibold mb-2">Setting up your account...</h3>
-            <p className="text-muted-foreground">You'll be redirected to your dashboard in a moment.</p>
+            <h3 className="text-xl font-semibold mb-2">
+              Setting up your account...
+            </h3>
+            <p className="text-muted-foreground">
+              You'll be redirected to your dashboard in a moment.
+            </p>
           </CardContent>
         </Card>
       </div>

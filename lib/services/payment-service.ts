@@ -108,7 +108,9 @@ export class PaymentService {
 
     // 4. Generate one-time login token for auto-login
     const loginToken = await loginTokenService.generateToken(result.user.id);
-    console.log(`[PaymentService] Login token generated: ${loginToken.substring(0, 8)}...`);
+    console.log(
+      `[PaymentService] Login token generated: ${loginToken.substring(0, 8)}...`
+    );
 
     return { ...result, loginToken };
   }
@@ -152,15 +154,17 @@ export class PaymentService {
 
     if (existingUser) {
       // User already exists - just activate and return
-      console.log(`[PaymentService] User already exists: ${userEmail}, activating...`);
-      
+      console.log(
+        `[PaymentService] User already exists: ${userEmail}, activating...`
+      );
+
       if (!existingUser.isActive) {
         return tx.user.update({
           where: { id: existingUser.id },
           data: { isActive: true },
         });
       }
-      
+
       return existingUser;
     }
 

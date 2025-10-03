@@ -37,8 +37,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // Check if using login token
         if (credentials?.loginToken) {
           // Dynamic import to avoid Edge Runtime issues
-          const { loginTokenService } = await import("@/lib/auth/login-token-service");
-          
+          const { loginTokenService } = await import(
+            "@/lib/auth/login-token-service"
+          );
+
           const userId = await loginTokenService.validateAndConsumeToken(
             credentials.loginToken as string
           );

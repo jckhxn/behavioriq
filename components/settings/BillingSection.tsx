@@ -1,11 +1,24 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { CreditCard, Zap, Crown, Building2, CheckCircle, ArrowUpCircle } from "lucide-react";
+import {
+  CreditCard,
+  Zap,
+  Crown,
+  Building2,
+  CheckCircle,
+  ArrowUpCircle,
+} from "lucide-react";
 import Link from "next/link";
 import { formatPrice, PRICING } from "@/lib/config/pricing";
 import { toast } from "sonner";
@@ -43,7 +56,11 @@ export default function BillingSection() {
       icon: CheckCircle,
       color: "text-green-500",
       bgColor: "bg-green-100 dark:bg-green-900/30",
-      features: ["Single assessment purchase", "Full AI recommendations", `${formatPrice(PRICING.SINGLE_ASSESSMENT)} per assessment`],
+      features: [
+        "Single assessment purchase",
+        "Full AI recommendations",
+        `${formatPrice(PRICING.SINGLE_ASSESSMENT)} per assessment`,
+      ],
     },
     PROFESSIONAL: {
       name: "Professional",
@@ -158,7 +175,9 @@ export default function BillingSection() {
                 <Icon className={`h-6 w-6 ${licenseInfo.color}`} />
                 <h3 className="font-semibold text-lg">{licenseInfo.name}</h3>
               </div>
-              <Badge variant={license?.status === "ACTIVE" ? "default" : "secondary"}>
+              <Badge
+                variant={license?.status === "ACTIVE" ? "default" : "secondary"}
+              >
                 {license?.status || "Unknown"}
               </Badge>
             </div>
@@ -174,15 +193,21 @@ export default function BillingSection() {
 
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <p className="text-muted-foreground mb-1">Assessments Available</p>
+              <p className="text-muted-foreground mb-1">
+                Assessments Available
+              </p>
               <p className="font-semibold text-lg">
-                {license?.maxAssessments === -1 ? "Unlimited" : license?.maxAssessments || 0}
+                {license?.maxAssessments === -1
+                  ? "Unlimited"
+                  : license?.maxAssessments || 0}
               </p>
             </div>
             <div>
               <p className="text-muted-foreground mb-1">Users</p>
               <p className="font-semibold text-lg">
-                {license?.maxUsers === -1 ? "Unlimited" : license?.maxUsers || 1}
+                {license?.maxUsers === -1
+                  ? "Unlimited"
+                  : license?.maxUsers || 1}
               </p>
             </div>
           </div>
@@ -219,7 +244,9 @@ export default function BillingSection() {
               <div className="border rounded-lg p-4 hover:border-primary transition-colors">
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="font-semibold">Single Assessment</h4>
-                  <span className="text-2xl font-bold">{formatPrice(PRICING.SINGLE_ASSESSMENT)}</span>
+                  <span className="text-2xl font-bold">
+                    {formatPrice(PRICING.SINGLE_ASSESSMENT)}
+                  </span>
                 </div>
                 <ul className="text-sm space-y-1 mb-4 text-muted-foreground">
                   <li>• One complete assessment</li>
@@ -243,14 +270,18 @@ export default function BillingSection() {
               <div className="flex items-center justify-between mb-2">
                 <h4 className="font-semibold">Professional Monthly</h4>
                 <div className="text-right">
-                  <span className="text-2xl font-bold">{formatPrice(PRICING.MONTHLY_SUBSCRIPTION)}</span>
+                  <span className="text-2xl font-bold">
+                    {formatPrice(PRICING.MONTHLY_SUBSCRIPTION)}
+                  </span>
                   <span className="text-muted-foreground text-sm">/month</span>
                 </div>
               </div>
               <ul className="text-sm space-y-1 mb-4 text-muted-foreground">
                 <li>• Unlimited assessments</li>
                 <li>• 3 FREE Conversational AI sessions</li>
-                <li>• {formatPrice(PRICING.ENHANCED_REPORT)}/session after that</li>
+                <li>
+                  • {formatPrice(PRICING.ENHANCED_REPORT)}/session after that
+                </li>
                 <li>• Priority support</li>
               </ul>
               <Button
@@ -263,18 +294,35 @@ export default function BillingSection() {
             </div>
 
             <div className="border-2 border-green-500 rounded-lg p-4">
-              <Badge className="mb-2 bg-green-500">Best Value - Save ${(PRICING.MONTHLY_SUBSCRIPTION * 12 - PRICING.ANNUAL_SUBSCRIPTION) / 100}/year</Badge>
+              <Badge className="mb-2 bg-green-500">
+                Best Value - Save $
+                {(PRICING.MONTHLY_SUBSCRIPTION * 12 -
+                  PRICING.ANNUAL_SUBSCRIPTION) /
+                  100}
+                /year
+              </Badge>
               <div className="flex items-center justify-between mb-2">
                 <h4 className="font-semibold">Professional Annual</h4>
                 <div className="text-right">
-                  <span className="text-2xl font-bold">{formatPrice(PRICING.ANNUAL_SUBSCRIPTION)}</span>
+                  <span className="text-2xl font-bold">
+                    {formatPrice(PRICING.ANNUAL_SUBSCRIPTION)}
+                  </span>
                   <span className="text-muted-foreground text-sm">/year</span>
                 </div>
               </div>
               <ul className="text-sm space-y-1 mb-4 text-muted-foreground">
                 <li>• All Monthly features</li>
-                <li>• Save ${(PRICING.MONTHLY_SUBSCRIPTION * 12 - PRICING.ANNUAL_SUBSCRIPTION) / 100} per year</li>
-                <li>• Equivalent to ~${(PRICING.ANNUAL_SUBSCRIPTION / 100 / 12).toFixed(2)}/month</li>
+                <li>
+                  • Save $
+                  {(PRICING.MONTHLY_SUBSCRIPTION * 12 -
+                    PRICING.ANNUAL_SUBSCRIPTION) /
+                    100}{" "}
+                  per year
+                </li>
+                <li>
+                  • Equivalent to ~$
+                  {(PRICING.ANNUAL_SUBSCRIPTION / 100 / 12).toFixed(2)}/month
+                </li>
               </ul>
               <Button
                 onClick={() => handleUpgrade("ANNUAL")}
@@ -289,8 +337,8 @@ export default function BillingSection() {
             <div className="border rounded-lg p-4 bg-muted/50">
               <h4 className="font-semibold mb-2">Enterprise</h4>
               <p className="text-sm text-muted-foreground mb-4">
-                For districts and organizations requiring unlimited Conversational AI and
-                multi-user support.
+                For districts and organizations requiring unlimited
+                Conversational AI and multi-user support.
               </p>
               <Button asChild variant="outline" className="w-full">
                 <Link href="mailto:sales@aidiagnostic.com">Contact Sales</Link>
@@ -305,7 +353,10 @@ export default function BillingSection() {
         <CardContent className="pt-6">
           <p className="text-sm text-muted-foreground">
             Need help with billing? Contact us at{" "}
-            <a href="mailto:support@aidiagnostic.com" className="text-primary hover:underline">
+            <a
+              href="mailto:support@aidiagnostic.com"
+              className="text-primary hover:underline"
+            >
               support@aidiagnostic.com
             </a>
           </p>

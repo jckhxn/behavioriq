@@ -520,7 +520,11 @@ export function LandingPage() {
                   </Badge>
                 </div>
                 <CardDescription className="text-base text-gray-700 dark:text-gray-300 italic">
-                  "This platform gave us the clarity we needed. The conversational AI feature helped capture my son's perspective in a way traditional assessments never could. Within days, we had actionable recommendations and were connected with the right resources."
+                  "This platform gave us the clarity we needed. The
+                  conversational AI feature helped capture my son's perspective
+                  in a way traditional assessments never could. Within days, we
+                  had actionable recommendations and were connected with the
+                  right resources."
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -558,7 +562,11 @@ export function LandingPage() {
                   </Badge>
                 </div>
                 <CardDescription className="text-base text-gray-700 dark:text-gray-300 italic">
-                  "We've integrated this into our RTI process and it's been a game-changer. The ability to quickly screen students and get comprehensive reports has reduced our referral timeline from weeks to days. The cost savings alone paid for our district license in the first month."
+                  "We've integrated this into our RTI process and it's been a
+                  game-changer. The ability to quickly screen students and get
+                  comprehensive reports has reduced our referral timeline from
+                  weeks to days. The cost savings alone paid for our district
+                  license in the first month."
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -596,7 +604,11 @@ export function LandingPage() {
                   </Badge>
                 </div>
                 <CardDescription className="text-base text-gray-700 dark:text-gray-300 italic">
-                  "As a behavioral therapist, having access to data-driven insights this quickly is invaluable. The AI recommendations align beautifully with evidence-based practices, and parents love receiving reports they can actually understand and act on."
+                  "As a behavioral therapist, having access to data-driven
+                  insights this quickly is invaluable. The AI recommendations
+                  align beautifully with evidence-based practices, and parents
+                  love receiving reports they can actually understand and act
+                  on."
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -631,7 +643,11 @@ export function LandingPage() {
                   </Badge>
                 </div>
                 <CardDescription className="text-base text-gray-700 dark:text-gray-300 italic">
-                  "The free trial convinced me immediately. I was skeptical about an online assessment, but the questions were thoughtful and the report was incredibly detailed. We used it for our IEP meeting and the school team was impressed with the thoroughness."
+                  "The free trial convinced me immediately. I was skeptical
+                  about an online assessment, but the questions were thoughtful
+                  and the report was incredibly detailed. We used it for our IEP
+                  meeting and the school team was impressed with the
+                  thoroughness."
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -669,7 +685,10 @@ export function LandingPage() {
                   </Badge>
                 </div>
                 <CardDescription className="text-base text-gray-700 dark:text-gray-300 italic">
-                  "Perfect for progress monitoring. I use this quarterly with my special education students to track growth and adjust interventions. The visual reports make data meetings with parents so much more productive."
+                  "Perfect for progress monitoring. I use this quarterly with my
+                  special education students to track growth and adjust
+                  interventions. The visual reports make data meetings with
+                  parents so much more productive."
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -704,7 +723,10 @@ export function LandingPage() {
                   </Badge>
                 </div>
                 <CardDescription className="text-base text-gray-700 dark:text-gray-300 italic">
-                  "Worth every penny. We avoided months of waiting for a traditional psychological evaluation. The recommendations were spot-on and gave us a head start on interventions while we waited for our school evaluation."
+                  "Worth every penny. We avoided months of waiting for a
+                  traditional psychological evaluation. The recommendations were
+                  spot-on and gave us a head start on interventions while we
+                  waited for our school evaluation."
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -799,7 +821,9 @@ export function LandingPage() {
                 <CardDescription>
                   Comprehensive professional-grade analysis
                 </CardDescription>
-                <div className="text-3xl font-bold">{formatPrice(PRICING.SINGLE_ASSESSMENT)}</div>
+                <div className="text-3xl font-bold">
+                  {formatPrice(PRICING.SINGLE_ASSESSMENT)}
+                </div>
                 <div className="text-sm text-muted-foreground">one-time</div>
               </CardHeader>
               <CardContent>
@@ -835,7 +859,9 @@ export function LandingPage() {
               <CardHeader>
                 <CardTitle>Monthly Membership</CardTitle>
                 <CardDescription>For ongoing progress tracking</CardDescription>
-                <div className="text-3xl font-bold">{formatPrice(PRICING.MONTHLY_SUBSCRIPTION)}</div>
+                <div className="text-3xl font-bold">
+                  {formatPrice(PRICING.MONTHLY_SUBSCRIPTION)}
+                </div>
                 <div className="text-sm text-muted-foreground">/month</div>
               </CardHeader>
               <CardContent>
@@ -875,13 +901,16 @@ export function LandingPage() {
                   Save $58/year - 2 months free!
                 </CardDescription>
                 <div className="flex items-baseline gap-2">
-                  <div className="text-3xl font-bold">{formatPrice(PRICING.ANNUAL_SUBSCRIPTION)}</div>
+                  <div className="text-3xl font-bold">
+                    {formatPrice(PRICING.ANNUAL_SUBSCRIPTION)}
+                  </div>
                   <div className="text-sm text-muted-foreground line-through">
                     {formatPrice(PRICING.MONTHLY_SUBSCRIPTION * 12)}
                   </div>
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  /year (${(PRICING.ANNUAL_SUBSCRIPTION / 100 / 12).toFixed(2)}/mo)
+                  /year (${(PRICING.ANNUAL_SUBSCRIPTION / 100 / 12).toFixed(2)}
+                  /mo)
                 </div>
               </CardHeader>
               <CardContent>
@@ -935,7 +964,9 @@ export function LandingPage() {
                 insights
               </p>
               <div className="flex items-center justify-center gap-4 text-sm">
-                <span className="text-2xl font-bold text-blue-600">+{formatPrice(PRICING.ENHANCED_REPORT)}</span>
+                <span className="text-2xl font-bold text-blue-600">
+                  +{formatPrice(PRICING.ENHANCED_REPORT)}
+                </span>
                 <span className="text-gray-500">per session</span>
                 <Badge
                   variant="secondary"

@@ -166,7 +166,10 @@ export default function ConversationalTrialModule({
             <div className="rounded-lg border p-4 bg-muted/50">
               <p className="text-sm font-medium mb-3 flex items-center justify-between">
                 <span>
-                  What's Inside the {hasConversationalAI ? "Included" : formatPrice(PRICING.ENHANCED_REPORT)}{" "}
+                  What's Inside the{" "}
+                  {hasConversationalAI
+                    ? "Included"
+                    : formatPrice(PRICING.ENHANCED_REPORT)}{" "}
                   Upgrade:
                 </span>
                 {hasConversationalAI && (
