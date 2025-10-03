@@ -78,6 +78,23 @@ export const SUBSCRIPTION_PLANS = {
       "2 months free compared to monthly",
     ],
   },
+  // Alias for YEARLY to support legacy code
+  ANNUAL: {
+    name: "Annual Subscription",
+    description: "Unlimited access for $297/year (save $58/year!)",
+    price: 29700, // $297 in cents
+    priceId: process.env.STRIPE_ANNUAL_PRICE_ID,
+    interval: "year",
+    features: [
+      "Unlimited assessments",
+      "AI-powered behavioral analysis",
+      "Detailed PDF reports",
+      "Share results with professionals",
+      "Priority support",
+      "Assessment history",
+      "Save $58/year compared to monthly",
+    ],
+  },
 } as const;
 
 export const ADD_ON_PLANS = {
