@@ -87,9 +87,8 @@ function PaymentSuccessContent() {
             });
 
             if (result?.ok) {
-              console.log("Auto-login successful! Redirecting to dashboard...");
-              // Redirect to dashboard
-              window.location.href = "/dashboard";
+              console.log("Auto-login successful! Staying on payment success page...");
+              // Stay on this page to show upgrade options and let user click "Start Full Report"
               return true;
             } else {
               console.error("Sign in failed:", result?.error);
