@@ -34,7 +34,7 @@ function PaymentSuccessContent() {
       setChildName(decodeURIComponent(childNameParam));
     }
 
-    // Attempt auto-login
+    // Attempt auto-login with retry logic for webhook processing
     const attemptAutoLogin = async () => {
       const sessionId = searchParams.get("session_id");
       
@@ -43,51 +43,75 @@ function PaymentSuccessContent() {
         return;
       }
 
-      try {
-        // Get session data from Stripe including login token
-        const sessionResponse = await fetch(
-          `/api/stripe/session?session_id=${sessionId}`
-        );
-        const sessionData = await sessionResponse.json();
+      let attempts = 0;
+      const maxAttempts = 5; // Try for up to 10 seconds (5 attempts * 2 seconds)
 
-        if (!sessionData.loginToken) {
-          console.log("No login token found in session");
-          setIsLoggingIn(false);
-          return;
-        }
+      const tryLogin = async (): Promise<boolean> => {
+        attempts++;
+        console.log(`Auto-login attempt ${attempts}/${maxAttempts}`);
 
-        // Validate token and get user data
-        const tokenResponse = await fetch("/api/auth/login-token", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ token: sessionData.loginToken }),
-        });
-
-        const tokenData = await tokenResponse.json();
-
-        if (tokenData.success && tokenData.user) {
-          // Sign in with NextAuth
-          const { signIn } = await import("next-auth/react");
-          const result = await signIn("credentials", {
-            email: tokenData.user.email,
-            password: "", // Token-based login, no password needed
-            loginToken: sessionData.loginToken,
-            redirect: false,
+        try {
+          // Generate login token from session
+          const tokenResponse = await fetch("/api/auth/generate-login-token", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ sessionId }),
           });
 
-          if (result?.ok) {
-            // Redirect to dashboard
-            window.location.href = "/dashboard";
-            return;
-          }
-        }
+          const tokenData = await tokenResponse.json();
 
-        // If auto-login fails, show the page
-        setIsLoggingIn(false);
-      } catch (error) {
-        console.error("Auto-login error:", error);
+          if (!tokenResponse.ok) {
+            // User not found yet - webhook still processing
+            if (tokenResponse.status === 404 && attempts < maxAttempts) {
+              console.log("User not found, webhook still processing. Retrying...");
+              await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+              return tryLogin();
+            }
+            
+            console.error("Token generation failed:", tokenData.error);
+            return false;
+          }
+
+          if (tokenData.success && tokenData.loginToken) {
+            console.log("Login token received, attempting sign in...");
+            
+            // Sign in with NextAuth
+            const { signIn } = await import("next-auth/react");
+            const result = await signIn("credentials", {
+              email: tokenData.user.email,
+              password: "", // Token-based login, no password needed
+              loginToken: tokenData.loginToken,
+              redirect: false,
+            });
+
+            if (result?.ok) {
+              console.log("Auto-login successful! Redirecting to dashboard...");
+              // Redirect to dashboard
+              window.location.href = "/dashboard";
+              return true;
+            } else {
+              console.error("Sign in failed:", result?.error);
+              return false;
+            }
+          }
+
+          return false;
+        } catch (error) {
+          console.error("Auto-login error:", error);
+          if (attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return tryLogin();
+          }
+          return false;
+        }
+      };
+
+      const success = await tryLogin();
+      
+      if (!success) {
+        console.log("Auto-login failed after all attempts");
         setIsLoggingIn(false);
       }
     };
@@ -188,8 +212,8 @@ function PaymentSuccessContent() {
                 className="w-full md:w-auto text-lg px-8"
                 size="lg"
               >
-                <Link href="/login">
-                  👉 Access Your Report Now
+                <Link href="/dashboard">
+                  👉 Start Full Report
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
               </Button>
