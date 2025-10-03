@@ -44,7 +44,7 @@ function PaymentSuccessContent() {
       }
 
       let attempts = 0;
-      const maxAttempts = 5; // Try for up to 10 seconds (5 attempts * 2 seconds)
+      const maxAttempts = 10; // Try for up to 30 seconds (10 attempts * 3 seconds)
 
       const tryLogin = async (): Promise<boolean> => {
         attempts++;
@@ -65,8 +65,8 @@ function PaymentSuccessContent() {
           if (!tokenResponse.ok) {
             // User not found yet - webhook still processing
             if (tokenResponse.status === 404 && attempts < maxAttempts) {
-              console.log("User not found, webhook still processing. Retrying...");
-              await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+              console.log("User not found, webhook still processing. Retrying in 3 seconds...");
+              await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3 seconds
               return tryLogin();
             }
             
@@ -101,7 +101,8 @@ function PaymentSuccessContent() {
         } catch (error) {
           console.error("Auto-login error:", error);
           if (attempts < maxAttempts) {
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            console.log("Error occurred, retrying in 3 seconds...");
+            await new Promise(resolve => setTimeout(resolve, 3000));
             return tryLogin();
           }
           return false;
