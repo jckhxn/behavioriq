@@ -26,12 +26,73 @@ function PaymentSuccessContent() {
   const searchParams = useSearchParams();
   const [childName, setChildName] = useState("");
   const [isUpgrading, setIsUpgrading] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(true);
 
   useEffect(() => {
     const childNameParam = searchParams.get("childName");
     if (childNameParam) {
       setChildName(decodeURIComponent(childNameParam));
     }
+
+    // Attempt auto-login
+    const attemptAutoLogin = async () => {
+      const sessionId = searchParams.get("session_id");
+      
+      if (!sessionId) {
+        setIsLoggingIn(false);
+        return;
+      }
+
+      try {
+        // Get session data from Stripe including login token
+        const sessionResponse = await fetch(
+          `/api/stripe/session?session_id=${sessionId}`
+        );
+        const sessionData = await sessionResponse.json();
+
+        if (!sessionData.loginToken) {
+          console.log("No login token found in session");
+          setIsLoggingIn(false);
+          return;
+        }
+
+        // Validate token and get user data
+        const tokenResponse = await fetch("/api/auth/login-token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ token: sessionData.loginToken }),
+        });
+
+        const tokenData = await tokenResponse.json();
+
+        if (tokenData.success && tokenData.user) {
+          // Sign in with NextAuth
+          const { signIn } = await import("next-auth/react");
+          const result = await signIn("credentials", {
+            email: tokenData.user.email,
+            password: "", // Token-based login, no password needed
+            loginToken: sessionData.loginToken,
+            redirect: false,
+          });
+
+          if (result?.ok) {
+            // Redirect to dashboard
+            window.location.href = "/dashboard";
+            return;
+          }
+        }
+
+        // If auto-login fails, show the page
+        setIsLoggingIn(false);
+      } catch (error) {
+        console.error("Auto-login error:", error);
+        setIsLoggingIn(false);
+      }
+    };
+
+    attemptAutoLogin();
   }, [searchParams]);
 
   const handleUpgrade = async () => {
@@ -66,6 +127,23 @@ function PaymentSuccessContent() {
       setIsUpgrading(false);
     }
   };
+
+  // Show loading state while attempting auto-login
+  if (isLoggingIn) {
+    return (
+      <div className="min-h-screen bg-background p-4 flex items-center justify-center">
+        <Card className="max-w-md w-full">
+          <CardContent className="pt-6 text-center">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <Brain className="h-8 w-8 text-primary animate-pulse" />
+            </div>
+            <h3 className="text-xl font-semibold mb-2">Setting up your account...</h3>
+            <p className="text-muted-foreground">You'll be redirected to your dashboard in a moment.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background p-4">

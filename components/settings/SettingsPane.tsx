@@ -30,6 +30,7 @@ import {
   Activity,
 } from "lucide-react";
 import SuperAdminPanel from "@/components/admin/SuperAdminPanel";
+import BillingSection from "@/components/settings/BillingSection";
 
 interface UserSettings {
   compactView: boolean;
@@ -252,10 +253,14 @@ const SettingsPane: React.FC = () => {
   return (
     <div className="p-3 space-y-3">
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-3">
+        <TabsList className="grid w-full grid-cols-3 mb-3">
           <TabsTrigger value="profile" className="text-xs">
             <User className="h-3 w-3 mr-1" />
             Profile
+          </TabsTrigger>
+          <TabsTrigger value="billing" className="text-xs">
+            <Activity className="h-3 w-3 mr-1" />
+            Billing
           </TabsTrigger>
           <TabsTrigger value="preferences" className="text-xs">
             <Settings className="h-3 w-3 mr-1" />
@@ -324,6 +329,11 @@ const SettingsPane: React.FC = () => {
               </Button>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Billing Tab */}
+        <TabsContent value="billing" className="space-y-3">
+          <BillingSection />
         </TabsContent>
 
         {/* Preferences Tab */}

@@ -39,6 +39,7 @@ model User {
   createdDomainTemplates DomainTemplate[] @relation("DomainTemplatesCreated")
   createdAssessmentVersions AssessmentTemplateVersion[] @relation("AssessmentVersionsCreated")
   createdDomainVersions DomainTemplateVersion[] @relation("DomainVersionsCreated")
+  loginTokens     LoginToken[]
 
   @@index([organizationId])
   @@index([parentUserId])
@@ -677,4 +678,20 @@ enum ShareLinkPrivacy {
   PUBLIC
   PRIVATE
   PASSWORD_PROTECTED
+}
+
+model LoginToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("login_tokens")
 }

@@ -223,6 +223,42 @@ export class AssessmentAI {
       (ds) => ds.isClinicallySignificant
     );
 
+    // Fetch domain-specific resources for clinically significant areas
+    const domainResources: { [key: string]: any } = {};
+    for (const config of this.assessmentConfigs) {
+      if (config.resources) {
+        domainResources[config.name] = config.resources;
+      }
+    }
+
+    // Build resources section for AI prompt
+    const resourcesSection =
+      clinicallySignificantDomains.length > 0
+        ? `
+
+Recommended Resources for Clinically Significant Areas:
+${clinicallySignificantDomains
+  .map((ds) => {
+    const domainConfig = this.assessmentConfigs.find(
+      (c) => c.name === ds.domain
+    );
+    if (domainConfig && domainConfig.resources) {
+      const resources =
+        typeof domainConfig.resources === "string"
+          ? JSON.parse(domainConfig.resources)
+          : domainConfig.resources;
+      if (resources && resources.length > 0) {
+        return `
+${ds.displayName}:
+${resources.map((r: any) => `  - ${r.title || r.name}: ${r.url || r.link || ""}`).join("\n")}`;
+      }
+    }
+    return "";
+  })
+  .filter((s) => s)
+  .join("\n")}`
+        : "";
+
     const prompt = `Based on the following assessment results, provide professional recommendations and citations:
 
 Assessment Results:
@@ -243,12 +279,16 @@ Clinically Significant Areas: ${
       clinicallySignificantDomains.map((ds) => ds.displayName).join(", ") ||
       "None"
     }
+${resourcesSection}
 
 Please provide:
 1. A brief interpretation of the results
 2. Specific recommendations for each clinically significant area
-3. General wellness recommendations
-4. Professional referral suggestions if appropriate
+3. Reference the provided resources when applicable (include URLs in your recommendations)
+4. General wellness recommendations
+5. Professional referral suggestions if appropriate
+
+IMPORTANT: When mentioning resources, include their URLs so parents can access them directly.
 
 Keep the response professional, empathetic, and actionable.`;
 
@@ -257,7 +297,7 @@ Keep the response professional, empathetic, and actionable.`;
         {
           role: "system",
           content:
-            "You are a licensed clinical psychologist providing assessment interpretations and recommendations.",
+            "You are a licensed clinical psychologist providing assessment interpretations and recommendations. Always cite the specific resources provided with their URLs when making recommendations.",
         },
         { role: "user", content: prompt },
       ]);

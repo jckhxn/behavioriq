@@ -198,6 +198,22 @@ export async function loadAssessmentConfigFromTemplate(
           scoringConfig = {};
         }
 
+        // Safely parse resources
+        let resources: any = undefined;
+        try {
+          if (domainTemplate.resources) {
+            if (typeof domainTemplate.resources === "object") {
+              resources = domainTemplate.resources;
+            } else if (typeof domainTemplate.resources === "string") {
+              resources = JSON.parse(domainTemplate.resources);
+            }
+          }
+        } catch (parseError) {
+          console.warn(
+            `Domain ${index}: Failed to parse resources - ${parseError instanceof Error ? parseError.message : "Unknown error"}`
+          );
+        }
+
         // Create question set config with safe defaults
         const questionSetConfig: QuestionSetConfig = {
           name: domainTemplate.name,
@@ -210,6 +226,7 @@ export async function loadAssessmentConfigFromTemplate(
           clinicallySignificantScore:
             (scoringConfig as any)?.significantScore ||
             Math.ceil(questions.length * 0.6),
+          resources: resources,
           questions: questions.map((q: any, qIndex: number) => {
             try {
               return {
@@ -330,6 +347,11 @@ export async function loadAssessmentConfigs(): Promise<QuestionSetConfig[]> {
               setWithFields.multiPartLogic as string
             ) as MultiPartLogicConfig)
           : undefined,
+        resources: setWithFields.resources
+          ? typeof setWithFields.resources === "string"
+            ? JSON.parse(setWithFields.resources)
+            : setWithFields.resources
+          : undefined,
         questions: set.questions.map((q) => ({
           id: q.id,
           text: q.text,
@@ -403,6 +425,11 @@ export async function loadAssessmentByDomain(
         ? (JSON.parse(
             questionSetWithFields.multiPartLogic as string
           ) as MultiPartLogicConfig)
+        : undefined,
+      resources: questionSetWithFields.resources
+        ? typeof questionSetWithFields.resources === "string"
+          ? JSON.parse(questionSetWithFields.resources)
+          : questionSetWithFields.resources
         : undefined,
       questions: questionSet.questions.map((q) => ({
         id: q.id,

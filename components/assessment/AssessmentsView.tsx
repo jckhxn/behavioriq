@@ -119,6 +119,8 @@ export function AssessmentsView() {
   const [editingShareLink, setEditingShareLink] = useState<any>(null);
   const [shareableLink, setShareableLink] = useState<string>("");
   const [isSharing, setIsSharing] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [linkToDelete, setLinkToDelete] = useState<any>(null);
 
   // Assessment detail sidebar state
   const [selectedAssessmentId, setSelectedAssessmentId] = useState<
@@ -397,28 +399,31 @@ export function AssessmentsView() {
     setShareDialogOpen(true);
   };
 
-  const handleDeleteShareLink = async (link: any) => {
-    if (
-      !confirm(
-        `Are you sure you want to delete this share link?\n\nPrivacy: ${link.privacy}\nViews: ${link.viewCount}\n\nThis action cannot be undone.`
-      )
-    ) {
-      return;
-    }
+  const handleDeleteShareLink = (link: any) => {
+    setLinkToDelete(link);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDeleteShareLink = async () => {
+    if (!linkToDelete) return;
 
     try {
-      const response = await fetch(`/api/share/${link.shareCode}`, {
+      const response = await fetch(`/api/share/${linkToDelete.shareCode}`, {
         method: "DELETE",
       });
 
       if (response.ok) {
         // Remove from existing links list
-        setExistingShareLinks((prev) => prev.filter((l) => l.id !== link.id));
+        setExistingShareLinks((prev) =>
+          prev.filter((l) => l.id !== linkToDelete.id)
+        );
 
         // Also remove from main shareable links list
-        setShareableLinks((prev) => prev.filter((l) => l.id !== link.id));
+        setShareableLinks((prev) => prev.filter((l) => l.id !== linkToDelete.id));
 
         toast.success("Share link deleted successfully!");
+        setDeleteConfirmOpen(false);
+        setLinkToDelete(null);
       } else {
         const error = await response.json();
         console.error("Failed to delete share link:", error);
@@ -588,12 +593,17 @@ export function AssessmentsView() {
             // User has started/completed a conversational trial
             const hasCompletedTrial =
               conversationalAssessment.status === "COMPLETED";
+            const hasEnhancedReport = conversationalAssessment.hasEnhancedReport || false;
+
+            // Hide the module entirely if trial is complete but enhanced report not purchased
+            if (hasCompletedTrial && !hasEnhancedReport) {
+              return null;
+            }
+
             return (
               <ConversationalTrialModule
                 hasCompletedTrial={hasCompletedTrial}
-                hasEnhancedReport={
-                  conversationalAssessment.hasEnhancedReport || false
-                }
+                hasEnhancedReport={hasEnhancedReport}
                 assessmentId={conversationalAssessment.id}
               />
             );
@@ -975,6 +985,9 @@ export function AssessmentsView() {
                     value={sharePassword}
                     onChange={(e) => setSharePassword(e.target.value)}
                     placeholder="Enter password for access"
+                    autoComplete="new-password"
+                    data-1p-ignore
+                    data-lpignore="true"
                   />
                 </div>
               )}
@@ -1141,6 +1154,53 @@ export function AssessmentsView() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Share Link</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this share link? This action cannot
+              be undone.
+            </DialogDescription>
+          </DialogHeader>
+          {linkToDelete && (
+            <div className="space-y-2 py-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">Privacy:</span>
+                <Badge>{linkToDelete.privacy}</Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">Views:</span>
+                <span className="font-medium">{linkToDelete.viewCount || 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">Status:</span>
+                <Badge
+                  variant={linkToDelete.isActive ? "default" : "secondary"}
+                >
+                  {linkToDelete.isActive ? "Active" : "Inactive"}
+                </Badge>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteConfirmOpen(false);
+                setLinkToDelete(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDeleteShareLink}>
+              Delete Link
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Assessment Detail Sidebar */}
       {selectedAssessmentId && (

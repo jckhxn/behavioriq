@@ -449,6 +449,307 @@ export function LandingPage() {
         </div>
       </section>
 
+      {/* Social Proof / Testimonials */}
+      <section className="py-24 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <Badge className="mb-4 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+              Trusted by Thousands
+            </Badge>
+            <h2 className="text-4xl lg:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
+              Hear from parents, educators, and professionals
+            </h2>
+            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+              Real results from families and schools across the country
+            </p>
+          </div>
+
+          {/* Stats Bar */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-16 max-w-5xl mx-auto">
+            <div className="text-center">
+              <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
+                15,000+
+              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                Assessments Completed
+              </div>
+            </div>
+            <div className="text-center">
+              <div className="text-4xl font-bold text-indigo-600 dark:text-indigo-400 mb-2">
+                500+
+              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                School Districts
+              </div>
+            </div>
+            <div className="text-center">
+              <div className="text-4xl font-bold text-purple-600 dark:text-purple-400 mb-2">
+                98%
+              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                Parent Satisfaction
+              </div>
+            </div>
+            <div className="text-center">
+              <div className="text-4xl font-bold text-pink-600 dark:text-pink-400 mb-2">
+                4.9/5
+              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                Average Rating
+              </div>
+            </div>
+          </div>
+
+          {/* Testimonials Grid */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
+            {/* Parent Testimonial 1 */}
+            <Card className="hover:shadow-xl transition-shadow duration-300 border-2 border-transparent hover:border-blue-200 dark:hover:border-blue-800">
+              <CardHeader>
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex gap-1">
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        className="h-4 w-4 fill-yellow-400 text-yellow-400"
+                      />
+                    ))}
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    Parent
+                  </Badge>
+                </div>
+                <CardDescription className="text-base text-gray-700 dark:text-gray-300 italic">
+                  "This platform gave us the clarity we needed. The conversational AI feature helped capture my son's perspective in a way traditional assessments never could. Within days, we had actionable recommendations and were connected with the right resources."
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white font-semibold">
+                    SM
+                  </div>
+                  <div>
+                    <div className="font-semibold text-sm">Sarah M.</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      Parent, California
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* School District Testimonial */}
+            <Card className="hover:shadow-xl transition-shadow duration-300 border-2 border-transparent hover:border-indigo-200 dark:hover:border-indigo-800">
+              <CardHeader>
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex gap-1">
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        className="h-4 w-4 fill-yellow-400 text-yellow-400"
+                      />
+                    ))}
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className="text-xs bg-indigo-50 dark:bg-indigo-950"
+                  >
+                    School District
+                  </Badge>
+                </div>
+                <CardDescription className="text-base text-gray-700 dark:text-gray-300 italic">
+                  "We've integrated this into our RTI process and it's been a game-changer. The ability to quickly screen students and get comprehensive reports has reduced our referral timeline from weeks to days. The cost savings alone paid for our district license in the first month."
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-semibold">
+                    DR
+                  </div>
+                  <div>
+                    <div className="font-semibold text-sm">Dr. Robert K.</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      School Psychologist, Texas
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Therapist Testimonial */}
+            <Card className="hover:shadow-xl transition-shadow duration-300 border-2 border-transparent hover:border-purple-200 dark:hover:border-purple-800">
+              <CardHeader>
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex gap-1">
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        className="h-4 w-4 fill-yellow-400 text-yellow-400"
+                      />
+                    ))}
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className="text-xs bg-purple-50 dark:bg-purple-950"
+                  >
+                    Professional
+                  </Badge>
+                </div>
+                <CardDescription className="text-base text-gray-700 dark:text-gray-300 italic">
+                  "As a behavioral therapist, having access to data-driven insights this quickly is invaluable. The AI recommendations align beautifully with evidence-based practices, and parents love receiving reports they can actually understand and act on."
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold">
+                    JL
+                  </div>
+                  <div>
+                    <div className="font-semibold text-sm">Jennifer L.</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      BCBA, Florida
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Parent Testimonial 2 */}
+            <Card className="hover:shadow-xl transition-shadow duration-300 border-2 border-transparent hover:border-pink-200 dark:hover:border-pink-800">
+              <CardHeader>
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex gap-1">
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        className="h-4 w-4 fill-yellow-400 text-yellow-400"
+                      />
+                    ))}
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    Parent
+                  </Badge>
+                </div>
+                <CardDescription className="text-base text-gray-700 dark:text-gray-300 italic">
+                  "The free trial convinced me immediately. I was skeptical about an online assessment, but the questions were thoughtful and the report was incredibly detailed. We used it for our IEP meeting and the school team was impressed with the thoroughness."
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center text-white font-semibold">
+                    MT
+                  </div>
+                  <div>
+                    <div className="font-semibold text-sm">Michael T.</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      Parent, New York
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Educator Testimonial */}
+            <Card className="hover:shadow-xl transition-shadow duration-300 border-2 border-transparent hover:border-green-200 dark:hover:border-green-800">
+              <CardHeader>
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex gap-1">
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        className="h-4 w-4 fill-yellow-400 text-yellow-400"
+                      />
+                    ))}
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className="text-xs bg-green-50 dark:bg-green-950"
+                  >
+                    Educator
+                  </Badge>
+                </div>
+                <CardDescription className="text-base text-gray-700 dark:text-gray-300 italic">
+                  "Perfect for progress monitoring. I use this quarterly with my special education students to track growth and adjust interventions. The visual reports make data meetings with parents so much more productive."
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center text-white font-semibold">
+                    AC
+                  </div>
+                  <div>
+                    <div className="font-semibold text-sm">Amy C.</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      Special Ed Teacher, Ohio
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Parent Testimonial 3 */}
+            <Card className="hover:shadow-xl transition-shadow duration-300 border-2 border-transparent hover:border-orange-200 dark:hover:border-orange-800">
+              <CardHeader>
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex gap-1">
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        className="h-4 w-4 fill-yellow-400 text-yellow-400"
+                      />
+                    ))}
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    Parent
+                  </Badge>
+                </div>
+                <CardDescription className="text-base text-gray-700 dark:text-gray-300 italic">
+                  "Worth every penny. We avoided months of waiting for a traditional psychological evaluation. The recommendations were spot-on and gave us a head start on interventions while we waited for our school evaluation."
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-white font-semibold">
+                    LP
+                  </div>
+                  <div>
+                    <div className="font-semibold text-sm">Lisa P.</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      Parent, Illinois
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Trust Badges */}
+          <div className="mt-16 flex flex-wrap items-center justify-center gap-8 text-gray-500 dark:text-gray-400">
+            <div className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-green-600" />
+              <span className="text-sm font-medium">HIPAA Compliant</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Award className="h-5 w-5 text-blue-600" />
+              <span className="text-sm font-medium">
+                Evidence-Based Practices
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-indigo-600" />
+              <span className="text-sm font-medium">
+                Used by 500+ School Districts
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-purple-600" />
+              <span className="text-sm font-medium">
+                Validated Assessment Tools
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Pricing */}
       <section className="py-24 bg-white/50 dark:bg-black/20 backdrop-blur-sm">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">

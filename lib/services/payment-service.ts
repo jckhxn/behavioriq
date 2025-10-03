@@ -6,6 +6,7 @@ import { licenseRepository } from "@/lib/db/repositories/license-repository";
 import { assessmentRepository } from "@/lib/db/repositories/assessment-repository";
 import { generateLicenseKey } from "@/lib/config/license";
 import { getAssessmentDisplayName } from "@/lib/config/assessment";
+import { loginTokenService } from "@/lib/auth/login-token-service";
 import type { Stripe } from "stripe";
 import type { Prisma } from "@prisma/client";
 
@@ -89,7 +90,7 @@ export class PaymentService {
     console.log(`[PaymentService] Processing assessment purchase`);
 
     // Transaction ensures all-or-nothing
-    return prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       // 1. Get or create user
       const user = await this.getOrCreateUser(session, tx);
       console.log(`[PaymentService] User resolved: ${user.id}`);
@@ -104,6 +105,12 @@ export class PaymentService {
 
       return { user, payment, license };
     });
+
+    // 4. Generate one-time login token for auto-login
+    const loginToken = await loginTokenService.generateToken(result.user.id);
+    console.log(`[PaymentService] Login token generated: ${loginToken.substring(0, 8)}...`);
+
+    return { ...result, loginToken };
   }
 
   /**

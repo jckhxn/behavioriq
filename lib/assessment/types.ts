@@ -53,4 +53,5 @@ export interface QuestionSetConfig {
   questions: QuestionConfig[];
   terminationRules: TerminationRuleConfig[];
   multiPartLogic?: MultiPartLogicConfig;
+  resources?: any; // Domain-specific recommended resources with citations
 }

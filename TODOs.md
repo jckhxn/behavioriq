@@ -16,7 +16,6 @@
 - Drag and Drop components on dashboard?
 - After purchase user should be logged in so theyre sent straight to dashboard.
 - Fancy tutorial onboarding for dashboard?
-- Registered users get convo assessment upsell stuff on dashboard, follows similiar flow to trial flow (still WIP)
 - Get rid of trial assessment banner if one has been taken.
 - [x] **DONE: Annual Subscription Plan** ✅ COMPLETE (Oct 2, 2025)
   - Added $290/year subscription option (save $58/year)
@@ -38,7 +37,7 @@
 # Features to add
 
 - Analytics (Google & Meta Pixel for retargeting?)
-- Account Upgrade
+- Account Upgrade from dashboard.
 - SIS/PowerSchool integration (Import Students, select Student at assessment start, link in SIS system flow.)
 - pSEO stuff
 - Affiliate linking setup
