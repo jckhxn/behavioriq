@@ -39,10 +39,34 @@ export default function SharedAssessmentPage() {
         return;
       }
 
-      // If no password required, show the success page
-      setLoading(false);
+      // If no password required, fetch the full assessment data immediately
+      console.log("No password required, fetching full assessment data");
+      await fetchAssessmentData();
     } catch (error) {
       console.error("Error fetching share metadata:", error);
+      setError("Error loading shared assessment. Please try again.");
+      setLoading(false);
+    }
+  };
+
+  // Fetch full assessment data without password
+  const fetchAssessmentData = async () => {
+    try {
+      const response = await fetch(`/api/share/${code}?action=view`);
+      const data = await response.json();
+
+      if (response.ok && data.assessment) {
+        console.log("Assessment data loaded successfully");
+        setAssessmentData(data);
+        setLoading(false);
+      } else {
+        console.error("Error loading assessment:", data.error);
+        setError(data.error || "Error loading assessment. Please try again.");
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error("Error fetching assessment data:", error);
+      setError("Error loading assessment. Please try again.");
       setLoading(false);
     }
   };
@@ -156,6 +180,20 @@ export default function SharedAssessmentPage() {
                 ))}
               </div>
             )}
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error && !showPasswordDialog) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <p className="text-red-600 font-medium mb-4">{error}</p>
+            <Button onClick={() => window.location.reload()}>Try Again</Button>
+          </div>
         </div>
       </div>
     );
