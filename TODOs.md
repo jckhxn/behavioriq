@@ -28,8 +28,7 @@
 
 # BUGS
 
-- Results page inaccurately shows data (Clicking yes on every trial question says 14 out of 7 for example)
-- No validation that email already exists on registration after trial (or post checkout.)
+- Validate email BEFORE checkout screen.
 - Failed to process upgrade when attempting account upgrade on post checkout screen
 - /share/ route doesn't load enhanced reports correctly.
 - Hide "View Enhanced report" after enhanced report viewed.

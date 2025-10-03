@@ -56,6 +56,19 @@ function RegisterForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+
+    // Validate name
+    if (!formData.name || formData.name.trim().length === 0) {
+      toast.error("Name is required");
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       toast.error("Passwords do not match");
       return;
@@ -69,8 +82,27 @@ function RegisterForm() {
     setIsLoading(true);
 
     try {
-      // For trial users going to checkout, skip account creation and go directly to payment
+      // For trial users going to checkout, validate email doesn't exist before proceeding
       if (isTrialUser && searchParams.get("redirect") === "checkout") {
+        // Check if email already exists
+        const checkEmailResponse = await fetch("/api/auth/check-email", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email: formData.email }),
+        });
+
+        const emailCheckData = await checkEmailResponse.json();
+
+        if (emailCheckData.exists) {
+          toast.error(
+            "An account with this email already exists. Please log in instead."
+          );
+          setIsLoading(false);
+          return;
+        }
+
         toast.success("Redirecting to secure checkout...");
 
         // Store user data temporarily and redirect to checkout
