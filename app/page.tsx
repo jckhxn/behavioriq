@@ -40,11 +40,25 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState("dashboard");
 
   useEffect(() => {
-    // Check URL parameters for tab
+    // Check URL parameters for tab and upgrade status
     const urlParams = new URLSearchParams(window.location.search);
     const tab = urlParams.get("tab");
+    const upgraded = urlParams.get("upgraded");
+    
     if (tab === "settings") {
       setActiveTab("settings");
+    }
+
+    // Show success message for subscription upgrades
+    if (upgraded === "true") {
+      const { toast } = require("sonner");
+      toast.success("🎉 Membership Upgraded!", {
+        description: "Welcome to your BehaviorIQ™ Membership! You can now create unlimited assessments.",
+        duration: 5000,
+      });
+
+      // Clean up URL
+      window.history.replaceState({}, "", window.location.pathname);
     }
   }, []);
 

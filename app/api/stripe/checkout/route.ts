@@ -55,8 +55,13 @@ export async function POST(request: NextRequest) {
         },
       ],
       mode: isSubscription ? "subscription" : "payment",
-      success_url: `${process.env.NEXTAUTH_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}${childName ? `&childName=${encodeURIComponent(childName)}` : ""}`,
-      cancel_url: `${process.env.NEXTAUTH_URL}/payment?cancelled=true`,
+      // For subscription upgrades, redirect to dashboard; for one-time payments, go to payment-success
+      success_url: isSubscription
+        ? `${process.env.NEXTAUTH_URL}/dashboard?upgraded=true`
+        : `${process.env.NEXTAUTH_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}${childName ? `&childName=${encodeURIComponent(childName)}` : ""}`,
+      cancel_url: isSubscription
+        ? `${process.env.NEXTAUTH_URL}/payment-success?upgrade_cancelled=true`
+        : `${process.env.NEXTAUTH_URL}/payment?cancelled=true`,
       metadata: {
         userId: session.user.id,
         planType,
