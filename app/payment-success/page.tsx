@@ -151,6 +151,7 @@ function PaymentSuccessContent() {
           plan: "MONTHLY",
           childName: childName,
           isSubscription: true,
+          fromPaymentSuccess: true, // Apply discount for post-checkout upsell
         }),
       });
 

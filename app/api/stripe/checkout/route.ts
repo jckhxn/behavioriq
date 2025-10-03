@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { planType, plan, childName, isSubscription } = body;
+    const { planType, plan, childName, isSubscription, fromPaymentSuccess = false } = body;
 
     if (!planType || !plan) {
       return NextResponse.json(
@@ -75,9 +75,11 @@ export async function POST(request: NextRequest) {
         childName: childName || "",
         isSubscription: isSubscriptionCheckout.toString(),
       },
-      // Apply discount coupon for subscription upgrades from payment success page
+      // Apply discount coupon ONLY for subscription upgrades from payment success page (post-checkout upsell)
+      // Do NOT apply discount for upgrades from dashboard/settings
       ...(isSubscriptionCheckout &&
         plan === "MONTHLY" &&
+        fromPaymentSuccess &&
         process.env.STRIPE_FIRST_3_MONTHS_50_COUPON && {
           discounts: [
             {

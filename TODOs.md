@@ -10,12 +10,8 @@
 - - AWS SES, Resend, MailGun, SendGrid, look up alternatives
 - - Email Engine Setup (Auth, Reports, Marketing Sequencing stuff.)
     -- Districts should be able to create/manage etc assessments for users under their account/license.
-    - Users get redirected to login page after successful payment
-
 - Drag and Drop components on dashboard?
 - Fancy tutorial onboarding for dashboard
-
-- Account Upgrade from dashboard or redirect to checkout if coming from landing page.
 
 # BUGS
 
