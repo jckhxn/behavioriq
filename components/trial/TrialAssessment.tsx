@@ -11,7 +11,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Brain, ArrowLeft, ArrowRight, AlertCircle } from "lucide-react";
+import {
+  Brain,
+  ArrowLeft,
+  ArrowRight,
+  AlertCircle,
+  CheckCircle,
+  XCircle,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -156,7 +163,17 @@ export function TrialAssessment() {
 
   const handlePrevious = () => {
     if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex((prev) => prev - 1);
+      const previousIndex = currentQuestionIndex - 1;
+      const previousQuestion = trialData.questions[previousIndex];
+
+      // Clear the response for the previous question so user can change their answer
+      setResponses((prev) => {
+        const newResponses = { ...prev };
+        delete newResponses[previousQuestion.id];
+        return newResponses;
+      });
+
+      setCurrentQuestionIndex(previousIndex);
     }
   };
 
@@ -307,21 +324,23 @@ export function TrialAssessment() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-4">
+              <Button
+                size="lg"
+                onClick={() => handleResponse(true)}
+                className="w-full h-14 text-lg font-medium transition-all duration-200 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white"
+              >
+                <CheckCircle className="mr-3 h-5 w-5" />
+                Yes
+              </Button>
               <Button
                 size="lg"
                 variant="outline"
                 onClick={() => handleResponse(false)}
-                className="h-16 text-lg hover:bg-green-50 hover:border-green-200 dark:hover:bg-green-900/20 dark:hover:border-green-800"
+                className="w-full h-14 text-lg font-medium transition-all duration-200 hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
               >
+                <XCircle className="mr-3 h-5 w-5" />
                 No
-              </Button>
-              <Button
-                size="lg"
-                onClick={() => handleResponse(true)}
-                className="h-16 text-lg"
-              >
-                Yes
               </Button>
             </div>
           </CardContent>

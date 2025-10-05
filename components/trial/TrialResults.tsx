@@ -312,18 +312,18 @@ export function TrialResults() {
         </Card>
 
         {/* Important Disclaimer */}
-        <Card className="mb-8 border-amber-200 bg-amber-50/50">
+        <Card className="mb-8 border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-900/20">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-amber-800">
+            <CardTitle className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
               <AlertTriangle className="h-5 w-5" />
               Important Disclaimer
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-amber-800 font-medium">
+            <p className="text-amber-800 dark:text-amber-200 font-medium">
               This is not a diagnosis, but a first step to clarity.
             </p>
-            <p className="text-amber-700 mt-2">
+            <p className="text-amber-700 dark:text-amber-300 mt-2">
               These results are based on a brief screening and should not be
               considered a medical diagnosis. They are designed to help you
               understand whether a consultation with a qualified professional
@@ -388,16 +388,18 @@ export function TrialResults() {
               ) : session?.user ? (
                 // Registered user - go directly to checkout
                 <Button size="lg" asChild className="text-lg px-8">
-                  <Link href="/checkout-direct">
+                  <Link
+                    href={`/checkout-direct${results.childName ? `?childName=${encodeURIComponent(results.childName)}` : ""}`}
+                  >
                     Get Your Full AI Report - $97
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Link>
                 </Button>
               ) : (
-                // Not logged in - go to registration first
+                // Not logged in - go to trial checkout to create account and pay
                 <Button size="lg" asChild className="text-lg px-8">
                   <Link
-                    href={`/register?source=trial&childName=${encodeURIComponent(results.childName)}&redirect=checkout`}
+                    href={`/trial-checkout${results.childName ? `?childName=${encodeURIComponent(results.childName)}` : ""}`}
                   >
                     Get Your Full AI Report - $97
                     <ArrowRight className="ml-2 h-5 w-5" />

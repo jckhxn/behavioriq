@@ -46,6 +46,9 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
   >("IN_PROGRESS");
   const [structuredState, setStructuredState] =
     useState<StructuredAssessmentState>({});
+  const [questionHistory, setQuestionHistory] = useState<
+    StructuredAssessmentState[]
+  >([]);
   const [subjectName, setSubjectName] = useState<string>("");
   const [aiRecommendations, setAiRecommendations] = useState<string>("");
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -82,9 +85,14 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
           // Override with latest status from messages endpoint
           setAssessmentStatus(data.status);
 
-          // Only send initial greeting if assessment is not completed and no messages exist
-          if (data.status !== "COMPLETED" && data.messages.length === 0) {
-            await sendInitialGreeting();
+          if (data.status !== "COMPLETED") {
+            if (data.messages.length === 0) {
+              // No messages - send initial greeting
+              await sendInitialGreeting();
+            } else if (isStructuredMode) {
+              // Resuming assessment - get current question state
+              await resumeAssessment();
+            }
           }
         }
       } catch (error) {
@@ -141,6 +149,33 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
       }
     } catch (error) {
       console.error("Error sending initial greeting:", error);
+    }
+  };
+
+  const resumeAssessment = async () => {
+    try {
+      const response = await fetch(`/api/assessments/${assessmentId}/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: "resume_assessment",
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        if (data.nextQuestion) {
+          setStructuredState({
+            currentQuestion: data.nextQuestion,
+            questionId: data.questionId,
+            currentDomain: data.currentDomain,
+            progress: data.progress,
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error resuming assessment:", error);
     }
   };
 
@@ -208,6 +243,56 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
     }
   };
 
+  const handleBack = async () => {
+    // If we have session history, use it
+    if (questionHistory.length > 0) {
+      // Get the previous state
+      const previousState = questionHistory[questionHistory.length - 1];
+
+      // Remove the last two messages (user answer and AI response)
+      setMessages((prev) => prev.slice(0, -2));
+
+      // Restore the previous question state
+      setStructuredState(previousState);
+
+      // Remove the last history item
+      setQuestionHistory((prev) => prev.slice(0, -1));
+    } else {
+      // No session history - request previous question from API
+      try {
+        setIsLoading(true);
+        const response = await fetch(`/api/assessments/${assessmentId}/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: "previous_question",
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+
+          if (data.previousQuestion) {
+            // Remove the last two messages (user answer and AI response)
+            setMessages((prev) => prev.slice(0, -2));
+
+            // Load the previous question
+            setStructuredState({
+              currentQuestion: data.previousQuestion,
+              questionId: data.questionId,
+              currentDomain: data.currentDomain,
+              progress: data.progress,
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error going back:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
   const handleStructuredAnswer = async (
     questionId: string,
     response: boolean
@@ -248,7 +333,11 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
         if (data.isComplete) {
           setAssessmentStatus("COMPLETED");
           setStructuredState({});
+          setQuestionHistory([]);
         } else {
+          // Save current state to history before moving to next question
+          setQuestionHistory((prev) => [...prev, structuredState]);
+
           setStructuredState({
             currentQuestion: data.nextQuestion,
             questionId: data.questionId,
@@ -309,6 +398,11 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
               progress={structuredState.progress}
               isLoading={isLoading}
               onAnswer={handleStructuredAnswer}
+              onBack={handleBack}
+              canGoBack={
+                questionHistory.length > 0 ||
+                (structuredState.progress?.answeredQuestions || 0) > 0
+              }
             />
           </div>
         </div>

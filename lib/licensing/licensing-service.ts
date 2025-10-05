@@ -21,6 +21,7 @@ interface License {
   type: LicenseType;
   status: LicenseStatus;
   maxUsers: number;
+  maxAssessments: number | null;
   validUntil: Date | null;
   features: any;
   organizationId?: string | null;
@@ -130,21 +131,6 @@ export class LicensingService {
    */
   static getLicenseFeatures(licenseType: LicenseType): LicenseFeatures {
     switch (licenseType) {
-      case "FREE":
-        return {
-          maxAssessments: 0,
-          maxPDFReports: 0,
-          maxUsers: 1,
-          aiRecommendations: false,
-          advancedReports: false,
-          apiAccess: false,
-          bulkUpload: false,
-          customBranding: false,
-          prioritySupport: false,
-          conversationalAI: false,
-          conversationalAISessions: 0,
-        };
-
       case "TRIAL":
         return {
           maxAssessments: 5,

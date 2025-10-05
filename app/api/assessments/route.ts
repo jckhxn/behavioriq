@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth/config";
 import { prisma } from "@/lib/db/prisma";
 import { AssessmentAI } from "@/lib/ai/AssessmentAI";
 import { getDynamicDomainNames } from "@/lib/utils/domainNames";
+import { assessmentCreditsService } from "@/lib/services/assessment-credits-service";
 import { z } from "zod";
 
 const createAssessmentSchema = z.object({
@@ -29,6 +30,22 @@ export async function POST(request: NextRequest) {
 
     const { subjectName, assessmentTemplateId } = validation.data;
 
+    // Check if user has available assessment credits
+    const credits = await assessmentCreditsService.checkUserCredits(
+      session.user.id
+    );
+
+    if (!credits.hasCredits) {
+      return NextResponse.json(
+        {
+          error: "NO_CREDITS",
+          message: "No assessment credits available",
+          credits: credits,
+        },
+        { status: 403 }
+      );
+    }
+
     // If no template specified, get the active template
     let templateId = assessmentTemplateId;
     if (!templateId) {
@@ -54,6 +71,9 @@ export async function POST(request: NextRequest) {
       templateId
     );
 
+    // Use one credit (decrement available credits)
+    await assessmentCreditsService.useCredit(session.user.id);
+
     return NextResponse.json({
       id: assessment.shortId, // Return shortId as the primary ID
       shortId: assessment.shortId,
@@ -61,6 +81,21 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Create assessment error:", error);
+
+    // Handle specific credit errors
+    if (
+      error instanceof Error &&
+      error.message === "No assessment credits available"
+    ) {
+      return NextResponse.json(
+        {
+          error: "NO_CREDITS",
+          message: error.message,
+        },
+        { status: 403 }
+      );
+    }
+
     return NextResponse.json(
       { error: "Failed to create assessment" },
       { status: 500 }
@@ -96,6 +131,7 @@ export async function GET(request: NextRequest) {
         scores: {
           select: {
             domain: true,
+            domainName: true,
             rawScore: true,
             totalPossible: true,
             riskLevel: true,
@@ -121,7 +157,11 @@ export async function GET(request: NextRequest) {
         id: assessment.shortId || assessment.id, // Use shortId as primary ID, fallback to UUID
         scores: assessment.scores.map((score) => ({
           ...score,
-          domainDisplayName: domainNames[score.domain] || score.domain,
+          domainDisplayName:
+            score.domainName || // Use stored domainName if available
+            (score.domain ? domainNames[score.domain] : undefined) || // Look up by domain enum
+            score.domain || // Fallback to domain enum
+            "Unknown Domain",
         })),
       }))
     );

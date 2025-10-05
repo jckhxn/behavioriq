@@ -34,6 +34,7 @@ export default function ConversationalTrialModule({
 }: ConversationalTrialModuleProps) {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [hasConversationalAI, setHasConversationalAI] = useState(false);
+  const [hasViewedReport, setHasViewedReport] = useState(false);
   const [showSuccessBanner, setShowSuccessBanner] = useState(() => {
     // Check if we should show the success banner (just after purchase)
     if (typeof window !== "undefined") {
@@ -42,6 +43,15 @@ export default function ConversationalTrialModule({
     }
     return false;
   });
+
+  // Check if user has already viewed the enhanced report
+  useEffect(() => {
+    if (assessmentId && typeof window !== "undefined") {
+      const viewedKey = `enhanced_report_viewed_${assessmentId}`;
+      const hasViewed = localStorage.getItem(viewedKey) === "true";
+      setHasViewedReport(hasViewed);
+    }
+  }, [assessmentId]);
 
   useEffect(() => {
     // Check if user has conversational AI included in their subscription
@@ -103,34 +113,47 @@ export default function ConversationalTrialModule({
           </Card>
         )}
 
-        {/* Regular enhanced report card - always visible */}
-        <Card className="border-muted">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              <CardTitle className="text-lg">
-                Enhanced Conversational Report
-              </CardTitle>
-              <Badge
-                variant="secondary"
-                className="bg-green-500/10 text-green-700 dark:text-green-400"
+        {/* Regular enhanced report card - conditionally visible */}
+        {!hasViewedReport && (
+          <Card className="border-muted">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <CardTitle className="text-lg">
+                  Enhanced Conversational Report
+                </CardTitle>
+                <Badge
+                  variant="secondary"
+                  className="bg-green-500/10 text-green-700 dark:text-green-400"
+                >
+                  ✓ Active
+                </Badge>
+              </div>
+              <CardDescription>
+                View your child's responses alongside yours.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button
+                asChild
+                className="w-full"
+                onClick={() => {
+                  // Mark as viewed when clicked
+                  if (assessmentId && typeof window !== "undefined") {
+                    const viewedKey = `enhanced_report_viewed_${assessmentId}`;
+                    localStorage.setItem(viewedKey, "true");
+                    setHasViewedReport(true);
+                  }
+                }}
               >
-                ✓ Active
-              </Badge>
-            </div>
-            <CardDescription>
-              View your child's responses alongside yours.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild className="w-full">
-              <Link href={`/assessment/${assessmentId}`}>
-                <Eye className="mr-2 h-4 w-4" />
-                View Enhanced Report
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
+                <Link href={`/assessment/${assessmentId}`}>
+                  <Eye className="mr-2 h-4 w-4" />
+                  View Enhanced Report
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Conversational Chat Widget */}
         <ConversationalChatWidget

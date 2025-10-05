@@ -18,17 +18,19 @@ import {
   Building2,
   CheckCircle,
   ArrowUpCircle,
+  Settings as SettingsIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { formatPrice, PRICING } from "@/lib/config/pricing";
 import { toast } from "sonner";
+import { ManageSubscriptionModal } from "./ManageSubscriptionModal";
 
 interface License {
   type: "FREE" | "TRIAL" | "BASIC" | "PROFESSIONAL" | "ENTERPRISE";
   status: string;
   maxAssessments: number;
   maxUsers: number;
-  validUntil: Date | null;
+  validUntil: string | null; // ISO date string from API
   features: {
     conversationalAI?: boolean;
     aiRecommendations?: boolean;
@@ -37,13 +39,6 @@ interface License {
 
 export default function BillingSection() {
   const LICENSE_INFO = {
-    FREE: {
-      name: "Free Account",
-      icon: Crown,
-      color: "text-gray-500",
-      bgColor: "bg-gray-100 dark:bg-gray-800",
-      features: ["View-only access", "No assessments allowed"],
-    },
     TRIAL: {
       name: "Trial Account",
       icon: Zap,
@@ -90,6 +85,7 @@ export default function BillingSection() {
   const [license, setLicense] = useState<License | null>(null);
   const [loading, setLoading] = useState(true);
   const [upgrading, setUpgrading] = useState(false);
+  const [showManageModal, setShowManageModal] = useState(false);
 
   useEffect(() => {
     fetchLicenseInfo();
@@ -153,9 +149,9 @@ export default function BillingSection() {
     );
   }
 
-  const licenseType = license?.type || "FREE";
-  const licenseInfo = LICENSE_INFO[licenseType];
-  const Icon = licenseInfo.icon;
+  const licenseType = license?.type || "TRIAL";
+  const licenseInfo = LICENSE_INFO[licenseType as keyof typeof LICENSE_INFO];
+  const Icon = licenseInfo?.icon || Crown;
 
   return (
     <div className="space-y-4">
@@ -178,7 +174,7 @@ export default function BillingSection() {
               <Badge
                 variant={license?.status === "ACTIVE" ? "default" : "secondary"}
               >
-                {license?.status || "Unknown"}
+                {license?.status || license?.type || "Unknown"}
               </Badge>
             </div>
             <ul className="space-y-2 text-sm">
@@ -223,12 +219,36 @@ export default function BillingSection() {
               </div>
             </>
           )}
+
+          {/* Manage Subscription Button - Show for PROFESSIONAL, BASIC with recurring subscription */}
+          {(licenseType === "PROFESSIONAL" || licenseType === "BASIC") && (
+            <>
+              <Separator />
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setShowManageModal(true)}
+              >
+                <SettingsIcon className="mr-2 h-4 w-4" />
+                Manage Subscription
+              </Button>
+            </>
+          )}
         </CardContent>
       </Card>
 
+      {/* Manage Subscription Modal */}
+      <ManageSubscriptionModal
+        open={showManageModal}
+        onOpenChange={setShowManageModal}
+        currentPlan={licenseType === "PROFESSIONAL" ? "MONTHLY" : "MONTHLY"} // TODO: Determine actual plan
+        currentPrice={2900} // TODO: Get actual price from license/subscription
+        billingPeriodEnd={license?.validUntil ?? undefined}
+      />
+
       {/* Upgrade Options */}
       {licenseType !== "PROFESSIONAL" && licenseType !== "ENTERPRISE" && (
-        <Card>
+        <Card id="upgrade-plan">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <ArrowUpCircle className="h-5 w-5" />

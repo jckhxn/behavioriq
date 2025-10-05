@@ -60,6 +60,7 @@ function CheckoutDirectContent() {
         plan: plan,
         childName: childName,
         isSubscription: false,
+        fromDashboard: true, // User is authenticated, redirect back to dashboard after payment
       };
 
       console.log("Sending checkout request:", requestBody);

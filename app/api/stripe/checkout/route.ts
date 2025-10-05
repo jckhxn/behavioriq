@@ -10,7 +10,14 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { planType, plan, childName, isSubscription, fromPaymentSuccess = false } = body;
+    const {
+      planType,
+      plan,
+      childName,
+      isSubscription,
+      fromPaymentSuccess = false,
+      fromDashboard = false,
+    } = body;
 
     if (!planType || !plan) {
       return NextResponse.json(
@@ -20,9 +27,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Determine if this is a subscription based on planType or isSubscription flag
-    const isSubscriptionCheckout = isSubscription !== undefined 
-      ? isSubscription 
-      : planType === "subscription";
+    const isSubscriptionCheckout =
+      isSubscription !== undefined
+        ? isSubscription
+        : planType === "subscription";
 
     let priceId: string | undefined;
     let planDetails: any;
@@ -61,13 +69,18 @@ export async function POST(request: NextRequest) {
         },
       ],
       mode: isSubscriptionCheckout ? "subscription" : "payment",
-      // For subscription upgrades, redirect to dashboard; for one-time payments, go to payment-success
+      // For subscription upgrades, redirect to dashboard; for one-time payments from dashboard, also redirect to dashboard
+      // For trial users, redirect to payment-success page
       success_url: isSubscriptionCheckout
         ? `${process.env.NEXTAUTH_URL}/dashboard?upgraded=true`
-        : `${process.env.NEXTAUTH_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}${childName ? `&childName=${encodeURIComponent(childName)}` : ""}`,
+        : fromDashboard
+          ? `${process.env.NEXTAUTH_URL}/dashboard?purchase=success`
+          : `${process.env.NEXTAUTH_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}${childName ? `&childName=${encodeURIComponent(childName)}` : ""}`,
       cancel_url: isSubscriptionCheckout
         ? `${process.env.NEXTAUTH_URL}/payment-success?upgrade_cancelled=true`
-        : `${process.env.NEXTAUTH_URL}/payment?cancelled=true`,
+        : fromDashboard
+          ? `${process.env.NEXTAUTH_URL}/dashboard?purchase=cancelled`
+          : `${process.env.NEXTAUTH_URL}/payment?cancelled=true`,
       metadata: {
         userId: session.user.id,
         planType,

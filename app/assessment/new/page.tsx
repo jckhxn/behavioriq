@@ -16,6 +16,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Brain, ArrowLeft, Users, Clock } from "lucide-react";
 import Link from "next/link";
+import { useAssessmentCredits } from "@/hooks/use-assessment-credits";
+import { AssessmentLimitDialog } from "@/components/assessment/AssessmentLimitDialog";
+import { toast } from "sonner";
 
 interface AssessmentTemplate {
   id: string;
@@ -48,6 +51,14 @@ export default function NewAssessmentPage() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const { data: session } = useSession();
+  const {
+    credits,
+    isLoading: creditsLoading,
+    isDialogOpen,
+    closeDialog,
+    checkCreditsBeforeAction,
+    refreshCredits,
+  } = useAssessmentCredits();
 
   // Fetch available assessments
   useEffect(() => {
@@ -77,6 +88,12 @@ export default function NewAssessmentPage() {
   const createAssessment = async () => {
     if (!subjectName.trim() || !selectedAssessment) return;
 
+    // Check if user has available credits before creating
+    const hasCredits = await checkCreditsBeforeAction();
+    if (!hasCredits) {
+      return; // Dialog will be shown by the hook
+    }
+
     setIsCreating(true);
     try {
       const response = await fetch("/api/assessments", {
@@ -90,12 +107,21 @@ export default function NewAssessmentPage() {
 
       if (response.ok) {
         const assessment = await response.json();
+        refreshCredits(); // Refresh credits after successful creation
         router.push(`/assessment/${assessment.id}`);
       } else {
-        console.error("Failed to create assessment");
+        const data = await response.json();
+        if (data.error === "NO_CREDITS") {
+          toast.error("No assessment credits available");
+          // This will trigger the dialog
+          await checkCreditsBeforeAction();
+        } else {
+          toast.error("Failed to create assessment");
+        }
       }
     } catch (error) {
       console.error("Error creating assessment:", error);
+      toast.error("An error occurred while creating the assessment");
     } finally {
       setIsCreating(false);
     }
@@ -297,6 +323,16 @@ export default function NewAssessmentPage() {
           )}
         </div>
       </div>
+
+      {/* Assessment Limit Dialog */}
+      {credits && (
+        <AssessmentLimitDialog
+          open={isDialogOpen}
+          onOpenChange={closeDialog}
+          credits={credits}
+          childName={subjectName}
+        />
+      )}
     </div>
   );
 }

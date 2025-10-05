@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { CheckCircle, XCircle, Loader2, ArrowLeft } from "lucide-react";
 import {
   loadAssessmentConfigsClient,
   QuestionSetConfig,
@@ -23,6 +23,8 @@ interface QuestionPresenterProps {
   };
   isLoading?: boolean;
   onAnswer: (questionId: string, response: boolean) => Promise<void>;
+  onBack?: () => void;
+  canGoBack?: boolean;
 }
 
 export function QuestionPresenter({
@@ -32,6 +34,8 @@ export function QuestionPresenter({
   progress,
   isLoading = false,
   onAnswer,
+  onBack,
+  canGoBack = false,
 }: QuestionPresenterProps) {
   const [selectedAnswer, setSelectedAnswer] = useState<boolean | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -173,6 +177,20 @@ export function QuestionPresenter({
               "Submit Answer"
             )}
           </Button>
+
+          {/* Back Button */}
+          {canGoBack && (
+            <Button
+              onClick={onBack}
+              variant="ghost"
+              size="lg"
+              className="w-full h-12 text-lg font-medium flex items-center justify-center gap-2"
+              disabled={isLoading || isSubmitting}
+            >
+              <ArrowLeft className="h-5 w-5" />
+              Previous Question
+            </Button>
+          )}
 
           {/* Progress Details */}
           <div className="pt-4 border-t border-border/50">

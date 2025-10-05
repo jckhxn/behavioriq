@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import EnhancedReportView from "@/components/reports/EnhancedReportView";
 
 export default function SharedAssessmentPage() {
   const params = useParams();
@@ -118,6 +119,56 @@ export default function SharedAssessmentPage() {
 
   // Show assessment data if loaded
   if (assessmentData) {
+    // Check if this is an enhanced report
+    const hasEnhancedReport = assessmentData.assessment.hasEnhancedReport;
+    const childResponses = assessmentData.assessment.childResponses;
+    const enhancedAnalysis = assessmentData.assessment.enhancedAnalysis;
+
+    // Show enhanced report if available
+    if (hasEnhancedReport && childResponses && enhancedAnalysis) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-6">
+              <h1 className="text-3xl font-bold text-foreground mb-2">
+                Enhanced Assessment Report
+              </h1>
+              <p className="text-muted-foreground">
+                Subject: {assessmentData.assessment.subjectName}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Status: {assessmentData.assessment.status} • Created:{" "}
+                {new Date(
+                  assessmentData.assessment.createdAt
+                ).toLocaleDateString()}
+              </p>
+            </div>
+
+            <EnhancedReportView
+              assessment={{
+                id: assessmentData.assessment.id,
+                title: assessmentData.assessment.subjectName,
+                completedAt: new Date(assessmentData.assessment.updatedAt),
+                score: assessmentData.assessment.scores?.[0]?.rawScore || 0,
+                enhancedReportPurchasedAt: assessmentData.assessment
+                  .enhancedReportPurchasedAt
+                  ? new Date(
+                      assessmentData.assessment.enhancedReportPurchasedAt
+                    )
+                  : null,
+              }}
+              childResponses={childResponses}
+              enhancedAnalysis={enhancedAnalysis}
+              onDownloadPdf={() => {
+                console.log("PDF download not available for shared reports");
+              }}
+            />
+          </div>
+        </div>
+      );
+    }
+
+    // Show basic assessment report
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4">
         <div className="max-w-4xl mx-auto">

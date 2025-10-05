@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CreditsDisplay } from "@/components/dashboard/CreditsDisplay";
 import {
   Select,
   SelectContent,
@@ -60,6 +61,7 @@ import { AssessmentDetailSidebar } from "./AssessmentDetailSidebar";
 import { toast } from "sonner";
 import ConversationalTrialModule from "@/components/dashboard/ConversationalTrialModule";
 import { formatPrice, PRICING } from "@/lib/config/pricing";
+import { OnboardingChecklist } from "@/components/onboarding/OnboardingChecklist";
 
 interface Assessment {
   id: string;
@@ -101,6 +103,7 @@ export function AssessmentsView() {
   const [userLicense, setUserLicense] = useState<{
     type: string;
     features: string[];
+    maxAssessments?: number;
   } | null>(null);
 
   // Share dialog state
@@ -176,6 +179,7 @@ export function AssessmentsView() {
           setUserLicense({
             type: data.license.type,
             features: data.license.features,
+            maxAssessments: data.license.maxAssessments,
           });
         }
       }
@@ -517,8 +521,11 @@ export function AssessmentsView() {
               Manage and view your assessment history
             </p>
           </div>
-          {userLicense?.type === "FREE" ? (
+          {(userLicense?.type === "BASIC" &&
+            userLicense?.maxAssessments === 0) ||
+          userLicense?.maxAssessments === 0 ? (
             <Button
+              id="create-assessment-btn"
               disabled
               className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 opacity-50 cursor-not-allowed"
             >
@@ -527,7 +534,10 @@ export function AssessmentsView() {
             </Button>
           ) : (
             <Link href="/assessment/new">
-              <Button className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90">
+              <Button
+                id="create-assessment-btn"
+                className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90"
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 New Assessment
               </Button>
@@ -535,8 +545,16 @@ export function AssessmentsView() {
           )}
         </div>
 
-        {/* FREE Account Banner */}
-        {userLicense?.type === "FREE" && (
+        {/* Assessment Credits Display */}
+        <div id="credits-display">
+          <CreditsDisplay />
+        </div>
+
+        {/* Onboarding Checklist */}
+        <OnboardingChecklist />
+
+        {/* BASIC Account with 0 Assessments Banner */}
+        {userLicense?.type === "BASIC" && userLicense?.maxAssessments === 0 && (
           <Card className="border-amber-500 bg-amber-50 dark:bg-amber-900/20">
             <CardContent className="pt-6">
               <div className="flex items-start gap-4">
@@ -545,24 +563,24 @@ export function AssessmentsView() {
                 </div>
                 <div className="flex-1">
                   <h3 className="font-semibold text-amber-900 dark:text-amber-100">
-                    Free Account - View Only Access
+                    Basic Account - View Only Access
                   </h3>
                   <p className="text-sm text-amber-700 dark:text-amber-200 mt-1">
-                    You can view your past assessments, but need to upgrade to
-                    take new assessments.
+                    You have view-only access to your past assessments. Purchase
+                    an assessment or subscribe for unlimited access.
                   </p>
                   <div className="flex gap-3 mt-4">
-                    <Link href="/register?upgrade=single">
+                    <Link href="/pricing">
                       <Button
                         size="sm"
                         variant="default"
                         className="bg-amber-600 hover:bg-amber-700"
                       >
-                        Buy Single Report -{" "}
+                        Buy Assessment -{" "}
                         {formatPrice(PRICING.SINGLE_ASSESSMENT)}
                       </Button>
                     </Link>
-                    <Link href="/register?upgrade=monthly">
+                    <Link href="/pricing">
                       <Button
                         size="sm"
                         variant="outline"
@@ -572,7 +590,7 @@ export function AssessmentsView() {
                         /month
                       </Button>
                     </Link>
-                    <Link href="/register?upgrade=annual">
+                    <Link href="/pricing">
                       <Button
                         size="sm"
                         variant="outline"
@@ -868,14 +886,14 @@ export function AssessmentsView() {
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem
                                 onClick={() => handleShareClick(assessment.id)}
-                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-950"
                               >
                                 <Share className="h-4 w-4 mr-2" />
                                 Share Assessment
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => handleDeleteClick(assessment.id)}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-950"
                               >
                                 <Trash2 className="h-4 w-4 mr-2" />
                                 Delete Assessment
@@ -885,18 +903,10 @@ export function AssessmentsView() {
                         </>
                       ) : (
                         <>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleViewAssessment(assessment.id)}
-                          >
-                            <Play className="h-4 w-4 mr-1" />
-                            Details
-                          </Button>
                           <Link href={`/assessment/${assessment.id}/results`}>
                             <Button size="sm" variant="outline">
                               <Eye className="h-4 w-4 mr-1" />
-                              Results
+                              View Results
                             </Button>
                           </Link>
                           <Button
@@ -916,14 +926,14 @@ export function AssessmentsView() {
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem
                                 onClick={() => handleShareClick(assessment.id)}
-                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-950"
                               >
                                 <Share className="h-4 w-4 mr-2" />
                                 Share Assessment
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => handleDeleteClick(assessment.id)}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-950"
                               >
                                 <Trash2 className="h-4 w-4 mr-2" />
                                 Delete Assessment
@@ -966,19 +976,19 @@ export function AssessmentsView() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="PUBLIC">
-                      <div className="flex items-center">
+                      <div className="flex items-center text-foreground">
                         <Globe className="h-4 w-4 mr-2" />
                         Public - Anyone with the link can view
                       </div>
                     </SelectItem>
                     <SelectItem value="PRIVATE">
-                      <div className="flex items-center">
+                      <div className="flex items-center text-foreground">
                         <Lock className="h-4 w-4 mr-2" />
                         Private - Only you can view
                       </div>
                     </SelectItem>
                     <SelectItem value="PASSWORD_PROTECTED">
-                      <div className="flex items-center">
+                      <div className="flex items-center text-foreground">
                         <Lock className="h-4 w-4 mr-2" />
                         Password Protected - Requires password
                       </div>

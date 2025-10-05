@@ -223,15 +223,25 @@ export class PaymentService {
     session: Stripe.Checkout.Session,
     tx: Prisma.TransactionClient
   ) {
-    const existingLicense = await tx.userLicense.findFirst({
+    const existingUserLicense = await tx.userLicense.findFirst({
       where: { userId },
       include: { license: true },
     });
 
-    if (existingLicense) {
-      // Increment max assessments for existing license
+    if (existingUserLicense) {
+      // Increment assessments allowed for existing user license
+      await tx.userLicense.update({
+        where: { id: existingUserLicense.id },
+        data: {
+          assessmentsAllowed: {
+            increment: 1,
+          },
+        },
+      });
+
+      // Also update the license itself
       return tx.license.update({
-        where: { id: existingLicense.license.id },
+        where: { id: existingUserLicense.license.id },
         data: {
           maxAssessments: {
             increment: 1,
@@ -254,11 +264,14 @@ export class PaymentService {
       },
     });
 
+    // Create user license with 1 assessment allowed
     await tx.userLicense.create({
       data: {
         userId,
         licenseId: newLicense.id,
         isActive: true,
+        assessmentsAllowed: 1, // Each $97 purchase gives 1 assessment
+        assessmentsUsed: 0,
       },
     });
 

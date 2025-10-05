@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
       ],
       mode: "payment",
       success_url: `${request.nextUrl.origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${request.nextUrl.origin}/register?source=trial&childName=${encodeURIComponent(childName || "")}&redirect=checkout`,
+      cancel_url: `${request.nextUrl.origin}/trial-checkout${childName ? `?childName=${encodeURIComponent(childName)}` : ""}`,
       metadata: {
         planType: "oneTime",
         plan: plan,

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSession, signOut } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import { UnifiedChat } from "@/components/chat/UnifiedChat";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +14,7 @@ import {
   Lightbulb,
   Star,
   Shield,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -34,16 +36,24 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import SettingsPane from "@/components/settings/SettingsPane";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { OnboardingProvider } from "@/lib/contexts/OnboardingContext";
+import { WelcomeModal } from "@/components/onboarding/WelcomeModal";
+import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
+import { OnboardingChecklist } from "@/components/onboarding/OnboardingChecklist";
+import { useOnboarding } from "@/lib/contexts/OnboardingContext";
 
-export default function Home() {
+function HomeContent() {
   const { data: session, status } = useSession();
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState("dashboard");
+  const { showWelcome, startTour, skipTour } = useOnboarding();
 
   useEffect(() => {
     // Check URL parameters for tab and upgrade status
-    const urlParams = new URLSearchParams(window.location.search);
-    const tab = urlParams.get("tab");
-    const upgraded = urlParams.get("upgraded");
+    const tab = searchParams.get("tab");
+    const upgraded = searchParams.get("upgraded");
+    const purchase = searchParams.get("purchase");
+    const subtab = searchParams.get("subtab");
 
     if (tab === "settings") {
       setActiveTab("settings");
@@ -58,10 +68,53 @@ export default function Home() {
         duration: 5000,
       });
 
-      // Clean up URL
-      window.history.replaceState({}, "", window.location.pathname);
+      // Clean up URL, but preserve tab/subtab parameters
+      const newParams = new URLSearchParams();
+      if (tab) newParams.set("tab", tab);
+      if (subtab) newParams.set("subtab", subtab);
+      const newUrl = newParams.toString()
+        ? `?${newParams.toString()}`
+        : window.location.pathname;
+      window.history.replaceState({}, "", newUrl);
     }
-  }, []);
+
+    // Show success message for assessment purchases
+    if (purchase === "success") {
+      const { toast } = require("sonner");
+      toast.success("🎉 Purchase Successful!", {
+        description:
+          "Your assessment credit has been added. You can now create a new assessment.",
+        duration: 5000,
+      });
+
+      // Clean up URL, but preserve tab/subtab parameters
+      const newParams = new URLSearchParams();
+      if (tab) newParams.set("tab", tab);
+      if (subtab) newParams.set("subtab", subtab);
+      const newUrl = newParams.toString()
+        ? `?${newParams.toString()}`
+        : window.location.pathname;
+      window.history.replaceState({}, "", newUrl);
+    }
+
+    // Show message for cancelled purchases
+    if (purchase === "cancelled") {
+      const { toast } = require("sonner");
+      toast.info("Purchase Cancelled", {
+        description: "Your payment was cancelled. No charges were made.",
+        duration: 4000,
+      });
+
+      // Clean up URL, but preserve tab/subtab parameters
+      const newParams = new URLSearchParams();
+      if (tab) newParams.set("tab", tab);
+      if (subtab) newParams.set("subtab", subtab);
+      const newUrl = newParams.toString()
+        ? `?${newParams.toString()}`
+        : window.location.pathname;
+      window.history.replaceState({}, "", newUrl);
+    }
+  }, [searchParams]);
 
   if (status === "loading") {
     return (
@@ -82,140 +135,162 @@ export default function Home() {
   }
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full">
-        {/* Responsive Sidebar */}
-        <AppSidebar user={session.user} />
+    <>
+      <WelcomeModal
+        open={showWelcome}
+        onStartTour={startTour}
+        onSkip={skipTour}
+      />
+      <OnboardingTour />
 
-        {/* Main Content */}
-        <main className="flex-1 flex flex-col min-h-screen">
-          {/* Header */}
-          <header className="glass-effect border-b sticky top-0 z-40 flex h-16 items-center gap-4 px-4">
-            <SidebarTrigger className="md:hidden" />
+      <SidebarProvider>
+        <div className="min-h-screen flex w-full">
+          {/* Responsive Sidebar */}
+          <AppSidebar user={session.user} />
 
-            <div className="flex items-center gap-3 flex-1">
-              <div className="p-1.5 rounded-lg gradient-primary">
-                <Brain className="h-5 w-5 text-white" />
+          {/* Main Content */}
+          <main className="flex-1 flex flex-col min-h-screen">
+            {/* Header */}
+            <header className="glass-effect border-b sticky top-0 z-40 flex h-16 items-center gap-4 px-4">
+              <SidebarTrigger className="md:hidden" />
+
+              <div className="flex items-center gap-3 flex-1">
+                <div className="p-1.5 rounded-lg gradient-primary">
+                  <Brain className="h-5 w-5 text-white" />
+                </div>
+                <h1 className="text-lg font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                  AI Assessment Platform
+                </h1>
               </div>
-              <h1 className="text-lg font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                AI Assessment Platform
-              </h1>
-            </div>
 
-            <div className="hidden sm:flex items-center gap-4">
-              <div className="px-3 py-1.5 rounded-full bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20">
-                <span className="text-sm font-medium text-foreground">
-                  Welcome, {session.user.name || session.user.email}
-                </span>
-              </div>
+              <div className="hidden sm:flex items-center gap-4">
+                <div className="px-3 py-1.5 rounded-full bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20">
+                  <span className="text-sm font-medium text-foreground">
+                    Welcome, {session.user.name || session.user.email}
+                  </span>
+                </div>
 
-              <div className="flex items-center gap-2">
-                {(session.user.role as string) === "SUPER_ADMIN" && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setActiveTab("admin")}
-                    className="hover-lift"
-                  >
-                    <Brain className="h-4 w-4 mr-2" />
-                    Admin Tools
-                  </Button>
-                )}
-                {session.user.role === "ADMIN" && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    asChild
-                    className="hover-lift"
-                  >
-                    <Link href="/admin">
-                      <Settings className="h-4 w-4 mr-2" />
-                      Admin
-                    </Link>
-                  </Button>
-                )}
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => signOut({ redirectTo: "/login" })}
-                  className="hover-lift"
-                >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Sign Out
-                </Button>
-              </div>
-            </div>
-          </header>
-
-          {/* Content Area */}
-          <div className="flex-1 overflow-hidden">
-            <Tabs
-              value={activeTab}
-              onValueChange={setActiveTab}
-              className="h-full flex flex-col"
-            >
-              <div className="border-b px-6 py-3">
-                <TabsList
-                  className={`grid w-fit ${(session.user.role as string) === "SUPER_ADMIN" ? "grid-cols-3" : "grid-cols-2"}`}
-                >
-                  <TabsTrigger
-                    value="dashboard"
-                    className="flex items-center gap-2"
-                  >
-                    <FileText className="h-4 w-4" />
-                    Dashboard
-                  </TabsTrigger>
+                <div className="flex items-center gap-2">
                   {(session.user.role as string) === "SUPER_ADMIN" && (
-                    <TabsTrigger
-                      value="admin"
-                      className="flex items-center gap-2"
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setActiveTab("admin")}
+                      className="hover-lift"
                     >
-                      <Brain className="h-4 w-4" />
+                      <Brain className="h-4 w-4 mr-2" />
                       Admin Tools
-                    </TabsTrigger>
+                    </Button>
                   )}
-                  <TabsTrigger
-                    value="settings"
-                    className="flex items-center gap-2"
+                  {session.user.role === "ADMIN" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      asChild
+                      className="hover-lift"
+                    >
+                      <Link href="/admin">
+                        <Settings className="h-4 w-4 mr-2" />
+                        Admin
+                      </Link>
+                    </Button>
+                  )}
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => signOut({ redirectTo: "/login" })}
+                    className="hover-lift"
                   >
-                    <Settings className="h-4 w-4" />
-                    {(session.user.role as string) === "SUPER_ADMIN"
-                      ? "Super Admin"
-                      : "Settings"}
-                  </TabsTrigger>
-                </TabsList>
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Sign Out
+                  </Button>
+                </div>
               </div>
+            </header>
 
-              <TabsContent
-                value="dashboard"
-                className="flex-1 overflow-hidden mt-0"
+            {/* Content Area */}
+            <div className="flex-1 overflow-hidden">
+              <Tabs
+                value={activeTab}
+                onValueChange={setActiveTab}
+                className="h-full flex flex-col"
               >
-                <AssessmentsView />
-              </TabsContent>
+                <div className="border-b px-6 py-3">
+                  <TabsList
+                    className={`grid w-fit ${(session.user.role as string) === "SUPER_ADMIN" ? "grid-cols-3" : "grid-cols-2"}`}
+                  >
+                    <TabsTrigger
+                      value="dashboard"
+                      className="flex items-center gap-2"
+                      data-tab-id="dashboard"
+                    >
+                      <FileText className="h-4 w-4" />
+                      Dashboard
+                    </TabsTrigger>
+                    {(session.user.role as string) === "SUPER_ADMIN" && (
+                      <TabsTrigger
+                        value="admin"
+                        className="flex items-center gap-2"
+                        data-tab-id="admin"
+                      >
+                        <Brain className="h-4 w-4" />
+                        Admin Tools
+                      </TabsTrigger>
+                    )}
+                    <TabsTrigger
+                      value="settings"
+                      className="flex items-center gap-2"
+                      data-tab-id="settings"
+                    >
+                      <Settings className="h-4 w-4" />
+                      {(session.user.role as string) === "SUPER_ADMIN"
+                        ? "Super Admin"
+                        : "Settings"}
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
 
-              {(session.user.role as string) === "SUPER_ADMIN" && (
                 <TabsContent
-                  value="admin"
+                  value="dashboard"
+                  className="flex-1 overflow-hidden mt-0"
+                >
+                  <div id="assessments-list">
+                    <AssessmentsView />
+                  </div>
+                </TabsContent>
+
+                {(session.user.role as string) === "SUPER_ADMIN" && (
+                  <TabsContent
+                    value="admin"
+                    className="flex-1 overflow-auto mt-0 p-6"
+                  >
+                    <AdminDashboard />
+                  </TabsContent>
+                )}
+
+                <TabsContent
+                  value="settings"
                   className="flex-1 overflow-auto mt-0 p-6"
                 >
-                  <AdminDashboard />
+                  <div className="max-w-4xl mx-auto">
+                    <Suspense
+                      fallback={
+                        <div className="flex items-center justify-center py-8">
+                          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        </div>
+                      }
+                    >
+                      <SettingsPane />
+                    </Suspense>
+                  </div>
                 </TabsContent>
-              )}
-
-              <TabsContent
-                value="settings"
-                className="flex-1 overflow-auto mt-0 p-6"
-              >
-                <div className="max-w-4xl mx-auto">
-                  <SettingsPane />
-                </div>
-              </TabsContent>
-            </Tabs>
-          </div>
-        </main>
-      </div>
-    </SidebarProvider>
+              </Tabs>
+            </div>
+          </main>
+        </div>
+      </SidebarProvider>
+    </>
   );
 }
 
@@ -288,5 +363,24 @@ function AppSidebar({ user }: { user: any }) {
         </div>
       </SidebarFooter>
     </Sidebar>
+  );
+}
+
+export default function Home() {
+  return (
+    <OnboardingProvider>
+      <Suspense
+        fallback={
+          <div className="min-h-screen flex items-center justify-center">
+            <div className="text-center space-y-4">
+              <Brain className="h-12 w-12 animate-pulse mx-auto text-primary" />
+              <p className="text-muted-foreground">Loading...</p>
+            </div>
+          </div>
+        }
+      >
+        <HomeContent />
+      </Suspense>
+    </OnboardingProvider>
   );
 }

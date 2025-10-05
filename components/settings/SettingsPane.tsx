@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
 import { Role } from "@prisma/client";
 import { toast } from "sonner";
@@ -28,9 +29,11 @@ import {
   Trash2,
   Database,
   Activity,
+  PlayCircle,
 } from "lucide-react";
 import SuperAdminPanel from "@/components/admin/SuperAdminPanel";
 import BillingSection from "@/components/settings/BillingSection";
+import { useOnboarding } from "@/lib/contexts/OnboardingContext";
 
 interface UserSettings {
   compactView: boolean;
@@ -50,13 +53,81 @@ interface SystemSettings {
 const SettingsPane: React.FC = () => {
   const { data: session, update } = useSession();
   const { theme, setTheme } = useTheme();
+  const searchParams = useSearchParams();
+  const { startTour } = useOnboarding();
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("profile");
 
   // Helper function to check if user is admin
   const isAdmin = () => {
     const userRole = session?.user?.role as string;
     return userRole === "ADMIN" || userRole === "SUPER_ADMIN";
   };
+
+  // Check for billing tab in URL params and scroll to upgrade section
+  useEffect(() => {
+    const subtab = searchParams.get("subtab");
+    if (subtab === "billing") {
+      console.log(
+        "SettingsPane: Detected subtab=billing, switching tab and scrolling..."
+      );
+      setActiveTab("billing");
+
+      // Scroll to upgrade section with retry logic to ensure DOM is ready
+      const scrollToUpgrade = (attempts = 0) => {
+        console.log(
+          `SettingsPane: Attempting to scroll (attempt ${attempts + 1})...`
+        );
+        const upgradeSection = document.getElementById("upgrade-plan");
+        if (upgradeSection) {
+          console.log("SettingsPane: Found upgrade section, scrolling...");
+
+          // Find the scrollable container (TabsContent with overflow-auto)
+          const scrollContainer = upgradeSection.closest(".overflow-auto");
+
+          if (scrollContainer) {
+            // Scroll within the container
+            const containerRect = scrollContainer.getBoundingClientRect();
+            const elementRect = upgradeSection.getBoundingClientRect();
+            const scrollTop = scrollContainer.scrollTop;
+            const targetScroll =
+              scrollTop +
+              elementRect.top -
+              containerRect.top -
+              containerRect.height / 2 +
+              elementRect.height / 2;
+
+            scrollContainer.scrollTo({
+              top: targetScroll,
+              behavior: "smooth",
+            });
+          } else {
+            // Fallback to regular scrollIntoView
+            upgradeSection.scrollIntoView({
+              behavior: "smooth",
+              block: "center",
+            });
+          }
+        } else {
+          console.log("SettingsPane: Upgrade section not found yet");
+          if (attempts < 5) {
+            // Retry up to 5 times with increasing delays
+            setTimeout(
+              () => scrollToUpgrade(attempts + 1),
+              200 * (attempts + 1)
+            );
+          } else {
+            console.log(
+              "SettingsPane: Failed to find upgrade section after 5 attempts"
+            );
+          }
+        }
+      };
+
+      // Initial delay to let tab content render
+      setTimeout(() => scrollToUpgrade(), 300);
+    }
+  }, [searchParams]);
 
   const [profileData, setProfileData] = useState({
     name: session?.user?.name || "",
@@ -252,7 +323,7 @@ const SettingsPane: React.FC = () => {
 
   return (
     <div className="p-3 space-y-3">
-      <Tabs defaultValue="profile" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3 mb-3">
           <TabsTrigger value="profile" className="text-xs">
             <User className="h-3 w-3 mr-1" />
@@ -326,6 +397,27 @@ const SettingsPane: React.FC = () => {
                 className="w-full"
               >
                 {loading ? "Saving..." : "Save Changes"}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Dashboard Tour */}
+          <Card className="border-border bg-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm">Dashboard Tour</CardTitle>
+              <CardDescription className="text-xs">
+                Replay the interactive walkthrough of key features
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button
+                variant="outline"
+                onClick={startTour}
+                size="sm"
+                className="w-full gap-2"
+              >
+                <PlayCircle className="h-4 w-4" />
+                Restart Dashboard Tour
               </Button>
             </CardContent>
           </Card>

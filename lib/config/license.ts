@@ -2,21 +2,21 @@
  * License configuration and rules
  */
 export const LICENSE_CONFIG = {
-  FREE: {
-    type: "FREE" as const,
-    maxAssessments: 0, // Cannot take new assessments
+  TRIAL: {
+    type: "TRIAL" as const,
+    maxAssessments: 5, // Limited trial assessments
     maxUsers: 1,
-    validityDays: null, // Permanent
-    features: ["view_assessments"], // Read-only access to past assessments
-    canPurchase: true, // Can purchase single reports or upgrade
+    validityDays: null, // No expiration
+    features: ["basic_assessment"], // Trial features only
+    canPurchase: true, // Can upgrade
   },
   BASIC: {
     type: "BASIC" as const,
-    maxAssessments: 1,
+    maxAssessments: 0, // View-only, increments with each $97 purchase
     maxUsers: 1,
-    validityDays: 365,
-    features: ["basic_assessment", "pdf_report"],
-    canPurchase: true,
+    validityDays: null, // Permanent access
+    features: ["view_assessments", "pdf_report"],
+    canPurchase: true, // Can purchase additional assessments or upgrade
   },
   PROFESSIONAL: {
     type: "PROFESSIONAL" as const,
@@ -49,14 +49,6 @@ export const LICENSE_CONFIG = {
     ],
     canPurchase: false, // Enterprise - contact sales
     conversationalAISessions: null, // Unlimited for districts
-  },
-  TRIAL: {
-    type: "TRIAL" as const,
-    maxAssessments: 1,
-    maxUsers: 1,
-    validityDays: null, // No expiration
-    features: ["basic_assessment"], // Limited trial features
-    canPurchase: true, // Can upgrade
   },
 } as const;
 

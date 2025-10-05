@@ -111,9 +111,7 @@ function CheckoutAnonymousContent() {
           </CardHeader>
           <CardContent>
             <Button asChild className="w-full">
-              <a href="/register?source=trial&redirect=checkout">
-                Back to Registration
-              </a>
+              <a href="/trial-checkout">Back to Checkout</a>
             </Button>
           </CardContent>
         </Card>

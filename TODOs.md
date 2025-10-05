@@ -2,31 +2,33 @@
 
 (Features should follow this https://chatgpt.com/share/68c893a7-75f4-8012-bbe0-72404438f878)
 
-- Add social proof (where asssessments come from, parents/school testimonials)
-- May need to work on how AI Prompt receives assessment results and incl. domain resources.
+# BUGS
 
+- Enhanced reports or reports dont load on /share/
+- Password field doesnt have show password on trial checkout page.
+- URL issue when navigating to billing -> upgrade and back to dashboard.
+- Previous button on resume doesnt work on dashboard.
+- Dashboard on Mobile is whacky.
+
+# Features to add
+
+- Password Reset
+- Email/Magic Link
+- Logic for Pro Plan Convo Allotments.
+- Trial questions should maybe match assessment so progress carries over
+- Implement District Admin Signup Links.
+- - Signup invite via email or link
+- Pick auth providers
+- Convo AI -> Basic Report -> Enhanced Report flow.
+- May need to work on how AI Prompt receives assessment results and incl. domain resources.
 - Admins can create signup links for their distict license
 - Cloudflare Email (When its released if its cost efficient)
 - - AWS SES, Resend, MailGun, SendGrid, look up alternatives
 - - Email Engine Setup (Auth, Reports, Marketing Sequencing stuff.)
     -- Districts should be able to create/manage etc assessments for users under their account/license.
 - Drag and Drop components on dashboard?
-- Fancy tutorial onboarding for dashboard
-
-# BUGS
-
-- /share/ route doesn't load enhanced reports correctly.
-- Hide "View Enhanced report" after enhanced report viewed.
-- Account upgrade from dash doesnt work?
-- Professional Account Has "UNKNOWN" badge.
-- Implement District Admin Signup Links.
-
-  # Double Check things it said it did lol
-
-# Features to add
 
 - Analytics (Google & Meta Pixel for retargeting?)
-- Account Upgrade from dashboard.
 - SIS/PowerSchool integration (Import Students, select Student at assessment start, link in SIS system flow.)
 - pSEO stuff
 - Affiliate linking setup

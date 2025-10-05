@@ -21,6 +21,9 @@ model User {
   lastLoginAt     DateTime?
   organizationId  String?
   parentUserId    String?          // For sub-accounts, references the district admin who created them
+  onboardingCompleted Boolean      @default(false)
+  onboardingStep      Int          @default(0)
+  onboardingSkipped   Boolean      @default(false)
   assessments     Assessment[]
   chatSessions    ChatSession[]
   documents       Document[]
@@ -495,14 +498,16 @@ model Organization {
 }
 
 model UserLicense {
-  id         String   @id @default(cuid())
-  userId     String
-  licenseId  String
-  assignedAt DateTime @default(now())
-  assignedBy String?
-  isActive   Boolean  @default(true)
-  license    License  @relation(fields: [licenseId], references: [id], onDelete: Cascade)
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                 String   @id @default(cuid())
+  userId             String
+  licenseId          String
+  assignedAt         DateTime @default(now())
+  assignedBy         String?
+  isActive           Boolean  @default(true)
+  assessmentsAllowed Int      @default(0)  // Number of assessments this license allows (incremented on purchase)
+  assessmentsUsed    Int      @default(0)  // Number of assessments actually used
+  license            License  @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, licenseId])
   @@index([userId])
@@ -640,11 +645,10 @@ enum AssessmentDomain {
 }
 
 enum LicenseType {
-  FREE          // Read-only account, can view past assessments
-  TRIAL         // Trial period
-  BASIC         // Single assessment
-  PROFESSIONAL  // Monthly/Annual subscription with conversational AI
-  ENTERPRISE    // District license with conversational AI included
+  TRIAL         // Trial period - temporary access
+  BASIC         // Pay-per-assessment - created on $97 purchase or subscription cancellation
+  PROFESSIONAL  // Monthly/Annual subscription with unlimited assessments
+  ENTERPRISE    // District license with unlimited assessments
 }
 
 enum LicenseStatus {

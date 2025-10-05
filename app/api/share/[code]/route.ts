@@ -129,6 +129,11 @@ export async function GET(
             shareableLink.assessment.startedAt,
           scores: shareableLink.assessment.scores,
           responses: shareableLink.assessment.responses,
+          hasEnhancedReport: shareableLink.assessment.hasEnhancedReport,
+          enhancedReportPurchasedAt:
+            shareableLink.assessment.enhancedReportPurchasedAt,
+          childResponses: shareableLink.assessment.childResponses,
+          enhancedAnalysis: shareableLink.assessment.enhancedAnalysis,
         },
         createdAt: shareableLink.createdAt,
         createdBy:

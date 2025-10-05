@@ -30,7 +30,9 @@ export async function GET() {
       hasLicense: true,
       license: {
         type: userLicense.license.type,
+        status: userLicense.license.status,
         validUntil: userLicense.license.validUntil,
+        maxAssessments: userLicense.license.maxAssessments,
         features: userLicense.features,
       },
     });
