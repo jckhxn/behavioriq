@@ -1,31 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { prisma } from "@/lib/db/prisma";
+import { resolveAssessmentId } from "@/lib/utils/assessmentResolver";
 
 export async function POST(request: NextRequest) {
+  console.log("[Recommendations] POST request received");
   try {
     const user = await getCurrentUserWithRole();
+    console.log("[Recommendations] User authenticated:", { userId: user?.id, email: user?.email });
+    
     if (!user) {
+      console.error("[Recommendations] Unauthorized - no user found");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const requestBody = await request.json();
-    console.log("POST /api/recommendations request body:", requestBody);
+    console.log("[Recommendations] POST request body:", requestBody);
 
-    const { assessmentId, title, content, category, priority } = requestBody;
+    const { assessmentId: assessmentIdentifier, title, content, category, priority } = requestBody;
 
-    console.log("Parsed fields:", {
-      assessmentId,
+    console.log("[Recommendations] Parsed fields:", {
+      assessmentIdentifier,
       title,
       content,
       category,
       priority,
+      userId: user.id,
     });
 
-    if (!assessmentId || !title || !content) {
+    if (!assessmentIdentifier || !title || !content) {
       console.log(
-        "Missing required fields. assessmentId:",
-        assessmentId,
+        "Missing required fields. assessmentIdentifier:",
+        assessmentIdentifier,
         "title:",
         title,
         "content:",
@@ -37,7 +43,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Resolve shortId to UUID if needed
+    console.log("[Recommendations] Resolving assessment ID:", assessmentIdentifier);
+    const assessmentId = await resolveAssessmentId(assessmentIdentifier, user.id);
+    
+    if (!assessmentId) {
+      console.error("[Recommendations] Assessment not found:", { 
+        identifier: assessmentIdentifier, 
+        userId: user.id 
+      });
+      return NextResponse.json(
+        { 
+          error: "Assessment not found", 
+          details: `No assessment found with ID: ${assessmentIdentifier}` 
+        },
+        { status: 404 }
+      );
+    }
+
+    console.log("[Recommendations] Resolved assessment ID:", { 
+      original: assessmentIdentifier, 
+      resolved: assessmentId 
+    });
+
     // Verify the user owns the assessment
+    console.log("[Recommendations] Looking up assessment:", { assessmentId, userId: user.id });
+    
     const assessment = await prisma.assessment.findFirst({
       where: {
         id: assessmentId,
@@ -45,10 +76,11 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    console.log("Assessment lookup result:", {
+    console.log("[Recommendations] Assessment lookup result:", {
       assessmentId,
       userId: user.id,
       found: !!assessment,
+      assessmentUserId: assessment?.userId,
     });
 
     if (!assessment) {
@@ -95,11 +127,15 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    console.log("[Recommendations] Successfully created recommendation:", recommendation.id);
     return NextResponse.json(recommendation);
   } catch (error) {
-    console.error("Error saving recommendation:", error);
+    console.error("[Recommendations] Error saving recommendation:", error);
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    console.error("[Recommendations] Error stack:", errorStack);
+    
     return NextResponse.json(
       { error: "Failed to save recommendation", details: errorMessage },
       { status: 500 }
@@ -117,13 +153,29 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get("limit") || "10");
     const onlyBookmarked = searchParams.get("bookmarked") === "true";
-    const assessmentId = searchParams.get("assessmentId");
+    const assessmentIdentifier = searchParams.get("assessmentId");
     const category = searchParams.get("category");
+
+    // Resolve shortId to UUID if assessmentId is provided
+    let resolvedAssessmentId = assessmentIdentifier;
+    if (assessmentIdentifier) {
+      const resolved = await resolveAssessmentId(assessmentIdentifier, user.id);
+      if (!resolved) {
+        console.warn("[Recommendations] GET - Assessment not found:", assessmentIdentifier);
+        // Return empty array instead of error for GET requests
+        return NextResponse.json([]);
+      }
+      resolvedAssessmentId = resolved;
+      console.log("[Recommendations] GET - Resolved assessment ID:", { 
+        original: assessmentIdentifier, 
+        resolved: resolvedAssessmentId 
+      });
+    }
 
     const whereClause: any = {
       userId: user.id,
       ...(onlyBookmarked ? { isBookmarked: true } : {}),
-      ...(assessmentId ? { assessmentId } : {}),
+      ...(resolvedAssessmentId ? { assessmentId: resolvedAssessmentId } : {}),
       ...(category ? { category } : {}),
     };
 

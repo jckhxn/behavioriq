@@ -123,7 +123,14 @@ export function AssessmentCompletion({
       if (response.ok) {
         const data = await response.json();
         setExistingRecommendations(data);
-        setHasExistingReport(data.length > 0);
+        const hasExisting = data.length > 0;
+        setHasExistingReport(hasExisting);
+        
+        // If there's an existing report, automatically trigger loading it
+        if (hasExisting) {
+          console.log("Found existing AI recommendations, loading...");
+          generateRecommendations();
+        }
       }
     } catch (error) {
       console.error("Error checking existing recommendations:", error);
@@ -224,31 +231,63 @@ export function AssessmentCompletion({
         return;
       }
 
-      console.log("Saving resource with assessmentId:", assessmentId);
+      const requestData = {
+        assessmentId,
+        title: link.title,
+        content: `Resource Link: ${link.url}\n\nSaved from assessment recommendations.`,
+        category: "Resource Link",
+        priority: 2,
+      };
+
+      console.log("[SaveResource] Attempting to save resource:", {
+        assessmentId,
+        title: link.title,
+        url: link.url,
+        requestData,
+      });
 
       const response = await fetch("/api/recommendations", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          assessmentId,
-          title: link.title,
-          content: `Resource Link: ${link.url}\n\nSaved from assessment recommendations.`,
-          category: "Resource Link",
-          priority: 2,
-        }),
+        body: JSON.stringify(requestData),
+      });
+      
+      console.log("[SaveResource] Response received:", {
+        ok: response.ok,
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries()),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Failed to save resource:", {
+        let errorData;
+        let rawResponse = "";
+        try {
+          const responseText = await response.text();
+          rawResponse = responseText;
+          errorData = responseText ? JSON.parse(responseText) : {};
+        } catch (e) {
+          errorData = { error: `HTTP ${response.status}: ${response.statusText}` };
+        }
+        
+        console.error("Failed to save resource - Full details:", {
           status: response.status,
           statusText: response.statusText,
           errorData,
+          rawResponse,
           assessmentId,
+          url: response.url,
+          requestBody: {
+            assessmentId,
+            title: link.title,
+            category: "Resource Link",
+          },
         });
-        alert(`Failed to save resource: ${errorData.error || "Unknown error"}`);
+        
+        const errorMessage = errorData.error || errorData.details || `HTTP ${response.status}: ${response.statusText || "Unknown error"}`;
+        alert(`Failed to save resource: ${errorMessage}\n\nCheck console for details.`);
         return;
       }
 

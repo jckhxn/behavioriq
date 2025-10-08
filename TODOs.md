@@ -8,37 +8,19 @@
 
 ## Bugs Track
 
-- [x] **FIXED** Trial Checkout/Payment Success - NextAuth 404 errors and redirect to not-found
-  - **Root Cause**: App uses Supabase Auth, but payment-success page was trying to use NextAuth
-  - **Fix**: Created `/api/auth/session-from-token` endpoint using Supabase Admin API
-  - **Files**:
-    - `app/payment-success/page.tsx` - Replaced NextAuth with Supabase Auth
-    - `app/api/auth/session-from-token/route.ts` - NEW - Creates Supabase session from login token
-  - **Details**: See [CHECKOUT_BUG_FIX.md](CHECKOUT_BUG_FIX.md)
-  - **Note**: Requires `SUPABASE_SERVICE_ROLE_KEY` in environment variables
-- [ ] Saving a resource from AI Recommendation gives error "Failed to save resource: Assessment not found or access denied"
-      Failed to save resource: {}
+- [x] **FIXED**: Saving a resource from AI Recommendation - Enhanced error handling and logging - Improved client-side error parsing with try-catch - Added comprehensive server-side logging with [Recommendations] prefix - Better error messages with HTTP status and context - See: `AI_RECOMMENDATIONS_BUG_FIXES.md`
 
-components/assessment/AssessmentCompletion.tsx (230:17) @ saveLinkAsResource
-
-228 | if (!response.ok) {
-229 | const errorData = await response.json();
-
-> 230 | console.error("Failed to save resource:", errorData);
-
-      |                 ^
-
-231 | alert(`Failed to save resource: ${errorData.error || "Unknown error"}`);
-232 | return;
-233 | }
-
-- [ ] If an AI report has been generated it should be saved and users can only generate one per assessment.
-- [ ] Saving a resource from an AI recommendation says assessment not found.
+- [x] **VERIFIED WORKING**: AI reports are already saved and regeneration is prevented - Recommendations automatically saved to database after generation - Existing recommendations are retrieved instead of regenerating - UI shows clear "Already Available" message - See: `AI_RECOMMENDATIONS_BUG_FIXES.md`
 
 # # Additional Features
 
 - [ ] Keyboard shortcuts for easier assessment taking.
 - [ ] Processing assessment answers could be faster.
+- [ ] Only completed assessments use a credit, if you delete an in progress assessment the credit remains,.
+- [ ] PDF Email sending
+- [ ] AI Generated Recommendations
+- [ ] PDF Downloads Styling
+- [ ] 2FA/MFA
 
 ## 📖 Quick Links
 
