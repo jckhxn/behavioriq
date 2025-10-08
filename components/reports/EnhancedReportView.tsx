@@ -10,8 +10,10 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { FileDown, Users, MessageSquare, Brain } from "lucide-react";
+import { FileDown, Users, MessageSquare, Brain, BarChart3 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { useState, useEffect } from "react";
+import { Progress } from "@/components/ui/progress";
 
 interface Question {
   id: string;
@@ -63,6 +65,9 @@ export default function EnhancedReportView({
   enhancedAnalysis,
   onDownloadPdf,
 }: EnhancedReportViewProps) {
+  const [scores, setScores] = useState<any[]>([]);
+  const [isLoadingScores, setIsLoadingScores] = useState(true);
+
   // Extract responses array from the JSON structure
   const responses: Response[] = Array.isArray(childResponses)
     ? childResponses
@@ -80,6 +85,29 @@ export default function EnhancedReportView({
     },
     {} as Record<string, Response[]>
   );
+
+  // Fetch scores for this assessment
+  useEffect(() => {
+    const fetchScores = async () => {
+      try {
+        const response = await fetch(
+          `/api/assessments/${assessment.id}/scores`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setScores(data.scores || []);
+        }
+      } catch (error) {
+        console.error("Error fetching scores:", error);
+      } finally {
+        setIsLoadingScores(false);
+      }
+    };
+
+    if (assessment.id) {
+      fetchScores();
+    }
+  }, [assessment.id]);
 
   return (
     <div className="space-y-6">
@@ -104,6 +132,82 @@ export default function EnhancedReportView({
           Download PDF
         </Button>
       </div>
+
+      {/* Domain Scores Section */}
+      {!isLoadingScores && scores.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-primary" />
+              <CardTitle>Assessment Scores by Domain</CardTitle>
+            </div>
+            <CardDescription>
+              Detailed breakdown of assessment results across all domains
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2">
+              {scores.map((score) => (
+                <div key={score.id} className="border rounded-lg p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-semibold capitalize">
+                      {(score.domainName || score.domain || "Unknown Domain")
+                        .toLowerCase()
+                        .replace(/_/g, " ")}
+                    </h4>
+                    <Badge
+                      variant={
+                        score.riskLevel === "LOW"
+                          ? "default"
+                          : score.riskLevel === "MODERATE"
+                            ? "secondary"
+                            : "destructive"
+                      }
+                    >
+                      {score.riskLevel}
+                    </Badge>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Score</span>
+                      <span className="font-medium">
+                        {score.rawScore}/{score.totalPossible}
+                      </span>
+                    </div>
+                    <Progress
+                      value={(score.rawScore / score.totalPossible) * 100}
+                      className="h-2"
+                    />
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Confidence</span>
+                      <span className="font-medium">
+                        {(score.confidence * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* No Scores Message */}
+      {!isLoadingScores && scores.length === 0 && (
+        <Card className="border-dashed">
+          <CardContent className="pt-6">
+            <div className="text-center text-muted-foreground">
+              <BarChart3 className="h-12 w-12 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">
+                Domain scores are not available for this enhanced report.
+              </p>
+              <p className="text-xs mt-1">
+                This may be a demo or manually created report.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Overview Card */}
       <Card>

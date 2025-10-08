@@ -6,6 +6,7 @@ generator client {
 datasource db {
   provider   = "postgresql"
   url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
   extensions = [vector]
 }
 
@@ -43,6 +44,7 @@ model User {
   createdAssessmentVersions AssessmentTemplateVersion[] @relation("AssessmentVersionsCreated")
   createdDomainVersions DomainTemplateVersion[] @relation("DomainVersionsCreated")
   loginTokens     LoginToken[]
+  createdResources ResourceLibrary[] @relation("ResourceLibraryCreator")
 
   @@index([organizationId])
   @@index([parentUserId])
@@ -378,6 +380,25 @@ model Recommendation {
   @@index([assessmentId])
   @@index([isBookmarked])
   @@map("recommendations")
+}
+
+model ResourceLibrary {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  url         String
+  category    String   // e.g., "Mental Health", "Parenting", "Education", "Support Services"
+  tags        String[] // Searchable tags for filtering
+  isActive    Boolean  @default(true)
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  creator     User     @relation("ResourceLibraryCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@index([category])
+  @@index([isActive])
+  @@index([createdBy])
+  @@map("resource_library")
 }
 
 model QuestionSet {

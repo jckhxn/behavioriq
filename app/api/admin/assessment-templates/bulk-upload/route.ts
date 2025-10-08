@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { prisma } from "@/lib/db/prisma";
 
 interface BulkAssessmentUpload {
@@ -47,10 +47,10 @@ interface BulkAssessmentUpload {
 // POST /api/admin/assessment-templates/bulk-upload - Bulk upload complete assessment
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const user = await getCurrentUserWithRole();
     if (
-      !session?.user ||
-      !["ADMIN", "SUPER_ADMIN", "DISTRICT_ADMIN"].includes(session.user.role)
+      !user ||
+      !["ADMIN", "SUPER_ADMIN", "DISTRICT_ADMIN"].includes(user.role)
     ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -200,7 +200,7 @@ export async function POST(request: NextRequest) {
           slug: assessmentSlug,
           description: assessmentData.description,
           instructions: assessmentData.instructions || null,
-          createdById: session.user.id,
+          createdById: user.id,
           isActive: true,
         },
       });
@@ -232,7 +232,7 @@ export async function POST(request: NextRequest) {
               questions: domainData.questions,
               scoringConfig: domainData.scoringConfig,
               resources: domainData.resources || [],
-              createdById: session.user.id,
+              createdById: user.id,
             },
           });
         }
@@ -270,7 +270,7 @@ export async function POST(request: NextRequest) {
           isActive: assessmentTemplate.isActive,
           domainSnapshot,
           changeDescription: "Initial bulk upload",
-          createdById: session.user.id,
+          createdById: user.id,
         },
       });
 

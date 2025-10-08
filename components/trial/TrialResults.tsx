@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
+import { useUser } from "@/lib/hooks/use-supabase-user";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -36,7 +36,7 @@ interface TrialResults {
 
 export function TrialResults() {
   const searchParams = useSearchParams();
-  const { data: session, status } = useSession();
+  const { user, isLoading: authLoading } = useUser();
   const [results, setResults] = useState<TrialResults | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -99,6 +99,9 @@ export function TrialResults() {
           emotionalConcerns,
           riskLevel,
         });
+
+        // Mark trial as completed
+        localStorage.setItem("trial_completed", "true");
       } catch (error) {
         console.error("Error parsing results:", error);
       }
@@ -154,6 +157,9 @@ export function TrialResults() {
             riskLevel,
             isConversational: true,
           });
+
+          // Mark trial as completed
+          localStorage.setItem("trial_completed", "true");
 
           // Clear localStorage after loading
           localStorage.removeItem("conversationalTrialResults");
@@ -385,7 +391,7 @@ export function TrialResults() {
                 <div className="flex items-center justify-center">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                 </div>
-              ) : session?.user ? (
+              ) : user ? (
                 // Registered user - go directly to checkout
                 <Button size="lg" asChild className="text-lg px-8">
                   <Link

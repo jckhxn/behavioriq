@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { stripe } from "@/lib/stripe/config";
 import { prisma } from "@/lib/db/prisma";
 
 export async function DELETE() {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const user = await getCurrentUserWithRole();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -18,7 +18,7 @@ export async function DELETE() {
     // 4. Send confirmation email
 
     console.log("Subscription cancellation requested:", {
-      userId: session.user.id,
+      userId: user.id,
     });
 
     // TODO: Implement actual Stripe cancellation logic

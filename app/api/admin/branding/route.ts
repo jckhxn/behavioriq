@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import {
   getOrganizationBranding,
   updateOrganizationBranding,
@@ -10,10 +10,10 @@ import {
 // GET /api/admin/branding - Get organization branding settings
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const user = await getCurrentUserWithRole();
     if (
-      !session?.user?.id ||
-      !["ADMIN", "SUPER_ADMIN", "DISTRICT_ADMIN"].includes(session.user.role)
+      !user ||
+      !["ADMIN", "SUPER_ADMIN", "DISTRICT_ADMIN"].includes(user.role)
     ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -47,10 +47,10 @@ export async function GET(request: NextRequest) {
 // PUT /api/admin/branding - Update organization branding settings
 export async function PUT(request: NextRequest) {
   try {
-    const session = await auth();
+    const user = await getCurrentUserWithRole();
     if (
-      !session?.user?.id ||
-      !["ADMIN", "SUPER_ADMIN", "DISTRICT_ADMIN"].includes(session.user.role)
+      !user ||
+      !["ADMIN", "SUPER_ADMIN", "DISTRICT_ADMIN"].includes(user.role)
     ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

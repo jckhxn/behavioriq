@@ -2,14 +2,8 @@
  * License configuration and rules
  */
 export const LICENSE_CONFIG = {
-  TRIAL: {
-    type: "TRIAL" as const,
-    maxAssessments: 5, // Limited trial assessments
-    maxUsers: 1,
-    validityDays: null, // No expiration
-    features: ["basic_assessment"], // Trial features only
-    canPurchase: true, // Can upgrade
-  },
+  // TRIAL removed - legacy license type no longer used
+  // Users now start with BASIC (pay-per-assessment) license
   BASIC: {
     type: "BASIC" as const,
     maxAssessments: 0, // View-only, increments with each $97 purchase

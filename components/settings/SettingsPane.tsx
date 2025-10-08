@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useUserData } from "@/lib/hooks/use-supabase-user";
 import { useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
 import { Role } from "@prisma/client";
@@ -30,6 +30,12 @@ import {
   Database,
   Activity,
   PlayCircle,
+  Key,
+  Eye,
+  EyeOff,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
 } from "lucide-react";
 import SuperAdminPanel from "@/components/admin/SuperAdminPanel";
 import BillingSection from "@/components/settings/BillingSection";
@@ -51,7 +57,7 @@ interface SystemSettings {
 }
 
 const SettingsPane: React.FC = () => {
-  const { data: session, update } = useSession();
+  const { userData, isLoading: userLoading } = useUserData();
   const { theme, setTheme } = useTheme();
   const searchParams = useSearchParams();
   const { startTour } = useOnboarding();
@@ -60,7 +66,7 @@ const SettingsPane: React.FC = () => {
 
   // Helper function to check if user is admin
   const isAdmin = () => {
-    const userRole = session?.user?.role as string;
+    const userRole = userData?.role;
     return userRole === "ADMIN" || userRole === "SUPER_ADMIN";
   };
 
@@ -130,19 +136,31 @@ const SettingsPane: React.FC = () => {
   }, [searchParams]);
 
   const [profileData, setProfileData] = useState({
-    name: session?.user?.name || "",
-    email: session?.user?.email || "",
+    name: userData?.name || "",
+    email: userData?.email || "",
   });
 
-  // Update profile data when session changes
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false,
+  });
+
+  // Update profile data when userData changes
   useEffect(() => {
-    if (session?.user) {
+    if (userData) {
       setProfileData({
-        name: session.user.name || "",
-        email: session.user.email || "",
+        name: userData.name || "",
+        email: userData.email || "",
       });
     }
-  }, [session?.user?.name, session?.user?.email]);
+  }, [userData?.name, userData?.email]);
 
   const [userSettings, setUserSettings] = useState<UserSettings>({
     compactView: false,
@@ -245,16 +263,6 @@ const SettingsPane: React.FC = () => {
 
       const data = await response.json();
 
-      // Update the session with the new data
-      await update({
-        ...session,
-        user: {
-          ...session?.user,
-          name: data.user.name,
-          email: data.user.email,
-        },
-      });
-
       // Reload profile from database to ensure UI is in sync
       await loadProfileFromDatabase();
 
@@ -272,6 +280,106 @@ const SettingsPane: React.FC = () => {
         }
       );
     } finally {
+      setLoading(false);
+    }
+  };
+
+  // Password strength checker
+  const getPasswordStrength = (
+    password: string
+  ): { score: number; label: string; color: string } => {
+    if (!password)
+      return { score: 0, label: "No password", color: "text-muted-foreground" };
+
+    let score = 0;
+
+    // Length check
+    if (password.length >= 8) score++;
+    if (password.length >= 12) score++;
+
+    // Character variety checks
+    if (/[a-z]/.test(password)) score++; // lowercase
+    if (/[A-Z]/.test(password)) score++; // uppercase
+    if (/[0-9]/.test(password)) score++; // numbers
+    if (/[^a-zA-Z0-9]/.test(password)) score++; // special chars
+
+    if (score <= 2) return { score: 1, label: "Weak", color: "text-red-500" };
+    if (score <= 4)
+      return { score: 2, label: "Fair", color: "text-orange-500" };
+    if (score <= 5)
+      return { score: 3, label: "Good", color: "text-yellow-500" };
+    return { score: 4, label: "Strong", color: "text-green-500" };
+  };
+
+  const changePassword = async () => {
+    // Validation
+    if (
+      !passwordData.currentPassword ||
+      !passwordData.newPassword ||
+      !passwordData.confirmPassword
+    ) {
+      toast.error("Please fill in all password fields");
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      toast.error("Password must be at least 6 characters long");
+      return;
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
+    const strength = getPasswordStrength(passwordData.newPassword);
+    if (strength.score < 2) {
+      toast.error(
+        "Password is too weak. Please use a stronger password with a mix of characters."
+      );
+      return;
+    }
+
+    setLoading(true);
+    const loadingToast = toast.loading("Changing password...");
+
+    try {
+      const response = await fetch("/api/user/change-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          currentPassword: passwordData.currentPassword,
+          newPassword: passwordData.newPassword,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to change password");
+      }
+
+      // Clear password fields
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+
+      toast.success("Password changed successfully!", {
+        id: loadingToast,
+      });
+    } catch (error) {
+      console.error("Failed to change password:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to change password",
+        {
+          id: loadingToast,
+        }
+      );
+    } finally {
+      toast.dismiss(loadingToast);
       setLoading(false);
     }
   };
@@ -387,7 +495,7 @@ const SettingsPane: React.FC = () => {
               <div className="grid gap-2">
                 <Label className="text-xs">Account Role</Label>
                 <Badge variant="secondary" className="w-fit text-xs">
-                  {session?.user?.role || "USER"}
+                  {userData?.role || "USER"}
                 </Badge>
               </div>
               <Button
@@ -397,6 +505,237 @@ const SettingsPane: React.FC = () => {
                 className="w-full"
               >
                 {loading ? "Saving..." : "Save Changes"}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Change Password */}
+          <Card className="border-border bg-card">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <Key className="h-4 w-4 text-primary" />
+                <CardTitle className="text-sm">Change Password</CardTitle>
+              </div>
+              <CardDescription className="text-xs">
+                Update your account password securely
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {/* Current Password */}
+              <div className="grid gap-2">
+                <Label htmlFor="current-password" className="text-xs">
+                  Current Password
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="current-password"
+                    type={showPasswords.current ? "text" : "password"}
+                    placeholder="Enter current password"
+                    className="h-8 text-xs pr-10"
+                    value={passwordData.currentPassword}
+                    onChange={(e) =>
+                      setPasswordData((prev) => ({
+                        ...prev,
+                        currentPassword: e.target.value,
+                      }))
+                    }
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-8 w-8 px-0"
+                    onClick={() =>
+                      setShowPasswords((prev) => ({
+                        ...prev,
+                        current: !prev.current,
+                      }))
+                    }
+                  >
+                    {showPasswords.current ? (
+                      <EyeOff className="h-3 w-3" />
+                    ) : (
+                      <Eye className="h-3 w-3" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {/* New Password */}
+              <div className="grid gap-2">
+                <Label htmlFor="new-password" className="text-xs">
+                  New Password
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="new-password"
+                    type={showPasswords.new ? "text" : "password"}
+                    placeholder="Enter new password"
+                    className="h-8 text-xs pr-10"
+                    value={passwordData.newPassword}
+                    onChange={(e) =>
+                      setPasswordData((prev) => ({
+                        ...prev,
+                        newPassword: e.target.value,
+                      }))
+                    }
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-8 w-8 px-0"
+                    onClick={() =>
+                      setShowPasswords((prev) => ({
+                        ...prev,
+                        new: !prev.new,
+                      }))
+                    }
+                  >
+                    {showPasswords.new ? (
+                      <EyeOff className="h-3 w-3" />
+                    ) : (
+                      <Eye className="h-3 w-3" />
+                    )}
+                  </Button>
+                </div>
+
+                {/* Password Strength Indicator */}
+                {passwordData.newPassword && (
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className={`h-full transition-all duration-300 ${
+                            getPasswordStrength(passwordData.newPassword)
+                              .score === 1
+                              ? "w-1/4 bg-red-500"
+                              : getPasswordStrength(passwordData.newPassword)
+                                    .score === 2
+                                ? "w-2/4 bg-orange-500"
+                                : getPasswordStrength(passwordData.newPassword)
+                                      .score === 3
+                                  ? "w-3/4 bg-yellow-500"
+                                  : "w-full bg-green-500"
+                          }`}
+                        />
+                      </div>
+                      <span
+                        className={`text-xs font-medium ${getPasswordStrength(passwordData.newPassword).color}`}
+                      >
+                        {getPasswordStrength(passwordData.newPassword).label}
+                      </span>
+                    </div>
+                    <div className="text-xs text-muted-foreground space-y-0.5">
+                      <div className="flex items-center gap-1">
+                        {passwordData.newPassword.length >= 8 ? (
+                          <CheckCircle2 className="h-3 w-3 text-green-500" />
+                        ) : (
+                          <XCircle className="h-3 w-3 text-muted-foreground" />
+                        )}
+                        <span>At least 8 characters</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {/[A-Z]/.test(passwordData.newPassword) &&
+                        /[a-z]/.test(passwordData.newPassword) ? (
+                          <CheckCircle2 className="h-3 w-3 text-green-500" />
+                        ) : (
+                          <XCircle className="h-3 w-3 text-muted-foreground" />
+                        )}
+                        <span>Upper & lowercase letters</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {/[0-9]/.test(passwordData.newPassword) ? (
+                          <CheckCircle2 className="h-3 w-3 text-green-500" />
+                        ) : (
+                          <XCircle className="h-3 w-3 text-muted-foreground" />
+                        )}
+                        <span>At least one number</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {/[^a-zA-Z0-9]/.test(passwordData.newPassword) ? (
+                          <CheckCircle2 className="h-3 w-3 text-green-500" />
+                        ) : (
+                          <XCircle className="h-3 w-3 text-muted-foreground" />
+                        )}
+                        <span>Special character (!@#$%...)</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Confirm Password */}
+              <div className="grid gap-2">
+                <Label htmlFor="confirm-password" className="text-xs">
+                  Confirm New Password
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="confirm-password"
+                    type={showPasswords.confirm ? "text" : "password"}
+                    placeholder="Confirm new password"
+                    className="h-8 text-xs pr-10"
+                    value={passwordData.confirmPassword}
+                    onChange={(e) =>
+                      setPasswordData((prev) => ({
+                        ...prev,
+                        confirmPassword: e.target.value,
+                      }))
+                    }
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-8 w-8 px-0"
+                    onClick={() =>
+                      setShowPasswords((prev) => ({
+                        ...prev,
+                        confirm: !prev.confirm,
+                      }))
+                    }
+                  >
+                    {showPasswords.confirm ? (
+                      <EyeOff className="h-3 w-3" />
+                    ) : (
+                      <Eye className="h-3 w-3" />
+                    )}
+                  </Button>
+                </div>
+                {passwordData.confirmPassword && (
+                  <div className="flex items-center gap-1 text-xs">
+                    {passwordData.newPassword ===
+                    passwordData.confirmPassword ? (
+                      <>
+                        <CheckCircle2 className="h-3 w-3 text-green-500" />
+                        <span className="text-green-500">Passwords match</span>
+                      </>
+                    ) : (
+                      <>
+                        <AlertCircle className="h-3 w-3 text-red-500" />
+                        <span className="text-red-500">
+                          Passwords don't match
+                        </span>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <Button
+                onClick={changePassword}
+                disabled={
+                  loading ||
+                  !passwordData.currentPassword ||
+                  !passwordData.newPassword ||
+                  !passwordData.confirmPassword ||
+                  passwordData.newPassword !== passwordData.confirmPassword
+                }
+                size="sm"
+                className="w-full"
+              >
+                {loading ? "Changing..." : "Change Password"}
               </Button>
             </CardContent>
           </Card>

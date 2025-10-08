@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { prisma } from "@/lib/db/prisma";
 
 // GET /api/admin/assessment-templates - Get assessment templates based on user role
 export async function GET() {
   try {
-    const session = await auth();
+    const user = await getCurrentUserWithRole();
     if (
-      !session?.user ||
-      !["ADMIN", "SUPER_ADMIN", "DISTRICT_ADMIN"].includes(session.user.role)
+      !user ||
+      !["ADMIN", "SUPER_ADMIN", "DISTRICT_ADMIN"].includes(user.role)
     ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -16,9 +16,9 @@ export async function GET() {
     let whereClause = {};
 
     // District Admins can only see templates they created for their sub-accounts
-    if (session.user.role === "DISTRICT_ADMIN") {
+    if (user.role === "DISTRICT_ADMIN") {
       whereClause = {
-        createdById: session.user.id,
+        createdById: user.id,
       };
     }
     // Super Admins and regular Admins can see all templates
@@ -55,10 +55,10 @@ export async function GET() {
 // POST /api/admin/assessment-templates - Create new assessment template
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const user = await getCurrentUserWithRole();
     if (
-      !session?.user ||
-      !["ADMIN", "SUPER_ADMIN", "DISTRICT_ADMIN"].includes(session.user.role)
+      !user ||
+      !["ADMIN", "SUPER_ADMIN", "DISTRICT_ADMIN"].includes(user.role)
     ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
         description,
         instructions,
         isActive: willBeActive,
-        createdById: session.user.id,
+        createdById: user.id,
         domains: {
           create: domainIds.map((domainId: string, index: number) => ({
             domainTemplateId: domainId,
@@ -152,10 +152,10 @@ export async function POST(request: NextRequest) {
 // PUT /api/admin/assessment-templates - Update assessment template
 export async function PUT(request: NextRequest) {
   try {
-    const session = await auth();
+    const user = await getCurrentUserWithRole();
     if (
-      !session?.user ||
-      !["ADMIN", "SUPER_ADMIN", "DISTRICT_ADMIN"].includes(session.user.role)
+      !user ||
+      !["ADMIN", "SUPER_ADMIN", "DISTRICT_ADMIN"].includes(user.role)
     ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

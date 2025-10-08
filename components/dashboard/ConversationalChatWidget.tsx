@@ -182,8 +182,9 @@ export default function ConversationalChatWidget({
                   </div>
                 </div>
 
+                {/* Enhanced report upsell disabled for now */}
                 {/* What's Inside Box */}
-                <div className="rounded-lg border p-4 bg-background">
+                {/* <div className="rounded-lg border p-4 bg-background">
                   <p className="text-sm font-medium mb-3">
                     Unlock the Full Enhanced Report for $9:
                   </p>
@@ -213,10 +214,10 @@ export default function ConversationalChatWidget({
                       <span>Lifetime access to your enhanced report</span>
                     </li>
                   </ul>
-                </div>
+                </div> */}
 
                 {/* Pricing & CTA */}
-                <div className="flex flex-col gap-3 pt-2">
+                {/* <div className="flex flex-col gap-3 pt-2">
                   <div className="text-center">
                     <p className="text-sm text-muted-foreground mb-1">
                       One-time payment
@@ -247,6 +248,16 @@ export default function ConversationalChatWidget({
                     onClick={handleCloseUpsell}
                   >
                     No thanks, I'll view the basic report
+                  </Button> */}
+
+                {/* Show simple completion message instead */}
+                <div className="text-center space-y-4">
+                  <Button
+                    size="lg"
+                    className="w-full"
+                    onClick={handleCloseUpsell}
+                  >
+                    View Assessment Results
                   </Button>
                 </div>
               </CardContent>

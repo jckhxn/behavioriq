@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { SubAccountService } from "@/lib/district/sub-account-service";
 import { Role } from "@prisma/client";
 
@@ -9,11 +9,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
+    const user = await getCurrentUserWithRole();
     if (
-      !session?.user?.id ||
-      (session.user.role !== Role.DISTRICT_ADMIN &&
-        session.user.role !== Role.ADMIN)
+      !user ||
+      (user.role !== Role.DISTRICT_ADMIN && user.role !== Role.ADMIN)
     ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -22,10 +21,7 @@ export async function GET(
     const subAccount = await SubAccountService.getSubAccountById(id);
 
     // Check if the user has permission to view this sub-account
-    if (
-      subAccount.user.id !== session.user.id &&
-      session.user.role !== Role.ADMIN
-    ) {
+    if (subAccount.user.id !== user.id && user.role !== Role.ADMIN) {
       // For district admins, check if they manage this sub-account
       // This would need additional logic to verify ownership
     }
@@ -51,11 +47,10 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
+    const user = await getCurrentUserWithRole();
     if (
-      !session?.user?.id ||
-      (session.user.role !== Role.DISTRICT_ADMIN &&
-        session.user.role !== Role.ADMIN)
+      !user ||
+      (user.role !== Role.DISTRICT_ADMIN && user.role !== Role.ADMIN)
     ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -67,7 +62,7 @@ export async function PUT(
 
     const updatedSubAccount = await SubAccountService.updateSubAccount(
       id,
-      session.user.id,
+      user.id,
       {
         displayName,
         description,
@@ -102,17 +97,16 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
+    const user = await getCurrentUserWithRole();
     if (
-      !session?.user?.id ||
-      (session.user.role !== Role.DISTRICT_ADMIN &&
-        session.user.role !== Role.ADMIN)
+      !user ||
+      (user.role !== Role.DISTRICT_ADMIN && user.role !== Role.ADMIN)
     ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
-    await SubAccountService.deactivateSubAccount(id, session.user.id);
+    await SubAccountService.deactivateSubAccount(id, user.id);
 
     return NextResponse.json({
       success: true,

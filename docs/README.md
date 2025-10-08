@@ -4,10 +4,31 @@ This directory contains comprehensive documentation and tools for creating, mana
 
 ## 📁 Files Overview
 
-### Documentation
+### Assessment Documentation
 
 - **`ASSESSMENT_JSON_SCHEMA.md`** - Complete technical schema documentation with TypeScript interfaces and field definitions
 - **`ASSESSMENT_CREATION_GUIDE.md`** - Step-by-step practical guide for creating new assessments with examples and best practices
+- **`ASSESSMENT_WRITING_GUIDE.md`** - Guide for writing effective assessment questions and responses
+- **`ASSESSMENT_GUIDE.md`** - General assessment system overview
+
+### Feature Documentation
+
+- **`RESOURCE_LIBRARY_IMPLEMENTATION.md`** - Technical documentation for the Resource Library feature (database schema, API endpoints, implementation details)
+- **`RESOURCE_LIBRARY_USER_GUIDE.md`** - End-user guide for managing resources in the Super Admin dashboard
+- **`PASSWORD_CHANGE_FEATURE.md`** - Password change functionality with security features
+- **`PASSWORD_CHANGE_VISUAL_GUIDE.md`** - Visual guide and UI/UX documentation for password change
+- **`CONVERSATIONAL_CHAT_WIDGET.md`** - Conversational assessment widget documentation
+- **`CONVERSATIONAL_FLOW_DIAGRAM.md`** - Flow diagrams for conversational assessments
+- **`ENHANCED_REPORT_IMPLEMENTATION.md`** - Enhanced report system documentation
+- **`DYNAMIC_DOMAINS_REFERENCE.md`** - Dynamic domain system documentation
+
+### System Documentation
+
+- **`CONFIG_SYSTEM.md`** - Configuration system documentation
+- **`DOCUMENT_GUIDE.md`** - Document handling and processing guide
+- **`MARKDOWN_RENDERING.md`** - Markdown rendering implementation
+- **`STRIPE_SETUP_GUIDE.md`** - Stripe payment integration setup
+- **`STRIPE_TESTING_GUIDE.md`** - Stripe testing procedures
 
 ### Tools
 

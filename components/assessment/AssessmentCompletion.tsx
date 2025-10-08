@@ -207,10 +207,11 @@ export function AssessmentCompletion({
     try {
       // Don't save if already saved
       if (savedLinks.includes(link.url)) {
+        alert("This resource has already been saved!");
         return;
       }
 
-      await fetch("/api/recommendations", {
+      const response = await fetch("/api/recommendations", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -224,10 +225,23 @@ export function AssessmentCompletion({
         }),
       });
 
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Failed to save resource:", errorData);
+        alert(`Failed to save resource: ${errorData.error || "Unknown error"}`);
+        return;
+      }
+
       // Update saved links state
       setSavedLinks((prev) => [...prev, link.url]);
+
+      // Show success feedback
+      alert(
+        `✓ Resource "${link.title}" saved successfully!\n\nYou can find it in your Saved Recommendations.`
+      );
     } catch (error) {
       console.error("Error saving resource link:", error);
+      alert("Failed to save resource. Please try again.");
     }
   };
 
@@ -317,51 +331,52 @@ export function AssessmentCompletion({
     );
   }
 
+  // Enhanced report disabled for now - always show regular report
   // Show enhanced report for conversational assessments with purchased report
-  if (isConversational && hasEnhancedReport && assessmentData?.childResponses) {
-    const childResponses = assessmentData.childResponses;
-    const enhancedAnalysis = assessmentData.enhancedAnalysis || {
-      overallAlignment: "No analysis available yet.",
-      keyDifferences: [],
-      insights: [],
-      recommendations: [],
-      quotes: [],
-    };
+  // if (isConversational && hasEnhancedReport && assessmentData?.childResponses) {
+  //   const childResponses = assessmentData.childResponses;
+  //   const enhancedAnalysis = assessmentData.enhancedAnalysis || {
+  //     overallAlignment: "No analysis available yet.",
+  //     keyDifferences: [],
+  //     insights: [],
+  //     recommendations: [],
+  //     quotes: [],
+  //   };
 
-    const handleDownloadPdf = async () => {
-      try {
-        const res = await fetch(
-          `/api/assessment/${assessmentId}/download-enhanced-pdf`
-        );
-        const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `enhanced-report-${assessmentId}.pdf`;
-        a.click();
-        window.URL.revokeObjectURL(url);
-      } catch (err) {
-        console.error("PDF download failed:", err);
-      }
-    };
+  //   const handleDownloadPdf = async () => {
+  //     try {
+  //       const res = await fetch(
+  //         `/api/assessment/${assessmentId}/download-enhanced-pdf`
+  //       );
+  //       const blob = await res.blob();
+  //       const url = window.URL.createObjectURL(blob);
+  //       const a = document.createElement("a");
+  //       a.href = url;
+  //       a.download = `enhanced-report-${assessmentId}.pdf`;
+  //       a.click();
+  //       window.URL.revokeObjectURL(url);
+  //     } catch (err) {
+  //       console.error("PDF download failed:", err);
+  //     }
+  //   };
 
-    return (
-      <div className="w-full max-w-6xl mx-auto">
-        <EnhancedReportView
-          assessment={{
-            id: assessmentId,
-            title: subjectName,
-            completedAt: assessmentData.completedAt,
-            score: 0,
-            enhancedReportPurchasedAt: assessmentData.enhancedReportPurchasedAt,
-          }}
-          childResponses={childResponses}
-          enhancedAnalysis={enhancedAnalysis}
-          onDownloadPdf={handleDownloadPdf}
-        />
-      </div>
-    );
-  }
+  //   return (
+  //     <div className="w-full max-w-6xl mx-auto">
+  //       <EnhancedReportView
+  //         assessment={{
+  //           id: assessmentId,
+  //           title: subjectName,
+  //           completedAt: assessmentData.completedAt,
+  //           score: 0,
+  //           enhancedReportPurchasedAt: assessmentData.enhancedReportPurchasedAt,
+  //         }}
+  //         childResponses={childResponses}
+  //         enhancedAnalysis={enhancedAnalysis}
+  //         onDownloadPdf={handleDownloadPdf}
+  //       />
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="w-full max-w-6xl mx-auto space-y-6">

@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Send, Loader2 } from "lucide-react";
-import { useSession } from "next-auth/react";
+import { useUser } from "@/lib/hooks/use-supabase-user";
 import { AssessmentDomain } from "@prisma/client";
 import { ASSESSMENT_CONFIG } from "@/lib/config/ai-config";
 import { QuestionPresenter } from "@/components/assessment/QuestionPresenter";
@@ -36,7 +36,7 @@ interface StructuredAssessmentState {
 }
 
 export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
-  const { data: session } = useSession();
+  const { user } = useUser();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -51,6 +51,8 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
   >([]);
   const [subjectName, setSubjectName] = useState<string>("");
   const [aiRecommendations, setAiRecommendations] = useState<string>("");
+  const [hasAnsweredQuestions, setHasAnsweredQuestions] =
+    useState<boolean>(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const isStructuredMode = ASSESSMENT_CONFIG.CURRENT_MODE === "structured";
@@ -172,6 +174,11 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
             currentDomain: data.currentDomain,
             progress: data.progress,
           });
+
+          // Check if there are answered questions to enable back button
+          if (data.progress && data.progress.answeredQuestions > 0) {
+            setHasAnsweredQuestions(true);
+          }
         }
       }
     } catch (error) {
@@ -334,9 +341,13 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
           setAssessmentStatus("COMPLETED");
           setStructuredState({});
           setQuestionHistory([]);
+          setHasAnsweredQuestions(false);
         } else {
           // Save current state to history before moving to next question
           setQuestionHistory((prev) => [...prev, structuredState]);
+
+          // Track that we have answered questions
+          setHasAnsweredQuestions(true);
 
           setStructuredState({
             currentQuestion: data.nextQuestion,
@@ -401,7 +412,8 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
               onBack={handleBack}
               canGoBack={
                 questionHistory.length > 0 ||
-                (structuredState.progress?.answeredQuestions || 0) > 0
+                hasAnsweredQuestions ||
+                (structuredState.progress?.answeredQuestions ?? 0) > 0
               }
             />
           </div>

@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { prisma } from "@/lib/db/prisma";
 
 // POST /api/admin/domain-templates/upload - Upload domain template from JSON file
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const user = await getCurrentUserWithRole();
     if (
-      !session?.user ||
-      !["ADMIN", "SUPER_ADMIN", "DISTRICT_ADMIN"].includes(session.user.role)
+      !user ||
+      !["ADMIN", "SUPER_ADMIN", "DISTRICT_ADMIN"].includes(user.role)
     ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
         questions: domainData.questions,
         resources: domainData.resources,
         scoringConfig: domainData.scoringConfig,
-        createdById: session.user.id,
+        createdById: user.id,
       },
       include: {
         createdBy: {

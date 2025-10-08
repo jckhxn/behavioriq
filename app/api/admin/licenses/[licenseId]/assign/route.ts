@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { LicensingService } from "@/lib/licensing/licensing-service";
 
 // POST /api/admin/licenses/[licenseId]/assign - Assign license to user
@@ -15,13 +15,13 @@ export async function POST(
 ) {
   try {
     const { licenseId } = await params;
-    const session = await auth();
+    const user = await getCurrentUserWithRole();
 
-    if (!session?.user) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!["ADMIN", "SUPER_ADMIN"].includes(session.user.role)) {
+    if (!["ADMIN", "SUPER_ADMIN"].includes(user.role)) {
       return NextResponse.json(
         { error: "Admin access required" },
         { status: 403 }
@@ -41,7 +41,7 @@ export async function POST(
     const userLicense = await LicensingService.assignLicenseToUser(
       licenseId,
       userId,
-      session.user.id
+      user.id
     );
 
     return NextResponse.json(

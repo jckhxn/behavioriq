@@ -168,10 +168,10 @@ export function QuestionPresenter({
             size="lg"
             className="w-full h-12 text-lg font-semibold gradient-primary hover:opacity-90 transition-opacity"
           >
-            {isSubmitting ? (
+            {isSubmitting || isLoading ? (
               <>
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Submitting...
+                {isLoading ? "Processing..." : "Submitting..."}
               </>
             ) : (
               "Submit Answer"
@@ -212,18 +212,18 @@ export function QuestionPresenter({
         </CardContent>
       </Card>
 
-      {/* Loading Overlay */}
-      {isLoading && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
-          <Card className="card-gradient p-6">
-            <div className="flex items-center space-x-4">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              <div className="text-lg font-medium">
-                Processing your response...
-              </div>
+      {/* Subtle Loading Indicator - only shows between questions */}
+      {isLoading && !isSubmitting && (
+        <Card className="card-gradient border-primary/20">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-center space-x-3 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <span className="text-sm font-medium">
+                Loading next question...
+              </span>
             </div>
-          </Card>
-        </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

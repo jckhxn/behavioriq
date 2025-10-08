@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useUser } from "@/lib/hooks/use-supabase-user";
 import { AssessmentChat } from "@/components/chat/AssessmentChat";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ interface Assessment {
 export default function AssessmentPage() {
   const params = useParams();
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const { user, isLoading } = useUser();
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,8 +28,8 @@ export default function AssessmentPage() {
   const assessmentId = params.id as string;
 
   useEffect(() => {
-    if (status === "loading") return;
-    if (!session) {
+    if (isLoading) return;
+    if (!user) {
       router.push("/login");
       return;
     }
@@ -56,9 +56,9 @@ export default function AssessmentPage() {
     };
 
     fetchAssessment();
-  }, [assessmentId, session, status, router]);
+  }, [assessmentId, user, isLoading, router]);
 
-  if (status === "loading" || loading) {
+  if (isLoading || loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 dark:from-background dark:via-background dark:to-muted/20 flex items-center justify-center">
         <div className="text-center">

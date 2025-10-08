@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useUser } from "@/lib/hooks/use-supabase-user";
 import {
   Card,
   CardContent,
@@ -53,6 +53,8 @@ import {
   Link2,
   Lock,
   Globe,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { format } from "date-fns";
 import Link from "next/link";
@@ -83,7 +85,7 @@ interface Assessment {
 }
 
 export function AssessmentsView() {
-  const { data: session } = useSession();
+  const { user } = useUser();
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [filteredAssessments, setFilteredAssessments] = useState<Assessment[]>(
     []
@@ -130,6 +132,23 @@ export function AssessmentsView() {
   const [selectedAssessmentId, setSelectedAssessmentId] = useState<
     string | null
   >(null);
+
+  // Expanded assessments state for showing all scores
+  const [expandedAssessments, setExpandedAssessments] = useState<Set<string>>(
+    new Set()
+  );
+
+  const toggleExpanded = (assessmentId: string) => {
+    setExpandedAssessments((prev) => {
+      const next = new Set(prev);
+      if (next.has(assessmentId)) {
+        next.delete(assessmentId);
+      } else {
+        next.add(assessmentId);
+      }
+      return next;
+    });
+  };
 
   useEffect(() => {
     fetchAssessments();
@@ -509,446 +528,555 @@ export function AssessmentsView() {
     <div className="h-full flex overflow-hidden">
       {/* Main Content */}
       <div
-        className={`space-y-4 p-4 md:p-8 pt-6 transition-all duration-300 overflow-auto ${
-          selectedAssessmentId ? "w-1/2" : "w-full"
+        className={`space-y-4 p-3 sm:p-4 md:p-6 lg:p-8 pt-4 md:pt-6 transition-all duration-300 overflow-auto ${
+          selectedAssessmentId ? "hidden md:block md:w-1/2" : "w-full"
         }`}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between space-y-2">
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight">Assessments</h2>
-            <p className="text-muted-foreground">
-              Manage and view your assessment history
-            </p>
-          </div>
-          {(userLicense?.type === "BASIC" &&
-            userLicense?.maxAssessments === 0) ||
-          userLicense?.maxAssessments === 0 ? (
-            <Button
-              id="create-assessment-btn"
-              disabled
-              className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 opacity-50 cursor-not-allowed"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              New Assessment
-            </Button>
-          ) : (
-            <Link href="/assessment/new">
+        <div className="max-w-6xl mx-auto w-full space-y-4">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+            <div className="min-w-0">
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
+                Assessments
+              </h2>
+              <p className="text-sm sm:text-base text-muted-foreground">
+                Manage and view your assessment history
+              </p>
+            </div>
+            {(userLicense?.type === "BASIC" &&
+              userLicense?.maxAssessments === 0) ||
+            userLicense?.maxAssessments === 0 ? (
               <Button
                 id="create-assessment-btn"
-                className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90"
+                disabled
+                size="sm"
+                className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 opacity-50 cursor-not-allowed shrink-0"
               >
-                <Plus className="mr-2 h-4 w-4" />
-                New Assessment
+                <Plus className="mr-1 sm:mr-2 h-4 w-4" />
+                <span className="hidden xs:inline">New </span>Assessment
               </Button>
-            </Link>
-          )}
-        </div>
-
-        {/* Assessment Credits Display */}
-        <div id="credits-display">
-          <CreditsDisplay />
-        </div>
-
-        {/* Onboarding Checklist */}
-        <OnboardingChecklist />
-
-        {/* BASIC Account with 0 Assessments Banner */}
-        {userLicense?.type === "BASIC" && userLicense?.maxAssessments === 0 && (
-          <Card className="border-amber-500 bg-amber-50 dark:bg-amber-900/20">
-            <CardContent className="pt-6">
-              <div className="flex items-start gap-4">
-                <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/40">
-                  <Lock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-amber-900 dark:text-amber-100">
-                    Basic Account - View Only Access
-                  </h3>
-                  <p className="text-sm text-amber-700 dark:text-amber-200 mt-1">
-                    You have view-only access to your past assessments. Purchase
-                    an assessment or subscribe for unlimited access.
-                  </p>
-                  <div className="flex gap-3 mt-4">
-                    <Link href="/pricing">
-                      <Button
-                        size="sm"
-                        variant="default"
-                        className="bg-amber-600 hover:bg-amber-700"
-                      >
-                        Buy Assessment -{" "}
-                        {formatPrice(PRICING.SINGLE_ASSESSMENT)}
-                      </Button>
-                    </Link>
-                    <Link href="/pricing">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-amber-600 text-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/40"
-                      >
-                        Subscribe - {formatPrice(PRICING.MONTHLY_SUBSCRIPTION)}
-                        /month
-                      </Button>
-                    </Link>
-                    <Link href="/pricing">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-amber-600 text-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/40"
-                      >
-                        Subscribe - {formatPrice(PRICING.ANNUAL_SUBSCRIPTION)}
-                        /year (Save $
-                        {(PRICING.MONTHLY_SUBSCRIPTION * 12 -
-                          PRICING.ANNUAL_SUBSCRIPTION) /
-                          100}
-                        !)
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Conversational Trial Module - Always show for registered users */}
-        {(() => {
-          const conversationalAssessment = assessments.find(
-            (a) => a.isConversational
-          );
-
-          if (conversationalAssessment) {
-            // User has started/completed a conversational trial
-            const hasCompletedTrial =
-              conversationalAssessment.status === "COMPLETED";
-            const hasEnhancedReport =
-              conversationalAssessment.hasEnhancedReport || false;
-
-            // Hide the module entirely if trial is complete but enhanced report not purchased
-            if (hasCompletedTrial && !hasEnhancedReport) {
-              return null;
-            }
-
-            return (
-              <ConversationalTrialModule
-                hasCompletedTrial={hasCompletedTrial}
-                hasEnhancedReport={hasEnhancedReport}
-                assessmentId={conversationalAssessment.id}
-              />
-            );
-          }
-
-          // No conversational trial yet - show teaser to start one
-          return (
-            <ConversationalTrialModule
-              hasCompletedTrial={false}
-              hasEnhancedReport={false}
-              assessmentId={undefined}
-            />
-          );
-        })()}
-
-        {/* Statistics Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="dark:bg-gray-800">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Assessments
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{assessments.length}</div>
-            </CardContent>
-          </Card>
-
-          <Card className="dark:bg-gray-800">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Completed / In Progress
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {getCompletedCount()} / {getInProgressCount()}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="dark:bg-gray-800">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Average Score
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{getAverageScore()}%</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Filters */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search assessments..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-8"
-                  />
-                </div>
-              </div>
-              <div className="flex gap-2">
+            ) : (
+              <Link href="/assessment/new">
                 <Button
-                  variant={filterStatus === "ALL" ? "default" : "outline"}
-                  onClick={() => setFilterStatus("ALL")}
+                  id="create-assessment-btn"
                   size="sm"
+                  className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 shrink-0"
                 >
-                  All
+                  <Plus className="mr-1 sm:mr-2 h-4 w-4" />
+                  <span className="hidden xs:inline">New </span>Assessment
                 </Button>
-                <Button
-                  variant={filterStatus === "COMPLETED" ? "default" : "outline"}
-                  onClick={() => setFilterStatus("COMPLETED")}
-                  size="sm"
-                >
-                  Completed
-                </Button>
-                <Button
-                  variant={
-                    filterStatus === "IN_PROGRESS" ? "default" : "outline"
-                  }
-                  onClick={() => setFilterStatus("IN_PROGRESS")}
-                  size="sm"
-                >
-                  In Progress
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              </Link>
+            )}
+          </div>
 
-        {/* Assessments List */}
-        {filteredAssessments.length === 0 ? (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center py-12">
-                <FileText className="mx-auto h-16 w-16 text-muted-foreground" />
-                <h3 className="mt-2 text-lg font-semibold">
-                  {assessments.length === 0
-                    ? "No assessments yet"
-                    : "No matching assessments"}
-                </h3>
-                <p className="mt-1 text-muted-foreground">
-                  {assessments.length === 0
-                    ? "Get started by creating your first assessment."
-                    : "Try adjusting your search or filter criteria."}
-                </p>
-                {assessments.length === 0 && (
-                  <Link href="/assessment/new">
-                    <Button className="mt-4">Start New Assessment</Button>
-                  </Link>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-4">
-            {filteredAssessments.map((assessment) => (
-              <Card
-                key={assessment.id}
-                className="hover:shadow-md transition-shadow"
-              >
+          {/* Assessment Credits Display */}
+          <div id="credits-display">
+            <CreditsDisplay />
+          </div>
+
+          {/* Onboarding Checklist */}
+          <OnboardingChecklist />
+
+          {/* BASIC Account with 0 Assessments Banner */}
+          {userLicense?.type === "BASIC" &&
+            userLicense?.maxAssessments === 0 && (
+              <Card className="border-amber-500 bg-amber-50 dark:bg-amber-900/20">
                 <CardContent className="pt-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold">
-                          {assessment.subjectName}
-                        </h3>
-                        {assessment.shortId && (
-                          <Badge variant="outline" className="text-xs">
-                            {assessment.shortId}
-                          </Badge>
-                        )}
-                        {assessment.hasEnhancedReport && (
-                          <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white">
-                            ✨ Enhanced
-                          </Badge>
-                        )}
-                        <Badge
-                          variant={
-                            assessment.status === "COMPLETED"
-                              ? "default"
-                              : "secondary"
-                          }
-                          className="flex items-center gap-1"
-                        >
-                          {assessment.status === "COMPLETED" ? (
-                            <CheckCircle className="h-3 w-3" />
-                          ) : (
-                            <Clock className="h-3 w-3" />
-                          )}
-                          {assessment.status === "COMPLETED"
-                            ? "Complete"
-                            : "In Progress"}
-                        </Badge>
-                        {assessment.status === "COMPLETED" &&
-                          assessment.scores && (
-                            <Badge
-                              className={getRiskLevelColor(
-                                getOverallRiskLevel(assessment.scores) || ""
-                              )}
-                            >
-                              {getOverallRiskLevel(assessment.scores)} Risk
-                            </Badge>
-                          )}
-                      </div>
-
-                      <div className="text-sm text-muted-foreground mb-3">
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-4 w-4" />
-                            Started:{" "}
-                            {format(
-                              new Date(assessment.startedAt),
-                              "MMM dd, yyyy"
-                            )}
-                          </div>
-                          {assessment.completedAt && (
-                            <div className="flex items-center gap-1">
-                              <CheckCircle className="h-4 w-4" />
-                              Completed:{" "}
-                              {format(
-                                new Date(assessment.completedAt),
-                                "MMM dd, yyyy"
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {assessment.scores && assessment.scores.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mb-3">
-                          {(() => {
-                            // Deduplicate scores by domain, keeping the latest score per domain
-                            const latestScoresByDomain: Record<string, any> =
-                              {};
-                            assessment.scores.forEach((score) => {
-                              if (
-                                !latestScoresByDomain[score.domain] ||
-                                new Date(score.timestamp || 0) >
-                                  new Date(
-                                    latestScoresByDomain[score.domain]
-                                      .timestamp || 0
-                                  )
-                              ) {
-                                latestScoresByDomain[score.domain] = score;
-                              }
-                            });
-
-                            return Object.values(latestScoresByDomain).map(
-                              (score, index) => (
-                                <Badge
-                                  key={`${assessment.id}-${score.domain}-latest`}
-                                  variant="outline"
-                                  className="text-xs"
-                                >
-                                  {score.domainDisplayName || score.domain}:{" "}
-                                  {score.rawScore}/{score.totalPossible}
-                                </Badge>
-                              )
-                            );
-                          })()}
-                        </div>
-                      )}
+                  <div className="flex items-start gap-4">
+                    <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/40">
+                      <Lock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                     </div>
-
-                    <div className="flex items-center gap-2">
-                      {assessment.status === "IN_PROGRESS" ? (
-                        <>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-amber-900 dark:text-amber-100">
+                        Basic Account - View Only Access
+                      </h3>
+                      <p className="text-sm text-amber-700 dark:text-amber-200 mt-1">
+                        You have view-only access to your past assessments.
+                        Purchase an assessment or subscribe for unlimited
+                        access.
+                      </p>
+                      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-4">
+                        <Link href="/pricing" className="w-full sm:w-auto">
+                          <Button
+                            size="sm"
+                            variant="default"
+                            className="bg-amber-600 hover:bg-amber-700 w-full"
+                          >
+                            Buy Assessment -{" "}
+                            {formatPrice(PRICING.SINGLE_ASSESSMENT)}
+                          </Button>
+                        </Link>
+                        <Link href="/pricing" className="w-full sm:w-auto">
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => handleViewAssessment(assessment.id)}
+                            className="border-amber-600 text-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/40 w-full"
                           >
-                            <Play className="h-4 w-4 mr-1" />
-                            Continue
+                            <span className="hidden sm:inline">
+                              Subscribe -{" "}
+                            </span>
+                            {formatPrice(PRICING.MONTHLY_SUBSCRIPTION)}/mo
                           </Button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button size="sm" variant="outline">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => handleShareClick(assessment.id)}
-                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-950"
-                              >
-                                <Share className="h-4 w-4 mr-2" />
-                                Share Assessment
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleDeleteClick(assessment.id)}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-950"
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete Assessment
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </>
-                      ) : (
-                        <>
-                          <Link href={`/assessment/${assessment.id}/results`}>
-                            <Button size="sm" variant="outline">
-                              <Eye className="h-4 w-4 mr-1" />
-                              View Results
-                            </Button>
-                          </Link>
+                        </Link>
+                        <Link href="/pricing" className="w-full sm:w-auto">
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => generatePDF(assessment.id)}
+                            className="border-amber-600 text-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/40 w-full"
                           >
-                            <Download className="h-4 w-4 mr-1" />
-                            PDF
+                            <span className="hidden sm:inline">
+                              Subscribe -{" "}
+                            </span>
+                            {formatPrice(PRICING.ANNUAL_SUBSCRIPTION)}/yr
+                            <span className="hidden md:inline">
+                              {" "}
+                              (Save $
+                              {(PRICING.MONTHLY_SUBSCRIPTION * 12 -
+                                PRICING.ANNUAL_SUBSCRIPTION) /
+                                100}
+                              !)
+                            </span>
                           </Button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button size="sm" variant="outline">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => handleShareClick(assessment.id)}
-                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-950"
-                              >
-                                <Share className="h-4 w-4 mr-2" />
-                                Share Assessment
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleDeleteClick(assessment.id)}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-950"
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete Assessment
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </>
-                      )}
+                        </Link>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
-            ))}
+            )}
+
+          {/* Conversational Trial Module - Always show for registered users */}
+          {(() => {
+            const conversationalAssessment = assessments.find(
+              (a) => a.isConversational
+            );
+
+            if (conversationalAssessment) {
+              // User has started/completed a conversational trial
+              const hasCompletedTrial =
+                conversationalAssessment.status === "COMPLETED";
+              const hasEnhancedReport =
+                conversationalAssessment.hasEnhancedReport || false;
+
+              // Hide the module entirely if trial is complete but enhanced report not purchased
+              if (hasCompletedTrial && !hasEnhancedReport) {
+                return null;
+              }
+
+              return (
+                <ConversationalTrialModule
+                  hasCompletedTrial={hasCompletedTrial}
+                  hasEnhancedReport={hasEnhancedReport}
+                  assessmentId={conversationalAssessment.id}
+                />
+              );
+            }
+
+            // No conversational trial yet - show teaser to start one
+            return (
+              <ConversationalTrialModule
+                hasCompletedTrial={false}
+                hasEnhancedReport={false}
+                assessmentId={undefined}
+              />
+            );
+          })()}
+
+          {/* Statistics Overview */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="dark:bg-gray-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Total Assessments
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{assessments.length}</div>
+              </CardContent>
+            </Card>
+
+            <Card className="dark:bg-gray-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Completed / In Progress
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {getCompletedCount()} / {getInProgressCount()}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="dark:bg-gray-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Average Score
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{getAverageScore()}%</div>
+              </CardContent>
+            </Card>
           </div>
-        )}
+
+          {/* Filters */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search assessments..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-8"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant={filterStatus === "ALL" ? "default" : "outline"}
+                    onClick={() => setFilterStatus("ALL")}
+                    size="sm"
+                  >
+                    All
+                  </Button>
+                  <Button
+                    variant={
+                      filterStatus === "COMPLETED" ? "default" : "outline"
+                    }
+                    onClick={() => setFilterStatus("COMPLETED")}
+                    size="sm"
+                  >
+                    Completed
+                  </Button>
+                  <Button
+                    variant={
+                      filterStatus === "IN_PROGRESS" ? "default" : "outline"
+                    }
+                    onClick={() => setFilterStatus("IN_PROGRESS")}
+                    size="sm"
+                  >
+                    In Progress
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Assessments List */}
+          {filteredAssessments.length === 0 ? (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center py-12">
+                  <FileText className="mx-auto h-16 w-16 text-muted-foreground" />
+                  <h3 className="mt-2 text-lg font-semibold">
+                    {assessments.length === 0
+                      ? "No assessments yet"
+                      : "No matching assessments"}
+                  </h3>
+                  <p className="mt-1 text-muted-foreground">
+                    {assessments.length === 0
+                      ? "Get started by creating your first assessment."
+                      : "Try adjusting your search or filter criteria."}
+                  </p>
+                  {assessments.length === 0 && (
+                    <Link href="/assessment/new">
+                      <Button className="mt-4">Start New Assessment</Button>
+                    </Link>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3 sm:space-y-4">
+              {filteredAssessments.map((assessment) => (
+                <Card
+                  key={assessment.id}
+                  className="hover:shadow-md transition-shadow"
+                >
+                  <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6 px-4 sm:px-6">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-2">
+                          <h3 className="text-base sm:text-lg font-semibold truncate">
+                            {assessment.subjectName}
+                          </h3>
+                          {assessment.shortId && (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] sm:text-xs shrink-0"
+                            >
+                              {assessment.shortId}
+                            </Badge>
+                          )}
+                          {/* Enhanced report badge disabled for now */}
+                          {/* {assessment.hasEnhancedReport && (
+                          <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white">
+                            ✨ Enhanced
+                          </Badge>
+                        )} */}
+                          <Badge
+                            variant={
+                              assessment.status === "COMPLETED"
+                                ? "default"
+                                : "secondary"
+                            }
+                            className="flex items-center gap-1 text-[10px] sm:text-xs shrink-0"
+                          >
+                            {assessment.status === "COMPLETED" ? (
+                              <CheckCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                            ) : (
+                              <Clock className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                            )}
+                            <span className="hidden xs:inline">
+                              {assessment.status === "COMPLETED"
+                                ? "Complete"
+                                : "In Progress"}
+                            </span>
+                          </Badge>
+                          {assessment.status === "COMPLETED" &&
+                            assessment.scores && (
+                              <Badge
+                                className={`${getRiskLevelColor(
+                                  getOverallRiskLevel(assessment.scores) || ""
+                                )} text-[10px] sm:text-xs shrink-0`}
+                              >
+                                {getOverallRiskLevel(assessment.scores)} Risk
+                              </Badge>
+                            )}
+                        </div>
+
+                        <div className="text-xs sm:text-sm text-muted-foreground mb-2 sm:mb-3">
+                          <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+                            <div className="flex items-center gap-1 shrink-0">
+                              <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
+                              <span className="hidden sm:inline">
+                                Started:{" "}
+                              </span>
+                              <span className="hidden sm:inline">
+                                {format(
+                                  new Date(assessment.startedAt),
+                                  "MMM dd, yyyy"
+                                )}
+                              </span>
+                              <span className="sm:hidden">
+                                {format(
+                                  new Date(assessment.startedAt),
+                                  "MM/dd/yy"
+                                )}
+                              </span>
+                            </div>
+                            {assessment.completedAt && (
+                              <div className="flex items-center gap-1 shrink-0">
+                                <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4" />
+                                <span className="hidden sm:inline">
+                                  Completed:{" "}
+                                </span>
+                                <span className="hidden sm:inline">
+                                  {format(
+                                    new Date(assessment.completedAt),
+                                    "MMM dd, yyyy"
+                                  )}
+                                </span>
+                                <span className="sm:hidden">
+                                  {format(
+                                    new Date(assessment.completedAt),
+                                    "MM/dd/yy"
+                                  )}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {assessment.scores &&
+                          assessment.scores.length > 0 &&
+                          (() => {
+                            // Filter out incomplete scores (0/0 or in-progress)
+                            const completedScores = assessment.scores.filter(
+                              (score) =>
+                                score.totalPossible > 0 && score.rawScore >= 0
+                            );
+
+                            if (completedScores.length === 0) return null;
+
+                            const isExpanded = expandedAssessments.has(
+                              assessment.id
+                            );
+                            const displayScores = isExpanded
+                              ? completedScores
+                              : completedScores.slice(0, 3);
+
+                            return (
+                              <div className="mb-2 sm:mb-3">
+                                <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                                  {displayScores.map((score, index) => (
+                                    <Badge
+                                      key={`${assessment.id}-${score.domain}-${index}`}
+                                      variant="outline"
+                                      className="text-[10px] sm:text-xs"
+                                    >
+                                      <span className="hidden sm:inline">
+                                        {score.domainDisplayName ||
+                                          score.domain ||
+                                          "Unknown"}
+                                        : {score.rawScore}/{score.totalPossible}
+                                      </span>
+                                      <span className="sm:hidden">
+                                        {(
+                                          score.domainDisplayName ||
+                                          score.domain ||
+                                          "Unknown"
+                                        ).slice(0, 8)}
+                                        : {score.rawScore}/{score.totalPossible}
+                                      </span>
+                                    </Badge>
+                                  ))}
+                                </div>
+
+                                {completedScores.length > 3 && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="mt-1.5 sm:mt-2 h-6 sm:h-7 text-[10px] sm:text-xs px-2"
+                                    onClick={() =>
+                                      toggleExpanded(assessment.id)
+                                    }
+                                  >
+                                    {isExpanded ? (
+                                      <>
+                                        <ChevronUp className="h-3 w-3 mr-1" />
+                                        Show Less
+                                      </>
+                                    ) : (
+                                      <>
+                                        <ChevronDown className="h-3 w-3 mr-1" />
+                                        Show All ({completedScores.length}{" "}
+                                        domains)
+                                      </>
+                                    )}
+                                  </Button>
+                                )}
+                              </div>
+                            );
+                          })()}
+                      </div>
+
+                      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                        {assessment.status === "IN_PROGRESS" ? (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                handleViewAssessment(assessment.id)
+                              }
+                              className="text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3"
+                            >
+                              <Play className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
+                              <span className="hidden sm:inline">Continue</span>
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 sm:h-9 w-8 sm:w-9 p-0"
+                                >
+                                  <MoreHorizontal className="h-3 w-3 sm:h-4 sm:w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handleShareClick(assessment.id)
+                                  }
+                                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-950"
+                                >
+                                  <Share className="h-4 w-4 mr-2" />
+                                  Share Assessment
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handleDeleteClick(assessment.id)
+                                  }
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-950"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete Assessment
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </>
+                        ) : (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                handleViewAssessment(assessment.id)
+                              }
+                              className="text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3"
+                            >
+                              <Eye className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
+                              <span className="hidden sm:inline">
+                                View Results
+                              </span>
+                              <span className="sm:hidden">View</span>
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => generatePDF(assessment.id)}
+                              className="text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3"
+                            >
+                              <Download className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
+                              <span className="hidden sm:inline">PDF</span>
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 sm:h-9 w-8 sm:w-9 p-0"
+                                >
+                                  <MoreHorizontal className="h-3 w-3 sm:h-4 sm:w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handleShareClick(assessment.id)
+                                  }
+                                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-950"
+                                >
+                                  <Share className="h-4 w-4 mr-2" />
+                                  Share Assessment
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handleDeleteClick(assessment.id)
+                                  }
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-950"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete Assessment
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Share Assessment Dialog */}
         <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
@@ -1174,60 +1302,60 @@ export function AssessmentsView() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Share Link</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this share link? This action
-              cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          {linkToDelete && (
-            <div className="space-y-2 py-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">Privacy:</span>
-                <Badge>{linkToDelete.privacy}</Badge>
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Share Link</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete this share link? This action
+                cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            {linkToDelete && (
+              <div className="space-y-2 py-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">Privacy:</span>
+                  <Badge>{linkToDelete.privacy}</Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">Views:</span>
+                  <span className="font-medium">
+                    {linkToDelete.viewCount || 0}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">Status:</span>
+                  <Badge
+                    variant={linkToDelete.isActive ? "default" : "secondary"}
+                  >
+                    {linkToDelete.isActive ? "Active" : "Inactive"}
+                  </Badge>
+                </div>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">Views:</span>
-                <span className="font-medium">
-                  {linkToDelete.viewCount || 0}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">Status:</span>
-                <Badge
-                  variant={linkToDelete.isActive ? "default" : "secondary"}
-                >
-                  {linkToDelete.isActive ? "Active" : "Inactive"}
-                </Badge>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setDeleteConfirmOpen(false);
-                setLinkToDelete(null);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={confirmDeleteShareLink}>
-              Delete Link
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            )}
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setDeleteConfirmOpen(false);
+                  setLinkToDelete(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={confirmDeleteShareLink}>
+                Delete Link
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
 
       {/* Assessment Detail Sidebar */}
       {selectedAssessmentId && (
-        <div className="w-1/2 bg-background border-l shadow-lg flex flex-col h-full min-h-0">
+        <div className="w-full md:w-1/2 bg-background border-l shadow-lg flex flex-col h-full min-h-0">
           <AssessmentDetailSidebar
             assessmentId={selectedAssessmentId}
             onClose={handleCloseSidebar}

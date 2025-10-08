@@ -5,19 +5,19 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { EmailJobScheduler } from "@/lib/email/email-scheduler";
 
 // POST /api/admin/email-jobs/run - Manually run email jobs
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const user = await getCurrentUserWithRole();
 
-    if (!session?.user) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!["ADMIN", "SUPER_ADMIN"].includes(session.user.role)) {
+    if (!["ADMIN", "SUPER_ADMIN"].includes(user.role)) {
       return NextResponse.json(
         { error: "Admin access required" },
         { status: 403 }

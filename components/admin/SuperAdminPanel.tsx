@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useUserData } from "@/lib/hooks/use-supabase-user";
 import {
   Card,
   CardContent,
@@ -42,7 +42,7 @@ interface TrialAssessmentConfig {
 }
 
 const SuperAdminPanel: React.FC = () => {
-  const { data: session } = useSession();
+  const { userData } = useUserData();
   const [loading, setLoading] = useState(false);
 
   const [platformSettings, setPlatformSettings] = useState<PlatformSettings>({
@@ -168,7 +168,7 @@ const SuperAdminPanel: React.FC = () => {
         trialConfig,
         stats,
         exportedAt: new Date().toISOString(),
-        exportedBy: session?.user?.email,
+        exportedBy: userData?.email,
       };
 
       const blob = new Blob([JSON.stringify(data, null, 2)], {
@@ -187,7 +187,7 @@ const SuperAdminPanel: React.FC = () => {
     }
   };
 
-  const userRole = session?.user?.role as string;
+  const userRole = userData?.role;
   if (userRole !== "SUPER_ADMIN" && userRole !== "ADMIN") {
     return null; // Return null instead of error card since this is integrated into preferences
   }

@@ -428,28 +428,34 @@ const DomainTemplateManager: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold">Domain Templates</h2>
-          <p className="text-muted-foreground">
+    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4">
+        <div className="min-w-0">
+          <h2 className="text-xl sm:text-2xl font-bold">Domain Templates</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground">
             Manage domain templates that can be used in assessments
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 shrink-0">
           <Dialog
             open={isUploadDialogOpen}
             onOpenChange={setIsUploadDialogOpen}
           >
             <DialogTrigger asChild>
-              <Button variant="outline">
-                <Upload className="h-4 w-4 mr-2" />
-                Upload JSON
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs sm:text-sm"
+              >
+                <Upload className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Upload JSON</span>
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-[95vw] sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>Upload Domain Template</DialogTitle>
+                <DialogTitle className="text-base sm:text-lg">
+                  Upload Domain Template
+                </DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
@@ -489,14 +495,16 @@ const DomainTemplateManager: React.FC = () => {
             onOpenChange={setIsCreateDialogOpen}
           >
             <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Domain
+              <Button size="sm" className="text-xs sm:text-sm">
+                <Plus className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
+                <span className="hidden xs:inline">Create </span>Domain
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl">
+            <DialogContent className="max-w-[95vw] sm:max-w-3xl lg:max-w-4xl max-h-[90vh] overflow-hidden">
               <DialogHeader>
-                <DialogTitle>Create Domain Template</DialogTitle>
+                <DialogTitle className="text-base sm:text-lg">
+                  Create Domain Template
+                </DialogTitle>
               </DialogHeader>
               <div className="space-y-4 max-h-96 overflow-y-auto">
                 <div className="grid grid-cols-2 gap-4">
@@ -605,27 +613,33 @@ const DomainTemplateManager: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid gap-4">
+      <div className="grid gap-3 sm:gap-4">
         {domainTemplates.map((template) => (
           <Card key={template.id}>
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle>{template.name}</CardTitle>
-                  <p className="text-sm text-muted-foreground mt-1">
+            <CardHeader className="pb-3 sm:pb-6">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+                <div className="min-w-0 flex-1">
+                  <CardTitle className="text-base sm:text-lg truncate">
+                    {template.name}
+                  </CardTitle>
+                  <p className="text-xs sm:text-sm text-muted-foreground mt-1 truncate">
                     Slug: {template.slug}
                   </p>
                   {template.description && (
-                    <p className="text-sm mt-2">{template.description}</p>
+                    <p className="text-xs sm:text-sm mt-2 line-clamp-2">
+                      {template.description}
+                    </p>
                   )}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-1.5 sm:gap-2 shrink-0">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => openPreviewDialog(template)}
+                    className="h-8 w-8 p-0"
+                    title="Preview"
                   >
-                    <Eye className="h-4 w-4" />
+                    <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
                   </Button>
                   <Button
                     variant="outline"
@@ -633,53 +647,62 @@ const DomainTemplateManager: React.FC = () => {
                     onClick={() =>
                       handleExportTemplate(template.id, template.slug)
                     }
+                    className="h-8 w-8 p-0"
+                    title="Export"
                   >
-                    <Download className="h-4 w-4" />
+                    <Download className="h-3 w-3 sm:h-4 sm:w-4" />
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => openEditDialog(template)}
+                    className="h-8 w-8 p-0"
+                    title="Edit"
                   >
-                    <Edit className="h-4 w-4" />
+                    <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => handleDeleteTemplate(template.id)}
+                    className="h-8 w-8 p-0"
+                    title="Delete"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                   </Button>
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               <div className="space-y-2">
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <span>Created by {template.createdBy.name}</span>
-                  <span>•</span>
-                  <span>
+                <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
+                  <span className="truncate">By {template.createdBy.name}</span>
+                  <span className="hidden sm:inline">•</span>
+                  <span className="shrink-0">
                     {new Date(template.createdAt).toLocaleDateString()}
                   </span>
-                  <span>•</span>
-                  <span>
-                    Used in {template._count.assessmentTemplates} assessment
-                    templates
+                  <span className="hidden sm:inline">•</span>
+                  <span className="shrink-0">
+                    Used in {template._count.assessmentTemplates} templates
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                  <Badge variant="outline" className="text-[10px] sm:text-xs">
                     {Array.isArray(template.questions)
                       ? template.questions.length
                       : 0}{" "}
                     questions
                   </Badge>
                   {template.resources && (
-                    <Badge variant="outline">Has resources</Badge>
+                    <Badge variant="outline" className="text-[10px] sm:text-xs">
+                      Has resources
+                    </Badge>
                   )}
                   {template.scoringConfig && (
-                    <Badge variant="outline">Custom scoring</Badge>
+                    <Badge variant="outline" className="text-[10px] sm:text-xs">
+                      Custom scoring
+                    </Badge>
                   )}
                 </div>
               </div>
@@ -690,9 +713,11 @@ const DomainTemplateManager: React.FC = () => {
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-[95vw] sm:max-w-3xl lg:max-w-4xl max-h-[90vh] overflow-hidden">
           <DialogHeader>
-            <DialogTitle>Edit Domain Template</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">
+              Edit Domain Template
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 max-h-96 overflow-y-auto">
             <div className="grid grid-cols-2 gap-4">
@@ -798,9 +823,11 @@ const DomainTemplateManager: React.FC = () => {
 
       {/* Preview Dialog */}
       <Dialog open={isPreviewDialogOpen} onOpenChange={setIsPreviewDialogOpen}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-[95vw] sm:max-w-3xl lg:max-w-4xl max-h-[90vh] overflow-hidden">
           <DialogHeader>
-            <DialogTitle>Preview Domain Template</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">
+              Preview Domain Template
+            </DialogTitle>
           </DialogHeader>
           {selectedTemplate && (
             <div className="space-y-4 max-h-96 overflow-y-auto">

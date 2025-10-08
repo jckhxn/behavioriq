@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { SubAccountService } from "@/lib/district/sub-account-service";
 import { Role } from "@prisma/client";
 
 // GET /api/admin/sub-accounts - Get sub-accounts for the district admin
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const user = await getCurrentUserWithRole();
     if (
-      !session?.user?.id ||
-      (session.user.role !== Role.DISTRICT_ADMIN &&
-        session.user.role !== Role.ADMIN)
+      !user ||
+      (user.role !== Role.DISTRICT_ADMIN && user.role !== Role.ADMIN)
     ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -26,13 +25,13 @@ export async function GET(request: NextRequest) {
     }
 
     const subAccounts = await SubAccountService.getSubAccountsForDistrictAdmin(
-      session.user.id,
+      user.id,
       organizationId
     );
 
     // Also get the ability to create more sub-accounts
     const canCreateInfo = await SubAccountService.canCreateSubAccount(
-      session.user.id,
+      user.id,
       organizationId
     );
 
@@ -60,11 +59,10 @@ export async function GET(request: NextRequest) {
 // POST /api/admin/sub-accounts - Create a new sub-account
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const user = await getCurrentUserWithRole();
     if (
-      !session?.user?.id ||
-      (session.user.role !== Role.DISTRICT_ADMIN &&
-        session.user.role !== Role.ADMIN)
+      !user ||
+      (user.role !== Role.DISTRICT_ADMIN && user.role !== Role.ADMIN)
     ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -90,7 +88,7 @@ export async function POST(request: NextRequest) {
 
     // Check if the district admin can create more sub-accounts
     const canCreateInfo = await SubAccountService.canCreateSubAccount(
-      session.user.id,
+      user.id,
       organizationId
     );
 
@@ -102,7 +100,7 @@ export async function POST(request: NextRequest) {
     }
 
     const subAccount = await SubAccountService.createSubAccount(
-      session.user.id,
+      user.id,
       organizationId,
       {
         email,

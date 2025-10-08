@@ -5,16 +5,16 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { EmailService } from "@/lib/email/email-service";
 import { prisma } from "@/lib/db/prisma";
 
 // POST /api/emails/assessment-report - Send assessment report via email
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const user = await getCurrentUserWithRole();
 
-    if (!session?.user) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -47,10 +47,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user owns this assessment or is admin
-    if (
-      assessment.userId !== session.user.id &&
-      session.user.role !== "ADMIN"
-    ) {
+    if (assessment.userId !== user.id && user.role !== "ADMIN") {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 

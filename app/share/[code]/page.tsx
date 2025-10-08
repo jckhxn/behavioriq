@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import EnhancedReportView from "@/components/reports/EnhancedReportView";
+import { AssessmentCompletion } from "@/components/assessment/AssessmentCompletion";
 
 export default function SharedAssessmentPage() {
   const params = useParams();
@@ -119,19 +120,74 @@ export default function SharedAssessmentPage() {
 
   // Show assessment data if loaded
   if (assessmentData) {
+    // Enhanced reports disabled - always show regular report
     // Check if this is an enhanced report
-    const hasEnhancedReport = assessmentData.assessment.hasEnhancedReport;
-    const childResponses = assessmentData.assessment.childResponses;
-    const enhancedAnalysis = assessmentData.assessment.enhancedAnalysis;
+    // const hasEnhancedReport = assessmentData.assessment.hasEnhancedReport;
+    // const childResponses = assessmentData.assessment.childResponses;
+    // const enhancedAnalysis = assessmentData.assessment.enhancedAnalysis;
 
-    // Show enhanced report if available
-    if (hasEnhancedReport && childResponses && enhancedAnalysis) {
-      return (
-        <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-6">
-              <h1 className="text-3xl font-bold text-foreground mb-2">
-                Enhanced Assessment Report
+    // Show enhanced report if available (childResponses are sufficient, analysis is optional)
+    // if (hasEnhancedReport && childResponses) {
+    //   return (
+    //     <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4">
+    //       <div className="max-w-4xl mx-auto">
+    //         <div className="text-center mb-6">
+    //           <h1 className="text-3xl font-bold text-foreground mb-2">
+    //             Enhanced Assessment Report
+    //           </h1>
+    //           <p className="text-muted-foreground">
+    //             Subject: {assessmentData.assessment.subjectName}
+    //           </p>
+    //           <p className="text-sm text-muted-foreground">
+    //             Status: {assessmentData.assessment.status} • Created:{" "}
+    //             {new Date(
+    //               assessmentData.assessment.createdAt
+    //             ).toLocaleDateString()}
+    //           </p>
+    //         </div>
+
+    //         <EnhancedReportView
+    //           assessment={{
+    //             id: assessmentData.assessment.id,
+    //             title: assessmentData.assessment.subjectName,
+    //             completedAt: new Date(assessmentData.assessment.updatedAt),
+    //             score: assessmentData.assessment.scores?.[0]?.rawScore || 0,
+    //             enhancedReportPurchasedAt: assessmentData.assessment
+    //               .enhancedReportPurchasedAt
+    //               ? new Date(
+    //                   assessmentData.assessment.enhancedReportPurchasedAt
+    //                 )
+    //               : null,
+    //           }}
+    //           childResponses={childResponses}
+    //           enhancedAnalysis={
+    //             enhancedAnalysis || {
+    //               overallAlignment:
+    //                 "AI analysis is being generated. Please check back later.",
+    //               keyDifferences: [],
+    //               insights: [],
+    //               recommendations: [],
+    //               quotes: [],
+    //             }
+    //           }
+    //           onDownloadPdf={() => {
+    //             console.log("PDF download not available for shared reports");
+    //           }}
+    //         />
+    //       </div>
+    //     </div>
+    //   );
+    // }
+
+    // Show basic assessment report using AssessmentCompletion component
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 dark:from-background dark:via-background dark:to-muted/20">
+        <div className="container mx-auto px-4 py-8 max-w-4xl">
+          {/* Header */}
+          <div className="mb-6">
+            <div className="text-center">
+              <h1 className="text-3xl font-bold mb-2">
+                Shared Assessment Results
               </h1>
               <p className="text-muted-foreground">
                 Subject: {assessmentData.assessment.subjectName}
@@ -143,94 +199,15 @@ export default function SharedAssessmentPage() {
                 ).toLocaleDateString()}
               </p>
             </div>
+          </div>
 
-            <EnhancedReportView
-              assessment={{
-                id: assessmentData.assessment.id,
-                title: assessmentData.assessment.subjectName,
-                completedAt: new Date(assessmentData.assessment.updatedAt),
-                score: assessmentData.assessment.scores?.[0]?.rawScore || 0,
-                enhancedReportPurchasedAt: assessmentData.assessment
-                  .enhancedReportPurchasedAt
-                  ? new Date(
-                      assessmentData.assessment.enhancedReportPurchasedAt
-                    )
-                  : null,
-              }}
-              childResponses={childResponses}
-              enhancedAnalysis={enhancedAnalysis}
-              onDownloadPdf={() => {
-                console.log("PDF download not available for shared reports");
-              }}
+          {/* Use AssessmentCompletion component for consistent UI */}
+          <div className="shadow-lg dark:shadow-xl border dark:border-border rounded-lg">
+            <AssessmentCompletion
+              assessmentId={assessmentData.assessment.id}
+              subjectName={assessmentData.assessment.subjectName}
             />
           </div>
-        </div>
-      );
-    }
-
-    // Show basic assessment report
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-6">
-            <h1 className="text-3xl font-bold text-foreground mb-2">
-              Assessment Results
-            </h1>
-            <p className="text-muted-foreground">
-              Subject: {assessmentData.assessment.subjectName}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Status: {assessmentData.assessment.status} • Created:{" "}
-              {new Date(
-                assessmentData.assessment.createdAt
-              ).toLocaleDateString()}
-            </p>
-          </div>
-
-          {/* Assessment Scores */}
-          {assessmentData.assessment.scores &&
-            assessmentData.assessment.scores.length > 0 && (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {assessmentData.assessment.scores.map((score: any) => (
-                  <div
-                    key={score.id}
-                    className="bg-card rounded-lg p-4 shadow-sm border"
-                  >
-                    <h3 className="font-semibold text-lg capitalize mb-2">
-                      {score.domain.toLowerCase().replace("_", " ")}
-                    </h3>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span>Score:</span>
-                        <span className="font-medium">
-                          {score.rawScore}/{score.totalPossible}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Risk Level:</span>
-                        <span
-                          className={`font-medium px-2 py-1 rounded text-xs ${
-                            score.riskLevel === "LOW"
-                              ? "bg-green-100 text-green-700"
-                              : score.riskLevel === "MODERATE"
-                                ? "bg-yellow-100 text-yellow-700"
-                                : "bg-red-100 text-red-700"
-                          }`}
-                        >
-                          {score.riskLevel}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Confidence:</span>
-                        <span className="font-medium">
-                          {(score.confidence * 100).toFixed(0)}%
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
         </div>
       </div>
     );

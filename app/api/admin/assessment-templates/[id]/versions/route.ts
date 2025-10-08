@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { prisma } from "@/lib/db/prisma";
 
 // GET /api/admin/assessment-templates/[id]/versions - Get version history
@@ -8,10 +8,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
+    const user = await getCurrentUserWithRole();
     if (
-      !session?.user ||
-      !["ADMIN", "SUPER_ADMIN", "DISTRICT_ADMIN"].includes(session.user.role)
+      !user ||
+      !["ADMIN", "SUPER_ADMIN", "DISTRICT_ADMIN"].includes(user.role)
     ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -44,10 +44,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
+    const user = await getCurrentUserWithRole();
     if (
-      !session?.user ||
-      !["ADMIN", "SUPER_ADMIN", "DISTRICT_ADMIN"].includes(session.user.role)
+      !user ||
+      !["ADMIN", "SUPER_ADMIN", "DISTRICT_ADMIN"].includes(user.role)
     ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -85,7 +85,7 @@ export async function POST(
     // Create a new version from current state before restoring
     await createVersionSnapshot(
       currentTemplate,
-      session.user.id,
+      user.id,
       `Restored to version ${version}`
     );
 

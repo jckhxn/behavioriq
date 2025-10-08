@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { prisma } from "@/lib/db/prisma";
 import { openai } from "@ai-sdk/openai";
 import { streamText } from "ai";
@@ -12,13 +12,13 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const user = await getCurrentUserWithRole();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Check rate limits before proceeding
-    const rateLimitResult = checkAIRateLimit(session.user.id);
+    const rateLimitResult = checkAIRateLimit(user.id);
     if (!rateLimitResult.allowed) {
       return NextResponse.json(
         {
@@ -33,7 +33,7 @@ export async function POST(
     const identifier = (await params).id;
 
     // Resolve shortId to UUID if needed
-    const assessmentId = await resolveAssessmentId(identifier, session.user.id);
+    const assessmentId = await resolveAssessmentId(identifier, user.id);
     if (!assessmentId) {
       return NextResponse.json(
         { error: "Assessment not found" },
@@ -45,7 +45,7 @@ export async function POST(
     const assessment = await prisma.assessment.findUnique({
       where: {
         id: assessmentId,
-        userId: session.user.id,
+        userId: user.id,
       },
       include: {
         scores: {
@@ -117,7 +117,7 @@ export async function POST(
 
     // Generate streaming AI recommendations based on scores (first time only)
     console.log("No existing AI recommendations found, generating new ones");
-    const result = await streamRecommendations(assessment, session.user.id);
+    const result = await streamRecommendations(assessment, user.id);
 
     // If it's already a Response (mock), return it directly
     if (result instanceof Response) {

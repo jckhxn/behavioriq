@@ -243,14 +243,15 @@ export function ManageSubscriptionModal({
                         Downgrade to Lite Plan ($14.50/mo)
                       </h4>
                       <p className="text-sm text-blue-800 dark:text-blue-200 mb-2">
-                        Keep access to your reports, dashboard, and member
-                        pricing on Enhanced Reports for half the cost.
+                        Keep access to your reports and dashboard for half the
+                        cost.
                       </p>
                       <ul className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
                         <li>
                           • Still includes progress tracking & dashboard access
                         </li>
-                        <li>• Keep $9 Enhanced Reports instead of $29</li>
+                        {/* Enhanced report pricing removed */}
+                        {/* <li>• Keep $9 Enhanced Reports instead of $29</li> */}
                         <li>• Access to all your previous reports</li>
                       </ul>
                     </div>
@@ -283,8 +284,8 @@ export function ManageSubscriptionModal({
                         Switch to Annual (Save 30%)
                       </h4>
                       <p className="text-sm text-purple-800 dark:text-purple-200">
-                        Most parents switch to the annual plan — save 30% and
-                        get 3 free Enhanced Reports ($87 value).
+                        Most parents switch to the annual plan — save 30% on
+                        your subscription.
                       </p>
                     </div>
                   </div>

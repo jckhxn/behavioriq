@@ -40,12 +40,19 @@ export function CreditsDisplay() {
       if (response.ok) {
         const data = await response.json();
         setCredits(data);
+      } else if (response.status === 401) {
+        // User is not authenticated - this is OK for trial/public pages
+        // Don't show error, just don't display credits
+        setCredits(null);
       } else {
         throw new Error("Failed to fetch credits");
       }
     } catch (error) {
       console.error("Error fetching credits:", error);
-      toast.error("Failed to load assessment credits");
+      // Only show error toast if it's not an auth issue
+      if (!(error instanceof TypeError && error.message.includes("fetch"))) {
+        toast.error("Failed to load assessment credits");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -81,13 +88,13 @@ export function CreditsDisplay() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <CreditCard className="h-5 w-5" />
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+          <CreditCard className="h-4 w-4 sm:h-5 sm:w-5" />
           Assessment Credits
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3 sm:space-y-4">
         {isUnlimited ? (
           <div className="text-center py-4">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary mb-2">
@@ -149,28 +156,33 @@ export function CreditsDisplay() {
                 </div>
               ) : null}
 
-              <Button asChild className="w-full">
+              <Button asChild className="w-full text-sm">
                 <Link href="/checkout-direct">
                   <CreditCard className="mr-2 h-4 w-4" />
-                  Purchase Assessment - $97
+                  <span className="hidden sm:inline">
+                    Purchase Assessment -{" "}
+                  </span>
+                  <span className="sm:hidden">Buy - </span>$97
                 </Link>
               </Button>
 
               <Button
                 variant="outline"
-                className="w-full"
+                className="w-full text-sm"
                 onClick={handleUpgradeClick}
               >
                 <Sparkles className="mr-2 h-4 w-4" />
-                Upgrade to Professional
+                <span className="hidden sm:inline">Upgrade to </span>
+                Professional
               </Button>
             </div>
 
-            {credits.licenseType === "TRIAL" && (
+            {/* TRIAL license type removed - no longer used */}
+            {/* {credits.licenseType === "TRIAL" && (
               <p className="text-xs text-center text-muted-foreground">
                 Using trial license
               </p>
-            )}
+            )} */}
           </>
         )}
       </CardContent>

@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { prisma } from "@/lib/db/prisma";
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const user = await getCurrentUserWithRole();
 
-    if (!session?.user?.email) {
+    if (!user?.email) {
       return NextResponse.json(
         { error: "You must be logged in" },
         { status: 401 }
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     // Create a mock conversational assessment for testing
     const assessment = await prisma.assessment.create({
       data: {
-        userId: session.user.id,
+        userId: user.id,
         subjectName: childName,
         status: "COMPLETED",
         startedAt: new Date(),

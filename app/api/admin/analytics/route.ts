@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { prisma } from "@/lib/db/prisma";
 import { Role, AssessmentDomain, RiskLevel } from "@prisma/client";
 
@@ -9,8 +9,8 @@ import { Role, AssessmentDomain, RiskLevel } from "@prisma/client";
  */
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user || session.user.role !== Role.ADMIN) {
+    const user = await getCurrentUserWithRole();
+    if (!user || user.role !== Role.ADMIN) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 

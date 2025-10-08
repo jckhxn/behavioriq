@@ -44,11 +44,25 @@ export function OnboardingChecklist() {
       if (res.ok) {
         const data = await res.json();
         setItems(data.items || items);
+        setIsDismissed(data.dismissed || false);
       }
     } catch (error) {
       console.error("Failed to fetch checklist:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDismiss = async () => {
+    try {
+      const res = await fetch("/api/user/onboarding-checklist", {
+        method: "POST",
+      });
+      if (res.ok) {
+        setIsDismissed(true);
+      }
+    } catch (error) {
+      console.error("Failed to dismiss checklist:", error);
     }
   };
 
@@ -87,7 +101,7 @@ export function OnboardingChecklist() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setIsDismissed(true)}
+              onClick={handleDismiss}
               className="h-8 w-8"
             >
               <X className="h-4 w-4" />

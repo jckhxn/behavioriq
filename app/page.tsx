@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useSession, signOut } from "next-auth/react";
+import { useUserData, useSignOut } from "@/lib/hooks/use-supabase-user";
 import { useSearchParams } from "next/navigation";
 import { UnifiedChat } from "@/components/chat/UnifiedChat";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
   Star,
   Shield,
   Loader2,
+  Library,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -35,6 +36,8 @@ import { CompactRecommendationsWithModal } from "@/components/recommendations/Co
 import { ThemeToggle } from "@/components/theme-toggle";
 import SettingsPane from "@/components/settings/SettingsPane";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
+import { SuperAdminPlatformSettings } from "@/components/admin/SuperAdminPlatformSettings";
+import UserResourceLibrary from "@/components/resources/UserResourceLibrary";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OnboardingProvider } from "@/lib/contexts/OnboardingContext";
 import { WelcomeModal } from "@/components/onboarding/WelcomeModal";
@@ -43,7 +46,8 @@ import { OnboardingChecklist } from "@/components/onboarding/OnboardingChecklist
 import { useOnboarding } from "@/lib/contexts/OnboardingContext";
 
 function HomeContent() {
-  const { data: session, status } = useSession();
+  const { userData, isLoading } = useUserData();
+  const { signOut } = useSignOut();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState("dashboard");
   const { showWelcome, startTour, skipTour } = useOnboarding();
@@ -116,7 +120,7 @@ function HomeContent() {
     }
   }, [searchParams]);
 
-  if (status === "loading") {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4">
@@ -130,7 +134,7 @@ function HomeContent() {
     );
   }
 
-  if (!session?.user) {
+  if (!userData) {
     return <LandingPage />;
   }
 
@@ -146,19 +150,19 @@ function HomeContent() {
       <SidebarProvider>
         <div className="min-h-screen flex w-full">
           {/* Responsive Sidebar */}
-          <AppSidebar user={session.user} />
+          <AppSidebar user={userData} />
 
           {/* Main Content */}
-          <main className="flex-1 flex flex-col min-h-screen">
+          <main className="flex-1 flex flex-col min-h-screen w-full min-w-0 overflow-hidden">
             {/* Header */}
-            <header className="glass-effect border-b sticky top-0 z-40 flex h-16 items-center gap-4 px-4">
-              <SidebarTrigger className="md:hidden" />
+            <header className="glass-effect border-b sticky top-0 z-40 flex h-16 items-center gap-2 sm:gap-4 px-3 sm:px-4">
+              <SidebarTrigger className="lg:hidden shrink-0" />
 
-              <div className="flex items-center gap-3 flex-1">
-                <div className="p-1.5 rounded-lg gradient-primary">
-                  <Brain className="h-5 w-5 text-white" />
+              <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                <div className="p-1.5 rounded-lg gradient-primary shrink-0">
+                  <Brain className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                 </div>
-                <h1 className="text-lg font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                <h1 className="text-sm sm:text-lg font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent truncate">
                   AI Assessment Platform
                 </h1>
               </div>
@@ -166,40 +170,15 @@ function HomeContent() {
               <div className="hidden sm:flex items-center gap-4">
                 <div className="px-3 py-1.5 rounded-full bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20">
                   <span className="text-sm font-medium text-foreground">
-                    Welcome, {session.user.name || session.user.email}
+                    Welcome, {userData.name || userData.email}
                   </span>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {(session.user.role as string) === "SUPER_ADMIN" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setActiveTab("admin")}
-                      className="hover-lift"
-                    >
-                      <Brain className="h-4 w-4 mr-2" />
-                      Admin Tools
-                    </Button>
-                  )}
-                  {session.user.role === "ADMIN" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      asChild
-                      className="hover-lift"
-                    >
-                      <Link href="/admin">
-                        <Settings className="h-4 w-4 mr-2" />
-                        Admin
-                      </Link>
-                    </Button>
-                  )}
-
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => signOut({ redirectTo: "/login" })}
+                    onClick={() => signOut()}
                     className="hover-lift"
                   >
                     <LogOut className="h-4 w-4 mr-2" />
@@ -216,9 +195,9 @@ function HomeContent() {
                 onValueChange={setActiveTab}
                 className="h-full flex flex-col"
               >
-                <div className="border-b px-6 py-3">
+                <div className="border-b px-4 md:px-6 py-3">
                   <TabsList
-                    className={`grid w-fit ${(session.user.role as string) === "SUPER_ADMIN" ? "grid-cols-3" : "grid-cols-2"}`}
+                    className={`grid w-full sm:w-fit ${userData.role === "SUPER_ADMIN" ? "grid-cols-4" : "grid-cols-3"}`}
                   >
                     <TabsTrigger
                       value="dashboard"
@@ -228,14 +207,22 @@ function HomeContent() {
                       <FileText className="h-4 w-4" />
                       Dashboard
                     </TabsTrigger>
-                    {(session.user.role as string) === "SUPER_ADMIN" && (
+                    <TabsTrigger
+                      value="library"
+                      className="flex items-center gap-2"
+                      data-tab-id="library"
+                    >
+                      <Library className="h-4 w-4" />
+                      Library
+                    </TabsTrigger>
+                    {userData.role === "SUPER_ADMIN" && (
                       <TabsTrigger
                         value="admin"
                         className="flex items-center gap-2"
                         data-tab-id="admin"
                       >
-                        <Brain className="h-4 w-4" />
-                        Admin Tools
+                        <Shield className="h-4 w-4" />
+                        Super Admin
                       </TabsTrigger>
                     )}
                     <TabsTrigger
@@ -244,9 +231,7 @@ function HomeContent() {
                       data-tab-id="settings"
                     >
                       <Settings className="h-4 w-4" />
-                      {(session.user.role as string) === "SUPER_ADMIN"
-                        ? "Super Admin"
-                        : "Settings"}
+                      Settings
                     </TabsTrigger>
                   </TabsList>
                 </div>
@@ -260,20 +245,31 @@ function HomeContent() {
                   </div>
                 </TabsContent>
 
-                {(session.user.role as string) === "SUPER_ADMIN" && (
+                <TabsContent
+                  value="library"
+                  className="flex-1 overflow-auto mt-0 p-4 md:p-6"
+                >
+                  <div className="max-w-7xl mx-auto w-full">
+                    <UserResourceLibrary />
+                  </div>
+                </TabsContent>
+
+                {userData.role === "SUPER_ADMIN" && (
                   <TabsContent
                     value="admin"
-                    className="flex-1 overflow-auto mt-0 p-6"
+                    className="flex-1 overflow-auto mt-0 p-4 md:p-6"
                   >
-                    <AdminDashboard />
+                    <div className="max-w-7xl mx-auto w-full">
+                      <SuperAdminPlatformSettings />
+                    </div>
                   </TabsContent>
                 )}
 
                 <TabsContent
                   value="settings"
-                  className="flex-1 overflow-auto mt-0 p-6"
+                  className="flex-1 overflow-auto mt-0 p-4 md:p-6"
                 >
-                  <div className="max-w-4xl mx-auto">
+                  <div className="max-w-4xl mx-auto w-full">
                     <Suspense
                       fallback={
                         <div className="flex items-center justify-center py-8">
@@ -354,7 +350,11 @@ function AppSidebar({ user }: { user: any }) {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => signOut({ redirectTo: "/login" })}
+            onClick={() => {
+              const supabase = require("@/lib/supabase/client").createClient();
+              supabase.auth.signOut();
+              window.location.href = "/login";
+            }}
             className="w-full justify-start"
           >
             <LogOut className="h-4 w-4 mr-2" />

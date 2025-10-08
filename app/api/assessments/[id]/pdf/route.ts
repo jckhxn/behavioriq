@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { prisma } from "@/lib/db/prisma";
 import { generateAssessmentPDF } from "@/lib/pdf/generator";
 import { resolveAssessmentId } from "@/lib/utils/assessmentResolver";
@@ -9,15 +9,15 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const user = await getCurrentUserWithRole();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const identifier = (await params).id;
 
     // Resolve shortId to UUID if needed
-    const assessmentId = await resolveAssessmentId(identifier, session.user.id);
+    const assessmentId = await resolveAssessmentId(identifier, user.id);
     if (!assessmentId) {
       return NextResponse.json(
         { error: "Assessment not found" },
@@ -29,7 +29,7 @@ export async function POST(
     const assessment = await prisma.assessment.findFirst({
       where: {
         id: assessmentId,
-        userId: session.user.id, // Ensure user owns this assessment
+        userId: user.id, // Ensure user owns this assessment
       },
       include: {
         scores: true,
@@ -58,9 +58,18 @@ export async function POST(
 
     // Generate PDF
     const assessmentData = {
-      ...assessment,
+      id: assessment.id,
+      subjectName: assessment.subjectName,
       startedAt: assessment.startedAt.toISOString(),
       completedAt: assessment.completedAt?.toISOString() || null,
+      status: assessment.status,
+      scores: assessment.scores.map((score: any) => ({
+        domain: score.domainName || score.domain || "Unknown",
+        rawScore: score.rawScore,
+        totalPossible: score.totalPossible,
+        riskLevel: score.riskLevel,
+      })),
+      user: assessment.user,
     };
     const pdfBuffer = await generateAssessmentPDF(assessmentData);
 
@@ -73,8 +82,17 @@ export async function POST(
     });
   } catch (error) {
     console.error("PDF generation error:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { error: "Failed to generate PDF" },
+      {
+        error: "Failed to generate PDF",
+        details: errorMessage,
+        stack:
+          process.env.NODE_ENV === "development"
+            ? (error as Error).stack
+            : undefined,
+      },
       { status: 500 }
     );
   }

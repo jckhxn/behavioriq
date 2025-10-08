@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useUser } from "@/lib/hooks/use-supabase-user";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,7 +17,7 @@ import { Suspense } from "react";
 
 function CheckoutDirectContent() {
   const searchParams = useSearchParams();
-  const { data: session, status } = useSession();
+  const { user, isLoading } = useUser();
   const [isProcessing, setIsProcessing] = useState(false);
   const [childName, setChildName] = useState("");
   const [plan, setPlan] = useState("BASIC");
@@ -36,13 +36,13 @@ function CheckoutDirectContent() {
 
   useEffect(() => {
     // Auto-trigger checkout when user is authenticated
-    if (status === "authenticated" && session?.user && !isProcessing) {
+    if (!isLoading && user && !isProcessing) {
       handleCheckout();
     }
-  }, [status, session, isProcessing]);
+  }, [isLoading, user, isProcessing]);
 
   const handleCheckout = async () => {
-    if (!session?.user) {
+    if (!user) {
       toast.error("Please log in to continue");
       return;
     }
@@ -50,7 +50,7 @@ function CheckoutDirectContent() {
     console.log("Starting checkout process...", {
       childName,
       plan,
-      userId: session.user.id,
+      userId: user.id,
     });
     setIsProcessing(true);
 
@@ -92,21 +92,18 @@ function CheckoutDirectContent() {
     }
   };
 
-  if (status === "loading") {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading...</p>
-          </div>
+          <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
     );
   }
 
-  if (status === "unauthenticated") {
+  if (!user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="max-w-md">

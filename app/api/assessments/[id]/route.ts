@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { prisma } from "@/lib/db/prisma";
 import { getAssessmentByIdentifier } from "@/lib/utils/assessmentResolver";
 
@@ -8,17 +8,14 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const user = await getCurrentUserWithRole();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id: assessmentId } = await params;
 
-    const assessment = await getAssessmentByIdentifier(
-      assessmentId,
-      session.user.id
-    );
+    const assessment = await getAssessmentByIdentifier(assessmentId, user.id);
 
     if (!assessment) {
       return NextResponse.json(
@@ -43,15 +40,15 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const user = await getCurrentUserWithRole();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
 
     // Verify the user owns the assessment and get internal ID
-    const existing = await getAssessmentByIdentifier(id, session.user.id);
+    const existing = await getAssessmentByIdentifier(id, user.id);
 
     if (!existing) {
       return NextResponse.json(
@@ -77,6 +74,11 @@ export async function DELETE(
       // Delete recommendations
       // @ts-ignore - Temporary workaround for Prisma type issue
       await tx.recommendation.deleteMany({
+        where: { assessmentId: internalId },
+      });
+
+      // Delete shareable links
+      await tx.shareableLink.deleteMany({
         where: { assessmentId: internalId },
       });
 

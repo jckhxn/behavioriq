@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { prisma } from "@/lib/db/prisma";
 import { AssessmentAI } from "@/lib/ai/AssessmentAI";
 import { getDynamicDomainNames } from "@/lib/utils/domainNames";
@@ -13,8 +13,8 @@ const createAssessmentSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const user = await getCurrentUserWithRole();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -31,9 +31,7 @@ export async function POST(request: NextRequest) {
     const { subjectName, assessmentTemplateId } = validation.data;
 
     // Check if user has available assessment credits
-    const credits = await assessmentCreditsService.checkUserCredits(
-      session.user.id
-    );
+    const credits = await assessmentCreditsService.checkUserCredits(user.id);
 
     if (!credits.hasCredits) {
       return NextResponse.json(
@@ -66,13 +64,13 @@ export async function POST(request: NextRequest) {
 
     // Create new assessment
     const assessment = await AssessmentAI.createNewAssessment(
-      session.user.id,
+      user.id,
       subjectName,
       templateId
     );
 
     // Use one credit (decrement available credits)
-    await assessmentCreditsService.useCredit(session.user.id);
+    await assessmentCreditsService.useCredit(user.id);
 
     return NextResponse.json({
       id: assessment.shortId, // Return shortId as the primary ID
@@ -105,8 +103,8 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const user = await getCurrentUserWithRole();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -114,8 +112,14 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "10");
     const offset = parseInt(searchParams.get("offset") || "0");
 
+    // Super admins can see all assessments, regular users only see their own
+    const whereClause =
+      user.role === "SUPER_ADMIN"
+        ? {} // No filter - show all assessments
+        : { userId: user.id }; // Filter to user's assessments only
+
     const assessments = await prisma.assessment.findMany({
-      where: { userId: session.user.id },
+      where: whereClause,
       orderBy: { startedAt: "desc" },
       take: limit,
       skip: offset,
@@ -128,6 +132,14 @@ export async function GET(request: NextRequest) {
         completedAt: true,
         isConversational: true,
         hasEnhancedReport: true,
+        userId: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
         scores: {
           select: {
             domain: true,

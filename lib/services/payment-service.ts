@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db/prisma";
+import { prismaService as prisma } from "@/lib/db/prisma-service";
 import { PRICING } from "@/lib/config/pricing";
 import { userRepository } from "@/lib/db/repositories/user-repository";
 import { paymentRepository } from "@/lib/db/repositories/payment-repository";

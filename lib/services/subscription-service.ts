@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db/prisma";
+import { prismaService as prisma } from "@/lib/db/prisma-service";
 import type { Stripe } from "stripe";
 import type { Prisma, LicenseType } from "@prisma/client";
 

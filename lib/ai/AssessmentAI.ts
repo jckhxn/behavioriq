@@ -60,6 +60,8 @@ export class AssessmentAI {
   private isStructuredMode: boolean;
   private assessmentConfigs: QuestionSetConfig[] = [];
   private scoringCalculator: ScoringCalculator | null = null;
+  private cachedDomainTemplateMapping: Record<string, string> | null = null; // Cache domain name → template ID mapping
+  private cachedAssessmentTemplateId: string | null = null; // Cache assessment template ID
 
   constructor(assessmentId: string) {
     this.assessmentId = assessmentId;
@@ -80,10 +82,18 @@ export class AssessmentAI {
       });
 
       if (assessment && (assessment as any).assessmentTemplateId) {
+        // Cache the template ID for later use
+        this.cachedAssessmentTemplateId = (
+          assessment as any
+        ).assessmentTemplateId;
+
         // Load configuration from the specific template
         this.assessmentConfigs = await loadAssessmentConfigFromTemplate(
           (assessment as any).assessmentTemplateId
         );
+
+        // Build and cache domain name to template ID mapping
+        await this.buildDomainTemplateMapping();
       } else {
         // Fallback to legacy configuration loading
         this.assessmentConfigs = await loadAssessmentConfigs();
@@ -187,6 +197,10 @@ export class AssessmentAI {
 
       // Update scores in database
       await this.updateStructuredScores(domainScores);
+
+      // ✅ FIX: Update progress indices after adding new response
+      // This ensures accurate progress tracking, especially after going back
+      this.updateCurrentProgress();
 
       const message = this.generateResponseMessage(
         questionResponse.response,
@@ -522,6 +536,60 @@ Keep the response professional, empathetic, and actionable.`;
     }
   }
 
+  /**
+   * ✅ PERFORMANCE: Build and cache domain template mapping during initialization
+   * This eliminates repeated database queries on every answer submission
+   */
+  private async buildDomainTemplateMapping(): Promise<void> {
+    if (!this.cachedAssessmentTemplateId) {
+      this.cachedDomainTemplateMapping = {};
+      return;
+    }
+
+    try {
+      // Fetch domain templates from assessment template ONCE during init
+      const templateWithDomains = await (
+        prisma as any
+      ).assessmentTemplate.findUnique({
+        where: { id: this.cachedAssessmentTemplateId },
+        include: {
+          domains: {
+            include: {
+              domainTemplate: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                },
+              },
+            },
+            orderBy: {
+              order: "asc",
+            },
+          },
+        },
+      });
+
+      const mapping: Record<string, string> = {};
+
+      if (templateWithDomains?.domains) {
+        templateWithDomains.domains.forEach((domainLink: any) => {
+          const templateName = domainLink.domainTemplate.name;
+          const templateId = domainLink.domainTemplate.id;
+          // Create mapping by name variations for flexibility
+          mapping[templateName] = templateId;
+          mapping[templateName.toUpperCase()] = templateId;
+          mapping[templateName.toLowerCase()] = templateId;
+        });
+      }
+
+      this.cachedDomainTemplateMapping = mapping;
+    } catch (error) {
+      console.error("Error building domain template mapping:", error);
+      this.cachedDomainTemplateMapping = {};
+    }
+  }
+
   private mapDomainToEnum(domainName: string): AssessmentDomain {
     // Map domain names (from templates or hardcoded) to Prisma enum values
     // This is a temporary solution - ideally Score table should store template ID instead of enum
@@ -571,61 +639,20 @@ Keep the response professional, empathetic, and actionable.`;
     return AssessmentDomain.ANTISOCIAL;
   }
 
+  /**
+   * ✅ PERFORMANCE: Use cached mapping instead of repeated DB queries
+   * Previously made 2 database calls on every answer. Now uses cached data.
+   */
   private async updateStructuredScores(
     domainScores: DomainScore[]
   ): Promise<void> {
     try {
-      // Get assessment to find template
-      const assessment = await prisma.assessment.findUnique({
-        where: { id: this.assessmentId },
-        select: {
-          id: true,
-          assessmentTemplateId: true,
-        },
-      });
-
-      // Build domain name to template ID mapping
-      const domainNameToTemplateId: Record<string, string> = {};
-
-      if (assessment && (assessment as any).assessmentTemplateId) {
-        // Fetch domain templates from assessment template
-        const templateWithDomains = await (
-          prisma as any
-        ).assessmentTemplate.findUnique({
-          where: { id: (assessment as any).assessmentTemplateId },
-          include: {
-            domains: {
-              include: {
-                domainTemplate: {
-                  select: {
-                    id: true,
-                    name: true,
-                    slug: true,
-                  },
-                },
-              },
-              orderBy: {
-                order: "asc",
-              },
-            },
-          },
-        });
-
-        if (templateWithDomains?.domains) {
-          templateWithDomains.domains.forEach((domainLink: any) => {
-            const templateName = domainLink.domainTemplate.name;
-            const templateId = domainLink.domainTemplate.id;
-            // Create mapping by both name and normalized name for flexibility
-            domainNameToTemplateId[templateName] = templateId;
-            domainNameToTemplateId[templateName.toUpperCase()] = templateId;
-            domainNameToTemplateId[templateName.toLowerCase()] = templateId;
-          });
-        }
-      }
+      // ✅ PERFORMANCE: Use cached mapping - NO database queries needed here!
+      const domainNameToTemplateId = this.cachedDomainTemplateMapping || {};
 
       const baseTimestamp = new Date();
       const scoreUpdates = domainScores.map((domainScore, index) => {
-        // Find matching domain template ID
+        // Find matching domain template ID from cache
         const domainTemplateId =
           domainNameToTemplateId[domainScore.domain] ||
           domainNameToTemplateId[domainScore.domain.toUpperCase()] ||
@@ -686,6 +713,100 @@ Keep the response professional, empathetic, and actionable.`;
 
   async getCurrentProgress() {
     return this.calculateProgress();
+  }
+
+  async getNextQuestion(): Promise<{
+    questionId: string;
+    text: string;
+    domain: string;
+  } | null> {
+    const nextQuestion = this.getNextQuestionImproved();
+
+    if (!nextQuestion) {
+      return null;
+    }
+
+    // Find which domain this question belongs to
+    const domain = this.assessmentConfigs.find((d) =>
+      d.questions.some((q) => q.id === nextQuestion.id)
+    );
+
+    return {
+      questionId: nextQuestion.id,
+      text: nextQuestion.text,
+      domain: domain?.name || "Unknown",
+    };
+  }
+
+  /**
+   * ✅ NEW: Get the previous question for back navigation
+   * Removes the last response and returns the question before the current one
+   */
+  async getPreviousQuestion(): Promise<{
+    questionId: string;
+    text: string;
+    domain: string;
+  } | null> {
+    // Need at least one response to go back
+    if (this.questionResponses.length === 0) {
+      return null;
+    }
+
+    // Remove the last response
+    const lastResponse = this.questionResponses.pop();
+
+    if (!lastResponse) {
+      return null;
+    }
+
+    // Delete the response from database
+    try {
+      await prisma.questionResponse.deleteMany({
+        where: {
+          assessmentId: this.assessmentId,
+          questionId: lastResponse.questionId,
+        },
+      });
+
+      // Also delete the latest scores since they include this response
+      await prisma.score.deleteMany({
+        where: {
+          assessmentId: this.assessmentId,
+        },
+      });
+
+      // Recalculate and save scores without the deleted response
+      if (this.questionResponses.length > 0) {
+        const domainScores = this.scoringCalculator!.getAllDomainScores(
+          this.questionResponses
+        );
+        await this.updateStructuredScores(domainScores);
+      }
+
+      // ✅ FIX: Update current progress indices after removing response
+      // This ensures the progress counter stays accurate
+      this.updateCurrentProgress();
+    } catch (error) {
+      console.error("Error removing last response:", error);
+    }
+
+    // Return the question that was just removed (the one to show again)
+    const questionToShow = this.getQuestionById(lastResponse.questionId);
+
+    if (!questionToShow) {
+      return null;
+    }
+
+    // Find which domain this question belongs to
+    const domain = this.assessmentConfigs.find((d) =>
+      d.questions.some((q) => q.id === questionToShow.id)
+    );
+
+    return {
+      questionId: questionToShow.id,
+      text: questionToShow.text,
+      domain: domain?.name || "Unknown",
+    };
   }
 
   static async createNewAssessment(

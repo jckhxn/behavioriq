@@ -13,7 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Brain, CreditCard, Shield, CheckCircle, Star } from "lucide-react";
 import { Suspense } from "react";
-import { useSession } from "next-auth/react";
+import { useUser } from "@/lib/hooks/use-supabase-user";
 
 type PricingPlan = {
   id: string;
@@ -73,7 +73,7 @@ const PRICING_PLANS: PricingPlan[] = [
 
 function PaymentForm() {
   const searchParams = useSearchParams();
-  const { data: session } = useSession();
+  const { user } = useUser();
   const [childName, setChildName] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -85,7 +85,7 @@ function PaymentForm() {
   }, [searchParams]);
 
   const handlePayment = async (planId: string) => {
-    if (!session?.user?.id) {
+    if (!user) {
       window.location.href = "/login?redirect=/payment";
       return;
     }

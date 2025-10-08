@@ -4,22 +4,23 @@
 
 # BUGS
 
-- Enhanced reports or reports dont load on /share/
-- Password field doesnt have show password on trial checkout page.
-- URL issue when navigating to billing -> upgrade and back to dashboard.
-- Previous button on resume doesnt work on dashboard.
-- Dashboard on Mobile is whacky.
+- Clean up entire codebase for unused code.
+  -- Cleanup repo of all those markdown files and scripts
 
 # Features to add
 
-- Password Reset
-- Email/Magic Link
+- Clear local storage because trial answers persist?
+- Domain Template Organization by type?
+- Super Admin should be able to create new trial assessments.
+- Dynamically load the info on trial what to expect section.
+- Support different 0Auth providers.
+- MFA for logins
+- Email "Service" for sending report emails, for notifications, etc.
 - Logic for Pro Plan Convo Allotments.
 - Trial questions should maybe match assessment so progress carries over
 - Implement District Admin Signup Links.
 - - Signup invite via email or link
 - Pick auth providers
-- Convo AI -> Basic Report -> Enhanced Report flow.
 - May need to work on how AI Prompt receives assessment results and incl. domain resources.
 - Admins can create signup links for their distict license
 - Cloudflare Email (When its released if its cost efficient)
@@ -30,11 +31,15 @@
 
 - Analytics (Google & Meta Pixel for retargeting?)
 - SIS/PowerSchool integration (Import Students, select Student at assessment start, link in SIS system flow.)
-- pSEO stuff
+- pSEO stuff (https://docs.google.com/document/d/e/2PACX-1vTFgkhHVLh2MVU05EIdV1feAFZXljeFbRZEvz24Sl3oSUR-m1VwMQlmlAV_n8B2WZQReGcKEwoFjput/pub, pSEO ChatGPT chat)
 - Affiliate linking setup
 - Each domain can have a reccommended resources list with cited sources
 - - This ensures the AI always provides the correct resources.
 - Resources section (Saved from AI and a library we provide.)
+
+# Features to consider
+
+Enhanced Reports (already partially implemented)
 
 # Determinations
 

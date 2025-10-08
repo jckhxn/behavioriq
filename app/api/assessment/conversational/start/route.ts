@@ -3,10 +3,15 @@ import { ConversationalAIFactory } from "@/lib/ai/conversational/ConversationalA
 import { ConversationalSession } from "@/lib/ai/conversational/types";
 import { prisma } from "@/lib/db/prisma";
 import { sessionStore } from "@/lib/ai/conversational/SessionStore";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 
 export async function POST(request: NextRequest) {
   try {
     const { isTrial } = await request.json();
+
+    // Get authenticated user if available
+    const user = await getCurrentUserWithRole();
+    const userId = user?.id;
 
     // Get platform settings to find the global trial assessment
     const platformSettings = await prisma.platformSettings.findFirst({
@@ -61,7 +66,7 @@ export async function POST(request: NextRequest) {
     const session: ConversationalSession = {
       id: `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       assessmentId: trialAssessment.id,
-      userId: undefined, // Set from auth if needed
+      userId: userId, // Set from auth session
       currentQuestionIndex: 0,
       responses: {},
       messages: [],

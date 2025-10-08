@@ -5,19 +5,19 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { LicensingService } from "@/lib/licensing/licensing-service";
 
 // GET /api/user/license - Get current user's license information
 export async function GET() {
   try {
-    const session = await auth();
+    const user = await getCurrentUserWithRole();
 
-    if (!session?.user) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userLicense = await LicensingService.getUserLicense(session.user.id);
+    const userLicense = await LicensingService.getUserLicense(user.id);
 
     if (!userLicense) {
       return NextResponse.json({
@@ -48,9 +48,9 @@ export async function GET() {
 // POST /api/user/license/check - Check if user can perform action
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const user = await getCurrentUserWithRole();
 
-    if (!session?.user) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -70,10 +70,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await LicensingService.canPerformAction(
-      session.user.id,
-      action
-    );
+    const result = await LicensingService.canPerformAction(user.id, action);
 
     return NextResponse.json(result);
   } catch (error) {

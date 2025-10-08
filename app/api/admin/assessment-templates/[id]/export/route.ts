@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { prisma } from "@/lib/db/prisma";
 
 // GET /api/admin/assessment-templates/[id]/export - Export assessment template as JSON
@@ -8,10 +8,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
+    const user = await getCurrentUserWithRole();
     if (
-      !session?.user ||
-      !["ADMIN", "SUPER_ADMIN", "DISTRICT_ADMIN"].includes(session.user.role)
+      !user ||
+      !["ADMIN", "SUPER_ADMIN", "DISTRICT_ADMIN"].includes(user.role)
     ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -51,7 +51,7 @@ export async function GET(
       isActive: template.isActive,
       domains: template.domains.map((d) => d.domainTemplate.slug),
       exportedAt: new Date().toISOString(),
-      exportedBy: session.user.email,
+      exportedBy: user.email,
       version: template.version,
     };
 

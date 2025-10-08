@@ -1,17 +1,17 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { prisma } from "@/lib/db/prisma";
 
 export async function POST() {
   try {
-    const session = await auth();
+    const user = await getCurrentUserWithRole();
 
-    if (!session?.user?.id) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     await prisma.user.update({
-      where: { id: session.user.id },
+      where: { id: user.id },
       data: {
         onboardingCompleted: true,
         onboardingStep: 0,

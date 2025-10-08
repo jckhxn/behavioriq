@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { prisma } from "@/lib/db/prisma";
 
 /**
@@ -9,9 +9,9 @@ import { prisma } from "@/lib/db/prisma";
 export async function GET(request: NextRequest) {
   try {
     // Check if user is authenticated - trial is only for anonymous users
-    const session = await auth();
+    const user = await getCurrentUserWithRole();
 
-    if (session?.user) {
+    if (user) {
       return NextResponse.json(
         {
           error:

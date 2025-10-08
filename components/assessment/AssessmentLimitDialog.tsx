@@ -58,17 +58,11 @@ export function AssessmentLimitDialog({
             Assessment Limit Reached
           </DialogTitle>
           <DialogDescription className="text-center text-base pt-2">
-            {credits.licenseType === "TRIAL" ? (
-              <>
-                You've used your free trial assessment. Purchase a full
-                assessment to continue.
-              </>
-            ) : (
-              <>
-                You've used all {credits.creditsAllowed} of your available
-                assessment credits.
-              </>
-            )}
+            {/* TRIAL license type removed - no longer used */}
+            <>
+              You've used all {credits.creditsAllowed} of your available
+              assessment credits.
+            </>
           </DialogDescription>
         </DialogHeader>
 

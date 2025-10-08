@@ -1,23 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { prisma } from "@/lib/db/prisma";
 
 // GET /api/admin/domain-templates - Get all domain templates
 export async function GET() {
   try {
-    const session = await auth();
+    const user = await getCurrentUserWithRole();
     if (
-      !session?.user ||
-      !["ADMIN", "SUPER_ADMIN", "DISTRICT_ADMIN"].includes(session.user.role)
+      !user ||
+      !["ADMIN", "SUPER_ADMIN", "DISTRICT_ADMIN"].includes(user.role)
     ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Build where clause based on user role
     let whereClause = {};
-    if (session.user.role === "DISTRICT_ADMIN") {
+    if (user.role === "DISTRICT_ADMIN") {
       // District admins can only see domain templates they created
-      whereClause = { createdById: session.user.id };
+      whereClause = { createdById: user.id };
     }
     // SUPER_ADMIN and ADMIN can see all domain templates
 
@@ -47,10 +47,10 @@ export async function GET() {
 // POST /api/admin/domain-templates - Create new domain template
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const user = await getCurrentUserWithRole();
     if (
-      !session?.user ||
-      !["ADMIN", "SUPER_ADMIN", "DISTRICT_ADMIN"].includes(session.user.role)
+      !user ||
+      !["ADMIN", "SUPER_ADMIN", "DISTRICT_ADMIN"].includes(user.role)
     ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
         questions,
         resources,
         scoringConfig,
-        createdById: session.user.id,
+        createdById: user.id,
       },
       include: {
         createdBy: {
@@ -107,10 +107,10 @@ export async function POST(request: NextRequest) {
 // PUT /api/admin/domain-templates - Update domain template
 export async function PUT(request: NextRequest) {
   try {
-    const session = await auth();
+    const user = await getCurrentUserWithRole();
     if (
-      !session?.user ||
-      !["ADMIN", "SUPER_ADMIN", "DISTRICT_ADMIN"].includes(session.user.role)
+      !user ||
+      !["ADMIN", "SUPER_ADMIN", "DISTRICT_ADMIN"].includes(user.role)
     ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

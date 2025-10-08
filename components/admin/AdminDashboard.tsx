@@ -13,11 +13,13 @@ export function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("builder");
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Dashboard Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+          Admin Dashboard
+        </h1>
+        <p className="text-sm sm:text-base text-muted-foreground">
           Manage assessments, users, and system settings for your organization
         </p>
       </div>
@@ -27,25 +29,41 @@ export function AdminDashboard() {
         onValueChange={setActiveTab}
         className="space-y-4"
       >
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="builder" className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            Assessment Management
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 h-auto">
+          <TabsTrigger
+            value="builder"
+            className="flex items-center gap-1 sm:gap-2 py-2 text-xs sm:text-sm"
+          >
+            <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Assessment</span>
+            <span className="sm:hidden">Assess</span>
           </TabsTrigger>
-          <TabsTrigger value="trial" className="flex items-center gap-2">
-            <Brain className="h-4 w-4" />
-            Trial Assessment
+          <TabsTrigger
+            value="trial"
+            className="flex items-center gap-1 sm:gap-2 py-2 text-xs sm:text-sm"
+          >
+            <Brain className="h-3 w-3 sm:h-4 sm:w-4" />
+            Trial
           </TabsTrigger>
-          <TabsTrigger value="users" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            User Management
+          <TabsTrigger
+            value="users"
+            className="flex items-center gap-1 sm:gap-2 py-2 text-xs sm:text-sm"
+          >
+            <Users className="h-3 w-3 sm:h-4 sm:w-4" />
+            Users
           </TabsTrigger>
-          <TabsTrigger value="settings" className="flex items-center gap-2">
-            <Key className="h-4 w-4" />
-            System Settings
+          <TabsTrigger
+            value="settings"
+            className="flex items-center gap-1 sm:gap-2 py-2 text-xs sm:text-sm"
+          >
+            <Key className="h-3 w-3 sm:h-4 sm:w-4" />
+            Settings
           </TabsTrigger>
-          <TabsTrigger value="analytics" className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
+          <TabsTrigger
+            value="analytics"
+            className="flex items-center gap-1 sm:gap-2 py-2 text-xs sm:text-sm"
+          >
+            <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4" />
             Analytics
           </TabsTrigger>
         </TabsList>

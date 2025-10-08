@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { stripe } from "@/lib/stripe/config";
 import { prisma } from "@/lib/db/prisma";
 
 export async function POST(request: Request) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const user = await getCurrentUserWithRole();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     // 4. Update database License records
 
     console.log("Subscription tier change requested:", {
-      userId: session.user.id,
+      userId: user.id,
       targetPlan: plan,
     });
 

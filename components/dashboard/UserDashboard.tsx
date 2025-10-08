@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useUser } from "@/lib/hooks/use-supabase-user";
 import {
   Card,
   CardContent,
@@ -23,6 +23,8 @@ import {
   Target,
   Trash2,
   CheckSquare,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { format } from "date-fns";
 import Link from "next/link";
@@ -53,13 +55,16 @@ interface Assessment {
 }
 
 export function UserDashboard() {
-  const { data: session } = useSession();
+  const { user } = useUser();
   const router = useRouter();
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedAssessments, setSelectedAssessments] = useState<string[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showBulkActions, setShowBulkActions] = useState(false);
+  const [expandedAssessments, setExpandedAssessments] = useState<Set<string>>(
+    new Set()
+  );
 
   useEffect(() => {
     fetchAssessments();
@@ -115,6 +120,18 @@ export function UserDashboard() {
     } else {
       setSelectedAssessments(assessments.map((a) => a.id));
     }
+  };
+
+  const toggleExpanded = (assessmentId: string) => {
+    setExpandedAssessments((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(assessmentId)) {
+        newSet.delete(assessmentId);
+      } else {
+        newSet.add(assessmentId);
+      }
+      return newSet;
+    });
   };
 
   const deleteSelectedAssessments = async () => {
@@ -184,16 +201,18 @@ export function UserDashboard() {
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       {/* Header */}
-      <div className="flex items-center justify-between space-y-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-          <p className="text-muted-foreground">
-            Welcome back, {session?.user?.name}
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
+            Dashboard
+          </h2>
+          <p className="text-sm sm:text-base text-muted-foreground">
+            Welcome back, {user?.email}
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <Link href="/assessment/new">
-            <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+          <Link href="/assessment/new" className="w-full sm:w-auto">
+            <Button className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
               <Plus className="mr-2 h-4 w-4" />
               New Assessment
             </Button>
@@ -351,9 +370,9 @@ export function UserDashboard() {
                   {assessments.map((assessment) => (
                     <div
                       key={assessment.id}
-                      className="group border rounded-lg p-3 hover:bg-accent/50 transition-colors"
+                      className="group border rounded-lg overflow-hidden"
                     >
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between p-3 hover:bg-accent/50 transition-colors">
                         <div className="flex items-center space-x-3 flex-1">
                           {/* Checkbox for bulk selection */}
                           {showBulkActions && (
@@ -413,49 +432,91 @@ export function UserDashboard() {
                                 </Badge>
                                 {assessment.scores &&
                                   assessment.scores.length > 0 && (
-                                    <div className="hidden sm:flex items-center space-x-1">
-                                      {assessment.scores
-                                        .slice(0, 3)
-                                        .map((score, index) => (
-                                          <div
-                                            key={index}
-                                            className={`w-2 h-2 rounded-full ${
-                                              score.riskLevel === "LOW"
-                                                ? "bg-green-500"
-                                                : score.riskLevel === "MODERATE"
-                                                  ? "bg-yellow-500"
-                                                  : score.riskLevel === "HIGH"
-                                                    ? "bg-orange-500"
-                                                    : "bg-red-500"
-                                            }`}
-                                            title={`${(DOMAIN_LABELS as any)[score.domain] || score.domain}: ${score.riskLevel}`}
-                                          />
-                                        ))}
-                                    </div>
+                                    <span className="hidden sm:inline text-xs text-muted-foreground">
+                                      {assessment.scores.length} domains
+                                    </span>
                                   )}
                               </div>
                             </div>
                           </Link>
                         </div>
-                        {!showBulkActions && (
-                          <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 w-7 p-0"
-                            >
-                              <FileText className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
-                            >
-                              ×
-                            </Button>
+                        <div className="flex items-center space-x-1">
+                          {assessment.scores &&
+                            assessment.scores.length > 0 && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0"
+                                onClick={() => toggleExpanded(assessment.id)}
+                              >
+                                {expandedAssessments.has(assessment.id) ? (
+                                  <ChevronUp className="h-4 w-4" />
+                                ) : (
+                                  <ChevronDown className="h-4 w-4" />
+                                )}
+                              </Button>
+                            )}
+                          {!showBulkActions && (
+                            <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0"
+                              >
+                                <FileText className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
+                              >
+                                ×
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Expanded Domain Scores */}
+                      {expandedAssessments.has(assessment.id) &&
+                        assessment.scores &&
+                        assessment.scores.length > 0 && (
+                          <div className="border-t border-border/50 bg-muted/30 p-3">
+                            <p className="text-xs font-medium text-muted-foreground mb-2">
+                              Domain Scores
+                            </p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {assessment.scores.map((score, idx) => (
+                                <div
+                                  key={idx}
+                                  className="flex items-center justify-between p-2 bg-background rounded border border-border/50"
+                                >
+                                  <span className="text-xs font-medium capitalize truncate flex-1">
+                                    {(DOMAIN_LABELS as any)[score.domain] ||
+                                      score.domain}
+                                  </span>
+                                  <div className="flex items-center gap-2 ml-2">
+                                    <span className="text-xs font-medium whitespace-nowrap">
+                                      {score.rawScore}/{score.totalPossible}
+                                    </span>
+                                    <Badge
+                                      variant={
+                                        score.riskLevel === "LOW"
+                                          ? "default"
+                                          : score.riskLevel === "MODERATE"
+                                            ? "secondary"
+                                            : "destructive"
+                                      }
+                                      className="text-[10px] px-1.5 py-0"
+                                    >
+                                      {score.riskLevel}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         )}
-                      </div>
                     </div>
                   ))}
                 </div>

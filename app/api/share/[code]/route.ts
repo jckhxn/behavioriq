@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { prisma } from "@/lib/db/prisma";
 
 // GET /api/share/[code] - Get shareable link details or access shared assessment
@@ -18,7 +18,11 @@ export async function GET(
       include: {
         assessment: {
           include: {
-            scores: true,
+            scores: {
+              include: {
+                domainTemplate: true,
+              },
+            },
             responses: true,
           },
         },
@@ -58,9 +62,9 @@ export async function GET(
     // Handle privacy settings
     if (shareableLink.privacy === "PRIVATE") {
       // PRIVATE means only accessible by the user who created the assessment
-      const session = await auth();
+      const user = await getCurrentUserWithRole();
 
-      if (!session?.user?.id) {
+      if (!user) {
         return NextResponse.json(
           {
             error: "This is a private assessment. Please log in to view.",
@@ -71,7 +75,7 @@ export async function GET(
       }
 
       // Check if the current user is the owner of the assessment
-      if (session.user.id !== shareableLink.createdById) {
+      if (user.id !== shareableLink.createdById) {
         return NextResponse.json(
           {
             error:
@@ -120,14 +124,22 @@ export async function GET(
         expiresAt: shareableLink.expiresAt,
         viewCount: shareableLink.viewCount + 1,
         assessment: {
-          id: shareableLink.assessment.shortId || shareableLink.assessment.id,
+          id: shareableLink.assessment.id, // Internal ID for API calls
+          shortId: shareableLink.assessment.shortId, // Display ID
           subjectName: shareableLink.assessment.subjectName,
           status: shareableLink.assessment.status,
           createdAt: shareableLink.assessment.startedAt,
           updatedAt:
             shareableLink.assessment.completedAt ||
             shareableLink.assessment.startedAt,
-          scores: shareableLink.assessment.scores,
+          scores: shareableLink.assessment.scores.map((score) => ({
+            ...score,
+            domainName:
+              score.domainName ||
+              score.domainTemplate?.name ||
+              score.domain ||
+              "Unknown Domain",
+          })),
           responses: shareableLink.assessment.responses,
           hasEnhancedReport: shareableLink.assessment.hasEnhancedReport,
           enhancedReportPurchasedAt:
@@ -173,8 +185,8 @@ export async function PUT(
   { params }: { params: Promise<{ code: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const user = await getCurrentUserWithRole();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -198,7 +210,7 @@ export async function PUT(
       );
     }
 
-    if (shareableLink.createdById !== session.user.id) {
+    if (shareableLink.createdById !== user.id) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
@@ -252,8 +264,8 @@ export async function DELETE(
   { params }: { params: Promise<{ code: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const user = await getCurrentUserWithRole();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -275,7 +287,7 @@ export async function DELETE(
       );
     }
 
-    if (shareableLink.createdById !== session.user.id) {
+    if (shareableLink.createdById !== user.id) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 

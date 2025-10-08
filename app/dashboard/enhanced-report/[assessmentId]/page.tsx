@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { prisma } from "@/lib/db/prisma";
 import ClientEnhancedReportWrapper from "@/components/reports/ClientEnhancedReportWrapper";
 import { Button } from "@/components/ui/button";
@@ -10,10 +10,10 @@ export default async function EnhancedReportPage({
 }: {
   params: Promise<{ assessmentId: string }>;
 }) {
-  const session = await auth();
+  const user = await getCurrentUserWithRole();
   const { assessmentId } = await params;
 
-  if (!session?.user) {
+  if (!user) {
     redirect("/login");
   }
 
@@ -21,7 +21,7 @@ export default async function EnhancedReportPage({
   const assessment = (await prisma.assessment.findFirst({
     where: {
       id: assessmentId,
-      userId: session.user.id,
+      userId: user.id,
     },
     select: {
       id: true,

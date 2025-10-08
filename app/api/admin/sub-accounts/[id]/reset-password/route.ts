@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { SubAccountService } from "@/lib/district/sub-account-service";
 import { Role } from "@prisma/client";
 
@@ -9,8 +9,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user?.id || session.user.role !== Role.ADMIN) {
+    const user = await getCurrentUserWithRole();
+    if (!user || user.role !== Role.ADMIN) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -20,7 +20,7 @@ export async function POST(
 
     const generatedPassword = await SubAccountService.resetSubAccountPassword(
       id,
-      session.user.id,
+      user.id,
       newPassword
     );
 

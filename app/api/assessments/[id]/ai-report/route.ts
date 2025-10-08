@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { AIReportService } from "@/lib/reports/ai-report-service";
 import { resolveAssessmentId } from "@/lib/utils/assessmentResolver";
 
@@ -14,8 +14,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const user = await getCurrentUserWithRole();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -23,7 +23,7 @@ export async function POST(
     const body = await request.json();
 
     // Resolve shortId to UUID if needed
-    const assessmentId = await resolveAssessmentId(identifier, session.user.id);
+    const assessmentId = await resolveAssessmentId(identifier, user.id);
     if (!assessmentId) {
       return NextResponse.json(
         { error: "Assessment not found" },
@@ -59,7 +59,7 @@ export async function POST(
 
     const report = await AIReportService.generateReport(
       assessmentId,
-      session.user.id,
+      user.id,
       reportOptions
     );
 
@@ -94,8 +94,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const user = await getCurrentUserWithRole();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -104,7 +104,7 @@ export async function GET(
     const format = searchParams.get("format"); // 'pdf' or 'json'
 
     // Resolve shortId to UUID if needed
-    const assessmentId = await resolveAssessmentId(identifier, session.user.id);
+    const assessmentId = await resolveAssessmentId(identifier, user.id);
     if (!assessmentId) {
       return NextResponse.json(
         { error: "Assessment not found" },

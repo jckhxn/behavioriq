@@ -963,7 +963,8 @@ export function LandingPage() {
                 Let your child interact directly with AI for richer behavioral
                 insights
               </p>
-              <div className="flex items-center justify-center gap-4 text-sm">
+              {/* Enhanced report pricing removed */}
+              {/* <div className="flex items-center justify-center gap-4 text-sm">
                 <span className="text-2xl font-bold text-blue-600">
                   +{formatPrice(PRICING.ENHANCED_REPORT)}
                 </span>
@@ -974,7 +975,7 @@ export function LandingPage() {
                 >
                   Add-on
                 </Badge>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>

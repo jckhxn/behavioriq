@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { prisma } from "@/lib/db/prisma";
 
 // GET /api/assessments/available - Get active assessment templates for REGISTERED users only
 // This endpoint should NEVER return trial assessments - those are only for anonymous users
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const user = await getCurrentUserWithRole();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Get full user details including organizational structure
     const currentUser = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: user.id },
       select: { id: true, parentUserId: true, role: true },
     });
 

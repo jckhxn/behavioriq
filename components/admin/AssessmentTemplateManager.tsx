@@ -313,10 +313,9 @@ const AssessmentTemplateManager: React.FC = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          domainIds: formData.selectedDomains.map((d) => ({
-            id: d.id,
-            order: d.order,
-          })),
+          domainIds: formData.selectedDomains
+            .sort((a, b) => a.order - b.order)
+            .map((d) => d.id),
         }),
       });
 
@@ -683,29 +682,37 @@ const AssessmentTemplateManager: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold">Assessment Templates</h2>
-          <p className="text-muted-foreground">
+    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4">
+        <div className="min-w-0">
+          <h2 className="text-xl sm:text-2xl font-bold">
+            Assessment Templates
+          </h2>
+          <p className="text-xs sm:text-sm text-muted-foreground">
             Manage assessment templates and their associated domains. The trial
             assessment appears here as a regular template.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 shrink-0">
           <Dialog
             open={isUploadDialogOpen}
             onOpenChange={setIsUploadDialogOpen}
           >
             <DialogTrigger asChild>
-              <Button variant="outline">
-                <Upload className="h-4 w-4 mr-2" />
-                Upload JSON
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs sm:text-sm"
+              >
+                <Upload className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Upload JSON</span>
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-[95vw] sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>Upload Assessment Template</DialogTitle>
+                <DialogTitle className="text-base sm:text-lg">
+                  Upload Assessment Template
+                </DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
@@ -747,14 +754,16 @@ const AssessmentTemplateManager: React.FC = () => {
             onOpenChange={setIsCreateDialogOpen}
           >
             <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Template
+              <Button size="sm" className="text-xs sm:text-sm">
+                <Plus className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
+                <span className="hidden xs:inline">Create </span>Template
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-hidden">
               <DialogHeader>
-                <DialogTitle>Create Assessment Template</DialogTitle>
+                <DialogTitle className="text-base sm:text-lg">
+                  Create Assessment Template
+                </DialogTitle>
               </DialogHeader>
               <div className="space-y-4 max-h-96 overflow-y-auto">
                 <div className="grid grid-cols-2 gap-4">
@@ -845,10 +854,10 @@ const AssessmentTemplateManager: React.FC = () => {
                       return (
                         <div
                           key={domain.id}
-                          className={`flex items-center justify-between p-2 rounded ${
+                          className={`flex items-center justify-between p-2 rounded transition-colors ${
                             isSelected
-                              ? "bg-blue-50 border border-blue-200"
-                              : "hover:bg-gray-50"
+                              ? "bg-primary/10 dark:bg-primary/20 border border-primary/30 dark:border-primary/50"
+                              : "hover:bg-accent dark:hover:bg-accent/50"
                           }`}
                         >
                           <div className="flex items-center space-x-2 flex-1">
@@ -862,7 +871,7 @@ const AssessmentTemplateManager: React.FC = () => {
                             <div className="flex-1">
                               <Label
                                 htmlFor={`domain-${domain.id}`}
-                                className="text-sm font-medium"
+                                className="text-sm font-medium cursor-pointer"
                               >
                                 {domain.name}
                               </Label>
@@ -875,7 +884,7 @@ const AssessmentTemplateManager: React.FC = () => {
                             </div>
                           </div>
                           {isSelected && (
-                            <div className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                            <div className="text-xs bg-primary/20 dark:bg-primary/30 text-primary dark:text-primary-foreground px-2 py-1 rounded font-medium">
                               Order: {selectedDomain?.order}
                             </div>
                           )}
@@ -886,7 +895,7 @@ const AssessmentTemplateManager: React.FC = () => {
 
                   {/* Selected Domains Summary */}
                   {formData.selectedDomains.length > 0 && (
-                    <div className="mt-2 p-2 bg-gray-50 rounded">
+                    <div className="mt-2 p-2 bg-accent/50 dark:bg-accent/30 rounded border border-border">
                       <p className="text-xs font-medium mb-1">
                         Selected Domains ({formData.selectedDomains.length}):
                       </p>
@@ -900,7 +909,7 @@ const AssessmentTemplateManager: React.FC = () => {
                             return (
                               <span
                                 key={selectedDomain.id}
-                                className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded"
+                                className="text-xs bg-primary/20 dark:bg-primary/30 text-primary dark:text-primary-foreground px-2 py-1 rounded font-medium"
                               >
                                 {selectedDomain.order}. {domain?.name}
                               </span>
@@ -987,51 +996,56 @@ const AssessmentTemplateManager: React.FC = () => {
         </Label>
       </div>
 
-      <div className="grid gap-4">
+      <div className="grid gap-3 sm:gap-4">
         {assessmentTemplates.map((template) => (
           <Card key={template.id}>
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div className="flex items-start gap-3">
+            <CardHeader className="pb-3 sm:pb-6">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+                <div className="flex items-start gap-2 sm:gap-3 min-w-0 flex-1">
                   <Checkbox
                     checked={selectedTemplates.has(template.id)}
                     onCheckedChange={(checked) =>
                       handleBulkSelect(template.id, !!checked)
                     }
-                    className="mt-1"
+                    className="mt-1 shrink-0"
                   />
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      {template.name}
+                  <div className="min-w-0 flex-1">
+                    <CardTitle className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-base sm:text-lg">
+                      <span className="truncate">{template.name}</span>
                       {template.id === trialAssessmentId && (
                         <Badge
                           variant="outline"
-                          className="bg-blue-50 text-blue-700 border-blue-200"
+                          className="bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary-foreground border-primary/30 dark:border-primary/50 text-[10px] sm:text-xs shrink-0"
                         >
                           Trial
                         </Badge>
                       )}
                       <Badge
                         variant={template.isActive ? "default" : "secondary"}
+                        className="text-[10px] sm:text-xs shrink-0"
                       >
                         {template.isActive ? "Active" : "Inactive"}
                       </Badge>
                     </CardTitle>
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <p className="text-xs sm:text-sm text-muted-foreground mt-1 truncate">
                       Slug: {template.slug}
                     </p>
                     {template.description && (
-                      <p className="text-sm mt-2">{template.description}</p>
+                      <p className="text-xs sm:text-sm mt-2 line-clamp-2">
+                        {template.description}
+                      </p>
                     )}
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-1.5 sm:gap-2 shrink-0">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => openPreviewDialog(template)}
+                    className="h-8 w-8 p-0"
+                    title="Preview"
                   >
-                    <Eye className="h-4 w-4" />
+                    <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
                   </Button>
                   <Button
                     variant="outline"
@@ -1039,43 +1053,51 @@ const AssessmentTemplateManager: React.FC = () => {
                     onClick={() =>
                       handleExportTemplate(template.id, template.slug)
                     }
+                    className="h-8 w-8 p-0"
+                    title="Export"
                   >
-                    <Download className="h-4 w-4" />
+                    <Download className="h-3 w-3 sm:h-4 sm:w-4" />
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => openEditDialog(template)}
+                    className="h-8 w-8 p-0"
+                    title="Edit"
                   >
-                    <Edit className="h-4 w-4" />
+                    <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => handleDeleteTemplate(template.id)}
+                    className="h-8 w-8 p-0"
+                    title="Delete"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                   </Button>
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               <div className="space-y-2">
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <span>Created by {template.createdBy.name}</span>
-                  <span>•</span>
-                  <span>
+                <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
+                  <span className="truncate">By {template.createdBy.name}</span>
+                  <span className="hidden sm:inline">•</span>
+                  <span className="shrink-0">
                     {new Date(template.createdAt).toLocaleDateString()}
                   </span>
-                  <span>•</span>
-                  <span>{template._count.assessments} assessments taken</span>
+                  <span className="hidden sm:inline">•</span>
+                  <span className="shrink-0">
+                    {template._count.assessments} assessments
+                  </span>
                 </div>
 
                 <div>
-                  <p className="text-sm font-medium mb-2">
+                  <p className="text-xs sm:text-sm font-medium mb-1.5 sm:mb-2">
                     Domains ({template.domains.length}):
                   </p>
-                  <div className="flex flex-wrap gap-1">
+                  <div className="flex flex-wrap gap-1 sm:gap-1.5">
                     {template.domains.map(({ domainTemplate }) => (
                       <div
                         key={domainTemplate.id}
@@ -1091,7 +1113,7 @@ const AssessmentTemplateManager: React.FC = () => {
                               e.stopPropagation();
                               handleEditDomain(domainTemplate);
                             }}
-                            className="ml-1 p-0.5 hover:bg-gray-200 rounded"
+                            className="ml-1 p-0.5 hover:bg-accent dark:hover:bg-accent/50 rounded transition-colors"
                             title={`Edit ${domainTemplate.name} domain`}
                           >
                             <Edit className="h-3 w-3" />
@@ -1186,7 +1208,7 @@ const AssessmentTemplateManager: React.FC = () => {
                 {domainTemplates.map((domain) => (
                   <div
                     key={domain.id}
-                    className="flex items-center justify-between p-2 rounded hover:bg-gray-50"
+                    className="flex items-center justify-between p-2 rounded hover:bg-accent dark:hover:bg-accent/50 transition-colors border border-transparent hover:border-border"
                   >
                     <div className="flex items-center space-x-2">
                       <Checkbox

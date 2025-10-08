@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import SettingsPane from "@/components/settings/SettingsPane";
 
 export const metadata: Metadata = {
@@ -9,9 +9,9 @@ export const metadata: Metadata = {
 };
 
 export default async function SettingsPage() {
-  const session = await auth();
+  const user = await getCurrentUserWithRole();
 
-  if (!session?.user) {
+  if (!user) {
     redirect("/login");
   }
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { prisma } from "@/lib/db/prisma";
 import { AssessmentAI } from "@/lib/ai/AssessmentAI";
 import { ASSESSMENT_CONFIG } from "@/lib/config/ai-config";
@@ -20,15 +20,15 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const user = await getCurrentUserWithRole();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const identifier = (await params).id;
 
     // Resolve shortId to UUID if needed
-    const assessmentId = await resolveAssessmentId(identifier, session.user.id);
+    const assessmentId = await resolveAssessmentId(identifier, user.id);
     if (!assessmentId) {
       return NextResponse.json(
         { error: "Assessment not found" },
@@ -40,7 +40,7 @@ export async function POST(
     const assessment = await prisma.assessment.findFirst({
       where: {
         id: assessmentId,
-        userId: session.user.id,
+        userId: user.id,
       },
     });
 
@@ -92,6 +92,52 @@ export async function POST(
           currentDomain: initialQuestion.domain,
           scores: [],
           isComplete: false,
+          progress,
+        });
+      }
+
+      if (body.message === "resume_assessment") {
+        // Resume from where user left off
+        const nextQuestion = await assessmentAI.getNextQuestion();
+
+        if (!nextQuestion) {
+          return NextResponse.json(
+            { error: "Failed to get next question" },
+            { status: 500 }
+          );
+        }
+
+        const progress = await assessmentAI.getCurrentProgress();
+
+        return NextResponse.json({
+          message: "Resuming assessment...",
+          nextQuestion: nextQuestion.text,
+          questionId: nextQuestion.questionId,
+          currentDomain: nextQuestion.domain,
+          scores: [],
+          isComplete: false,
+          progress,
+        });
+      }
+
+      if (body.message === "previous_question") {
+        // Go back to previous question
+        const previousQuestion = await assessmentAI.getPreviousQuestion();
+
+        if (!previousQuestion) {
+          return NextResponse.json(
+            { error: "No previous question available" },
+            { status: 400 }
+          );
+        }
+
+        const progress = await assessmentAI.getCurrentProgress();
+
+        return NextResponse.json({
+          message: "Going back...",
+          previousQuestion: previousQuestion.text,
+          questionId: previousQuestion.questionId,
+          currentDomain: previousQuestion.domain,
           progress,
         });
       }

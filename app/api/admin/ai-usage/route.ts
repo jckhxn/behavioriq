@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import {
   getUsageStats,
   checkAIRateLimit,
@@ -9,12 +9,12 @@ import {
 // GET /api/admin/ai-usage - Get AI usage statistics (admin only)
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const user = await getCurrentUserWithRole();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!["ADMIN", "SUPER_ADMIN"].includes(session.user.role)) {
+    if (!["ADMIN", "SUPER_ADMIN"].includes(user.role)) {
       return NextResponse.json(
         { error: "Admin access required" },
         { status: 403 }
@@ -45,12 +45,12 @@ export async function GET(request: NextRequest) {
 // POST /api/admin/ai-usage - Update rate limits (admin only)
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const user = await getCurrentUserWithRole();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!["ADMIN", "SUPER_ADMIN"].includes(session.user.role)) {
+    if (!["ADMIN", "SUPER_ADMIN"].includes(user.role)) {
       return NextResponse.json(
         { error: "Admin access required" },
         { status: 403 }

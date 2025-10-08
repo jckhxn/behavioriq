@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { prisma } from "@/lib/db/prisma";
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const user = await getCurrentUserWithRole();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     const assessment = await prisma.assessment.findFirst({
       where: {
         id: assessmentId,
-        userId: session.user.id,
+        userId: user.id,
       },
     });
 
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     const recommendation = await prisma.recommendation.create({
       data: {
         assessmentId,
-        userId: session.user.id,
+        userId: user.id,
         title,
         content,
         category: category || null,
@@ -78,8 +78,8 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const user = await getCurrentUserWithRole();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get("category");
 
     const whereClause: any = {
-      userId: session.user.id,
+      userId: user.id,
       ...(onlyBookmarked ? { isBookmarked: true } : {}),
       ...(assessmentId ? { assessmentId } : {}),
       ...(category ? { category } : {}),

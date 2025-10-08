@@ -57,17 +57,18 @@ export class AssessmentCreditsService {
       };
     }
 
-    // TRIAL users get 1 free assessment
-    if (licenseType === "TRIAL") {
-      const creditsRemaining = Math.max(0, 1 - userLicense.assessmentsUsed);
-      return {
-        hasCredits: creditsRemaining > 0,
-        creditsRemaining,
-        creditsAllowed: 1,
-        creditsUsed: userLicense.assessmentsUsed,
-        licenseType,
-      };
-    }
+    // TRIAL license type removed - no longer used
+    // Legacy TRIAL users should have been migrated to BASIC
+    // if (licenseType === "TRIAL") {
+    //   const creditsRemaining = Math.max(0, 1 - userLicense.assessmentsUsed);
+    //   return {
+    //     hasCredits: creditsRemaining > 0,
+    //     creditsRemaining,
+    //     creditsAllowed: 1,
+    //     creditsUsed: userLicense.assessmentsUsed,
+    //     licenseType,
+    //   };
+    // }
 
     // BASIC users have pay-per-assessment credits
     const creditsRemaining = Math.max(
@@ -181,13 +182,14 @@ export class AssessmentCreditsService {
       };
     }
 
-    if (credits.licenseType === "TRIAL") {
-      return {
-        text: `${credits.creditsRemaining} Trial Assessment Remaining`,
-        remaining: credits.creditsRemaining,
-        showPurchase: credits.creditsRemaining === 0,
-      };
-    }
+    // TRIAL license type removed - no longer used
+    // if (credits.licenseType === "TRIAL") {
+    //   return {
+    //     text: `${credits.creditsRemaining} Trial Assessment Remaining`,
+    //     remaining: credits.creditsRemaining,
+    //     showPurchase: credits.creditsRemaining === 0,
+    //   };
+    // }
 
     if (credits.licenseType === "BASIC") {
       const text =

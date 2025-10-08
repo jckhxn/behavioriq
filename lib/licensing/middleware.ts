@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { LicensingService } from "@/lib/licensing/licensing-service";
 
 export interface LicenseMiddlewareOptions {
@@ -28,14 +28,14 @@ export function withLicense(options: LicenseMiddlewareOptions = {}) {
     ...args: any[]
   ): Promise<NextResponse> {
     try {
-      const session = await auth();
+      const user = await getCurrentUserWithRole();
 
-      if (!session?.user) {
+      if (!user) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
 
       // Check admin requirement
-      if (options.adminOnly && session.user.role !== "ADMIN") {
+      if (options.adminOnly && user.role !== "ADMIN") {
         return NextResponse.json(
           { error: "Admin access required" },
           { status: 403 }
@@ -43,9 +43,9 @@ export function withLicense(options: LicenseMiddlewareOptions = {}) {
       }
 
       // For non-admin users, check license
-      if (session.user.role !== "ADMIN") {
+      if (user.role !== "ADMIN") {
         const hasActiveLicense = await LicensingService.hasActiveLicense(
-          session.user.id
+          user.id
         );
 
         if (!hasActiveLicense) {
@@ -61,7 +61,7 @@ export function withLicense(options: LicenseMiddlewareOptions = {}) {
         // Check specific action permission
         if (options.requiredAction) {
           const actionResult = await LicensingService.canPerformAction(
-            session.user.id,
+            user.id,
             options.requiredAction
           );
 

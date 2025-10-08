@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { prisma } from "@/lib/db/prisma";
 
 /**
@@ -9,18 +9,13 @@ import { prisma } from "@/lib/db/prisma";
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const user = await getCurrentUserWithRole();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Check if user is super admin
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { role: true },
-    });
-
-    if (user?.role !== "SUPER_ADMIN") {
+    if (user.role !== "SUPER_ADMIN") {
       return NextResponse.json(
         { error: "Super admin access required" },
         { status: 403 }
@@ -43,7 +38,7 @@ export async function GET(request: NextRequest) {
       // Create default platform settings
       settings = await prisma.platformSettings.create({
         data: {
-          updatedBy: session.user.id,
+          updatedBy: user.id,
         },
         include: {
           globalTrialAssessment: {
@@ -84,18 +79,13 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const user = await getCurrentUserWithRole();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Check if user is super admin
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { role: true },
-    });
-
-    if (user?.role !== "SUPER_ADMIN") {
+    if (user.role !== "SUPER_ADMIN") {
       return NextResponse.json(
         { error: "Super admin access required" },
         { status: 403 }
@@ -155,7 +145,7 @@ export async function PUT(request: NextRequest) {
           aiReportsEnabled: aiReportsEnabled ?? settings.aiReportsEnabled,
           maxAiReportsPerUser:
             maxAiReportsPerUser ?? settings.maxAiReportsPerUser,
-          updatedBy: session.user.id,
+          updatedBy: user.id,
         },
         include: {
           globalTrialAssessment: {
@@ -176,7 +166,7 @@ export async function PUT(request: NextRequest) {
           trialAssessmentsEnabled: trialAssessmentsEnabled ?? true,
           aiReportsEnabled: aiReportsEnabled ?? true,
           maxAiReportsPerUser: maxAiReportsPerUser ?? 10,
-          updatedBy: session.user.id,
+          updatedBy: user.id,
         },
         include: {
           globalTrialAssessment: {

@@ -26,7 +26,7 @@ import { Plus, Users, Calendar, Key } from "lucide-react";
 interface License {
   id: string;
   licenseKey: string;
-  type: "TRIAL" | "BASIC" | "PROFESSIONAL" | "ENTERPRISE";
+  type: "BASIC" | "PROFESSIONAL" | "ENTERPRISE"; // TRIAL removed - legacy type
   status: "ACTIVE" | "SUSPENDED" | "EXPIRED";
   maxUsers: number;
   validUntil: string | null;

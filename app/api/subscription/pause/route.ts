@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { stripe } from "@/lib/stripe/config";
 import { prisma } from "@/lib/db/prisma";
 
 export async function POST() {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const user = await getCurrentUserWithRole();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -27,7 +27,7 @@ export async function POST() {
     pauseEnd.setMonth(pauseEnd.getMonth() + 2);
 
     console.log("Subscription pause requested:", {
-      userId: session.user.id,
+      userId: user.id,
       pauseUntil: pauseEnd.toISOString(),
     });
 

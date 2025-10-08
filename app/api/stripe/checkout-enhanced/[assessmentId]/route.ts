@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { prisma } from "@/lib/db/prisma";
 import { LicensingService } from "@/lib/licensing/licensing-service";
 import Stripe from "stripe";
@@ -13,9 +13,9 @@ export async function POST(
   { params }: { params: Promise<{ assessmentId: string }> }
 ) {
   try {
-    const session = await auth();
+    const user = await getCurrentUserWithRole();
 
-    if (!session?.user?.email) {
+    if (!user?.email) {
       return NextResponse.json(
         { error: "You must be logged in" },
         { status: 401 }
@@ -35,7 +35,7 @@ export async function POST(
     const assessment = (await prisma.assessment.findFirst({
       where: {
         id: assessmentId,
-        userId: session.user.id,
+        userId: user.id,
         isConversational: true,
       },
     })) as any; // TypeScript cache workaround
@@ -56,7 +56,7 @@ export async function POST(
     }
 
     // Check if user has conversational AI included in their subscription
-    const userLicense = await LicensingService.getUserLicense(session.user.id);
+    const userLicense = await LicensingService.getUserLicense(user.id);
     const hasConversationalAI = userLicense?.features.conversationalAI === true;
 
     // If user has conversational AI included, activate it for free
@@ -92,9 +92,9 @@ export async function POST(
       mode: "payment",
       success_url: `${process.env.NEXTAUTH_URL}/dashboard?enhanced_unlocked=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXTAUTH_URL}/dashboard`,
-      customer_email: session.user.email,
+      customer_email: user.email,
       metadata: {
-        userId: session.user.id,
+        userId: user.id,
         assessmentId,
         productType: "enhanced_report",
       },

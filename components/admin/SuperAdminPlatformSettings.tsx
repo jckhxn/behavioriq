@@ -19,6 +19,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import {
   Shield,
@@ -27,7 +28,10 @@ import {
   Users,
   Brain,
   AlertTriangle,
+  Library,
 } from "lucide-react";
+import ResourceLibraryManager from "@/components/admin/ResourceLibraryManager";
+import { AdminDashboard } from "@/components/admin/AdminDashboard";
 
 interface PlatformSettings {
   id: string;
@@ -155,222 +159,251 @@ export function SuperAdminPlatformSettings() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-purple-600" />
-            Super Admin Platform Settings
+            Super Admin Dashboard
           </CardTitle>
           <CardDescription>
-            Global configuration for the AI Diagnostic platform. These settings
-            affect all users and districts.
+            Manage platform settings, resources, and administrative tools.
           </CardDescription>
         </CardHeader>
       </Card>
 
-      {/* Global Assessment Configuration */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Globe className="h-5 w-5" />
-            Global Assessment Configuration
-          </CardTitle>
-          <CardDescription>
-            Set which assessments are available to trial users and regular users
-            platform-wide.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="trial-assessment">
-                Trial Assessment (Free Users)
-              </Label>
-              <Select
-                value={settings.globalTrialAssessmentId || "none"}
-                onValueChange={(value) =>
-                  updateSetting(
-                    "globalTrialAssessmentId",
-                    value === "none" ? null : value
-                  )
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select trial assessment..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">
-                    None (Disable trial assessments)
-                  </SelectItem>
-                  {availableAssessments.map((assessment) => (
-                    <SelectItem key={assessment.id} value={assessment.id}>
-                      {assessment.name}{" "}
-                      {assessment.isActive ? "" : "(Inactive)"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {settings.globalTrialAssessment && (
-                <p className="text-sm text-muted-foreground">
-                  Current: {settings.globalTrialAssessment.name}
-                </p>
-              )}
-            </div>
+      {/* Tabs for different sections */}
+      <Tabs defaultValue="settings" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="settings">
+            <Settings className="h-4 w-4 mr-2" />
+            Platform Settings
+          </TabsTrigger>
+          <TabsTrigger value="resources">
+            <Library className="h-4 w-4 mr-2" />
+            Resource Library
+          </TabsTrigger>
+          <TabsTrigger value="admin">
+            <Users className="h-4 w-4 mr-2" />
+            Admin Tools
+          </TabsTrigger>
+        </TabsList>
 
-            <div className="space-y-2">
-              <Label htmlFor="regular-assessment">
-                Regular Assessment (Paid Users)
-              </Label>
-              <Select
-                value={settings.globalRegularAssessmentId || "none"}
-                onValueChange={(value) =>
-                  updateSetting(
-                    "globalRegularAssessmentId",
-                    value === "none" ? null : value
-                  )
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select regular assessment..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">
-                    None (Use district-specific assessments)
-                  </SelectItem>
-                  {availableAssessments.map((assessment) => (
-                    <SelectItem key={assessment.id} value={assessment.id}>
-                      {assessment.name}{" "}
-                      {assessment.isActive ? "" : "(Inactive)"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {settings.globalRegularAssessment && (
-                <p className="text-sm text-muted-foreground">
-                  Current: {settings.globalRegularAssessment.name}
-                </p>
-              )}
-            </div>
+        <TabsContent value="settings" className="space-y-6 mt-6">
+          {/* Global Assessment Configuration */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Globe className="h-5 w-5" />
+                Global Assessment Configuration
+              </CardTitle>
+              <CardDescription>
+                Set which assessments are available to trial users and regular
+                users platform-wide.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="trial-assessment">
+                    Trial Assessment (Free Users)
+                  </Label>
+                  <Select
+                    value={settings.globalTrialAssessmentId || "none"}
+                    onValueChange={(value) =>
+                      updateSetting(
+                        "globalTrialAssessmentId",
+                        value === "none" ? null : value
+                      )
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select trial assessment..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">
+                        None (Disable trial assessments)
+                      </SelectItem>
+                      {availableAssessments.map((assessment) => (
+                        <SelectItem key={assessment.id} value={assessment.id}>
+                          {assessment.name}{" "}
+                          {assessment.isActive ? "" : "(Inactive)"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {settings.globalTrialAssessment && (
+                    <p className="text-sm text-muted-foreground">
+                      Current: {settings.globalTrialAssessment.name}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="regular-assessment">
+                    Regular Assessment (Paid Users)
+                  </Label>
+                  <Select
+                    value={settings.globalRegularAssessmentId || "none"}
+                    onValueChange={(value) =>
+                      updateSetting(
+                        "globalRegularAssessmentId",
+                        value === "none" ? null : value
+                      )
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select regular assessment..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">
+                        None (Use district-specific assessments)
+                      </SelectItem>
+                      {availableAssessments.map((assessment) => (
+                        <SelectItem key={assessment.id} value={assessment.id}>
+                          {assessment.name}{" "}
+                          {assessment.isActive ? "" : "(Inactive)"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {settings.globalRegularAssessment && (
+                    <p className="text-sm text-muted-foreground">
+                      Current: {settings.globalRegularAssessment.name}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Platform Controls */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                Platform Controls
+              </CardTitle>
+              <CardDescription>
+                System-wide feature toggles and access controls.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Maintenance Mode</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Disable platform access for maintenance
+                    </p>
+                  </div>
+                  <Switch
+                    checked={settings.maintenanceMode}
+                    onCheckedChange={(checked) =>
+                      updateSetting("maintenanceMode", checked)
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>User Registration</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Allow new user account creation
+                    </p>
+                  </div>
+                  <Switch
+                    checked={settings.registrationEnabled}
+                    onCheckedChange={(checked) =>
+                      updateSetting("registrationEnabled", checked)
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Trial Assessments</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Enable free trial assessments
+                    </p>
+                  </div>
+                  <Switch
+                    checked={settings.trialAssessmentsEnabled}
+                    onCheckedChange={(checked) =>
+                      updateSetting("trialAssessmentsEnabled", checked)
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>AI Reports</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Enable AI-generated reports
+                    </p>
+                  </div>
+                  <Switch
+                    checked={settings.aiReportsEnabled}
+                    onCheckedChange={(checked) =>
+                      updateSetting("aiReportsEnabled", checked)
+                    }
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* AI Configuration */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Brain className="h-5 w-5" />
+                AI Configuration
+              </CardTitle>
+              <CardDescription>
+                Control AI usage and limits across the platform.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="max-ai-reports">
+                    Max AI Reports Per User
+                  </Label>
+                  <Input
+                    id="max-ai-reports"
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={settings.maxAiReportsPerUser}
+                    onChange={(e) =>
+                      updateSetting(
+                        "maxAiReportsPerUser",
+                        parseInt(e.target.value) || 10
+                      )
+                    }
+                    className="w-32"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Maximum number of AI reports a user can generate (to control
+                    costs)
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Save Button */}
+          <div className="flex justify-end">
+            <Button onClick={handleSave} disabled={isSaving} size="lg">
+              {isSaving ? "Saving..." : "Save Platform Settings"}
+            </Button>
           </div>
-        </CardContent>
-      </Card>
+        </TabsContent>
 
-      {/* Platform Controls */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
-            Platform Controls
-          </CardTitle>
-          <CardDescription>
-            System-wide feature toggles and access controls.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Maintenance Mode</Label>
-                <p className="text-sm text-muted-foreground">
-                  Disable platform access for maintenance
-                </p>
-              </div>
-              <Switch
-                checked={settings.maintenanceMode}
-                onCheckedChange={(checked) =>
-                  updateSetting("maintenanceMode", checked)
-                }
-              />
-            </div>
+        <TabsContent value="resources" className="mt-6">
+          <ResourceLibraryManager />
+        </TabsContent>
 
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>User Registration</Label>
-                <p className="text-sm text-muted-foreground">
-                  Allow new user account creation
-                </p>
-              </div>
-              <Switch
-                checked={settings.registrationEnabled}
-                onCheckedChange={(checked) =>
-                  updateSetting("registrationEnabled", checked)
-                }
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Trial Assessments</Label>
-                <p className="text-sm text-muted-foreground">
-                  Enable free trial assessments
-                </p>
-              </div>
-              <Switch
-                checked={settings.trialAssessmentsEnabled}
-                onCheckedChange={(checked) =>
-                  updateSetting("trialAssessmentsEnabled", checked)
-                }
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>AI Reports</Label>
-                <p className="text-sm text-muted-foreground">
-                  Enable AI-generated reports
-                </p>
-              </div>
-              <Switch
-                checked={settings.aiReportsEnabled}
-                onCheckedChange={(checked) =>
-                  updateSetting("aiReportsEnabled", checked)
-                }
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* AI Configuration */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Brain className="h-5 w-5" />
-            AI Configuration
-          </CardTitle>
-          <CardDescription>
-            Control AI usage and limits across the platform.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="max-ai-reports">Max AI Reports Per User</Label>
-              <Input
-                id="max-ai-reports"
-                type="number"
-                min="1"
-                max="100"
-                value={settings.maxAiReportsPerUser}
-                onChange={(e) =>
-                  updateSetting(
-                    "maxAiReportsPerUser",
-                    parseInt(e.target.value) || 10
-                  )
-                }
-                className="w-32"
-              />
-              <p className="text-sm text-muted-foreground">
-                Maximum number of AI reports a user can generate (to control
-                costs)
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Save Button */}
-      <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={isSaving} size="lg">
-          {isSaving ? "Saving..." : "Save Platform Settings"}
-        </Button>
-      </div>
+        <TabsContent value="admin" className="mt-6">
+          <AdminDashboard />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

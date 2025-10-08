@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { prisma } from "@/lib/db/prisma";
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const user = await getCurrentUserWithRole();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -33,7 +33,7 @@ export async function PUT(request: NextRequest) {
 
       // Get current user from database to check current email
       const currentUser = await prisma.user.findUnique({
-        where: { id: session.user.id },
+        where: { id: user.id },
         select: { email: true },
       });
 
@@ -43,7 +43,7 @@ export async function PUT(request: NextRequest) {
           where: { email: email.trim() },
         });
 
-        if (existingUser && existingUser.id !== session.user.id) {
+        if (existingUser && existingUser.id !== user.id) {
           return NextResponse.json(
             { error: "Email already in use" },
             { status: 409 }
@@ -56,7 +56,7 @@ export async function PUT(request: NextRequest) {
 
     // Update user in database
     const updatedUser = await prisma.user.update({
-      where: { id: session.user.id },
+      where: { id: user.id },
       data: updateData,
       select: {
         id: true,
@@ -81,13 +81,13 @@ export async function PUT(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const currentUser = await getCurrentUserWithRole();
+    if (!currentUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: currentUser.id },
       select: {
         id: true,
         name: true,

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { prisma } from "@/lib/db/prisma";
 import { generateUniqueShareCode } from "@/lib/utils/shareCode";
 import { resolveAssessmentId } from "@/lib/utils/assessmentResolver";
@@ -7,13 +7,13 @@ import { resolveAssessmentId } from "@/lib/utils/assessmentResolver";
 // GET /api/share - Get all shareable links
 export async function GET() {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const user = await getCurrentUserWithRole();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const shareableLinks = await prisma.shareableLink.findMany({
-      where: { createdById: session.user.id },
+      where: { createdById: user.id },
       include: {
         assessment: {
           select: {
@@ -40,8 +40,8 @@ export async function GET() {
 // POST /api/share - Create a new shareable link
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const user = await getCurrentUserWithRole();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     // Verify the user owns the assessment
     const internalAssessmentId = await resolveAssessmentId(
       assessmentId,
-      session.user.id
+      user.id
     );
 
     if (!internalAssessmentId) {
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
       data: {
         shareCode,
         assessmentId: internalAssessmentId,
-        createdById: session.user.id,
+        createdById: user.id,
         privacy,
         password: privacy === "PASSWORD_PROTECTED" ? password : null,
         expiresAt: expiresAt ? new Date(expiresAt) : null,

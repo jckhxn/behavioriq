@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useUser } from "@/lib/hooks/use-supabase-user";
 import {
   Card,
   CardContent,
@@ -50,7 +50,7 @@ export default function NewAssessmentPage() {
     useState<AssessmentTemplate | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const { data: session } = useSession();
+  const { user } = useUser();
   const {
     credits,
     isLoading: creditsLoading,
@@ -80,10 +80,10 @@ export default function NewAssessmentPage() {
       }
     };
 
-    if (session) {
+    if (user) {
       fetchAvailableAssessments();
     }
-  }, [session]);
+  }, [user]);
 
   const createAssessment = async () => {
     if (!subjectName.trim() || !selectedAssessment) return;
@@ -133,7 +133,7 @@ export default function NewAssessmentPage() {
     }
   };
 
-  if (!session) {
+  if (!user) {
     return null; // Will redirect via middleware
   }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useUser } from "@/lib/hooks/use-supabase-user";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -51,7 +51,7 @@ interface TrialAssessmentData {
 }
 
 export function TrialAssessment() {
-  const { data: session, status } = useSession();
+  const { user, isLoading } = useUser();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [responses, setResponses] = useState<Record<string, number>>({});
   const [childName, setChildName] = useState("");
@@ -63,15 +63,15 @@ export function TrialAssessment() {
 
   // Redirect authenticated users to regular assessment
   useEffect(() => {
-    if (status === "authenticated" && session?.user) {
+    if (user) {
       router.push("/assessment/new");
       return;
     }
 
-    if (status !== "loading") {
+    if (!isLoading) {
       fetchTrialAssessment();
     }
-  }, [status, session, router]);
+  }, [user, isLoading, router]);
 
   const fetchTrialAssessment = async () => {
     try {
@@ -92,16 +92,14 @@ export function TrialAssessment() {
   };
 
   // Show loading while checking authentication or loading trial data
-  if (status === "loading" || loading) {
+  if (isLoading || loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="w-full max-w-2xl mx-4">
           <CardContent className="p-8 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
             <p className="text-lg text-muted-foreground">
-              {status === "loading"
-                ? "Checking access..."
-                : "Loading trial assessment..."}
+              {isLoading ? "Checking access..." : "Loading trial assessment..."}
             </p>
           </CardContent>
         </Card>
@@ -110,7 +108,7 @@ export function TrialAssessment() {
   }
 
   // Don't render anything if user is authenticated (will redirect)
-  if (session?.user) {
+  if (user) {
     return null;
   }
 

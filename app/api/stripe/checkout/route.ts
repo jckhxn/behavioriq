@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { stripe, PRICING_PLANS, SUBSCRIPTION_PLANS } from "@/lib/stripe/config";
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const user = await getCurrentUserWithRole();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -60,8 +60,8 @@ export async function POST(request: NextRequest) {
 
     // Create Stripe checkout session
     const checkoutSession = await stripe.checkout.sessions.create({
-      customer_email: session.user.email!,
-      client_reference_id: session.user.id,
+      customer_email: user.email!,
+      client_reference_id: user.id,
       line_items: [
         {
           price: priceId,
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
           ? `${process.env.NEXTAUTH_URL}/dashboard?purchase=cancelled`
           : `${process.env.NEXTAUTH_URL}/payment?cancelled=true`,
       metadata: {
-        userId: session.user.id,
+        userId: user.id,
         planType,
         plan,
         childName: childName || "",
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
       ...(isSubscriptionCheckout && {
         subscription_data: {
           metadata: {
-            userId: session.user.id,
+            userId: user.id,
             planType,
             plan,
           },
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
       ...(!isSubscriptionCheckout && {
         payment_intent_data: {
           metadata: {
-            userId: session.user.id,
+            userId: user.id,
             planType,
             plan,
             childName: childName || "",

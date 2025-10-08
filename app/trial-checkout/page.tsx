@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useUser } from "@/lib/hooks/use-supabase-user";
 import { useState, useEffect, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,13 +22,15 @@ import {
   Mail,
   User,
   Check,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { toast } from "sonner";
 
 function TrialCheckoutContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const { user, isLoading } = useUser();
   const [isProcessing, setIsProcessing] = useState(false);
   const [childName, setChildName] = useState("");
 
@@ -37,6 +39,8 @@ function TrialCheckoutContent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     const childNameParam = searchParams.get("childName");
@@ -47,14 +51,14 @@ function TrialCheckoutContent() {
 
   // If user is already logged in, redirect to direct checkout
   useEffect(() => {
-    if (status === "authenticated" && session?.user) {
+    if (!isLoading && user) {
       const params = new URLSearchParams();
       if (childName) {
         params.set("childName", childName);
       }
       router.push(`/checkout-direct?${params.toString()}`);
     }
-  }, [status, session, childName, router]);
+  }, [isLoading, user, childName, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -261,15 +265,32 @@ function TrialCheckoutContent() {
                       <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="password"
-                        type="password"
+                        type={showPassword ? "text" : "password"}
                         placeholder="At least 8 characters"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="pl-10"
+                        className="pl-10 pr-10"
                         required
                         disabled={isProcessing}
                         minLength={8}
                       />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                        disabled={isProcessing}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        )}
+                        <span className="sr-only">
+                          {showPassword ? "Hide password" : "Show password"}
+                        </span>
+                      </Button>
                     </div>
                   </div>
 
@@ -279,15 +300,36 @@ function TrialCheckoutContent() {
                       <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="confirmPassword"
-                        type="password"
+                        type={showConfirmPassword ? "text" : "password"}
                         placeholder="Re-enter your password"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="pl-10"
+                        className="pl-10 pr-10"
                         required
                         disabled={isProcessing}
                         minLength={8}
                       />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                        onClick={() =>
+                          setShowConfirmPassword(!showConfirmPassword)
+                        }
+                        disabled={isProcessing}
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        )}
+                        <span className="sr-only">
+                          {showConfirmPassword
+                            ? "Hide password"
+                            : "Show password"}
+                        </span>
+                      </Button>
                     </div>
                   </div>
 

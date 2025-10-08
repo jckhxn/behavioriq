@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { prisma } from "@/lib/db/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -8,8 +8,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const user = await getCurrentUserWithRole();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -21,7 +21,7 @@ export async function GET(
     const recommendation = await prisma.recommendation.findFirst({
       where: {
         id,
-        userId: session.user.id,
+        userId: user.id,
       },
       include: includeAssessment
         ? {
@@ -57,8 +57,8 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const user = await getCurrentUserWithRole();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -83,7 +83,7 @@ export async function PUT(
     const existing = await prisma.recommendation.findFirst({
       where: {
         id,
-        userId: session.user.id,
+        userId: user.id,
       },
     });
 
@@ -116,8 +116,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const user = await getCurrentUserWithRole();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -128,7 +128,7 @@ export async function DELETE(
     const existing = await prisma.recommendation.findFirst({
       where: {
         id,
-        userId: session.user.id,
+        userId: user.id,
       },
     });
 

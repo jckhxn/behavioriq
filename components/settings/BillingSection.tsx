@@ -26,7 +26,7 @@ import { toast } from "sonner";
 import { ManageSubscriptionModal } from "./ManageSubscriptionModal";
 
 interface License {
-  type: "FREE" | "TRIAL" | "BASIC" | "PROFESSIONAL" | "ENTERPRISE";
+  type: "FREE" | "BASIC" | "PROFESSIONAL" | "ENTERPRISE"; // TRIAL removed - legacy type
   status: string;
   maxAssessments: number;
   maxUsers: number;
@@ -39,13 +39,7 @@ interface License {
 
 export default function BillingSection() {
   const LICENSE_INFO = {
-    TRIAL: {
-      name: "Trial Account",
-      icon: Zap,
-      color: "text-blue-500",
-      bgColor: "bg-blue-100 dark:bg-blue-900/30",
-      features: ["5 trial assessments", "Limited features", "Temporary access"],
-    },
+    // TRIAL removed - legacy license type no longer used
     BASIC: {
       name: "Basic",
       icon: CheckCircle,
@@ -65,7 +59,8 @@ export default function BillingSection() {
       features: [
         "Unlimited assessments",
         "3 FREE Conversational AI sessions",
-        `${formatPrice(PRICING.ENHANCED_REPORT)}/session after`,
+        // Enhanced report pricing removed
+        // `${formatPrice(PRICING.ENHANCED_REPORT)}/session after`,
         `${formatPrice(PRICING.MONTHLY_SUBSCRIPTION)}/month or ${formatPrice(PRICING.ANNUAL_SUBSCRIPTION)}/year`,
       ],
     },
@@ -149,8 +144,10 @@ export default function BillingSection() {
     );
   }
 
-  const licenseType = license?.type || "TRIAL";
-  const licenseInfo = LICENSE_INFO[licenseType as keyof typeof LICENSE_INFO];
+  const licenseType = license?.type || "BASIC";
+  const licenseInfo =
+    LICENSE_INFO[licenseType as keyof typeof LICENSE_INFO] ||
+    LICENSE_INFO.BASIC;
   const Icon = licenseInfo?.icon || Crown;
 
   return (
@@ -260,7 +257,7 @@ export default function BillingSection() {
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Basic Plan Option */}
-            {licenseType === "FREE" || licenseType === "TRIAL" ? (
+            {licenseType === "FREE" || licenseType === "BASIC" ? (
               <div className="border rounded-lg p-4 hover:border-primary transition-colors">
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="font-semibold">Single Assessment</h4>
@@ -299,9 +296,10 @@ export default function BillingSection() {
               <ul className="text-sm space-y-1 mb-4 text-muted-foreground">
                 <li>• Unlimited assessments</li>
                 <li>• 3 FREE Conversational AI sessions</li>
-                <li>
+                {/* Enhanced report pricing removed */}
+                {/* <li>
                   • {formatPrice(PRICING.ENHANCED_REPORT)}/session after that
-                </li>
+                </li> */}
                 <li>• Priority support</li>
               </ul>
               <Button

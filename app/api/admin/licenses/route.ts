@@ -5,20 +5,20 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { LicensingService } from "@/lib/licensing/licensing-service";
 import { prisma } from "@/lib/db/prisma";
 
 // GET /api/admin/licenses - Get all licenses (admin only)
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const user = await getCurrentUserWithRole();
 
-    if (!session?.user) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!["ADMIN", "SUPER_ADMIN"].includes(session.user.role)) {
+    if (!["ADMIN", "SUPER_ADMIN"].includes(user.role)) {
       return NextResponse.json(
         { error: "Admin access required" },
         { status: 403 }
@@ -68,13 +68,13 @@ export async function GET(request: NextRequest) {
 // POST /api/admin/licenses - Create new license
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const user = await getCurrentUserWithRole();
 
-    if (!session?.user) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!["ADMIN", "SUPER_ADMIN"].includes(session.user.role)) {
+    if (!["ADMIN", "SUPER_ADMIN"].includes(user.role)) {
       return NextResponse.json(
         { error: "Admin access required" },
         { status: 403 }
@@ -84,13 +84,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { type, maxUsers, validUntil, organizationId, features } = body;
 
-    // Valid license types
-    const validTypes = ["TRIAL", "BASIC", "PROFESSIONAL", "ENTERPRISE"];
+    // Valid license types (TRIAL removed - legacy type)
+    const validTypes = ["BASIC", "PROFESSIONAL", "ENTERPRISE"];
     if (!type || !validTypes.includes(type)) {
       return NextResponse.json(
         {
           error:
-            "Valid license type is required (TRIAL, BASIC, PROFESSIONAL, ENTERPRISE)",
+            "Valid license type is required (BASIC, PROFESSIONAL, ENTERPRISE)",
         },
         { status: 400 }
       );

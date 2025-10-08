@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { ConversationalSession } from "@/lib/ai/conversational/types";
 import { sessionStore } from "@/lib/ai/conversational/SessionStore";
 import { ConversationalAIFactory } from "@/lib/ai/conversational/ConversationalAIFactory";
-import { AssessmentDomain } from "@prisma/client";
+import { AssessmentDomain, RiskLevel } from "@prisma/client";
+import { prisma } from "@/lib/db/prisma";
 
 export async function POST(request: NextRequest) {
   try {
@@ -66,6 +67,28 @@ export async function POST(request: NextRequest) {
         "Thanks for completing the assessment! Your results show areas where you're doing well and some that might need a little extra attention. 😊";
     }
 
+    // Save scores to database (for authenticated users only, not trial)
+    let savedAssessmentId: string | null = null;
+    if (!session.isTrial && session.userId) {
+      try {
+        // Create or update assessment record for authenticated conversational assessments
+        savedAssessmentId = await saveConversationalAssessmentResults(
+          session,
+          scoresByDomain,
+          responses
+        );
+        console.log(
+          `[Conversational] ✅ Saved assessment and scores: ${savedAssessmentId}`
+        );
+      } catch (error) {
+        console.error(
+          "[Conversational] Error saving assessment results:",
+          error
+        );
+        // Don't fail the request if saving fails
+      }
+    }
+
     // Clean up session
     sessionStore.delete(sessionId);
 
@@ -84,4 +107,107 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+/**
+ * Create or update Assessment record and save scores for conversational assessments
+ * Returns the assessment ID
+ */
+async function saveConversationalAssessmentResults(
+  session: any,
+  scoresByDomain: Record<string, { score: number; total: number }>,
+  responses: any[]
+): Promise<string> {
+  // Check if we already have an Assessment record (not the template)
+  // For now, create a new assessment record
+  const assessment = await prisma.assessment.create({
+    data: {
+      userId: session.userId,
+      subjectName: "Conversational Assessment", // Could be customized
+      status: "COMPLETED",
+      startedAt: new Date(),
+      completedAt: new Date(),
+      isConversational: true,
+      hasEnhancedReport: false,
+      // Store the responses in childResponses JSON field
+      childResponses: {
+        responses: responses,
+      },
+      currentDomain: null,
+      currentQuestionOrder: null,
+    },
+  });
+
+  // Now save the scores
+  await saveScoresToDatabase(assessment.id, scoresByDomain, session.questions);
+
+  return assessment.id;
+}
+
+/**
+ * Save calculated scores to the database as Score records
+ * This allows enhanced reports and regular reports to display domain scores
+ */
+async function saveScoresToDatabase(
+  assessmentId: string,
+  scoresByDomain: Record<string, { score: number; total: number }>,
+  questions: any[]
+) {
+  // Map risk levels based on percentage scores
+  const mapScoreToRiskLevel = (percentage: number): RiskLevel => {
+    if (percentage >= 75) return "VERY_HIGH";
+    if (percentage >= 50) return "HIGH";
+    if (percentage >= 25) return "MODERATE";
+    return "LOW";
+  };
+
+  // Find domain templates for each domain slug
+  const domainSlugs = Object.keys(scoresByDomain);
+  const domainTemplates = await prisma.domainTemplate.findMany({
+    where: {
+      slug: { in: domainSlugs },
+    },
+  });
+
+  const domainTemplateMap = new Map(domainTemplates.map((dt) => [dt.slug, dt]));
+
+  // Prepare score records
+  const baseTimestamp = new Date();
+  const scoreRecords = Object.entries(scoresByDomain).map(
+    ([domainSlug, data], index) => {
+      const domainTemplate = domainTemplateMap.get(domainSlug);
+      const percentage = data.total > 0 ? (data.score / data.total) * 100 : 0;
+      const riskLevel = mapScoreToRiskLevel(percentage);
+
+      // Count questions answered for this domain
+      const domainQuestions = questions.filter(
+        (q) => q.domainSlug === domainSlug
+      );
+      const questionsAnswered = domainQuestions.length;
+
+      return {
+        assessmentId,
+        domainTemplateId: domainTemplate?.id || null,
+        domainName: domainTemplate?.name || domainSlug,
+        domain: null, // Don't use legacy enum for conversational assessments
+        rawScore: data.score,
+        totalPossible: data.total,
+        questionsAnswered,
+        riskLevel,
+        confidence: percentage >= 50 ? 0.9 : 0.7, // Higher confidence for significant scores
+        wasTerminatedEarly: false,
+        timestamp: new Date(baseTimestamp.getTime() + index), // Unique timestamps
+      };
+    }
+  );
+
+  // Delete existing scores for this assessment (in case of re-completion)
+  await prisma.score.deleteMany({
+    where: { assessmentId },
+  });
+
+  // Create new score records
+  await prisma.score.createMany({
+    data: scoreRecords,
+  });
 }

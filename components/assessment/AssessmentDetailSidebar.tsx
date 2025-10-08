@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
+import { useUser } from "@/lib/hooks/use-supabase-user";
 import { AssessmentChat } from "@/components/chat/AssessmentChat";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -41,13 +41,13 @@ export function AssessmentDetailSidebar({
   assessmentId,
   onClose,
 }: AssessmentDetailSidebarProps) {
-  const { data: session } = useSession();
+  const { user } = useUser();
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!session || !assessmentId) return;
+    if (!user || !assessmentId) return;
 
     const fetchAssessment = async () => {
       try {
@@ -73,7 +73,7 @@ export function AssessmentDetailSidebar({
     };
 
     fetchAssessment();
-  }, [assessmentId, session]);
+  }, [assessmentId, user]);
 
   const getRiskLevelColor = (riskLevel: string) => {
     switch (riskLevel.toUpperCase()) {

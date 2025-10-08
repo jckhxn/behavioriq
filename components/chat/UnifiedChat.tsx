@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { AssessmentChat } from "./AssessmentChat";
 import { ScoringSidebar } from "@/components/scoring/ScoringSidebar";
-import { useSession } from "next-auth/react";
+import { useUser } from "@/lib/hooks/use-supabase-user";
 import { Brain, BarChart3 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -21,7 +21,7 @@ interface UnifiedChatProps {
 }
 
 export function UnifiedChat({ className }: UnifiedChatProps) {
-  const { data: session } = useSession();
+  const { user } = useUser();
   const [assessmentId, setAssessmentId] = useState<string | null>(null);
   const [subjectName, setSubjectName] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
@@ -30,7 +30,7 @@ export function UnifiedChat({ className }: UnifiedChatProps) {
 
   // Initialize assessment when component mounts
   useEffect(() => {
-    if (!session?.user || assessmentId) return;
+    if (!user || assessmentId) return;
 
     const initializeAssessment = async () => {
       setIsLoading(true);
@@ -58,7 +58,7 @@ export function UnifiedChat({ className }: UnifiedChatProps) {
     };
 
     initializeAssessment();
-  }, [session?.user, assessmentId]);
+  }, [user, assessmentId]);
 
   if (isLoading) {
     return (

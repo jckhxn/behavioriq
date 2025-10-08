@@ -1,17 +1,17 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth/config";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { prisma } from "@/lib/db/prisma";
 
 export async function GET() {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUserWithRole();
 
-    if (!session?.user?.id) {
+    if (!currentUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: currentUser.id },
       select: {
         onboardingCompleted: true,
         onboardingSkipped: true,
