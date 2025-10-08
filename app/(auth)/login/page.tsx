@@ -16,6 +16,7 @@ import {
 import { Eye, EyeOff, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { OAuthProviders } from "@/components/auth/OAuthProviders";
 
 function LoginForm() {
   const router = useRouter();
@@ -158,6 +159,9 @@ function LoginForm() {
               <Mail className="mr-2 h-4 w-4" />
               {magicLinkSent ? "Magic link sent!" : "Send magic link"}
             </Button>
+
+            {/* OAuth Providers */}
+            <OAuthProviders />
           </form>
 
           <div className="mt-4 space-y-2 text-center text-sm">

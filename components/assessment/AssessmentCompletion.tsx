@@ -211,6 +211,21 @@ export function AssessmentCompletion({
         return;
       }
 
+      // Check if we have a valid assessmentId
+      if (
+        !assessmentId ||
+        assessmentId === "undefined" ||
+        assessmentId === "null"
+      ) {
+        console.error("Invalid assessmentId:", assessmentId);
+        alert(
+          "Unable to save resource: Assessment ID is missing. Please try refreshing the page."
+        );
+        return;
+      }
+
+      console.log("Saving resource with assessmentId:", assessmentId);
+
       const response = await fetch("/api/recommendations", {
         method: "POST",
         headers: {
@@ -227,7 +242,12 @@ export function AssessmentCompletion({
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error("Failed to save resource:", errorData);
+        console.error("Failed to save resource:", {
+          status: response.status,
+          statusText: response.statusText,
+          errorData,
+          assessmentId,
+        });
         alert(`Failed to save resource: ${errorData.error || "Unknown error"}`);
         return;
       }

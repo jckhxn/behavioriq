@@ -39,6 +39,8 @@ import {
 } from "lucide-react";
 import SuperAdminPanel from "@/components/admin/SuperAdminPanel";
 import BillingSection from "@/components/settings/BillingSection";
+import { MFASettings } from "@/components/settings/MFASettings";
+import { PasskeySettings } from "@/components/settings/PasskeySettings";
 import { useOnboarding } from "@/lib/contexts/OnboardingContext";
 
 interface UserSettings {
@@ -432,10 +434,14 @@ const SettingsPane: React.FC = () => {
   return (
     <div className="p-3 space-y-3">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-3">
+        <TabsList className="grid w-full grid-cols-4 mb-3">
           <TabsTrigger value="profile" className="text-xs">
             <User className="h-3 w-3 mr-1" />
             Profile
+          </TabsTrigger>
+          <TabsTrigger value="security" className="text-xs">
+            <Shield className="h-3 w-3 mr-1" />
+            Security
           </TabsTrigger>
           <TabsTrigger value="billing" className="text-xs">
             <Activity className="h-3 w-3 mr-1" />
@@ -760,6 +766,12 @@ const SettingsPane: React.FC = () => {
               </Button>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Security Tab */}
+        <TabsContent value="security" className="space-y-3">
+          <MFASettings />
+          <PasskeySettings />
         </TabsContent>
 
         {/* Billing Tab */}

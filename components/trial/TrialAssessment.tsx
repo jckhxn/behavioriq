@@ -54,6 +54,9 @@ export function TrialAssessment() {
   const { user, isLoading } = useUser();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [responses, setResponses] = useState<Record<string, number>>({});
+  const [selectedResponse, setSelectedResponse] = useState<boolean | null>(
+    null
+  );
   const [childName, setChildName] = useState("");
   const [showNameInput, setShowNameInput] = useState(true);
   const [trialData, setTrialData] = useState<TrialAssessmentData | null>(null);
@@ -138,25 +141,34 @@ export function TrialAssessment() {
     ((currentQuestionIndex + 1) / trialData.questions.length) * 100;
 
   const handleResponse = (response: boolean) => {
+    // Show selected button
+    setSelectedResponse(response);
+
     // Convert boolean to score (Yes = 3, No = 0 for scoring)
     const score = response ? 3 : 0;
 
-    setResponses((prev) => ({
-      ...prev,
+    const updatedResponses = {
+      ...responses,
       [currentQuestion.id]: score,
-    }));
+    };
 
-    if (currentQuestionIndex < trialData.questions.length - 1) {
-      setCurrentQuestionIndex((prev) => prev + 1);
-    } else {
-      // Assessment complete, redirect to results
-      const queryParams = new URLSearchParams({
-        responses: JSON.stringify(responses),
-        childName: childName,
-        assessmentId: trialData.assessment.id,
-      });
-      router.push(`/trial-results?${queryParams.toString()}`);
-    }
+    // Wait a brief moment to show the selection, then advance
+    setTimeout(() => {
+      setResponses(updatedResponses);
+      setSelectedResponse(null);
+
+      if (currentQuestionIndex < trialData.questions.length - 1) {
+        setCurrentQuestionIndex((prev) => prev + 1);
+      } else {
+        // Assessment complete, redirect to results
+        const queryParams = new URLSearchParams({
+          responses: JSON.stringify(updatedResponses),
+          childName: childName,
+          assessmentId: trialData.assessment.id,
+        });
+        router.push(`/trial-results?${queryParams.toString()}`);
+      }
+    }, 300);
   };
 
   const handlePrevious = () => {
@@ -326,16 +338,25 @@ export function TrialAssessment() {
               <Button
                 size="lg"
                 onClick={() => handleResponse(true)}
-                className="w-full h-14 text-lg font-medium transition-all duration-200 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white"
+                disabled={selectedResponse !== null}
+                className={`w-full h-14 text-lg font-medium transition-all duration-200 border-2 ${
+                  selectedResponse === true
+                    ? "bg-green-500 hover:bg-green-600 text-white border-green-500 ring-4 ring-green-200 dark:ring-green-900 shadow-lg scale-105"
+                    : "bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600 text-foreground hover:border-green-400 dark:hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-950/50"
+                }`}
               >
                 <CheckCircle className="mr-3 h-5 w-5" />
                 Yes
               </Button>
               <Button
                 size="lg"
-                variant="outline"
                 onClick={() => handleResponse(false)}
-                className="w-full h-14 text-lg font-medium transition-all duration-200 hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                disabled={selectedResponse !== null}
+                className={`w-full h-14 text-lg font-medium transition-all duration-200 border-2 ${
+                  selectedResponse === false
+                    ? "bg-red-500 hover:bg-red-600 text-white border-red-500 ring-4 ring-red-200 dark:ring-red-900 shadow-lg scale-105"
+                    : "bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600 text-foreground hover:border-red-400 dark:hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-950/50"
+                }`}
               >
                 <XCircle className="mr-3 h-5 w-5" />
                 No

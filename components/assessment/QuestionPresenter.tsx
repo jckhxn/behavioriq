@@ -61,18 +61,25 @@ export function QuestionPresenter({
     loadConfigs();
   }, []);
 
-  const handleAnswerSubmit = async () => {
-    if (selectedAnswer === null || isSubmitting) return;
+  const handleAnswerClick = async (response: boolean) => {
+    if (isSubmitting) return;
 
+    // Show selected button
+    setSelectedAnswer(response);
     setIsSubmitting(true);
-    try {
-      await onAnswer(questionId, selectedAnswer);
-      // Don't reset selectedAnswer here - let it reset when the question changes
-    } catch (error) {
-      console.error("Error submitting answer:", error);
-    } finally {
-      setIsSubmitting(false);
-    }
+
+    // Wait a brief moment to show the selection, then submit
+    setTimeout(async () => {
+      try {
+        await onAnswer(questionId, response);
+        // Don't reset selectedAnswer here - let it reset when the question changes
+      } catch (error) {
+        console.error("Error submitting answer:", error);
+        setSelectedAnswer(null); // Reset on error so user can try again
+      } finally {
+        setIsSubmitting(false);
+      }
+    }, 300);
   };
 
   // Find domain configuration from our assessment configs
@@ -131,52 +138,33 @@ export function QuestionPresenter({
           {/* Answer Options */}
           <div className="space-y-4">
             <Button
-              variant={selectedAnswer === true ? "default" : "outline"}
               size="lg"
-              className={`w-full h-14 text-lg font-medium transition-all duration-200 ${
+              onClick={() => handleAnswerClick(true)}
+              disabled={selectedAnswer !== null || isLoading}
+              className={`w-full h-14 text-lg font-medium transition-all duration-200 border-2 ${
                 selectedAnswer === true
-                  ? "bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white"
-                  : "hover:border-green-500 hover:bg-green-50"
+                  ? "bg-green-500 hover:bg-green-600 text-white border-green-500 ring-4 ring-green-200 dark:ring-green-900 shadow-lg scale-105"
+                  : "bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600 text-foreground hover:border-green-400 dark:hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-950/50"
               }`}
-              onClick={() => setSelectedAnswer(true)}
-              disabled={isLoading || isSubmitting}
             >
               <CheckCircle className="mr-3 h-5 w-5" />
               Yes
             </Button>
 
             <Button
-              variant={selectedAnswer === false ? "default" : "outline"}
               size="lg"
-              className={`w-full h-14 text-lg font-medium transition-all duration-200 ${
+              onClick={() => handleAnswerClick(false)}
+              disabled={selectedAnswer !== null || isLoading}
+              className={`w-full h-14 text-lg font-medium transition-all duration-200 border-2 ${
                 selectedAnswer === false
-                  ? "bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white"
-                  : "hover:border-red-500 hover:bg-red-50"
+                  ? "bg-red-500 hover:bg-red-600 text-white border-red-500 ring-4 ring-red-200 dark:ring-red-900 shadow-lg scale-105"
+                  : "bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600 text-foreground hover:border-red-400 dark:hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-950/50"
               }`}
-              onClick={() => setSelectedAnswer(false)}
-              disabled={isLoading || isSubmitting}
             >
               <XCircle className="mr-3 h-5 w-5" />
               No
             </Button>
           </div>
-
-          {/* Submit Button */}
-          <Button
-            onClick={handleAnswerSubmit}
-            disabled={selectedAnswer === null || isLoading || isSubmitting}
-            size="lg"
-            className="w-full h-12 text-lg font-semibold gradient-primary hover:opacity-90 transition-opacity"
-          >
-            {isSubmitting || isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                {isLoading ? "Processing..." : "Submitting..."}
-              </>
-            ) : (
-              "Submit Answer"
-            )}
-          </Button>
 
           {/* Back Button */}
           {canGoBack && (

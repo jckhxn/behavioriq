@@ -51,7 +51,95 @@ function PaymentSuccessContent() {
         console.log(`Auto-login attempt ${attempts}/${maxAttempts}`);
 
         try {
-          // Generate login token from session
+          // First, try to process the checkout if webhook hasn't fired yet
+          // This is a fallback for local development where webhooks don't work
+          if (attempts === 1) {
+            console.log("Processing checkout session (webhook fallback)...");
+            const processResponse = await fetch(
+              "/api/stripe/process-checkout",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ sessionId }),
+              }
+            );
+
+            if (processResponse.ok) {
+              const processData = await processResponse.json();
+              console.log("Checkout processed:", processData);
+
+              // If we got a login token directly, use it
+              if (processData.loginToken) {
+                const tokenData = {
+                  success: true,
+                  loginToken: processData.loginToken,
+                  user: processData.user,
+                };
+
+                // Continue with session creation
+                if (tokenData.success && tokenData.loginToken) {
+                  console.log(
+                    "Login token received, creating Supabase session..."
+                  );
+
+                  const sessionResponse = await fetch(
+                    "/api/auth/session-from-token",
+                    {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({
+                        token: tokenData.loginToken,
+                      }),
+                    }
+                  );
+
+                  const sessionData = await sessionResponse.json();
+
+                  if (
+                    sessionResponse.ok &&
+                    sessionData.success &&
+                    sessionData.session
+                  ) {
+                    console.log(
+                      "Session tokens received, setting up Supabase session..."
+                    );
+
+                    const { createClient } = await import(
+                      "@/lib/supabase/client"
+                    );
+                    const supabase = createClient();
+
+                    const { error: setSessionError } =
+                      await supabase.auth.setSession({
+                        access_token: sessionData.session.access_token,
+                        refresh_token: sessionData.session.refresh_token,
+                      });
+
+                    if (setSessionError) {
+                      console.error(
+                        "Failed to set Supabase session:",
+                        setSessionError
+                      );
+                      return false;
+                    }
+
+                    console.log("✅ Supabase session created successfully!");
+                    return true;
+                  }
+                }
+              }
+            } else {
+              console.log(
+                "Process checkout failed, falling back to webhook wait..."
+              );
+            }
+          }
+
+          // Generate login token from session (original flow - waits for webhook)
           const tokenResponse = await fetch("/api/auth/generate-login-token", {
             method: "POST",
             headers: {
@@ -77,25 +165,60 @@ function PaymentSuccessContent() {
           }
 
           if (tokenData.success && tokenData.loginToken) {
-            console.log("Login token received, attempting sign in...");
+            console.log("Login token received, creating Supabase session...");
 
-            // Sign in with NextAuth
-            const { signIn } = await import("next-auth/react");
-            const result = await signIn("credentials", {
-              email: tokenData.user.email,
-              password: "", // Token-based login, no password needed
-              loginToken: tokenData.loginToken,
-              redirect: false,
-            });
-
-            if (result?.ok) {
-              console.log(
-                "Auto-login successful! Staying on payment success page..."
+            // Create a Supabase session using the session-from-token endpoint
+            try {
+              const sessionResponse = await fetch(
+                "/api/auth/session-from-token",
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    token: tokenData.loginToken,
+                  }),
+                }
               );
-              // Stay on this page to show upgrade options and let user click "Start Full Report"
-              return true;
-            } else {
-              console.error("Sign in failed:", result?.error);
+
+              const sessionData = await sessionResponse.json();
+
+              if (
+                sessionResponse.ok &&
+                sessionData.success &&
+                sessionData.session
+              ) {
+                console.log(
+                  "Session tokens received, setting up Supabase session..."
+                );
+
+                // Set up the Supabase session with the tokens
+                const { createClient } = await import("@/lib/supabase/client");
+                const supabase = createClient();
+
+                const { error: setSessionError } =
+                  await supabase.auth.setSession({
+                    access_token: sessionData.session.access_token,
+                    refresh_token: sessionData.session.refresh_token,
+                  });
+
+                if (setSessionError) {
+                  console.error(
+                    "Failed to set Supabase session:",
+                    setSessionError
+                  );
+                  return false;
+                }
+
+                console.log("✅ Supabase session created successfully!");
+                return true;
+              } else {
+                console.error("Session creation failed:", sessionData.error);
+                return false;
+              }
+            } catch (error) {
+              console.error("Auto-login error:", error);
               return false;
             }
           }
@@ -130,14 +253,17 @@ function PaymentSuccessContent() {
     setIsUpgrading(true);
 
     try {
-      // Check if user has a session first
-      const { getSession } = await import("next-auth/react");
-      const session = await getSession();
+      // Check if user has a session first with Supabase
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-      if (!session) {
+      if (!user) {
         // No session - redirect to login with return URL
         toast.error("Please log in to upgrade your account");
-        window.location.href = `/login?callbackUrl=${encodeURIComponent(window.location.href)}`;
+        window.location.href = `/login?from=${encodeURIComponent(window.location.pathname)}`;
         return;
       }
 

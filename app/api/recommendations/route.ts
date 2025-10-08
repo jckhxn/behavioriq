@@ -45,11 +45,42 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    console.log("Assessment lookup result:", {
+      assessmentId,
+      userId: user.id,
+      found: !!assessment,
+    });
+
     if (!assessment) {
-      return NextResponse.json(
-        { error: "Assessment not found or access denied" },
-        { status: 404 }
-      );
+      // Check if assessment exists at all
+      const anyAssessment = await prisma.assessment.findUnique({
+        where: { id: assessmentId },
+        select: { id: true, userId: true },
+      });
+
+      if (!anyAssessment) {
+        console.error("Assessment not found in database:", assessmentId);
+        return NextResponse.json(
+          {
+            error: "Assessment not found",
+            details: "No assessment exists with this ID",
+          },
+          { status: 404 }
+        );
+      } else {
+        console.error("Assessment access denied:", {
+          assessmentId,
+          assessmentUserId: anyAssessment.userId,
+          requestUserId: user.id,
+        });
+        return NextResponse.json(
+          {
+            error: "Access denied",
+            details: "This assessment belongs to a different user",
+          },
+          { status: 403 }
+        );
+      }
     }
 
     // @ts-ignore - Temporary workaround for Prisma type issue

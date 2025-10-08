@@ -45,10 +45,42 @@ model User {
   createdDomainVersions DomainTemplateVersion[] @relation("DomainVersionsCreated")
   loginTokens     LoginToken[]
   createdResources ResourceLibrary[] @relation("ResourceLibraryCreator")
+  passkeys        Passkey[]
 
   @@index([organizationId])
   @@index([parentUserId])
   @@map("users")
+}
+
+model Passkey {
+  id                String   @id @default(cuid())
+  userId            String
+  name              String   // User-friendly name (e.g., "iPhone 13", "MacBook Pro")
+  credentialId      String   @unique // Base64URL encoded credential ID
+  publicKey         String   // Base64URL encoded public key
+  counter           BigInt   // Signature counter for replay protection
+  transports        String[] // Supported transports (e.g., ["usb", "nfc", "ble", "internal"])
+  createdAt         DateTime @default(now())
+  lastUsed          DateTime @default(now())
+  
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([credentialId])
+  @@map("passkeys")
+}
+
+model PasskeyChallenge {
+  id          String   @id @default(cuid())
+  userId      String
+  challenge   String   @unique // Base64URL encoded challenge
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([challenge])
+  @@index([expiresAt])
+  @@map("passkey_challenges")
 }
 
 model SubAccount {

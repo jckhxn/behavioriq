@@ -173,11 +173,71 @@ export class PaymentService {
       throw new Error("Password required for new user registration");
     }
 
+    console.log(`[PaymentService] Creating new user: ${userEmail}`);
+
+    // First, create the user in Supabase Auth with a secure random password
+    const { createClient } = await import("@supabase/supabase-js");
+    const { randomBytes } = await import("crypto");
+
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
+    );
+
+    // Check if user already exists in Supabase Auth
+    const { data: existingAuthUsers } =
+      await supabaseAdmin.auth.admin.listUsers();
+    let authUser = existingAuthUsers?.users.find((u) => u.email === userEmail);
+
+    if (!authUser) {
+      // Generate a secure random password for Supabase (user won't need this - we'll use magic links)
+      const supabasePassword = randomBytes(32).toString("hex");
+
+      // Create user in Supabase Auth
+      const { data: newAuthUser, error: authError } =
+        await supabaseAdmin.auth.admin.createUser({
+          email: userEmail,
+          password: supabasePassword,
+          email_confirm: true, // Auto-confirm email since they paid
+          user_metadata: {
+            name: userName || null,
+            created_via: "stripe_checkout",
+          },
+        });
+
+      if (authError) {
+        console.error(
+          `[PaymentService] Failed to create user in Supabase Auth:`,
+          authError
+        );
+        throw new Error(
+          `Failed to create user in authentication system: ${authError.message}`
+        );
+      }
+
+      authUser = newAuthUser.user;
+      console.log(
+        `[PaymentService] User created in Supabase Auth: ${authUser.id}`
+      );
+    } else {
+      console.log(
+        `[PaymentService] User already exists in Supabase Auth: ${authUser.id}`
+      );
+    }
+
+    // Now create in Prisma database with the Supabase user ID
     return tx.user.create({
       data: {
+        id: authUser.id, // Use Supabase user ID for consistency
         email: userEmail,
         name: userName || null,
-        password: userPasswordHash,
+        password: userPasswordHash, // Store the original bcrypt hash for reference
         role: "USER",
         isActive: true,
       },
