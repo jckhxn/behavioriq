@@ -9,13 +9,23 @@ import { Progress } from "@/components/ui/progress";
 import { Send, MessageCircle, User, Bot } from "lucide-react";
 import { ConversationalMessage } from "@/lib/ai/conversational/types";
 import { MarkdownMessage } from "./MarkdownMessage";
+import { useUserData } from "@/lib/hooks/use-supabase-user";
+import { Badge } from "@/components/ui/badge";
 
 interface ConversationalAssessmentProps {
   onComplete: (responses: Record<string, boolean>) => void;
+  isTrial?: boolean;
+  assessmentTemplateId?: string;
+  subjectName?: string;
+  assessmentId?: string; // For resuming existing assessments
 }
 
 export function ConversationalAssessment({
   onComplete,
+  isTrial = true,
+  assessmentTemplateId,
+  subjectName,
+  assessmentId,
 }: ConversationalAssessmentProps) {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ConversationalMessage[]>([]);
@@ -24,7 +34,14 @@ export function ConversationalAssessment({
   const [progress, setProgress] = useState({ answered: 0, total: 0 });
   const [isComplete, setIsComplete] = useState(false);
   const [summary, setSummary] = useState<string | null>(null);
+  const [tokenUsage, setTokenUsage] = useState({
+    promptTokens: 0,
+    completionTokens: 0,
+    totalTokens: 0,
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { userData } = useUserData();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -39,10 +56,29 @@ export function ConversationalAssessment({
     async function initializeSession() {
       try {
         setIsLoading(true);
+        const requestBody: any = { isTrial };
+
+        // For resuming existing assessments
+        if (assessmentId) {
+          requestBody.assessmentId = assessmentId;
+        }
+
+        // For full assessments, include template and subject info
+        if (!isTrial && !assessmentId) {
+          if (!assessmentTemplateId) {
+            throw new Error("Assessment template ID is required for full assessments");
+          }
+          if (!subjectName) {
+            throw new Error("Subject name is required for full assessments");
+          }
+          requestBody.assessmentTemplateId = assessmentTemplateId;
+          requestBody.subjectName = subjectName;
+        }
+
         const response = await fetch("/api/assessment/conversational/start", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ isTrial: true }),
+          body: JSON.stringify(requestBody),
         });
 
         if (!response.ok) {
@@ -53,6 +89,11 @@ export function ConversationalAssessment({
         const data = await response.json();
         setSessionId(data.sessionId);
         setMessages([data.message]);
+
+        // If resuming, restore progress
+        if (data.isResumed && data.progress) {
+          setProgress(data.progress);
+        }
       } catch (error) {
         console.error("Error starting session:", error);
         // Show error message in chat
@@ -69,7 +110,7 @@ export function ConversationalAssessment({
     }
 
     initializeSession();
-  }, []);
+  }, [assessmentId, isTrial, assessmentTemplateId, subjectName]);
 
   const sendMessage = async () => {
     if (!currentMessage.trim() || !sessionId || isLoading) return;
@@ -86,7 +127,7 @@ export function ConversationalAssessment({
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/assessment/conversational/message", {
+      const response = await fetch("/api/assessment/conversational/message-stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId, message: currentMessage }),
@@ -98,14 +139,65 @@ export function ConversationalAssessment({
         throw new Error(errorData.error || "Failed to send message");
       }
 
-      const data = await response.json();
+      // Read metadata from headers
+      const messageId = response.headers.get("X-Message-Id") || `ai_${Date.now()}`;
+      const isComplete = response.headers.get("X-Is-Complete") === "true";
+      const progressAnswered = parseInt(response.headers.get("X-Progress-Answered") || "0");
+      const progressTotal = parseInt(response.headers.get("X-Progress-Total") || "0");
 
-      setMessages((prev) => [...prev, data.message]);
-      setProgress(data.progress);
-      setIsComplete(data.isComplete);
+      // Create AI message placeholder that will be updated as we stream
+      const aiMessage: ConversationalMessage = {
+        id: messageId,
+        role: "ai",
+        content: "",
+        timestamp: new Date(),
+      };
+
+      // Add the placeholder message
+      setMessages((prev) => [...prev, aiMessage]);
+
+      // Update progress
+      setProgress({
+        answered: progressAnswered,
+        total: progressTotal,
+        currentIndex: progressAnswered,
+        percentage: (progressAnswered / progressTotal) * 100,
+      });
+
+      // Stream the response text
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (reader) {
+        let streamedContent = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+
+          if (done) {
+            break;
+          }
+
+          const chunk = decoder.decode(value, { stream: true });
+          streamedContent += chunk;
+
+          // Update the AI message content as we stream
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === messageId
+                ? { ...msg, content: streamedContent }
+                : msg
+            )
+          );
+        }
+
+        console.log(`[Conversational] ✅ Streamed ${streamedContent.length} characters`);
+      }
+
+      setIsComplete(isComplete);
 
       // If assessment is complete, fetch results
-      if (data.isComplete) {
+      if (isComplete) {
         const completeResponse = await fetch(
           "/api/assessment/conversational/complete",
           {
@@ -119,6 +211,12 @@ export function ConversationalAssessment({
           const completeData = await completeResponse.json();
 
           // Store results in localStorage for trial-results page
+          console.log("💾 Storing results in localStorage:", {
+            responses: completeData.responses,
+            scores: completeData.scores,
+            scoresByDomain: completeData.scoresByDomain,
+          });
+
           localStorage.setItem(
             "conversationalTrialResults",
             JSON.stringify({
@@ -144,6 +242,7 @@ export function ConversationalAssessment({
             setSummary(completeData.summary);
           }
 
+          console.log("📞 Calling onComplete with responses:", completeData.responses);
           onComplete(completeData.responses);
         }
       }
@@ -159,10 +258,14 @@ export function ConversationalAssessment({
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
+      // Refocus input after sending
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
@@ -192,7 +295,7 @@ export function ConversationalAssessment({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <MessageCircle className="h-5 w-5" />
-          Conversational Assessment
+          {isTrial ? "Conversational Assessment Trial" : `Conversational Assessment - ${subjectName}`}
         </CardTitle>
 
         {progress.total > 0 && (
@@ -283,12 +386,14 @@ export function ConversationalAssessment({
         {!isComplete && (
           <div className="flex gap-2">
             <Input
+              ref={inputRef}
               value={currentMessage}
               onChange={(e) => setCurrentMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
+              onKeyDown={handleKeyDown}
               placeholder="Type your response here..."
               disabled={isLoading}
               className="flex-1"
+              autoFocus
             />
             <Button
               onClick={sendMessage}
@@ -314,6 +419,21 @@ export function ConversationalAssessment({
               ✅ Assessment Complete! Check the chat above for your personalized
               results.
             </p>
+          </div>
+        )}
+
+        {/* Token Usage - Only visible to Admins/Super Admins */}
+        {(userData?.role === "ADMIN" || userData?.role === "SUPER_ADMIN") && tokenUsage.totalTokens > 0 && (
+          <div className="flex items-center justify-center gap-3 pt-2 pb-1 border-t text-xs text-muted-foreground">
+            <Badge variant="outline" className="font-mono">
+              Prompt: {tokenUsage.promptTokens.toLocaleString()}
+            </Badge>
+            <Badge variant="outline" className="font-mono">
+              Completion: {tokenUsage.completionTokens.toLocaleString()}
+            </Badge>
+            <Badge variant="secondary" className="font-mono font-semibold">
+              Total: {tokenUsage.totalTokens.toLocaleString()} tokens
+            </Badge>
           </div>
         )}
       </CardContent>

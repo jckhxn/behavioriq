@@ -25,6 +25,10 @@ export default function ResetPasswordPage() {
   const [verifying, setVerifying] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [hasMFA, setHasMFA] = useState(false);
+  const [showMFAInput, setShowMFAInput] = useState(false);
+  const [mfaCode, setMfaCode] = useState("");
+  const [factorId, setFactorId] = useState<string>("");
 
   // Verify user has a valid recovery session
   useEffect(() => {
@@ -41,6 +45,19 @@ export default function ResetPasswordPage() {
         );
         setVerifying(false);
         return;
+      }
+
+      // Check if user has MFA enabled
+      const { data: factors } = await supabase.auth.mfa.listFactors();
+      const mfaEnabled = factors?.totp?.some((f) => f.status === "verified");
+      setHasMFA(!!mfaEnabled);
+
+      // Store the factor ID for MFA verification
+      if (mfaEnabled && factors?.totp) {
+        const verifiedFactor = factors.totp.find((f) => f.status === "verified");
+        if (verifiedFactor) {
+          setFactorId(verifiedFactor.id);
+        }
       }
 
       setVerifying(false);
@@ -69,6 +86,37 @@ export default function ResetPasswordPage() {
     try {
       const supabase = createClient();
 
+      // If user has MFA, verify the code first
+      if (hasMFA && !showMFAInput) {
+        // Show MFA input screen
+        setShowMFAInput(true);
+        setLoading(false);
+        return;
+      }
+
+      // Verify MFA code if required
+      if (hasMFA && mfaCode) {
+        const { error: challengeError, data: challengeData } =
+          await supabase.auth.mfa.challenge({ factorId });
+
+        if (challengeError) {
+          throw new Error(challengeError.message);
+        }
+
+        const { error: verifyError } = await supabase.auth.mfa.verify({
+          factorId,
+          challengeId: challengeData.id,
+          code: mfaCode,
+        });
+
+        if (verifyError) {
+          setError("Invalid MFA code. Please try again.");
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Now update the password (AAL2 session established if MFA verified)
       const { error } = await supabase.auth.updateUser({
         password: password,
       });
@@ -183,6 +231,43 @@ export default function ResetPasswordPage() {
                 </button>
               </div>
             </div>
+
+            {showMFAInput && (
+              <>
+                <div className="rounded-md bg-blue-50 p-3 text-sm text-blue-800 border border-blue-200">
+                  <strong>Two-Factor Authentication Required</strong>
+                  <p className="mt-1">
+                    Enter the 6-digit code from your authenticator app to
+                    verify your identity.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="mfa-code">Authentication Code</Label>
+                  <Input
+                    id="mfa-code"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={6}
+                    value={mfaCode}
+                    onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
+                    placeholder="000000"
+                    required
+                    autoFocus
+                    className="text-center text-2xl tracking-widest"
+                  />
+                </div>
+              </>
+            )}
+
+            {hasMFA && !showMFAInput && (
+              <div className="rounded-md bg-blue-50 p-3 text-sm text-blue-800 border border-blue-200">
+                <strong>Note:</strong> You have two-factor authentication enabled.
+                You'll need to verify with your authenticator app after entering
+                your new password.
+              </div>
+            )}
 
             {error && (
               <div className="rounded-md bg-red-50 p-3 text-sm text-red-600">

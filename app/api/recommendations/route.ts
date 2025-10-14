@@ -7,8 +7,11 @@ export async function POST(request: NextRequest) {
   console.log("[Recommendations] POST request received");
   try {
     const user = await getCurrentUserWithRole();
-    console.log("[Recommendations] User authenticated:", { userId: user?.id, email: user?.email });
-    
+    console.log("[Recommendations] User authenticated:", {
+      userId: user?.id,
+      email: user?.email,
+    });
+
     if (!user) {
       console.error("[Recommendations] Unauthorized - no user found");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -17,7 +20,13 @@ export async function POST(request: NextRequest) {
     const requestBody = await request.json();
     console.log("[Recommendations] POST request body:", requestBody);
 
-    const { assessmentId: assessmentIdentifier, title, content, category, priority } = requestBody;
+    const {
+      assessmentId: assessmentIdentifier,
+      title,
+      content,
+      category,
+      priority,
+    } = requestBody;
 
     console.log("[Recommendations] Parsed fields:", {
       assessmentIdentifier,
@@ -44,31 +53,40 @@ export async function POST(request: NextRequest) {
     }
 
     // Resolve shortId to UUID if needed
-    console.log("[Recommendations] Resolving assessment ID:", assessmentIdentifier);
-    const assessmentId = await resolveAssessmentId(assessmentIdentifier, user.id);
-    
+    console.log(
+      "[Recommendations] Resolving assessment ID:",
+      assessmentIdentifier
+    );
+    const assessmentId = await resolveAssessmentId(
+      assessmentIdentifier,
+      user.id
+    );
+
     if (!assessmentId) {
-      console.error("[Recommendations] Assessment not found:", { 
-        identifier: assessmentIdentifier, 
-        userId: user.id 
+      console.error("[Recommendations] Assessment not found:", {
+        identifier: assessmentIdentifier,
+        userId: user.id,
       });
       return NextResponse.json(
-        { 
-          error: "Assessment not found", 
-          details: `No assessment found with ID: ${assessmentIdentifier}` 
+        {
+          error: "Assessment not found",
+          details: `No assessment found with ID: ${assessmentIdentifier}`,
         },
         { status: 404 }
       );
     }
 
-    console.log("[Recommendations] Resolved assessment ID:", { 
-      original: assessmentIdentifier, 
-      resolved: assessmentId 
+    console.log("[Recommendations] Resolved assessment ID:", {
+      original: assessmentIdentifier,
+      resolved: assessmentId,
     });
 
     // Verify the user owns the assessment
-    console.log("[Recommendations] Looking up assessment:", { assessmentId, userId: user.id });
-    
+    console.log("[Recommendations] Looking up assessment:", {
+      assessmentId,
+      userId: user.id,
+    });
+
     const assessment = await prisma.assessment.findFirst({
       where: {
         id: assessmentId,
@@ -127,7 +145,10 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    console.log("[Recommendations] Successfully created recommendation:", recommendation.id);
+    console.log(
+      "[Recommendations] Successfully created recommendation:",
+      recommendation.id
+    );
     return NextResponse.json(recommendation);
   } catch (error) {
     console.error("[Recommendations] Error saving recommendation:", error);
@@ -135,7 +156,7 @@ export async function POST(request: NextRequest) {
       error instanceof Error ? error.message : "Unknown error";
     const errorStack = error instanceof Error ? error.stack : undefined;
     console.error("[Recommendations] Error stack:", errorStack);
-    
+
     return NextResponse.json(
       { error: "Failed to save recommendation", details: errorMessage },
       { status: 500 }
@@ -161,14 +182,17 @@ export async function GET(request: NextRequest) {
     if (assessmentIdentifier) {
       const resolved = await resolveAssessmentId(assessmentIdentifier, user.id);
       if (!resolved) {
-        console.warn("[Recommendations] GET - Assessment not found:", assessmentIdentifier);
+        console.warn(
+          "[Recommendations] GET - Assessment not found:",
+          assessmentIdentifier
+        );
         // Return empty array instead of error for GET requests
         return NextResponse.json([]);
       }
       resolvedAssessmentId = resolved;
-      console.log("[Recommendations] GET - Resolved assessment ID:", { 
-        original: assessmentIdentifier, 
-        resolved: resolvedAssessmentId 
+      console.log("[Recommendations] GET - Resolved assessment ID:", {
+        original: assessmentIdentifier,
+        resolved: resolvedAssessmentId,
       });
     }
 

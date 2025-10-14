@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { prisma } from "@/lib/db/prisma";
+import { invalidatePlatformSettingsCache } from "@/lib/platform/settings";
 
 /**
  * Super Admin Platform Settings Management
@@ -101,6 +102,8 @@ export async function PUT(request: NextRequest) {
       trialAssessmentsEnabled,
       aiReportsEnabled,
       maxAiReportsPerUser,
+      emailSendingEnabled,
+      sesMonthlyBudget,
     } = body;
 
     // Validate assessment template IDs if provided
@@ -145,6 +148,9 @@ export async function PUT(request: NextRequest) {
           aiReportsEnabled: aiReportsEnabled ?? settings.aiReportsEnabled,
           maxAiReportsPerUser:
             maxAiReportsPerUser ?? settings.maxAiReportsPerUser,
+          emailSendingEnabled:
+            emailSendingEnabled ?? settings.emailSendingEnabled,
+          sesMonthlyBudget: sesMonthlyBudget ?? settings.sesMonthlyBudget,
           updatedBy: user.id,
         },
         include: {
@@ -166,6 +172,8 @@ export async function PUT(request: NextRequest) {
           trialAssessmentsEnabled: trialAssessmentsEnabled ?? true,
           aiReportsEnabled: aiReportsEnabled ?? true,
           maxAiReportsPerUser: maxAiReportsPerUser ?? 10,
+          emailSendingEnabled: emailSendingEnabled ?? true,
+          sesMonthlyBudget: sesMonthlyBudget ?? 5.0,
           updatedBy: user.id,
         },
         include: {
@@ -178,6 +186,9 @@ export async function PUT(request: NextRequest) {
         },
       });
     }
+
+    // Invalidate cache so changes take effect immediately
+    invalidatePlatformSettingsCache();
 
     return NextResponse.json({ settings });
   } catch (error) {

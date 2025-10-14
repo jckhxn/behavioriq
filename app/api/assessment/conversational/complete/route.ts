@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ConversationalSession } from "@/lib/ai/conversational/types";
-import { sessionStore } from "@/lib/ai/conversational/SessionStore";
+import { databaseSessionStore } from "@/lib/ai/conversational/DatabaseSessionStore";
 import { ConversationalAIFactory } from "@/lib/ai/conversational/ConversationalAIFactory";
 import { AssessmentDomain, RiskLevel } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
   try {
     const { sessionId } = await request.json();
 
-    const session = sessionStore.get(sessionId);
+    const session = await databaseSessionStore.get(sessionId);
     if (!session) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
@@ -71,7 +71,16 @@ export async function POST(request: NextRequest) {
     let savedAssessmentId: string | null = null;
     if (!session.isTrial && session.userId) {
       try {
-        // Create or update assessment record for authenticated conversational assessments
+        // MUST have an assessmentId from the start route
+        if (!session.assessmentId) {
+          console.error(`[Conversational] ⚠️ No assessmentId in session for user ${session.userId}`);
+          return NextResponse.json(
+            { error: "Invalid session - missing assessment ID" },
+            { status: 400 }
+          );
+        }
+
+        // Save results to EXISTING assessment (created in start route)
         savedAssessmentId = await saveConversationalAssessmentResults(
           session,
           scoresByDomain,
@@ -80,6 +89,26 @@ export async function POST(request: NextRequest) {
         console.log(
           `[Conversational] ✅ Saved assessment and scores: ${savedAssessmentId}`
         );
+
+        // ✅ CHARGE CONVERSATIONAL CREDIT ON COMPLETION (simpler logic)
+        // Since assessment was just marked COMPLETED, charge the credit now
+        const userLicense = await prisma.userLicense.findFirst({
+          where: { userId: session.userId },
+        });
+
+        if (userLicense) {
+          await prisma.userLicense.update({
+            where: { id: userLicense.id },
+            data: {
+              conversationalAssessmentsUsed: {
+                increment: 1,
+              },
+            },
+          });
+          console.log(
+            `[Conversational] ✅ Charged 1 conversational credit for user ${session.userId} (assessment ${savedAssessmentId})`
+          );
+        }
       } catch (error) {
         console.error(
           "[Conversational] Error saving assessment results:",
@@ -89,8 +118,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Clean up session
-    sessionStore.delete(sessionId);
+    // Clean up session from database
+    await databaseSessionStore.delete(sessionId);
 
     return NextResponse.json({
       responses,
@@ -110,38 +139,39 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * Create or update Assessment record and save scores for conversational assessments
+ * Update Assessment record and save scores for conversational assessments
  * Returns the assessment ID
+ *
+ * NOTE: For full assessments, the Assessment record is already created in the start route.
+ * This function ONLY updates it with completion data.
  */
 async function saveConversationalAssessmentResults(
   session: any,
   scoresByDomain: Record<string, { score: number; total: number }>,
   responses: any[]
 ): Promise<string> {
-  // Check if we already have an Assessment record (not the template)
-  // For now, create a new assessment record
-  const assessment = await prisma.assessment.create({
+  // For full conversational assessments, assessmentId MUST exist (created in start route)
+  if (!session.assessmentId) {
+    throw new Error("Assessment ID is required for full conversational assessments");
+  }
+
+  // Update existing assessment record with completion data
+  await prisma.assessment.update({
+    where: { id: session.assessmentId },
     data: {
-      userId: session.userId,
-      subjectName: "Conversational Assessment", // Could be customized
       status: "COMPLETED",
-      startedAt: new Date(),
       completedAt: new Date(),
-      isConversational: true,
-      hasEnhancedReport: false,
       // Store the responses in childResponses JSON field
       childResponses: {
         responses: responses,
       },
-      currentDomain: null,
-      currentQuestionOrder: null,
     },
   });
 
-  // Now save the scores
-  await saveScoresToDatabase(assessment.id, scoresByDomain, session.questions);
+  // Save the domain scores
+  await saveScoresToDatabase(session.assessmentId, scoresByDomain, session.questions);
 
-  return assessment.id;
+  return session.assessmentId;
 }
 
 /**

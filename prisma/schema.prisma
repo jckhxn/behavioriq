@@ -46,6 +46,9 @@ model User {
   loginTokens     LoginToken[]
   createdResources ResourceLibrary[] @relation("ResourceLibraryCreator")
   passkeys        Passkey[]
+  conversationalSessions ConversationalSession[]
+  emailLogs       EmailLog[]
+  notificationPreferences NotificationPreferences?
 
   @@index([organizationId])
   @@index([parentUserId])
@@ -167,6 +170,7 @@ model Assessment {
   scores                  Score[]
   shareableLinks          ShareableLink[]
   aiReport                AIReport?
+  conversationalSession   ConversationalSession? // Conversational AI session data
 
   @@index([userId])
   @@index([status])
@@ -551,16 +555,18 @@ model Organization {
 }
 
 model UserLicense {
-  id                 String   @id @default(cuid())
-  userId             String
-  licenseId          String
-  assignedAt         DateTime @default(now())
-  assignedBy         String?
-  isActive           Boolean  @default(true)
-  assessmentsAllowed Int      @default(0)  // Number of assessments this license allows (incremented on purchase)
-  assessmentsUsed    Int      @default(0)  // Number of assessments actually used
-  license            License  @relation(fields: [licenseId], references: [id], onDelete: Cascade)
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                              String   @id @default(cuid())
+  userId                          String
+  licenseId                       String
+  assignedAt                      DateTime @default(now())
+  assignedBy                      String?
+  isActive                        Boolean  @default(true)
+  assessmentsAllowed              Int      @default(0)  // Number of regular assessments this license allows (incremented on purchase)
+  assessmentsUsed                 Int      @default(0)  // Number of regular assessments actually used
+  conversationalAssessmentsAllowed Int     @default(0)  // Number of conversational assessments allowed ($9 addon)
+  conversationalAssessmentsUsed   Int      @default(0)  // Number of conversational assessments actually used
+  license                         License  @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  user                            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, licenseId])
   @@index([userId])
@@ -631,30 +637,120 @@ model UsageMetrics {
 
 model PlatformSettings {
   id                    String   @id @default(cuid())
-  
+
   // Global Assessment Configuration
   globalTrialAssessmentId     String?  // Assessment template for trial users
   globalRegularAssessmentId   String?  // Assessment template for regular users
-  
+
   // Platform-wide settings
   maintenanceMode       Boolean  @default(false)
   registrationEnabled   Boolean  @default(true)
   trialAssessmentsEnabled Boolean @default(true)
-  
+
   // AI Configuration
   aiReportsEnabled      Boolean  @default(true)
   maxAiReportsPerUser   Int      @default(10)
-  
+
+  // Email / SES Configuration
+  emailSendingEnabled   Boolean  @default(true)  // Manual override to disable all email sending
+  sesMonthlyBudget      Decimal  @default(5.00)  // Monthly budget limit in USD
+
   // Timestamps
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
   updatedBy            String   // User ID who made the change
-  
+
   // Relations
   globalTrialAssessment   AssessmentTemplate? @relation("GlobalTrialAssessment", fields: [globalTrialAssessmentId], references: [id])
   globalRegularAssessment AssessmentTemplate? @relation("GlobalRegularAssessment", fields: [globalRegularAssessmentId], references: [id])
-  
+
   @@map("platform_settings")
+}
+
+// SES Email Usage Tracking - Individual email sends
+model SESUsage {
+  id              String   @id @default(cuid())
+  emailsSent      Int      @default(1)       // Number of emails in this batch
+  estimatedCost   Decimal  @db.Decimal(10, 6) // Cost in USD (e.g., 0.0001 per email)
+  recipient       String?                     // Optional: track recipient for audit
+  emailType       String?                     // Optional: type of email (e.g., "PDF Report", "Welcome")
+  sentAt          DateTime @default(now())
+
+  @@index([sentAt])
+  @@map("ses_usage")
+}
+
+// SES Monthly Totals - Aggregated monthly cost tracking
+model SESMonthlyTotal {
+  id              String   @id @default(cuid())
+  month           DateTime @db.Date           // First day of the month (e.g., 2025-01-01)
+  totalEmailsSent Int      @default(0)        // Total emails sent this month
+  totalCost       Decimal  @default(0) @db.Decimal(10, 6) // Total cost in USD
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([month])
+  @@index([month])
+  @@map("ses_monthly_totals")
+}
+
+// Email Log - Detailed tracking for rate limiting and abuse prevention
+model EmailLog {
+  id             String   @id @default(cuid())
+  userId         String?  // Null for system emails
+  user           User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  recipientEmail String
+  emailType      String   // "WELCOME", "PASSWORD_RESET", "ASSESSMENT_REPORT", "LICENSE_NOTIFICATION", etc.
+  subject        String
+  status         String   // "SENT", "FAILED", "BOUNCED", "COMPLAINED"
+  messageId      String?  // SES message ID
+  errorMessage   String?
+
+  sentAt         DateTime @default(now())
+
+  @@index([userId, sentAt])
+  @@index([recipientEmail, sentAt])
+  @@index([sentAt])
+  @@index([emailType])
+  @@index([status])
+  @@map("email_logs")
+}
+
+// Notification Preferences - User email notification settings
+model NotificationPreferences {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Assessment notifications
+  assessmentComplete    Boolean  @default(true)   // When assessment is completed
+  assessmentShared      Boolean  @default(true)   // When someone shares an assessment with them
+
+  // License notifications
+  licenseExpiring       Boolean  @default(true)   // License expiration warnings
+  licenseRenewed        Boolean  @default(true)   // License renewal confirmations
+
+  // Recommendation notifications
+  newRecommendation     Boolean  @default(true)   // New AI recommendations available
+
+  // Summary notifications
+  weeklySummary         Boolean  @default(false)  // Weekly assessment summary (opt-in)
+  monthlySummary        Boolean  @default(false)  // Monthly usage summary (opt-in)
+
+  // Account notifications
+  accountUpdate         Boolean  @default(true)   // Important account changes
+  securityAlert         Boolean  @default(true)   // Security-related notifications (always on by default)
+  productUpdates        Boolean  @default(false)  // New features and updates (opt-in)
+
+  // Marketing (opt-in only)
+  marketingEmails       Boolean  @default(false)  // Promotional emails
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([userId])
+  @@map("notification_preferences")
 }
 
 enum Role {
@@ -744,11 +840,77 @@ model LoginToken {
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime @default(now())
-  
+
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([token])
   @@index([userId])
   @@index([expiresAt])
   @@map("login_tokens")
+}
+
+// Conversational Assessment Session - Persistent storage with API abuse safeguards
+model ConversationalSession {
+  id                     String    @id @default(cuid())
+  assessmentId           String    @unique // Each assessment can have one conversational session
+  userId                 String?
+  currentQuestionIndex   Int       @default(0)
+  responses              Json      // Record<string, boolean> - questionId -> answer
+  messages               Json      // ConversationalMessage[] - Full message history
+  isComplete             Boolean   @default(false)
+  isTrial                Boolean   @default(false)
+  questions              Json      // Question[] - Cached questions for this session
+  totalTokenUsage        Json?     // TokenUsage object with prompt/completion/total
+  clarificationAttempts  Int       @default(0)
+  lastSubmittedAt        DateTime? // Last time user submitted a response (for rate limiting)
+  submissionCount        Int       @default(0) // Total number of submissions (for monitoring abuse)
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  assessment             Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  user                   User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  submissions            ConversationalSubmission[]
+
+  @@index([userId])
+  @@index([assessmentId])
+  @@index([updatedAt])
+  @@index([isComplete])
+  @@map("conversational_sessions")
+}
+
+// Track each question submission for idempotency and audit trail
+model ConversationalSubmission {
+  id                String                @id @default(cuid())
+  sessionId         String
+  questionId        String
+  questionIndex     Int
+  userResponse      String                // The actual text user submitted
+  extractedAnswer   Boolean?              // true/false/null (null = unclear)
+  confidence        Float
+  wasRecorded       Boolean               @default(false) // Whether this answer was recorded in session.responses
+  tokenUsage        Json?                 // TokenUsage for this submission
+  submittedAt       DateTime              @default(now())
+
+  session           ConversationalSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  // Idempotency: Prevent exact duplicate submissions
+  @@unique([sessionId, questionId, userResponse])
+  @@index([sessionId])
+  @@index([questionId])
+  @@index([submittedAt])
+  @@map("conversational_submissions")
+}
+
+// Editable email templates for Super Admin
+
+// Generic template for email/PDF with JSX and props
+model Template {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  type         String   // 'email' or 'pdf'
+  jsx_source   String   // JSX source code
+  default_props Json    // Example props for preview
+  updatedAt    DateTime @updatedAt
+
+  @@map("templates")
 }

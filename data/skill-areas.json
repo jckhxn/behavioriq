@@ -1,0 +1,58 @@
+[
+  {
+    "id": "critical-thinking",
+    "name": "Critical Thinking",
+    "description": "Analytical reasoning, problem-solving, and logical evaluation skills",
+    "slug": "critical-thinking",
+    "category": "Cognitive Skills"
+  },
+  {
+    "id": "communication",
+    "name": "Communication",
+    "description": "Verbal, written, and digital communication effectiveness",
+    "slug": "communication",
+    "category": "Social Skills"
+  },
+  {
+    "id": "collaboration",
+    "name": "Collaboration",
+    "description": "Teamwork, cooperation, and group project management",
+    "slug": "collaboration",
+    "category": "Social Skills"
+  },
+  {
+    "id": "creativity",
+    "name": "Creativity",
+    "description": "Innovation, artistic expression, and creative problem-solving",
+    "slug": "creativity",
+    "category": "Creative Skills"
+  },
+  {
+    "id": "digital-literacy",
+    "name": "Digital Literacy",
+    "description": "Technology proficiency and digital citizenship skills",
+    "slug": "digital-literacy",
+    "category": "Technical Skills"
+  },
+  {
+    "id": "leadership",
+    "name": "Leadership",
+    "description": "Guidance, motivation, and team management abilities",
+    "slug": "leadership",
+    "category": "Social Skills"
+  },
+  {
+    "id": "time-management",
+    "name": "Time Management",
+    "description": "Organization, prioritization, and efficient task completion",
+    "slug": "time-management",
+    "category": "Life Skills"
+  },
+  {
+    "id": "emotional-intelligence",
+    "name": "Emotional Intelligence",
+    "description": "Self-awareness, empathy, and emotional regulation",
+    "slug": "emotional-intelligence",
+    "category": "Social Skills"
+  }
+]

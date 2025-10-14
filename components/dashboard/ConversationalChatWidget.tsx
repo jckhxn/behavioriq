@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ConversationalAssessment } from "@/components/assessment/ConversationalAssessment";
+import { ConversationalAssessmentWrapper } from "@/components/assessment/ConversationalAssessmentWrapper";
 import {
   Card,
   CardContent,
@@ -37,54 +37,60 @@ export default function ConversationalChatWidget({
   const [completedAssessmentId, setCompletedAssessmentId] = useState<
     string | null
   >(null);
-  const [isCreatingMock, setIsCreatingMock] = useState(false);
+  const [isPurchasing, setIsPurchasing] = useState(false);
 
   const handleComplete = async (responses: Record<string, boolean>) => {
-    console.log("Assessment completed with responses:", responses);
+    console.log("🎯 handleComplete called with responses:", responses);
 
-    // In a real implementation, you'd save this to the database
-    // and get back the assessment ID
-    // For now, we'll use the passed assessmentId or generate one
-    const newAssessmentId = assessmentId || `temp_${Date.now()}`;
-    setCompletedAssessmentId(newAssessmentId);
+    // Check if this was a trial or real assessment by looking at localStorage
+    const trialResults = localStorage.getItem("conversationalTrialResults");
+    console.log("🔍 Trial results from localStorage:", trialResults);
 
-    // Show upsell instead of redirecting
-    setShowUpsell(true);
-  };
-
-  // 🐛 DEBUG: Create real mock assessment in database and skip to upsell
-  const handleDebugCreateAndSkip = async () => {
-    setIsCreatingMock(true);
-    try {
-      const response = await fetch("/api/debug/create-mock-conversational", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ childName: "Demo Child" }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setCompletedAssessmentId(data.assessmentId);
-        setShowUpsell(true);
-        console.log("✅ Created mock assessment:", data.assessmentId);
-      } else {
-        const error = await response.json();
-        console.error("Failed to create mock:", error);
-        alert("Failed to create mock assessment. Check console for details.");
+    if (trialResults) {
+      // This was a trial - show upsell
+      console.log("✅ Showing upsell for trial");
+      const newAssessmentId = assessmentId || `temp_${Date.now()}`;
+      setCompletedAssessmentId(newAssessmentId);
+      setShowUpsell(true);
+    } else {
+      // This was a real assessment - close the widget and refresh dashboard
+      console.log("📝 Real assessment - refreshing dashboard");
+      onClose();
+      // Trigger a page refresh to show the new assessment
+      if (typeof window !== "undefined") {
+        window.location.reload();
       }
-    } catch (error) {
-      console.error("Error:", error);
-      alert("Failed to create mock assessment. Check console for details.");
-    } finally {
-      setIsCreatingMock(false);
     }
   };
 
-  // 🐛 DEBUG: Skip to upsell with temp ID (old method)
-  const handleDebugSkipToUpsell = () => {
-    const debugAssessmentId = assessmentId || `debug_${Date.now()}`;
-    setCompletedAssessmentId(debugAssessmentId);
-    setShowUpsell(true);
+
+  const handlePurchaseConversational = async () => {
+    setIsPurchasing(true);
+    try {
+      const response = await fetch("/api/stripe/checkout-conversational-trial", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to create checkout");
+      }
+
+      const { url, redirectUrl } = await response.json();
+
+      // If redirectUrl is provided (e.g., already included in subscription), use that
+      if (redirectUrl) {
+        window.location.href = redirectUrl;
+      } else if (url) {
+        // Otherwise redirect to Stripe checkout
+        window.location.href = url;
+      }
+    } catch (error) {
+      console.error("Checkout error:", error);
+      alert(error instanceof Error ? error.message : "Failed to start checkout");
+      setIsPurchasing(false);
+    }
   };
 
   const handleCloseUpsell = () => {
@@ -100,39 +106,15 @@ export default function ConversationalChatWidget({
         {!showUpsell ? (
           <>
             <DialogHeader className="p-6 pb-4 shrink-0 border-b">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex-1">
-                  <DialogTitle className="text-2xl">
-                    Conversational Assessment
-                  </DialogTitle>
-                  <DialogDescription>
-                    Answer questions naturally in your own words
-                  </DialogDescription>
-                </div>
-                {/* 🐛 DEBUG BUTTONS - Remove in production */}
-                <div className="flex gap-2 shrink-0">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleDebugCreateAndSkip}
-                    disabled={isCreatingMock}
-                    className="bg-green-100 hover:bg-green-200 text-green-800 border-green-300"
-                  >
-                    {isCreatingMock ? "Creating..." : "🐛 Create Real Mock"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleDebugSkipToUpsell}
-                    className="bg-yellow-100 hover:bg-yellow-200 text-yellow-800 border-yellow-300"
-                  >
-                    🐛 Quick Preview
-                  </Button>
-                </div>
-              </div>
+              <DialogTitle className="text-2xl">
+                Conversational Assessment
+              </DialogTitle>
+              <DialogDescription>
+                Natural conversation with AI to understand your child's perspective
+              </DialogDescription>
             </DialogHeader>
             <div className="flex-1 overflow-y-auto px-6 py-6">
-              <ConversationalAssessment onComplete={handleComplete} />
+              <ConversationalAssessmentWrapper onComplete={handleComplete} />
             </div>
           </>
         ) : (
@@ -150,116 +132,88 @@ export default function ConversationalChatWidget({
               </p>
             </div>
 
-            {/* Preview Section */}
-            <Card className="border-primary/50 bg-primary/5 mb-6">
+            {/* Conversational Assessment Upsell */}
+            <Card className="border-primary/50 bg-gradient-to-br from-primary/5 to-accent/5 mb-6">
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-5 w-5 text-primary" />
-                  <CardTitle className="text-lg">
-                    Preview of Your Responses
+                  <CardTitle className="text-2xl">
+                    Unlock Your Full Conversational Assessment
                   </CardTitle>
                 </div>
-                <CardDescription className="text-sm">
-                  Here's a glimpse of how your responses look. Want the full
-                  analysis with AI insights?
+                <CardDescription className="text-base">
+                  Get the complete conversational assessment with AI-powered insights
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Sample Response Preview */}
-                <div className="bg-muted/50 rounded-lg p-4">
-                  <p className="text-sm font-medium mb-2">Sample Question:</p>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    "How often does your child have trouble focusing on tasks?"
-                  </p>
-                  <div className="bg-background rounded p-3 border">
-                    <p className="text-sm">
-                      <span className="font-medium text-primary">
-                        Your response:
-                      </span>{" "}
-                      "They struggle with homework but can focus on video games
-                      for hours..."
-                    </p>
-                  </div>
-                </div>
-
-                {/* Enhanced report upsell disabled for now */}
-                {/* What's Inside Box */}
-                {/* <div className="rounded-lg border p-4 bg-background">
-                  <p className="text-sm font-medium mb-3">
-                    Unlock the Full Enhanced Report for $9:
-                  </p>
-                  <ul className="text-sm space-y-2 text-muted-foreground">
+              <CardContent className="space-y-6">
+                {/* What You Get */}
+                <div className="space-y-3">
+                  <p className="font-medium">Upgrade to the full conversational assessment:</p>
+                  <ul className="space-y-2">
                     <li className="flex items-start gap-2">
-                      <CheckCircle className="h-4 w-4 mt-0.5 text-primary shrink-0" />
-                      <span>Complete transcript of all your responses</span>
+                      <CheckCircle className="h-5 w-5 mt-0.5 text-primary shrink-0" />
+                      <span>Complete conversational assessment with all behavioral domains</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <CheckCircle className="h-4 w-4 mt-0.5 text-primary shrink-0" />
-                      <span>AI-powered analysis and insights</span>
+                      <CheckCircle className="h-5 w-5 mt-0.5 text-primary shrink-0" />
+                      <span>Full conversation transcript with all your responses</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <CheckCircle className="h-4 w-4 mt-0.5 text-primary shrink-0" />
-                      <span>
-                        Expanded recommendations tailored to your responses
-                      </span>
+                      <CheckCircle className="h-5 w-5 mt-0.5 text-primary shrink-0" />
+                      <span>AI-powered analysis and personalized insights</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <CheckCircle className="h-4 w-4 mt-0.5 text-primary shrink-0" />
-                      <span>
-                        Professional PDF report for schools/specialists
-                      </span>
+                      <CheckCircle className="h-5 w-5 mt-0.5 text-primary shrink-0" />
+                      <span>Detailed recommendations with expert citations</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <CheckCircle className="h-4 w-4 mt-0.5 text-primary shrink-0" />
-                      <span>Lifetime access to your enhanced report</span>
+                      <CheckCircle className="h-5 w-5 mt-0.5 text-primary shrink-0" />
+                      <span>Professional PDF report ready to share</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="h-5 w-5 mt-0.5 text-primary shrink-0" />
+                      <span>Saved to your dashboard for lifetime access</span>
                     </li>
                   </ul>
-                </div> */}
+                </div>
 
-                {/* Pricing & CTA */}
-                {/* <div className="flex flex-col gap-3 pt-2">
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground mb-1">
-                      One-time payment
-                    </p>
-                    <p className="text-3xl font-bold text-primary mb-2">$9</p>
-                    <p className="text-xs text-muted-foreground">
-                      No subscription • Instant access
-                    </p>
-                  </div>
+                {/* Pricing */}
+                <div className="bg-background rounded-lg border-2 border-primary/20 p-6 text-center">
+                  <p className="text-sm text-muted-foreground mb-2">
+                    One-time payment
+                  </p>
+                  <p className="text-4xl font-bold text-primary mb-2">$9</p>
+                  <p className="text-sm text-muted-foreground">
+                    Instant access • No subscription required
+                  </p>
+                </div>
 
-                  <Button asChild size="lg" className="w-full">
-                    <Link
-                      href={
-                        completedAssessmentId
-                          ? `/checkout-enhanced/${completedAssessmentId}`
-                          : "#"
-                      }
-                    >
-                      <Sparkles className="mr-2 h-4 w-4" />
-                      Unlock Enhanced Report – $9
-                    </Link>
+                {/* CTA Buttons */}
+                <div className="space-y-3">
+                  <Button
+                    size="lg"
+                    className="w-full text-base"
+                    onClick={handlePurchaseConversational}
+                    disabled={isPurchasing}
+                  >
+                    <Sparkles className="mr-2 h-5 w-5" />
+                    {isPurchasing ? "Processing..." : "Unlock Full Assessment - $9"}
                   </Button>
 
                   <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full"
-                    onClick={handleCloseUpsell}
-                  >
-                    No thanks, I'll view the basic report
-                  </Button> */}
-
-                {/* Show simple completion message instead */}
-                <div className="text-center space-y-4">
-                  <Button
+                    variant="outline"
                     size="lg"
                     className="w-full"
                     onClick={handleCloseUpsell}
+                    disabled={isPurchasing}
                   >
-                    View Assessment Results
+                    Maybe Later
                   </Button>
                 </div>
+
+                <p className="text-xs text-center text-muted-foreground">
+                  Secure checkout • All data encrypted and confidential
+                </p>
               </CardContent>
             </Card>
 

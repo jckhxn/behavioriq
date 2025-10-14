@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -61,26 +61,74 @@ export function QuestionPresenter({
     loadConfigs();
   }, []);
 
-  const handleAnswerClick = async (response: boolean) => {
-    if (isSubmitting) return;
+  const handleAnswerClick = useCallback(
+    async (response: boolean) => {
+      if (isSubmitting || selectedAnswer !== null || isLoading) return;
 
-    // Show selected button
-    setSelectedAnswer(response);
-    setIsSubmitting(true);
+      // Show selected button
+      setSelectedAnswer(response);
+      setIsSubmitting(true);
 
-    // Wait a brief moment to show the selection, then submit
-    setTimeout(async () => {
-      try {
-        await onAnswer(questionId, response);
-        // Don't reset selectedAnswer here - let it reset when the question changes
-      } catch (error) {
-        console.error("Error submitting answer:", error);
-        setSelectedAnswer(null); // Reset on error so user can try again
-      } finally {
-        setIsSubmitting(false);
+      // Wait a brief moment to show the selection, then submit
+      setTimeout(async () => {
+        try {
+          await onAnswer(questionId, response);
+          // Don't reset selectedAnswer here - let it reset when the question changes
+        } catch (error) {
+          console.error("Error submitting answer:", error);
+          setSelectedAnswer(null); // Reset on error so user can try again
+        } finally {
+          setIsSubmitting(false);
+        }
+      }, 300);
+    },
+    [isSubmitting, selectedAnswer, isLoading, onAnswer, questionId]
+  );
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      // Ignore if user is typing in an input field
+      if (
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement
+      ) {
+        return;
       }
-    }, 300);
-  };
+
+      const key = event.key.toLowerCase();
+
+      // Y key or Enter key = Yes (true)
+      if (key === "y" || key === "enter") {
+        event.preventDefault();
+        handleAnswerClick(true);
+      }
+      // N key = No (false)
+      else if (key === "n") {
+        event.preventDefault();
+        handleAnswerClick(false);
+      }
+      // Backspace or left arrow = Previous question
+      else if (
+        (key === "backspace" || key === "arrowleft") &&
+        canGoBack &&
+        onBack
+      ) {
+        event.preventDefault();
+        if (!isLoading && !isSubmitting) {
+          onBack();
+        }
+      }
+    };
+
+    // Add event listener
+    window.addEventListener("keydown", handleKeyPress);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener("keydown", handleKeyPress);
+    };
+  }, [handleAnswerClick, canGoBack, onBack, isLoading, isSubmitting]);
 
   // Find domain configuration from our assessment configs
   const domainConfig = assessmentConfigs.find(
@@ -164,6 +212,34 @@ export function QuestionPresenter({
               <XCircle className="mr-3 h-5 w-5" />
               No
             </Button>
+          </div>
+
+          {/* Keyboard Shortcuts Hint - Subtle */}
+          <div className="text-center text-xs text-muted-foreground/60 space-y-0.5">
+            <p>
+              Keyboard shortcuts:{" "}
+              <kbd className="px-1.5 py-0.5 text-[10px] bg-muted/50 rounded border border-border/50 font-mono">
+                Y
+              </kbd>{" "}
+              Yes •{" "}
+              <kbd className="px-1.5 py-0.5 text-[10px] bg-muted/50 rounded border border-border/50 font-mono">
+                N
+              </kbd>{" "}
+              No •{" "}
+              <kbd className="px-1.5 py-0.5 text-[10px] bg-muted/50 rounded border border-border/50 font-mono">
+                Enter
+              </kbd>{" "}
+              Yes
+              {canGoBack && (
+                <>
+                  {" • "}
+                  <kbd className="px-1.5 py-0.5 text-[10px] bg-muted/50 rounded border border-border/50 font-mono">
+                    ←
+                  </kbd>{" "}
+                  Back
+                </>
+              )}
+            </p>
           </div>
 
           {/* Back Button */}

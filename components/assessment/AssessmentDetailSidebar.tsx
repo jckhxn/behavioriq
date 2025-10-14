@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useUser } from "@/lib/hooks/use-supabase-user";
 import { AssessmentChat } from "@/components/chat/AssessmentChat";
+import { ConversationalAssessment } from "@/components/assessment/ConversationalAssessment";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +23,7 @@ interface Assessment {
   status: "IN_PROGRESS" | "COMPLETED";
   startedAt: string;
   completedAt?: string;
+  isConversational?: boolean;
   scores?: Array<{
     domain: string;
     rawScore: number;
@@ -249,7 +251,48 @@ export function AssessmentDetailSidebar({
 
         {/* Chat Interface */}
         <div className="flex-1 overflow-hidden">
-          <AssessmentChat assessmentId={assessmentId} />
+          {assessment.isConversational ? (
+            assessment.status === "COMPLETED" ? (
+              // Completed conversational - show link to full results
+              <div className="flex items-center justify-center h-full p-6">
+                <Card className="w-full max-w-md">
+                  <CardContent className="pt-6 text-center space-y-4">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                      <ExternalLink className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold mb-2">
+                        Conversational Assessment Complete
+                      </h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        View the full results with domain scores and recommendations.
+                      </p>
+                      <Link href={`/assessment/${assessmentId}/results`}>
+                        <Button className="w-full">
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          View Full Results
+                        </Button>
+                      </Link>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            ) : (
+              // In-progress conversational - show chat interface
+              <div className="h-full">
+                <ConversationalAssessment
+                  onComplete={() => {
+                    // Refresh assessment data to show completed state
+                    window.location.reload();
+                  }}
+                  isTrial={false}
+                  assessmentId={assessmentId}
+                />
+              </div>
+            )
+          ) : (
+            <AssessmentChat assessmentId={assessmentId} />
+          )}
         </div>
       </div>
     </div>

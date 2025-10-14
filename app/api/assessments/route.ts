@@ -30,17 +30,22 @@ export async function POST(request: NextRequest) {
 
     const { subjectName, assessmentTemplateId } = validation.data;
 
-    // Check if user has available assessment credits
-    const credits = await assessmentCreditsService.checkUserCredits(user.id);
+    // Check concurrent IN_PROGRESS assessments to prevent abuse
+    const inProgressCount = await prisma.assessment.count({
+      where: {
+        userId: user.id,
+        status: "IN_PROGRESS",
+      },
+    });
 
-    if (!credits.hasCredits) {
+    const MAX_CONCURRENT = 5;
+    if (inProgressCount >= MAX_CONCURRENT) {
       return NextResponse.json(
         {
-          error: "NO_CREDITS",
-          message: "No assessment credits available",
-          credits: credits,
+          error: "TOO_MANY_IN_PROGRESS",
+          message: `You have ${inProgressCount} assessments in progress. Please complete or delete some before starting a new one.`,
         },
-        { status: 403 }
+        { status: 400 }
       );
     }
 
@@ -62,15 +67,14 @@ export async function POST(request: NextRequest) {
       templateId = activeTemplate.id;
     }
 
-    // Create new assessment
+    // Create new assessment (NO CREDIT CHARGE - charge on completion instead)
     const assessment = await AssessmentAI.createNewAssessment(
       user.id,
       subjectName,
       templateId
     );
 
-    // Use one credit (decrement available credits)
-    await assessmentCreditsService.useCredit(user.id);
+    console.log(`[Assessment] ✨ Created assessment ${assessment.id} - credit will be charged on completion`);
 
     return NextResponse.json({
       id: assessment.shortId, // Return shortId as the primary ID

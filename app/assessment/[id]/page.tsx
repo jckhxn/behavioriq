@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useUser } from "@/lib/hooks/use-supabase-user";
 import { AssessmentChat } from "@/components/chat/AssessmentChat";
+import { AssessmentCompletion } from "@/components/assessment/AssessmentCompletion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2 } from "lucide-react";
@@ -15,6 +16,7 @@ interface Assessment {
   status: "IN_PROGRESS" | "COMPLETED";
   startedAt: string;
   completedAt?: string;
+  isConversational?: boolean;
 }
 
 export default function AssessmentPage() {
@@ -107,6 +109,46 @@ export default function AssessmentPage() {
     return null;
   }
 
+  // For completed conversational assessments, show AssessmentCompletion directly
+  if (assessment.isConversational && assessment.status === "COMPLETED") {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 dark:from-background dark:via-background dark:to-muted/20">
+        <div className="container mx-auto px-4 py-8 max-w-6xl">
+          {/* Header */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <Link href="/">
+                <Button variant="ghost" size="sm">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Dashboard
+                </Button>
+              </Link>
+            </div>
+
+            <div className="text-center">
+              <h1 className="text-3xl font-bold mb-2">
+                Conversational Assessment Results
+              </h1>
+              <p className="text-muted-foreground">
+                {assessment.subjectName}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Completed on {new Date(assessment.completedAt || assessment.startedAt).toLocaleDateString()}
+              </p>
+            </div>
+          </div>
+
+          {/* Results */}
+          <AssessmentCompletion
+            assessmentId={assessmentId}
+            subjectName={assessment.subjectName}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // For regular assessments or in-progress conversational assessments
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 dark:from-background dark:via-background dark:to-muted/20">
       <div className="container mx-auto px-4 py-8 max-w-4xl">

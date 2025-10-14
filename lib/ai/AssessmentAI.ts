@@ -183,13 +183,27 @@ export class AssessmentAI {
         }
 
         // Update assessment status to COMPLETED
-        await prisma.assessment.update({
+        const assessment = await prisma.assessment.update({
           where: { id: this.assessmentId },
           data: {
             status: "COMPLETED",
             completedAt: new Date(),
           },
+          select: { userId: true, isConversational: true },
         });
+
+        // ✅ CHARGE CREDIT ON COMPLETION (not on start)
+        // Only charge for regular assessments (conversational handled separately)
+        if (assessment.userId && !assessment.isConversational) {
+          const { assessmentCreditsService } = await import("@/lib/services/assessment-credits-service");
+          try {
+            await assessmentCreditsService.useCredit(assessment.userId);
+            console.log(`[Assessment] ✅ Charged 1 credit for completed assessment ${this.assessmentId}`);
+          } catch (error) {
+            console.error(`[Assessment] ⚠️ Failed to charge credit for assessment ${this.assessmentId}:`, error);
+            // Don't fail the completion if credit charge fails
+          }
+        }
       }
 
       // Save response to database

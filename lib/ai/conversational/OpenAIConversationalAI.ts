@@ -3,9 +3,10 @@ import {
   ConversationalMessage,
   ConversationalSession,
   Question,
+  TokenUsage,
 } from "./types";
 import { openai } from "@ai-sdk/openai";
-import { generateText } from "ai";
+import { generateText, streamText } from "ai";
 import { SYSTEM_PROMPTS } from "@/lib/config/ai-config";
 
 /**
@@ -16,17 +17,27 @@ export class OpenAIConversationalAI implements ConversationalAIProvider {
   private async callOpenAI(
     messages: Array<{ role: string; content: string }>,
     temperature: number = 0.7
-  ): Promise<string> {
+  ): Promise<{ text: string; usage: TokenUsage }> {
     try {
-      const { text } = await generateText({
+      const { text, usage } = await generateText({
         model: openai("gpt-4o-mini"),
         messages: messages as any,
         temperature,
       });
 
-      return (
-        text || "I'm having trouble responding right now. Could you try again?"
-      );
+      // Map Vercel AI SDK v5 property names to our TokenUsage interface
+      // SDK uses: inputTokens, outputTokens, totalTokens
+      // We use: promptTokens, completionTokens, totalTokens
+      const tokenUsage: TokenUsage = {
+        promptTokens: (usage as any).inputTokens || 0,
+        completionTokens: (usage as any).outputTokens || 0,
+        totalTokens: (usage as any).totalTokens || 0,
+      };
+
+      return {
+        text: text || "I'm having trouble responding right now. Could you try again?",
+        usage: tokenUsage,
+      };
     } catch (error) {
       console.error("OpenAI API error:", error);
       throw new Error("Failed to generate response");
@@ -45,11 +56,33 @@ export class OpenAIConversationalAI implements ConversationalAIProvider {
       nextQuestion: Question | null;
     }
   ): Promise<ConversationalMessage> {
-    // Build conversation context
-    const conversationHistory = session.messages.map((msg) => ({
-      role: msg.role === "ai" ? "assistant" : "user",
-      content: msg.content,
-    }));
+    // 🔍 DEBUG: Log the exact question we should be asking
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🎯 [AI DEBUG] ASSESSMENT QUESTION');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+    if (context?.shouldProgress && context?.nextQuestion) {
+      console.log('📝 ACTUAL ASSESSMENT QUESTION (from template):');
+      console.log(`   "${context.nextQuestion.text}"`);
+      console.log(`   Domain: ${(context.nextQuestion as any).domainSlug}`);
+      console.log(`   Question ID: ${context.nextQuestion.id}`);
+    } else {
+      console.log('📝 ACTUAL ASSESSMENT QUESTION (from template):');
+      console.log(`   "${currentQuestion.text}"`);
+      console.log(`   Domain: ${(currentQuestion as any).domainSlug}`);
+      console.log(`   Question ID: ${currentQuestion.id}`);
+    }
+
+    console.log('\n📊 Context:', {
+      action: context?.shouldProgress ? 'Moving to next question' : context?.clarificationNeeded ? 'Asking for clarification' : 'Asking current question',
+      extractedAnswer: context?.extractedAnswer,
+      confidence: context?.confidence,
+    });
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+    // ⚡ OPTIMIZATION: No conversation history needed
+    // Each question is independent and we provide all context in the system messages
+    // The current userMessage is added separately below
 
     // Add system prompt for conversational assessment
     const systemMessage = {
@@ -61,39 +94,61 @@ export class OpenAIConversationalAI implements ConversationalAIProvider {
 
     // ✅ STRUCTURED CONTEXT (like regular assessment handleStructuredAnswer)
     if (context?.clarificationNeeded) {
-      questionContext = `The user's response was unclear or ambiguous (confidence: ${context.confidence}).
-GENTLY ask them to clarify with a yes or no about: "${currentQuestion.text}"
+      questionContext = `The user's response was unclear (confidence: ${context.confidence}).
 
-Keep it friendly and brief. Example: "I want to make sure I understand - would you say that's mostly a yes or a no? 😊"`;
+ASK FOR YES/NO CLARIFICATION about this assessment question:
+ORIGINAL QUESTION: "${currentQuestion.text}"
+
+Rephrase at THIRD-GRADE LEVEL. Use simple words. Keep it about the same topic.
+Format: [Short acknowledgment]. [Simple yes/no question]
+
+Example: "I hear you. 😊 So is that a yes or a no?"`;
     } else if (context?.shouldProgress && context?.nextQuestion) {
-      questionContext = `The user answered the previous question with ${context.extractedAnswer ? "YES" : "NO"}.
-BRIEFLY acknowledge (1 short sentence max), then immediately ask the next question:
+      questionContext = `The user answered: ${context.extractedAnswer ? "YES" : "NO"}.
 
-"${context.nextQuestion.text}"
+NOW ASK THE NEXT ASSESSMENT QUESTION:
+ORIGINAL QUESTION: "${context.nextQuestion.text}"
+DOMAIN: ${(context.nextQuestion as any).domainSlug}
 
-Example format: "Got it, thanks! 👍 [Next question naturally phrased]"`;
+Rephrase at THIRD-GRADE LEVEL: simple words, short sentences (under 12 words).
+Keep the same meaning but make it easy for an 8-10 year old to understand.
+
+Format: [Short acknowledgment]. [Simple question]
+
+Example: "Thanks! 💙 [Ask about this topic using simple words]"
+
+IMPORTANT: Stay on THIS topic. Use small words. Keep it short.`;
     } else if (context?.shouldProgress && !context?.nextQuestion) {
-      questionContext = `The user just answered the final question!
-Thank them warmly and let them know their results are being prepared.
+      questionContext = `The user just answered the FINAL question!
+Thank them warmly for completing all questions. Use simple, positive words.
 
-Example: "Perfect! 🎉 Thanks for answering all my questions. Let me prepare your results!"`;
+Example: "You did it! 🎉 Thanks for talking with me. Let me get your results ready!"`;
     } else if (!userMessage || session.messages.length === 0) {
       // Initial greeting
-      questionContext = `This is the first interaction. 
-Start with a warm greeting and ask the first question naturally:
+      questionContext = `This is the FIRST interaction.
 
-"${currentQuestion.text}"
+ASK THIS ASSESSMENT QUESTION:
+ORIGINAL QUESTION: "${currentQuestion.text}"
+DOMAIN: ${(currentQuestion as any).domainSlug}
 
-Example: "Hi there! 😊 Let's chat about some feelings and behaviors. ${currentQuestion.text}"`;
+Rephrase at THIRD-GRADE LEVEL: simple words a 3rd grader knows.
+Keep it friendly and short. Max 10-12 words per sentence.
+
+Format: [Short, warm greeting]. [Simple question]
+
+Example: "Hi! 😊 I'm going to ask you some questions. [Ask about this topic using simple words]"`;
     } else {
       // Fallback - just ask the current question
-      questionContext = `Ask this question naturally: "${currentQuestion.text}"`;
+      questionContext = `ASK THIS ASSESSMENT QUESTION:
+ORIGINAL QUESTION: "${currentQuestion.text}"
+DOMAIN: ${(currentQuestion as any).domainSlug}
+
+Rephrase at THIRD-GRADE LEVEL. Use simple words. Keep it about the same topic.`;
     }
 
     const messages = [
       systemMessage,
       { role: "system", content: questionContext },
-      ...conversationHistory,
     ];
 
     // Add user message if present
@@ -106,7 +161,15 @@ Example: "Hi there! 😊 Let's chat about some feelings and behaviors. ${current
 
     try {
       // Generate AI response
-      const aiContent = await this.callOpenAI(messages, 0.7);
+      const { text: aiContent, usage } = await this.callOpenAI(messages, 0.7);
+
+      // 🔍 DEBUG: Log what the AI actually generated
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('💬 [AI DEBUG] AI GENERATED RESPONSE (what child sees):');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log(`   "${aiContent}"`);
+      console.log('\n📊 Token Usage:', usage);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
       return {
         id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -117,6 +180,7 @@ Example: "Hi there! 😊 Let's chat about some feelings and behaviors. ${current
           questionId: currentQuestion.id,
           domainSlug: (currentQuestion as any).domainSlug || "unknown",
           confidence: context?.confidence || 0.85,
+          tokenUsage: usage,
         },
       };
     } catch (error) {
@@ -132,42 +196,169 @@ Example: "Hi there! 😊 Let's chat about some feelings and behaviors. ${current
     }
   }
 
+  /**
+   * Generate a streaming response for conversational assessment
+   * Returns a streamText result that can be converted to a streaming response
+   */
+  async generateStreamingResponse(
+    session: ConversationalSession,
+    userMessage: string,
+    currentQuestion: Question,
+    context?: {
+      shouldProgress: boolean;
+      clarificationNeeded: boolean;
+      extractedAnswer: boolean | null;
+      confidence: number;
+      nextQuestion: Question | null;
+    }
+  ) {
+    // 🔍 DEBUG: Log the exact question we should be asking
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🎯 [AI DEBUG] ASSESSMENT QUESTION (STREAMING)');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+    if (context?.shouldProgress && context?.nextQuestion) {
+      console.log('📝 ACTUAL ASSESSMENT QUESTION (from template):');
+      console.log(`   "${context.nextQuestion.text}"`);
+      console.log(`   Domain: ${(context.nextQuestion as any).domainSlug}`);
+      console.log(`   Question ID: ${context.nextQuestion.id}`);
+    } else {
+      console.log('📝 ACTUAL ASSESSMENT QUESTION (from template):');
+      console.log(`   "${currentQuestion.text}"`);
+      console.log(`   Domain: ${(currentQuestion as any).domainSlug}`);
+      console.log(`   Question ID: ${currentQuestion.id}`);
+    }
+
+    console.log('\n📊 Context:', {
+      action: context?.shouldProgress ? 'Moving to next question' : context?.clarificationNeeded ? 'Asking for clarification' : 'Asking current question',
+      extractedAnswer: context?.extractedAnswer,
+      confidence: context?.confidence,
+    });
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+    // Add system prompt for conversational assessment
+    const systemMessage = {
+      role: "system",
+      content: SYSTEM_PROMPTS.CONVERSATIONAL_PROMPT,
+    };
+
+    let questionContext = "";
+
+    // ✅ STRUCTURED CONTEXT (like regular assessment handleStructuredAnswer)
+    if (context?.clarificationNeeded) {
+      questionContext = `The user's response was unclear (confidence: ${context.confidence}).
+
+ASK FOR YES/NO CLARIFICATION about this assessment question:
+ORIGINAL QUESTION: "${currentQuestion.text}"
+
+Rephrase at THIRD-GRADE LEVEL. Use simple words. Keep it about the same topic.
+Format: [Short acknowledgment]. [Simple yes/no question]
+
+Example: "I hear you. 😊 So is that a yes or a no?"`;
+    } else if (context?.shouldProgress && context?.nextQuestion) {
+      questionContext = `The user answered: ${context.extractedAnswer ? "YES" : "NO"}.
+
+NOW ASK THE NEXT ASSESSMENT QUESTION:
+ORIGINAL QUESTION: "${context.nextQuestion.text}"
+DOMAIN: ${(context.nextQuestion as any).domainSlug}
+
+Rephrase at THIRD-GRADE LEVEL: simple words, short sentences (under 12 words).
+Keep the same meaning but make it easy for an 8-10 year old to understand.
+
+Format: [Short acknowledgment]. [Simple question]
+
+Example: "Thanks! 💙 [Ask about this topic using simple words]"
+
+IMPORTANT: Stay on THIS topic. Use small words. Keep it short.`;
+    } else if (context?.shouldProgress && !context?.nextQuestion) {
+      questionContext = `The user just answered the FINAL question!
+Thank them warmly for completing all questions. Use simple, positive words.
+
+Example: "You did it! 🎉 Thanks for talking with me. Let me get your results ready!"`;
+    } else if (!userMessage || session.messages.length === 0) {
+      // Initial greeting
+      questionContext = `This is the FIRST interaction.
+
+ASK THIS ASSESSMENT QUESTION:
+ORIGINAL QUESTION: "${currentQuestion.text}"
+DOMAIN: ${(currentQuestion as any).domainSlug}
+
+Rephrase at THIRD-GRADE LEVEL: simple words a 3rd grader knows.
+Keep it friendly and short. Max 10-12 words per sentence.
+
+Format: [Short, warm greeting]. [Simple question]
+
+Example: "Hi! 😊 I'm going to ask you some questions. [Ask about this topic using simple words]"`;
+    } else {
+      // Fallback - just ask the current question
+      questionContext = `ASK THIS ASSESSMENT QUESTION:
+ORIGINAL QUESTION: "${currentQuestion.text}"
+DOMAIN: ${(currentQuestion as any).domainSlug}
+
+Rephrase at THIRD-GRADE LEVEL. Use simple words. Keep it about the same topic.`;
+    }
+
+    const messages = [
+      systemMessage,
+      { role: "system", content: questionContext },
+    ];
+
+    // Add user message if present
+    if (userMessage && userMessage.trim()) {
+      messages.push({
+        role: "user",
+        content: userMessage,
+      });
+    }
+
+    // Return the streamText result directly
+    return streamText({
+      model: openai("gpt-4o-mini"),
+      messages: messages as any,
+      temperature: 0.7,
+    });
+  }
+
   async extractAnswer(
     userMessage: string,
     question: Question
-  ): Promise<{ answer: boolean | null; confidence: number }> {
+  ): Promise<{ answer: boolean | null; confidence: number; tokenUsage?: TokenUsage }> {
     // Use OpenAI to analyze the user's response and extract yes/no with confidence
-    const analysisPrompt = `Given this question: "${question.text}"
+    const analysisPrompt = `Analyze this response to extract YES or NO.
 
-And this user response: "${userMessage}"
+Question: "${question.text}"
+User Response: "${userMessage}"
 
-Analyze if the user's response indicates a YES (true) or NO (false) answer, and rate your confidence.
+AFFIRMATIVE (YES) responses include:
+- "yes", "yeah", "yep", "yup", "uh-huh", "sure", "okay", "ok", "definitely", "always", "all the time"
+- "I do", "I am", "I have", "I get", "I feel", "that's me"
+- "sometimes", "kind of", "sort of", "a little", "often" = YES (behavior present even if not constant)
 
-Context:
-- YES/TRUE means: the behavior happens often, is present, is a concern, agrees with statement
-- NO/FALSE means: the behavior rarely/never happens, is not present, disagrees with statement
+NEGATIVE (NO) responses include:
+- "no", "nope", "nah", "no way", "not really", "never", "rarely", "hardly ever"
+- "I don't", "I'm not", "I haven't", "not at all"
 
-Respond in this EXACT format:
+UNCLEAR responses:
+- "maybe", "I don't know", "I'm not sure", "unclear", "what do you mean?"
+- Completely off-topic or nonsensical responses
+
+Confidence levels:
+- 0.9-1.0: Crystal clear (explicit yes/no)
+- 0.7-0.9: Very clear (common affirmative/negative phrases)
+- 0.5-0.7: Moderately clear (implied yes/no)
+- 0.3-0.5: Unclear (ambiguous, vague)
+- 0.0-0.3: Very unclear (confused, off-topic)
+
+Output format:
 ANSWER: [YES/NO/UNCLEAR]
-CONFIDENCE: [0.0-1.0]
-
-Where confidence is:
-- 0.9-1.0: Very clear answer (e.g., "yes", "no", "definitely", "never")
-- 0.6-0.8: Moderately clear (e.g., "sometimes", "I think so", "not really")
-- 0.3-0.5: Somewhat unclear (e.g., "maybe", "I don't know")
-- 0.0-0.2: Very unclear or off-topic
-
-Example:
-ANSWER: YES
-CONFIDENCE: 0.95`;
+CONFIDENCE: [0.0-1.0]`;
 
     try {
-      const response = await this.callOpenAI(
+      const { text: response, usage } = await this.callOpenAI(
         [
           {
             role: "system",
-            content:
-              "You are an expert at analyzing conversational responses to behavioral assessment questions. Be precise and provide confidence scores.",
+            content: "Analyze child responses to behavioral questions. Extract YES/NO with confidence.",
           },
           {
             role: "user",
@@ -176,6 +367,11 @@ CONFIDENCE: 0.95`;
         ],
         0.1 // Low temperature for consistent analysis
       );
+
+      // 🔍 DEBUG: Log the raw extraction response
+      console.log('🔍 [EXTRACTION DEBUG] Raw AI Response:');
+      console.log(response);
+      console.log('');
 
       // Parse the structured response
       const lines = response.trim().split("\n");
@@ -198,7 +394,11 @@ CONFIDENCE: 0.95`;
         }
       }
 
-      return { answer, confidence };
+      // 🔍 DEBUG: Log parsed result
+      console.log('🔍 [EXTRACTION DEBUG] Parsed Result:', { answer, confidence });
+      console.log('');
+
+      return { answer, confidence, tokenUsage: usage };
     } catch (error) {
       console.error("Error extracting answer:", error);
       return { answer: null, confidence: 0 };
@@ -237,7 +437,7 @@ Use the exact domain names provided above.
 Follow the CONVERSATIONAL_ANALYSIS guidelines to create an encouraging, easy-to-understand explanation.`;
 
     try {
-      const response = await this.callOpenAI(
+      const { text: response } = await this.callOpenAI(
         [
           {
             role: "system",

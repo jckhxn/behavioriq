@@ -1,0 +1,74 @@
+[
+  {
+    "id": "math",
+    "subject": "Mathematics",
+    "category": "STEM",
+    "categoryId": "stem",
+    "subjectId": "math",
+    "description": "Mathematical concepts, problem-solving, and analytical thinking",
+    "slug": "mathematics"
+  },
+  {
+    "id": "science",
+    "subject": "Science",
+    "category": "STEM", 
+    "categoryId": "stem",
+    "subjectId": "science",
+    "description": "Scientific method, experimentation, and natural phenomena understanding",
+    "slug": "science"
+  },
+  {
+    "id": "english",
+    "subject": "English Language Arts",
+    "category": "Language Arts",
+    "categoryId": "language-arts",
+    "subjectId": "english",
+    "description": "Reading comprehension, writing skills, and language proficiency",
+    "slug": "english-language-arts"
+  },
+  {
+    "id": "social-studies",
+    "subject": "Social Studies",
+    "category": "Humanities",
+    "categoryId": "humanities",
+    "subjectId": "social-studies",
+    "description": "History, geography, civics, and social understanding",
+    "slug": "social-studies"
+  },
+  {
+    "id": "technology",
+    "subject": "Technology",
+    "category": "STEM",
+    "categoryId": "stem",
+    "subjectId": "technology",
+    "description": "Digital literacy, computer skills, and technology integration",
+    "slug": "technology"
+  },
+  {
+    "id": "art",
+    "subject": "Visual Arts",
+    "category": "Arts",
+    "categoryId": "arts",
+    "subjectId": "art",
+    "description": "Creative expression, visual design, and artistic techniques",
+    "slug": "visual-arts"
+  },
+  {
+    "id": "music",
+    "subject": "Music",
+    "category": "Arts",
+    "categoryId": "arts",
+    "subjectId": "music",
+    "description": "Musical theory, performance, and appreciation",
+    "slug": "music"
+  },
+  {
+    "id": "physical-education",
+    "subject": "Physical Education",
+    "category": "Health & Wellness",
+    "categoryId": "health-wellness",
+    "subjectId": "physical-education",
+    "description": "Physical fitness, sports, and healthy lifestyle habits",
+    "slug": "physical-education"
+  }
+]

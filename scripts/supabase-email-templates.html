@@ -1,0 +1,371 @@
+<!--
+  Supabase Email Templates for AI Diagnostic
+
+  Copy and paste these templates into your Supabase Dashboard:
+  Authentication → Email Templates → [Select template type]
+
+  Available Variables:
+  - {{ .ConfirmationURL }} - Action link (magic link, reset link, etc.)
+  - {{ .Token }} - Verification token
+  - {{ .SiteURL }} - Your site URL
+  - {{ .Email }} - Recipient's email address
+-->
+
+<!-- ============================================ -->
+<!-- 1. MAGIC LINK TEMPLATE -->
+<!-- ============================================ -->
+<!-- Use this for: Authentication → Email Templates → Magic Link -->
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f8fafc; }
+      .container { max-width: 600px; margin: 0 auto; background: white; }
+      .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; }
+      .header h1 { margin: 0; font-size: 28px; font-weight: 700; }
+      .content { padding: 40px 30px; background: #ffffff; }
+      .content h2 { color: #333; font-size: 20px; margin-top: 0; }
+      .button { display: inline-block; padding: 14px 28px; background: #667eea; color: white; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: 600; }
+      .security-notice { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px; }
+      .footer { text-align: center; padding: 20px; font-size: 12px; color: #6b7280; background: #f8fafc; }
+      .code { background: #f3f4f6; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 16px; letter-spacing: 2px; text-align: center; margin: 20px 0; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🔐 Sign in to AI Diagnostic</h1>
+      </div>
+      <div class="content">
+        <h2>Your Magic Link is Ready!</h2>
+        <p>Click the button below to securely sign in to your AI Diagnostic account:</p>
+
+        <p style="text-align: center;">
+          <a href="{{ .ConfirmationURL }}" class="button">Sign In to AI Diagnostic</a>
+        </p>
+
+        <p style="color: #666; font-size: 14px;">Or copy and paste this link into your browser:</p>
+        <div class="code">{{ .ConfirmationURL }}</div>
+
+        <div class="security-notice">
+          <strong>⚠️ Security Notice:</strong>
+          <ul style="margin: 10px 0 0 0; padding-left: 20px;">
+            <li>This link will expire in 1 hour</li>
+            <li>It can only be used once</li>
+            <li>Only click if you requested this sign-in</li>
+          </ul>
+        </div>
+
+        <p style="margin-top: 30px; color: #666; font-size: 14px;">
+          <strong>Didn't request this?</strong><br>
+          If you didn't try to sign in, you can safely ignore this email. Your account remains secure.
+        </p>
+      </div>
+      <div class="footer">
+        <p>© 2025 AI Diagnostic. All rights reserved.</p>
+        <p style="margin-top: 10px;">This is an automated message, please do not reply to this email.</p>
+      </div>
+    </div>
+  </body>
+</html>
+
+
+<!-- ============================================ -->
+<!-- 2. PASSWORD RESET TEMPLATE -->
+<!-- ============================================ -->
+<!-- Use this for: Authentication → Email Templates → Reset Password -->
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f8fafc; }
+      .container { max-width: 600px; margin: 0 auto; background: white; }
+      .header { background: #ef4444; color: white; padding: 40px 30px; text-align: center; }
+      .header h1 { margin: 0; font-size: 28px; font-weight: 700; }
+      .content { padding: 40px 30px; background: #ffffff; }
+      .content h2 { color: #333; font-size: 20px; margin-top: 0; }
+      .button { display: inline-block; padding: 14px 28px; background: #ef4444; color: white; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: 600; }
+      .security-notice { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px; }
+      .footer { text-align: center; padding: 20px; font-size: 12px; color: #6b7280; background: #f8fafc; }
+      .code { background: #f3f4f6; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 14px; word-break: break-all; margin: 20px 0; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🔒 Password Reset Request</h1>
+      </div>
+      <div class="content">
+        <h2>Reset Your Password</h2>
+        <p>We received a request to reset the password for your AI Diagnostic account.</p>
+
+        <p>Click the button below to create a new password:</p>
+
+        <p style="text-align: center;">
+          <a href="{{ .ConfirmationURL }}" class="button">Reset Password</a>
+        </p>
+
+        <p style="color: #666; font-size: 14px;">Or copy and paste this link into your browser:</p>
+        <div class="code">{{ .ConfirmationURL }}</div>
+
+        <div class="security-notice">
+          <strong>⚠️ Important:</strong>
+          <ul style="margin: 10px 0 0 0; padding-left: 20px;">
+            <li>This link will expire in 1 hour</li>
+            <li>After resetting, you'll need to sign in with your new password</li>
+            <li>Your old password will no longer work</li>
+          </ul>
+        </div>
+
+        <p style="margin-top: 30px; color: #666; font-size: 14px;">
+          <strong>Didn't request this?</strong><br>
+          If you didn't request a password reset, please ignore this email. Your password will remain unchanged and your account is secure.
+        </p>
+
+        <p style="color: #666; font-size: 14px;">
+          <strong>Security Tip:</strong> Never share your password or reset links with anyone. AI Diagnostic will never ask for your password via email.
+        </p>
+      </div>
+      <div class="footer">
+        <p>© 2025 AI Diagnostic. All rights reserved.</p>
+        <p style="margin-top: 10px;">This is an automated message, please do not reply to this email.</p>
+      </div>
+    </div>
+  </body>
+</html>
+
+
+<!-- ============================================ -->
+<!-- 3. CONFIRM SIGNUP / EMAIL VERIFICATION -->
+<!-- ============================================ -->
+<!-- Use this for: Authentication → Email Templates → Confirm signup -->
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f8fafc; }
+      .container { max-width: 600px; margin: 0 auto; background: white; }
+      .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; }
+      .header h1 { margin: 0; font-size: 28px; font-weight: 700; }
+      .content { padding: 40px 30px; background: #ffffff; }
+      .content h2 { color: #333; font-size: 20px; margin-top: 0; }
+      .button { display: inline-block; padding: 14px 28px; background: #667eea; color: white; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: 600; }
+      .feature { background: #f8fafc; padding: 20px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #667eea; }
+      .footer { text-align: center; padding: 20px; font-size: 12px; color: #6b7280; background: #f8fafc; }
+      .code { background: #f3f4f6; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 14px; word-break: break-all; margin: 20px 0; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🎉 Welcome to AI Diagnostic!</h1>
+      </div>
+      <div class="content">
+        <h2>Verify Your Email Address</h2>
+        <p>Thanks for signing up! We're excited to have you on board.</p>
+
+        <p>Please confirm your email address by clicking the button below:</p>
+
+        <p style="text-align: center;">
+          <a href="{{ .ConfirmationURL }}" class="button">Verify Email Address</a>
+        </p>
+
+        <p style="color: #666; font-size: 14px;">Or copy and paste this link into your browser:</p>
+        <div class="code">{{ .ConfirmationURL }}</div>
+
+        <h3>What's Next?</h3>
+
+        <div class="feature">
+          <strong>📋 Create Assessments</strong><br>
+          <span style="color: #555;">Conduct comprehensive behavioral assessments with our intuitive question flow.</span>
+        </div>
+
+        <div class="feature">
+          <strong>🤖 AI-Powered Analysis</strong><br>
+          <span style="color: #555;">Get personalized, AI-generated recommendations based on assessment results.</span>
+        </div>
+
+        <div class="feature">
+          <strong>📊 Professional Reports</strong><br>
+          <span style="color: #555;">Download beautifully designed PDF reports with visual score representations.</span>
+        </div>
+
+        <p style="margin-top: 30px; color: #666; font-size: 14px;">
+          If you need any assistance getting started, our support team is here to help!
+        </p>
+      </div>
+      <div class="footer">
+        <p>© 2025 AI Diagnostic. All rights reserved.</p>
+        <p style="margin-top: 10px;">This is an automated message, please do not reply to this email.</p>
+      </div>
+    </div>
+  </body>
+</html>
+
+
+<!-- ============================================ -->
+<!-- 4. CHANGE EMAIL ADDRESS CONFIRMATION -->
+<!-- ============================================ -->
+<!-- Use this for: Authentication → Email Templates → Change Email Address -->
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f8fafc; }
+      .container { max-width: 600px; margin: 0 auto; background: white; }
+      .header { background: #f59e0b; color: white; padding: 40px 30px; text-align: center; }
+      .header h1 { margin: 0; font-size: 28px; font-weight: 700; }
+      .content { padding: 40px 30px; background: #ffffff; }
+      .content h2 { color: #333; font-size: 20px; margin-top: 0; }
+      .button { display: inline-block; padding: 14px 28px; background: #f59e0b; color: white; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: 600; }
+      .security-notice { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px; }
+      .footer { text-align: center; padding: 20px; font-size: 12px; color: #6b7280; background: #f8fafc; }
+      .code { background: #f3f4f6; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 14px; word-break: break-all; margin: 20px 0; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>📧 Email Change Request</h1>
+      </div>
+      <div class="content">
+        <h2>Confirm Your New Email Address</h2>
+        <p>We received a request to change the email address for your AI Diagnostic account.</p>
+
+        <p>Click the button below to confirm this change:</p>
+
+        <p style="text-align: center;">
+          <a href="{{ .ConfirmationURL }}" class="button">Confirm Email Change</a>
+        </p>
+
+        <p style="color: #666; font-size: 14px;">Or copy and paste this link into your browser:</p>
+        <div class="code">{{ .ConfirmationURL }}</div>
+
+        <div class="security-notice">
+          <strong>⚠️ What Happens Next:</strong>
+          <ul style="margin: 10px 0 0 0; padding-left: 20px;">
+            <li>This link will expire in 1 hour</li>
+            <li>Your login email will be updated to this address</li>
+            <li>You'll need to use the new email to sign in</li>
+          </ul>
+        </div>
+
+        <p style="margin-top: 30px; color: #666; font-size: 14px;">
+          <strong>Didn't request this?</strong><br>
+          If you didn't request an email change, please ignore this email. Your account email will remain unchanged.
+          <strong>If you're concerned about account security, please contact support immediately.</strong>
+        </p>
+      </div>
+      <div class="footer">
+        <p>© 2025 AI Diagnostic. All rights reserved.</p>
+        <p style="margin-top: 10px;">This is an automated message, please do not reply to this email.</p>
+      </div>
+    </div>
+  </body>
+</html>
+
+
+<!-- ============================================ -->
+<!-- 5. INVITE USER TEMPLATE -->
+<!-- ============================================ -->
+<!-- Use this for: Authentication → Email Templates → Invite user -->
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f8fafc; }
+      .container { max-width: 600px; margin: 0 auto; background: white; }
+      .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 40px 30px; text-align: center; }
+      .header h1 { margin: 0; font-size: 28px; font-weight: 700; }
+      .content { padding: 40px 30px; background: #ffffff; }
+      .content h2 { color: #333; font-size: 20px; margin-top: 0; }
+      .button { display: inline-block; padding: 14px 28px; background: #10b981; color: white; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: 600; }
+      .feature { background: #f8fafc; padding: 20px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #10b981; }
+      .footer { text-align: center; padding: 20px; font-size: 12px; color: #6b7280; background: #f8fafc; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🎉 You're Invited to AI Diagnostic!</h1>
+      </div>
+      <div class="content">
+        <h2>Join Your Team on AI Diagnostic</h2>
+        <p>You've been invited to join AI Diagnostic, the comprehensive behavioral assessment platform.</p>
+
+        <p style="text-align: center;">
+          <a href="{{ .ConfirmationURL }}" class="button">Accept Invitation</a>
+        </p>
+
+        <h3>What You'll Get:</h3>
+
+        <div class="feature">
+          <strong>📋 Comprehensive Assessments</strong><br>
+          <span style="color: #555;">Conduct detailed behavioral assessments with ease.</span>
+        </div>
+
+        <div class="feature">
+          <strong>🤖 AI-Powered Insights</strong><br>
+          <span style="color: #555;">Get personalized recommendations powered by advanced AI.</span>
+        </div>
+
+        <div class="feature">
+          <strong>📊 Professional Reports</strong><br>
+          <span style="color: #555;">Generate beautiful PDF reports with visual analytics.</span>
+        </div>
+
+        <p style="margin-top: 30px; color: #666; font-size: 14px;">
+          This invitation link will expire in 24 hours. If you have any questions, feel free to reach out to our support team.
+        </p>
+      </div>
+      <div class="footer">
+        <p>© 2025 AI Diagnostic. All rights reserved.</p>
+        <p style="margin-top: 10px;">This is an automated message, please do not reply to this email.</p>
+      </div>
+    </div>
+  </body>
+</html>
+
+
+<!-- ============================================ -->
+<!-- INSTRUCTIONS FOR USE -->
+<!-- ============================================ -->
+<!--
+
+1. Go to Supabase Dashboard: https://app.supabase.com
+2. Select your project
+3. Navigate to: Authentication → Email Templates
+4. For each template type:
+   - Click the template name (Magic Link, Reset Password, etc.)
+   - Replace the default HTML with the corresponding template above
+   - Click "Save"
+   - Test the flow
+
+5. Template Variables Reminder:
+   - {{ .ConfirmationURL }} - The main action link
+   - {{ .Token }} - Verification token (if needed)
+   - {{ .SiteURL }} - Your site URL
+   - {{ .Email }} - Recipient's email
+
+6. After saving all templates:
+   - Test each authentication flow
+   - Check email deliverability
+   - Verify links work correctly
+   - Ensure styling renders properly in different email clients
+
+-->

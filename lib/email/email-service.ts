@@ -1,11 +1,17 @@
 /**
- * Email Service using Resend
+ * Email Service
  *
  * Handles sending assessment reports, license notifications, and system alerts
+ * Supports both Resend (legacy) and AWS SES with budget tracking
  */
 
 import { Resend } from "resend";
 import { render } from "@react-email/render";
+import {
+  checkBudgetAvailable,
+  logEmailSent,
+} from "@/lib/services/email-budget-service";
+import { SESEmailService } from "@/lib/email/ses-email-service";
 
 // Initialize Resend lazily
 let resend: Resend | null = null;
@@ -62,10 +68,30 @@ export class EmailService {
   static async sendEmail(
     options: EmailOptions
   ): Promise<{ success: boolean; messageId?: string; error?: string }> {
+    // Use SES if enabled
+    const useSES = process.env.USE_SES === "true";
+    if (useSES) {
+      console.log("[EmailService] Using AWS SES for email delivery");
+      return SESEmailService.sendEmail(options);
+    }
+
+    // Fallback to Resend
     try {
       if (!process.env.RESEND_API_KEY) {
         console.warn("RESEND_API_KEY not configured, email sending disabled");
         return { success: false, error: "Email service not configured" };
+      }
+
+      // Check budget availability before sending
+      try {
+        await checkBudgetAvailable();
+      } catch (budgetError) {
+        const errorMessage =
+          budgetError instanceof Error
+            ? budgetError.message
+            : "Budget check failed";
+        console.error("Email budget check failed:", errorMessage);
+        return { success: false, error: errorMessage };
       }
 
       const emailData: any = {
@@ -94,6 +120,26 @@ export class EmailService {
         return { success: false, error: result.error.message };
       }
 
+      // Log successful email send for budget tracking
+      const emailCount = Array.isArray(options.to)
+        ? options.to.length
+        : 1;
+      const recipient = Array.isArray(options.to)
+        ? options.to[0]
+        : options.to;
+
+      // Determine email type from subject
+      let emailType = "General";
+      if (options.subject.includes("Assessment Report")) {
+        emailType = "Assessment Report";
+      } else if (options.subject.includes("License")) {
+        emailType = "License Notification";
+      } else if (options.subject.includes("Welcome")) {
+        emailType = "Welcome Email";
+      }
+
+      await logEmailSent(emailCount, recipient, emailType);
+
       console.log("Email sent successfully:", result.data?.id);
       return { success: true, messageId: result.data?.id };
     } catch (error) {
@@ -111,6 +157,20 @@ export class EmailService {
   static async sendAssessmentReport(
     data: AssessmentReportEmail
   ): Promise<{ success: boolean; messageId?: string; error?: string }> {
+    // Use SES if enabled
+    const useSES = process.env.USE_SES === "true";
+    if (useSES) {
+      // Use SES-optimized format
+      return SESEmailService.sendAssessmentReport({
+        to: data.recipientEmail,
+        userName: data.recipientName,
+        assessmentName: data.assessmentTitle,
+        assessmentId: "unknown", // Will be improved when assessmentId is passed
+        pdfBuffer: data.reportPdf,
+      });
+    }
+
+    // Fallback to Resend
     const subject = `Assessment Report: ${data.assessmentTitle}`;
 
     const html = this.generateAssessmentReportHTML(data);
@@ -141,6 +201,18 @@ export class EmailService {
   static async sendLicenseExpirationNotification(
     data: LicenseNotificationEmail
   ): Promise<{ success: boolean; messageId?: string; error?: string }> {
+    // Use SES if enabled
+    const useSES = process.env.USE_SES === "true";
+    if (useSES) {
+      return SESEmailService.sendLicenseExpirationNotification({
+        to: data.recipientEmail,
+        userName: data.recipientName,
+        licenseType: data.licenseType,
+        expiryDate: data.expirationDate,
+      });
+    }
+
+    // Fallback to Resend
     const subject = `License Expiration Notice - ${data.daysUntilExpiration} days remaining`;
 
     const html = this.generateLicenseNotificationHTML(data);

@@ -34,12 +34,14 @@ export default function ConversationalTrialModule({
 }: ConversationalTrialModuleProps) {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [hasConversationalAI, setHasConversationalAI] = useState(false);
+  const [conversationalCredits, setConversationalCredits] = useState(0);
   const [hasViewedReport, setHasViewedReport] = useState(false);
   const [showSuccessBanner, setShowSuccessBanner] = useState(() => {
     // Check if we should show the success banner (just after purchase)
     if (typeof window !== "undefined") {
       const urlParams = new URLSearchParams(window.location.search);
-      return urlParams.get("enhanced_unlocked") === "true";
+      return urlParams.get("enhanced_unlocked") === "true" ||
+             urlParams.get("conversational_purchased") === "true";
     }
     return false;
   });
@@ -54,23 +56,31 @@ export default function ConversationalTrialModule({
   }, [assessmentId]);
 
   useEffect(() => {
-    // Check if user has conversational AI included in their subscription
-    const checkLicense = async () => {
+    // Check if user has conversational AI or credits
+    const checkAccess = async () => {
       try {
-        const response = await fetch("/api/user/license");
-        if (response.ok) {
-          const data = await response.json();
+        // Check license for unlimited conversational AI
+        const licenseResponse = await fetch("/api/user/license");
+        if (licenseResponse.ok) {
+          const data = await licenseResponse.json();
           if (data.hasLicense && data.license?.features) {
             setHasConversationalAI(
               data.license.features.conversationalAI === true
             );
           }
         }
+
+        // Check credits for pay-per-use conversational assessments
+        const creditsResponse = await fetch("/api/user/credits");
+        if (creditsResponse.ok) {
+          const creditsData = await creditsResponse.json();
+          setConversationalCredits(creditsData.conversationalCredits || 0);
+        }
       } catch (error) {
-        console.error("Failed to check license:", error);
+        console.error("Failed to check conversational access:", error);
       }
     };
-    checkLicense();
+    checkAccess();
   }, []);
 
   // Enhanced Report Active State - DISABLED FOR NOW
@@ -250,7 +260,121 @@ export default function ConversationalTrialModule({
   //   );
   // }
 
-  // Initial Trial Teaser State
+  // If user has conversational AI or credits, show full version button
+  if (hasConversationalAI || conversationalCredits > 0) {
+    const isUnlimited = hasConversationalAI;
+
+    return (
+      <>
+        {/* Success Banner - Shows once after purchase */}
+        {showSuccessBanner && (
+          <Card className="border-green-500 bg-green-500/10 mb-4">
+            <CardContent className="py-4">
+              <div className="flex items-start justify-between">
+                <div className="flex items-start gap-3">
+                  <CheckCircle className="h-6 w-6 text-green-500 mt-0.5" />
+                  <div>
+                    <h3 className="font-semibold text-green-900 dark:text-green-100">
+                      🎉 Conversational Assessment {isUnlimited ? "Activated" : "Credit Added"}!
+                    </h3>
+                    <p className="text-sm text-green-800 dark:text-green-200 mt-1">
+                      {isUnlimited
+                        ? "You now have unlimited conversational assessments."
+                        : `You have ${conversationalCredits} conversational assessment${conversationalCredits === 1 ? "" : "s"} available.`
+                      } Click "Start Conversational Assessment" below to get started.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setShowSuccessBanner(false);
+                    // Remove the query parameters
+                    const url = new URL(window.location.href);
+                    url.searchParams.delete("conversational_purchased");
+                    url.searchParams.delete("enhanced_unlocked");
+                    window.history.replaceState({}, "", url.toString());
+                  }}
+                  className="text-green-700 hover:text-green-900 dark:text-green-300"
+                >
+                  ✕
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <Card className="border-primary/30 hover:border-primary/50 transition-colors">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              <CardTitle className="text-lg">
+                Conversational Assessment
+              </CardTitle>
+              {isUnlimited ? (
+                <Badge variant="default" className="bg-green-500/10 text-green-700 dark:text-green-400">
+                  ✓ Unlimited
+                </Badge>
+              ) : (
+                <Badge variant="secondary">
+                  {conversationalCredits} Credit{conversationalCredits === 1 ? "" : "s"}
+                </Badge>
+              )}
+            </div>
+            <CardDescription className="text-sm">
+              Create conversational assessments that let children express themselves
+              naturally. Results are saved to your dashboard.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="text-sm text-muted-foreground">
+                {isUnlimited ? (
+                  <>
+                    <span className="font-semibold text-green-600">Included in your subscription:</span>
+                    <ul className="mt-2 space-y-1 ml-4">
+                      <li>• Unlimited conversational assessments</li>
+                      <li>• Choose any assessment template</li>
+                      <li>• Results saved to dashboard</li>
+                      <li>• Enhanced report compatibility</li>
+                    </ul>
+                  </>
+                ) : (
+                  <>
+                    <span className="font-semibold text-primary">What's included:</span>
+                    <ul className="mt-2 space-y-1 ml-4">
+                      <li>• Full conversational assessment experience</li>
+                      <li>• Choose from available templates</li>
+                      <li>• Results saved to dashboard</li>
+                      <li>• Professional PDF report</li>
+                    </ul>
+                  </>
+                )}
+              </div>
+              <Button
+                className="w-full"
+                size="lg"
+                onClick={() => setIsChatOpen(true)}
+              >
+                <MessageCircle className="mr-2 h-4 w-4" />
+                Start Conversational Assessment
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Conversational Chat Widget */}
+        <ConversationalChatWidget
+          isOpen={isChatOpen}
+          onClose={() => setIsChatOpen(false)}
+          assessmentId={assessmentId}
+        />
+      </>
+    );
+  }
+
+  // Initial Trial Teaser State (for users without conversational AI)
   return (
     <>
       <Card className="border-primary/30 hover:border-primary/50 transition-colors">
@@ -268,18 +392,29 @@ export default function ConversationalTrialModule({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground mb-4">
-            See their perspective —{" "}
-            <span className="font-semibold text-foreground">free</span>.
-          </p>
-          <Button
-            className="w-full"
-            size="lg"
-            onClick={() => setIsChatOpen(true)}
-          >
-            <MessageCircle className="mr-2 h-4 w-4" />
-            Start Free Trial
-          </Button>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              See their perspective —{" "}
+              <span className="font-semibold text-foreground">free trial</span>.
+            </p>
+            
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+              <p className="text-xs text-blue-800 dark:text-blue-200">
+                <strong>Want unlimited conversational assessments?</strong> Upgrade to 
+                Professional or Enterprise to create assessments with any template and 
+                save results to your dashboard.
+              </p>
+            </div>
+
+            <Button
+              className="w-full"
+              size="lg"
+              onClick={() => setIsChatOpen(true)}
+            >
+              <MessageCircle className="mr-2 h-4 w-4" />
+              Start Free Trial
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

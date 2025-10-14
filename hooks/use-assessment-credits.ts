@@ -16,12 +16,28 @@ export function useAssessmentCredits() {
         const data = await response.json();
         setCredits(data);
         return data;
+      } else if (response.status === 401) {
+        // User not authenticated - this is OK, don't show error
+        console.log("User not authenticated for credits check");
+        setCredits(null);
+        return null;
+      } else if (response.status === 503) {
+        // Server configuration error
+        const errorData = await response.json();
+        console.error("Server configuration error:", errorData);
+        toast.error("Server configuration error. Please contact support.");
+        return null;
       } else {
-        throw new Error("Failed to fetch credits");
+        const errorData = await response.json();
+        console.error("Failed to fetch credits:", errorData);
+        throw new Error(errorData.error || "Failed to fetch credits");
       }
     } catch (error) {
       console.error("Error fetching credits:", error);
-      toast.error("Failed to load assessment credits");
+      // Only show error if it's not a network/auth issue
+      if (error instanceof Error && !error.message.includes("fetch")) {
+        toast.error("Failed to load assessment credits");
+      }
       return null;
     } finally {
       setIsLoading(false);

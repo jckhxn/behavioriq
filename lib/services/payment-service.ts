@@ -27,6 +27,11 @@ export class PaymentService {
       return this.processEnhancedReportPurchase(session, assessmentId);
     }
 
+    // Handle conversational addon purchase
+    if (productType === "conversational_addon") {
+      return this.processConversationalAddonPurchase(session);
+    }
+
     // Handle assessment/subscription purchase
     return this.processAssessmentPurchase(session);
   }
@@ -80,6 +85,108 @@ export class PaymentService {
         `[PaymentService] ✅ Enhanced report unlocked: ${assessmentId}`
       );
       return { assessment: updatedAssessment, payment };
+    });
+  }
+
+  /**
+   * Process conversational addon purchase ($9 addon)
+   * Gives user 1 conversational assessment credit
+   */
+  private async processConversationalAddonPurchase(
+    session: Stripe.Checkout.Session
+  ) {
+    const { userId } = session.metadata || {};
+
+    if (!userId) {
+      throw new Error("User ID required for conversational addon purchase");
+    }
+
+    console.log(
+      `[PaymentService] Processing conversational addon for user: ${userId}`
+    );
+
+    return prisma.$transaction(async (tx) => {
+      // Get the user
+      const user = await tx.user.findUniqueOrThrow({
+        where: { id: userId },
+      });
+
+      // Get or create user's license
+      let userLicense = await tx.userLicense.findFirst({
+        where: { userId },
+        include: { license: true },
+      });
+
+      if (!userLicense) {
+        // Create a BASIC license for addon purchases
+        const licenseKey = generateLicenseKey();
+        const newLicense = await tx.license.create({
+          data: {
+            licenseKey,
+            type: "BASIC",
+            status: "ACTIVE",
+            maxAssessments: 0,
+            maxUsers: 1,
+            validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+          },
+        });
+
+        userLicense = await tx.userLicense.create({
+          data: {
+            userId,
+            licenseId: newLicense.id,
+            isActive: true,
+            assessmentsAllowed: 0,
+            assessmentsUsed: 0,
+            conversationalAssessmentsAllowed: 1, // Give 1 conversational credit
+            conversationalAssessmentsUsed: 0,
+          },
+          include: { license: true },
+        });
+
+        console.log(
+          `[PaymentService] ✅ Created new license with 1 conversational credit for user: ${userId}`
+        );
+      } else {
+        // Increment conversational assessment credits for existing user license
+        userLicense = await tx.userLicense.update({
+          where: { id: userLicense.id },
+          data: {
+            conversationalAssessmentsAllowed: {
+              increment: 1,
+            },
+          },
+          include: { license: true },
+        });
+
+        console.log(
+          `[PaymentService] ✅ Incremented conversational credits for user ${userId}: ${userLicense.conversationalAssessmentsAllowed - 1} → ${userLicense.conversationalAssessmentsAllowed}`
+        );
+      }
+
+      // Create payment record
+      const payment = await tx.payment.create({
+        data: {
+          userId,
+          stripePaymentIntentId: session.payment_intent as string,
+          stripeCustomerId: session.customer as string,
+          amount: 900, // $9.00
+          currency: "usd",
+          status: "SUCCEEDED",
+          planType: "conversational_addon",
+          plan: "Conversational Assessment Addon",
+          metadata: {
+            sessionId: session.id,
+            productType: "conversational_addon",
+          } as any,
+        },
+      });
+
+      console.log(
+        `[PaymentService] ✅ Conversational addon purchased for user: ${userId}`
+      );
+
+      return { user, payment, license: userLicense.license, userLicense };
     });
   }
 
@@ -289,8 +396,17 @@ export class PaymentService {
     });
 
     if (existingUserLicense) {
+      console.log(
+        `[PaymentService] 🔍 Found existing license for user ${userId}:`,
+        {
+          licenseId: existingUserLicense.id,
+          currentAllowed: existingUserLicense.assessmentsAllowed,
+          currentUsed: existingUserLicense.assessmentsUsed,
+        }
+      );
+
       // Increment assessments allowed for existing user license
-      await tx.userLicense.update({
+      const updatedUserLicense = await tx.userLicense.update({
         where: { id: existingUserLicense.id },
         data: {
           assessmentsAllowed: {
@@ -298,6 +414,14 @@ export class PaymentService {
           },
         },
       });
+
+      console.log(
+        `[PaymentService] ✅ Incremented credits for user ${userId}:`,
+        {
+          before: existingUserLicense.assessmentsAllowed,
+          after: updatedUserLicense.assessmentsAllowed,
+        }
+      );
 
       // Also update the license itself
       return tx.license.update({
@@ -312,6 +436,8 @@ export class PaymentService {
     }
 
     // Create new license
+    console.log(`[PaymentService] 🆕 Creating new license for user ${userId}`);
+
     const licenseKey = generateLicenseKey();
     const newLicense = await tx.license.create({
       data: {
@@ -325,7 +451,7 @@ export class PaymentService {
     });
 
     // Create user license with 1 assessment allowed
-    await tx.userLicense.create({
+    const newUserLicense = await tx.userLicense.create({
       data: {
         userId,
         licenseId: newLicense.id,
@@ -334,6 +460,15 @@ export class PaymentService {
         assessmentsUsed: 0,
       },
     });
+
+    console.log(
+      `[PaymentService] ✅ Created new license for user ${userId}:`,
+      {
+        licenseId: newLicense.id,
+        userLicenseId: newUserLicense.id,
+        assessmentsAllowed: 1,
+      }
+    );
 
     return newLicense;
   }

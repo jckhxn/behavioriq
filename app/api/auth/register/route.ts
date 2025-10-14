@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/db/prisma"
 import { z } from "zod"
+import { isRegistrationEnabled } from "@/lib/platform/settings"
 
 const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -11,8 +12,17 @@ const registerSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if registration is enabled
+    const registrationAllowed = await isRegistrationEnabled();
+    if (!registrationAllowed) {
+      return NextResponse.json(
+        { error: "User registration is currently disabled. Please contact an administrator." },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json()
-    
+
     const validation = registerSchema.safeParse(body)
     if (!validation.success) {
       return NextResponse.json(

@@ -29,9 +29,19 @@ import {
   Brain,
   AlertTriangle,
   Library,
+  Download,
+  Mail,
+  BarChart3,
+  FileText,
+  Wrench,
 } from "lucide-react";
 import ResourceLibraryManager from "@/components/admin/ResourceLibraryManager";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
+import { SESUsageWidget } from "@/components/admin/SESUsageWidget";
+import { UserManagementTab } from "@/components/admin/UserManagementTab";
+import { AssessmentBuilder } from "@/components/admin/AssessmentBuilder";
+import { SystemStats } from "@/components/admin/SystemStats";
+import TemplatesAndStylesTab from "@/components/admin/TemplatesAndStylesTab";
 
 interface PlatformSettings {
   id: string;
@@ -42,6 +52,8 @@ interface PlatformSettings {
   trialAssessmentsEnabled: boolean;
   aiReportsEnabled: boolean;
   maxAiReportsPerUser: number;
+  emailSendingEnabled: boolean;
+  sesMonthlyBudget: number;
   globalTrialAssessment?: {
     id: string;
     name: string;
@@ -130,6 +142,32 @@ export function SuperAdminPlatformSettings() {
     }
   };
 
+  const exportPlatformData = () => {
+    try {
+      const data = {
+        platformSettings: settings,
+        exportedAt: new Date().toISOString(),
+        exportedBy: "Super Admin",
+      };
+
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: "application/json",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `platform-export-${new Date().toISOString().split("T")[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success("Platform data exported successfully");
+    } catch (error) {
+      console.error("Failed to export data:", error);
+      toast.error("Failed to export platform data");
+    }
+  };
+
   if (isLoading) {
     return (
       <Card>
@@ -155,10 +193,10 @@ export function SuperAdminPlatformSettings() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <Card className="border-purple-200 bg-purple-50 dark:border-purple-800 dark:bg-purple-900/20">
+      <Card className="border-primary/20 bg-primary/5">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-purple-600" />
+            <Shield className="h-5 w-5 text-primary" />
             Super Admin Dashboard
           </CardTitle>
           <CardDescription>
@@ -168,23 +206,39 @@ export function SuperAdminPlatformSettings() {
       </Card>
 
       {/* Tabs for different sections */}
-      <Tabs defaultValue="settings" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="settings">
+      <Tabs defaultValue="platform" className="w-full">
+        <TabsList className="inline-flex h-10 items-center justify-start rounded-md bg-muted p-1 text-muted-foreground w-full overflow-x-auto">
+          <TabsTrigger value="platform" className="whitespace-nowrap">
             <Settings className="h-4 w-4 mr-2" />
-            Platform Settings
+            Platform
           </TabsTrigger>
-          <TabsTrigger value="resources">
-            <Library className="h-4 w-4 mr-2" />
-            Resource Library
+          <TabsTrigger value="analytics" className="whitespace-nowrap">
+            <BarChart3 className="h-4 w-4 mr-2" />
+            Analytics
           </TabsTrigger>
-          <TabsTrigger value="admin">
+          <TabsTrigger value="assessments" className="whitespace-nowrap">
+            <FileText className="h-4 w-4 mr-2" />
+            Assessments
+          </TabsTrigger>
+          <TabsTrigger value="users" className="whitespace-nowrap">
             <Users className="h-4 w-4 mr-2" />
-            Admin Tools
+            Users
+          </TabsTrigger>
+          <TabsTrigger value="resources" className="whitespace-nowrap">
+            <Library className="h-4 w-4 mr-2" />
+            Resources
+          </TabsTrigger>
+          <TabsTrigger value="templates" className="whitespace-nowrap">
+            <Mail className="h-4 w-4 mr-2" />
+            Templates
+          </TabsTrigger>
+          <TabsTrigger value="tools" className="whitespace-nowrap">
+            <Wrench className="h-4 w-4 mr-2" />
+            Tools
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="settings" className="space-y-6 mt-6">
+        <TabsContent value="platform" className="space-y-6 mt-6">
           {/* Global Assessment Configuration */}
           <Card>
             <CardHeader>
@@ -388,6 +442,88 @@ export function SuperAdminPlatformSettings() {
             </CardContent>
           </Card>
 
+          {/* Email / SES Configuration */}
+          <div className="grid md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Mail className="h-5 w-5" />
+                  Email / SES Configuration
+                </CardTitle>
+                <CardDescription>
+                  Control email sending and manage SES budget limits.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Email Sending</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Enable or disable all email sending platform-wide
+                    </p>
+                  </div>
+                  <Switch
+                    checked={settings.emailSendingEnabled}
+                    onCheckedChange={(checked) =>
+                      updateSetting("emailSendingEnabled", checked)
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="ses-monthly-budget">
+                    SES Monthly Budget (USD)
+                  </Label>
+                  <Input
+                    id="ses-monthly-budget"
+                    type="number"
+                    min="1"
+                    max="1000"
+                    step="0.01"
+                    value={settings.sesMonthlyBudget}
+                    onChange={(e) =>
+                      updateSetting(
+                        "sesMonthlyBudget",
+                        parseFloat(e.target.value) || 5.0
+                      )
+                    }
+                    className="w-32"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Email sending will be automatically blocked when this budget
+                    is exceeded. Cost: $0.10 per 1,000 emails.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* SES Usage Widget */}
+            <SESUsageWidget />
+          </div>
+
+          {/* Data Management */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Download className="h-5 w-5" />
+                Data Management
+              </CardTitle>
+              <CardDescription>
+                Export platform configuration and data
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button
+                onClick={exportPlatformData}
+                variant="outline"
+                className="w-full md:w-auto"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export Platform Data
+              </Button>
+            </CardContent>
+          </Card>
+
           {/* Save Button */}
           <div className="flex justify-end">
             <Button onClick={handleSave} disabled={isSaving} size="lg">
@@ -396,11 +532,67 @@ export function SuperAdminPlatformSettings() {
           </div>
         </TabsContent>
 
+        <TabsContent value="analytics" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Platform Analytics
+              </CardTitle>
+              <CardDescription>
+                System statistics and usage metrics across the platform.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <SystemStats />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="assessments" className="space-y-6 mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Assessment Management
+              </CardTitle>
+              <CardDescription>
+                Create and manage assessment templates for the platform.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AssessmentBuilder />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="users" className="mt-6">
+          <UserManagementTab />
+        </TabsContent>
+
         <TabsContent value="resources" className="mt-6">
           <ResourceLibraryManager />
         </TabsContent>
 
-        <TabsContent value="admin" className="mt-6">
+        <TabsContent value="templates" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Mail className="h-5 w-5" />
+                Email & PDF Templates
+              </CardTitle>
+              <CardDescription>
+                Customize email templates and PDF styling for assessment
+                reports.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="w-full mx-auto">
+              <TemplatesAndStylesTab />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="tools" className="mt-6">
           <AdminDashboard />
         </TabsContent>
       </Tabs>

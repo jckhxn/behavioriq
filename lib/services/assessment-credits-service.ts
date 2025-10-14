@@ -11,6 +11,10 @@ export interface AssessmentCreditsInfo {
   creditsAllowed: number;
   creditsUsed: number;
   licenseType: string;
+  // Conversational assessment credits
+  conversationalCredits?: number;
+  conversationalCreditsUsed?: number;
+  conversationalCreditsAllowed?: number;
 }
 
 export class AssessmentCreditsService {
@@ -41,10 +45,19 @@ export class AssessmentCreditsService {
         creditsAllowed: 0,
         creditsUsed: 0,
         licenseType: "NONE",
+        conversationalCredits: 0,
+        conversationalCreditsUsed: 0,
+        conversationalCreditsAllowed: 0,
       };
     }
 
     const licenseType = userLicense.license.type;
+
+    // Calculate conversational credits
+    const conversationalCreditsRemaining = Math.max(
+      0,
+      userLicense.conversationalAssessmentsAllowed - userLicense.conversationalAssessmentsUsed
+    );
 
     // PROFESSIONAL and ENTERPRISE have unlimited assessments
     if (licenseType === "PROFESSIONAL" || licenseType === "ENTERPRISE") {
@@ -54,6 +67,9 @@ export class AssessmentCreditsService {
         creditsAllowed: Infinity,
         creditsUsed: userLicense.assessmentsUsed,
         licenseType,
+        conversationalCredits: conversationalCreditsRemaining,
+        conversationalCreditsUsed: userLicense.conversationalAssessmentsUsed,
+        conversationalCreditsAllowed: userLicense.conversationalAssessmentsAllowed,
       };
     }
 
@@ -82,6 +98,9 @@ export class AssessmentCreditsService {
       creditsAllowed: userLicense.assessmentsAllowed,
       creditsUsed: userLicense.assessmentsUsed,
       licenseType,
+      conversationalCredits: conversationalCreditsRemaining,
+      conversationalCreditsUsed: userLicense.conversationalAssessmentsUsed,
+      conversationalCreditsAllowed: userLicense.conversationalAssessmentsAllowed,
     };
   }
 

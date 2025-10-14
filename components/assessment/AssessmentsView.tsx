@@ -100,6 +100,7 @@ export function AssessmentsView() {
     null
   );
   const [isDeleting, setIsDeleting] = useState(false);
+  const [generatingPdfId, setGeneratingPdfId] = useState<string | null>(null);
 
   // License state
   const [userLicense, setUserLicense] = useState<{
@@ -208,10 +209,19 @@ export function AssessmentsView() {
   };
 
   const generatePDF = async (assessmentId: string) => {
+    setGeneratingPdfId(assessmentId);
+
+    // Show immediate feedback that PDF generation has started
+    toast.info("Generating PDF report...", {
+      description: "This may take a few seconds. Please wait.",
+      duration: 10000,
+    });
+
     try {
       const response = await fetch(`/api/assessments/${assessmentId}/pdf`, {
         method: "POST",
       });
+
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
@@ -222,9 +232,24 @@ export function AssessmentsView() {
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
+
+        // Show success message
+        toast.success("PDF downloaded successfully!", {
+          description: "Your assessment report is ready.",
+        });
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        toast.error("Failed to generate PDF", {
+          description: errorData.error || "Please try again later.",
+        });
       }
     } catch (error) {
       console.error("Failed to generate PDF:", error);
+      toast.error("Failed to generate PDF", {
+        description: "An unexpected error occurred. Please try again.",
+      });
+    } finally {
+      setGeneratingPdfId(null);
     }
   };
 
@@ -253,13 +278,43 @@ export function AssessmentsView() {
         // Show success message with toast notification
         toast.success("Assessment deleted successfully");
       } else {
-        const error = await response.json();
-        console.error("Failed to delete assessment:", error);
-        // Show error message to user
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch (e) {
+          errorData = {
+            error: `HTTP ${response.status}: ${response.statusText}`,
+          };
+        }
+
+        console.error("Failed to delete assessment:", {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData,
+          assessmentId: assessmentToDelete,
+        });
+
+        const errorMessage =
+          errorData.error ||
+          errorData.details ||
+          `Failed to delete assessment (${response.status})`;
+        toast.error(errorMessage);
+
+        // If 404, the assessment doesn't exist - refetch to sync UI state
+        if (response.status === 404) {
+          console.log(
+            "[Delete] Assessment not found - refreshing list to sync state"
+          );
+          await fetchAssessments();
+          setDeleteDialogOpen(false);
+          setAssessmentToDelete(null);
+        }
       }
     } catch (error) {
       console.error("Error deleting assessment:", error);
-      // Show error message to user
+      const errorMessage =
+        error instanceof Error ? error.message : "An unexpected error occurred";
+      toast.error(`Error: ${errorMessage}`);
     } finally {
       setIsDeleting(false);
     }
@@ -977,7 +1032,12 @@ export function AssessmentsView() {
                               className="text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3"
                             >
                               <Play className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
-                              <span className="hidden sm:inline">Continue</span>
+                              <span className="hidden sm:inline">
+                                {assessment.isConversational ? "Resume Chat" : "Continue"}
+                              </span>
+                              <span className="sm:hidden">
+                                {assessment.isConversational ? "Resume" : "Continue"}
+                              </span>
                             </Button>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -1031,10 +1091,26 @@ export function AssessmentsView() {
                               size="sm"
                               variant="outline"
                               onClick={() => generatePDF(assessment.id)}
-                              className="text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3"
+                              disabled={generatingPdfId === assessment.id}
+                              className={`text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3 ${
+                                generatingPdfId === assessment.id
+                                  ? "cursor-wait opacity-75"
+                                  : ""
+                              }`}
                             >
-                              <Download className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
-                              <span className="hidden sm:inline">PDF</span>
+                              {generatingPdfId === assessment.id ? (
+                                <>
+                                  <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-b-2 border-current sm:mr-1"></div>
+                                  <span className="hidden sm:inline animate-pulse">
+                                    Generating...
+                                  </span>
+                                </>
+                              ) : (
+                                <>
+                                  <Download className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
+                                  <span className="hidden sm:inline">PDF</span>
+                                </>
+                              )}
                             </Button>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>

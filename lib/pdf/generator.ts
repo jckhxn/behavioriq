@@ -1,4 +1,5 @@
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
+import { generateTailwindPDF } from "./tailwind-generator";
 
 interface AssessmentData {
   id: string;
@@ -8,6 +9,7 @@ interface AssessmentData {
   status: string;
   scores: Array<{
     domain: string;
+    domainName?: string;
     rawScore: number;
     totalPossible: number;
     riskLevel: string;
@@ -18,9 +20,37 @@ interface AssessmentData {
   };
 }
 
+/**
+ * Generate assessment PDF
+ * Uses new Tailwind-based generator for beautiful PDFs
+ * Falls back to legacy generator if needed
+ */
 export async function generateAssessmentPDF(
   assessment: AssessmentData
 ): Promise<Buffer> {
+  // Use new Tailwind-based PDF generator
+  const USE_TAILWIND_PDF = process.env.USE_TAILWIND_PDF !== "false"; // Enabled by default
+
+  if (USE_TAILWIND_PDF) {
+    try {
+      console.log("[PDF] Using Tailwind PDF generator");
+      return await generateTailwindPDF(assessment);
+    } catch (error) {
+      console.error("[PDF] Tailwind generator failed, falling back to legacy:", error);
+      // Fall through to legacy generator
+    }
+  }
+
+  // Legacy PDF generator (fallback)
+  console.log("[PDF] Using legacy PDF generator");
+  return await generateLegacyPDF(assessment);
+}
+
+/**
+ * Legacy PDF generator using pdf-lib
+ * Kept as fallback
+ */
+async function generateLegacyPDF(assessment: AssessmentData): Promise<Buffer> {
   // Create a new PDFDocument
   const pdfDoc = await PDFDocument.create();
 
@@ -31,7 +61,7 @@ export async function generateAssessmentPDF(
 
   // Add a page
   const page = pdfDoc.addPage([612, 792]); // US Letter size
-  const { width, height } = page.getSize();
+  const { height } = page.getSize();
 
   let yPosition = height - 60;
 

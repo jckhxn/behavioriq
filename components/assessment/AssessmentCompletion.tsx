@@ -35,6 +35,8 @@ import {
 import { useAIRecommendations } from "@/lib/hooks/useAIRecommendations";
 import { InteractiveText, ParsedLink } from "@/lib/utils/linkParser";
 import { DOMAIN_LABELS, RISK_COLORS } from "@/lib/constants/domains";
+import { toast } from "sonner";
+import EmailReportButton from "@/components/reports/EmailReportButton";
 
 interface Score {
   id: string;
@@ -63,7 +65,6 @@ export function AssessmentCompletion({
   const [scores, setScores] = useState<Score[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [savedLinks, setSavedLinks] = useState<string[]>([]);
   const [existingRecommendations, setExistingRecommendations] = useState<any[]>(
     []
@@ -125,11 +126,10 @@ export function AssessmentCompletion({
         setExistingRecommendations(data);
         const hasExisting = data.length > 0;
         setHasExistingReport(hasExisting);
-        
-        // If there's an existing report, automatically trigger loading it
+
+        // Don't auto-load - let user click to view existing report
         if (hasExisting) {
-          console.log("Found existing AI recommendations, loading...");
-          generateRecommendations();
+          console.log("Found existing AI recommendations - ready to view");
         }
       }
     } catch (error) {
@@ -189,10 +189,13 @@ export function AssessmentCompletion({
   ) => {
     try {
       console.log(
-        "saveRecommendation called with content length:",
-        content.length
+        "[SaveRecommendation] Saving with content length:",
+        content.length,
+        "category:",
+        category
       );
-      await fetch("/api/recommendations", {
+
+      const response = await fetch("/api/recommendations", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -205,8 +208,20 @@ export function AssessmentCompletion({
           priority,
         }),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("[SaveRecommendation] Failed to save:", {
+          status: response.status,
+          error: errorData,
+        });
+        return;
+      }
+
+      const saved = await response.json();
+      console.log("[SaveRecommendation] Successfully saved:", saved.id);
     } catch (error) {
-      console.error("Error saving recommendation:", error);
+      console.error("[SaveRecommendation] Error saving recommendation:", error);
     }
   };
 
@@ -214,7 +229,7 @@ export function AssessmentCompletion({
     try {
       // Don't save if already saved
       if (savedLinks.includes(link.url)) {
-        alert("This resource has already been saved!");
+        toast.info("This resource has already been saved!");
         return;
       }
 
@@ -225,7 +240,7 @@ export function AssessmentCompletion({
         assessmentId === "null"
       ) {
         console.error("Invalid assessmentId:", assessmentId);
-        alert(
+        toast.error(
           "Unable to save resource: Assessment ID is missing. Please try refreshing the page."
         );
         return;
@@ -253,7 +268,7 @@ export function AssessmentCompletion({
         },
         body: JSON.stringify(requestData),
       });
-      
+
       console.log("[SaveResource] Response received:", {
         ok: response.ok,
         status: response.status,
@@ -269,9 +284,11 @@ export function AssessmentCompletion({
           rawResponse = responseText;
           errorData = responseText ? JSON.parse(responseText) : {};
         } catch (e) {
-          errorData = { error: `HTTP ${response.status}: ${response.statusText}` };
+          errorData = {
+            error: `HTTP ${response.status}: ${response.statusText}`,
+          };
         }
-        
+
         console.error("Failed to save resource - Full details:", {
           status: response.status,
           statusText: response.statusText,
@@ -285,9 +302,14 @@ export function AssessmentCompletion({
             category: "Resource Link",
           },
         });
-        
-        const errorMessage = errorData.error || errorData.details || `HTTP ${response.status}: ${response.statusText || "Unknown error"}`;
-        alert(`Failed to save resource: ${errorMessage}\n\nCheck console for details.`);
+
+        const errorMessage =
+          errorData.error ||
+          errorData.details ||
+          `HTTP ${response.status}: ${response.statusText || "Unknown error"}`;
+        toast.error(`Failed to save resource: ${errorMessage}`, {
+          description: "Check console for details.",
+        });
         return;
       }
 
@@ -295,12 +317,12 @@ export function AssessmentCompletion({
       setSavedLinks((prev) => [...prev, link.url]);
 
       // Show success feedback
-      alert(
-        `✓ Resource "${link.title}" saved successfully!\n\nYou can find it in your Saved Recommendations.`
-      );
+      toast.success(`Resource "${link.title}" saved successfully!`, {
+        description: "You can find it in your Saved Recommendations.",
+      });
     } catch (error) {
       console.error("Error saving resource link:", error);
-      alert("Failed to save resource. Please try again.");
+      toast.error("Failed to save resource. Please try again.");
     }
   };
 
@@ -310,10 +332,18 @@ export function AssessmentCompletion({
 
   const downloadPDF = async () => {
     setIsDownloading(true);
+
+    // Show immediate feedback that PDF generation has started
+    toast.info("Generating PDF report...", {
+      description: "This may take a few seconds. Please wait.",
+      duration: 10000, // Show for 10 seconds
+    });
+
     try {
       const response = await fetch(`/api/assessments/${assessmentId}/pdf`, {
         method: "POST",
       });
+
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
@@ -324,42 +354,27 @@ export function AssessmentCompletion({
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
+
+        // Show success message
+        toast.success("PDF downloaded successfully!", {
+          description: `Report for ${subjectName} is ready.`,
+        });
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        toast.error("Failed to generate PDF", {
+          description: errorData.error || "Please try again later.",
+        });
       }
     } catch (error) {
       console.error("Error downloading PDF:", error);
+      toast.error("Failed to generate PDF", {
+        description: "An unexpected error occurred. Please try again.",
+      });
     } finally {
       setIsDownloading(false);
     }
   };
 
-  const sendEmailReport = async () => {
-    const recipientEmail = prompt("Enter email address to send report to:");
-    if (!recipientEmail) return;
-
-    setIsSendingEmail(true);
-    try {
-      const response = await fetch(`/api/emails/assessment-report`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          assessmentId,
-          recipientEmail,
-          includePdf: true,
-        }),
-      });
-      if (response.ok) {
-        alert("Email sent successfully!");
-      } else {
-        const errorData = await response.json();
-        alert(`Failed to send email: ${errorData.error || "Unknown error"}`);
-      }
-    } catch (error) {
-      console.error("Error sending email:", error);
-      alert("Failed to send email");
-    } finally {
-      setIsSendingEmail(false);
-    }
-  };
 
   // Prepare chart data for Recharts
   const chartData = scores.map((score) => ({
@@ -630,15 +645,22 @@ export function AssessmentCompletion({
                 !isGeneratingRecommendations ? (
                   <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border-l-4 border-green-400 dark:border-green-600">
                     <div className="flex items-center justify-between">
-                      <div>
+                      <div className="flex-1">
                         <h4 className="text-green-800 dark:text-green-400 font-semibold mb-2">
                           Recommendations Already Available
                         </h4>
-                        <p className="text-green-700 dark:text-green-300 text-sm">
-                          AI-generated recommendations for this assessment
-                          already exist. Check your saved recommendations in the
-                          sidebar or dashboard.
+                        <p className="text-green-700 dark:text-green-300 text-sm mb-3">
+                          AI-generated recommendations for this assessment have
+                          already been created.
                         </p>
+                        <Button
+                          onClick={handleGenerateRecommendations}
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          <Brain className="h-4 w-4 mr-2" />
+                          View Saved Recommendations
+                        </Button>
                       </div>
                       <div className="text-green-600 dark:text-green-400">
                         <CheckCircle className="h-6 w-6" />
@@ -734,12 +756,12 @@ export function AssessmentCompletion({
             <Button
               onClick={downloadPDF}
               disabled={isDownloading}
-              className="flex-1 min-w-[200px]"
+              className={`flex-1 min-w-[200px] ${isDownloading ? "bg-primary/80 cursor-wait" : ""}`}
             >
               {isDownloading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Generating PDF...
+                  <span className="animate-pulse">Generating PDF...</span>
                 </>
               ) : (
                 <>
@@ -749,24 +771,11 @@ export function AssessmentCompletion({
               )}
             </Button>
 
-            <Button
-              onClick={sendEmailReport}
-              disabled={isSendingEmail}
-              variant="outline"
+            <EmailReportButton
+              assessmentId={assessmentId}
+              defaultEmail={assessmentData?.user?.email || ""}
               className="flex-1 min-w-[200px]"
-            >
-              {isSendingEmail ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
-                  Sending...
-                </>
-              ) : (
-                <>
-                  <Mail className="h-4 w-4 mr-2" />
-                  Email Report
-                </>
-              )}
-            </Button>
+            />
           </div>
         </CardContent>
       </Card>

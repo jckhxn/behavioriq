@@ -43,14 +43,27 @@ export function CreditsDisplay() {
       } else if (response.status === 401) {
         // User is not authenticated - this is OK for trial/public pages
         // Don't show error, just don't display credits
+        console.log("User not authenticated for credits display");
+        setCredits(null);
+      } else if (response.status === 503) {
+        // Server configuration error
+        const errorData = await response.json();
+        console.error("Server configuration error:", errorData);
+        toast.error("Server configuration error. Please contact support.");
         setCredits(null);
       } else {
-        throw new Error("Failed to fetch credits");
+        const errorData = await response.json();
+        console.error("Failed to fetch credits:", errorData);
+        throw new Error(errorData.error || "Failed to fetch credits");
       }
     } catch (error) {
       console.error("Error fetching credits:", error);
-      // Only show error toast if it's not an auth issue
-      if (!(error instanceof TypeError && error.message.includes("fetch"))) {
+      // Only show error toast if it's not an auth/network issue
+      if (
+        error instanceof Error &&
+        !error.message.includes("fetch") &&
+        !error.message.includes("NetworkError")
+      ) {
         toast.error("Failed to load assessment credits");
       }
     } finally {

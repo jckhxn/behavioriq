@@ -4,15 +4,27 @@ import { generateRegistrationOptions } from "@simplewebauthn/server";
 import { prisma } from "@/lib/db/prisma";
 
 const rpName = process.env.NEXT_PUBLIC_SITE_NAME || "AI Diagnostic";
-const rpID = process.env.NEXT_PUBLIC_RP_ID || "localhost";
-const origin = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
-export async function POST() {
+// Helper function to get RP ID from origin
+function getRPIDFromOrigin(origin: string): string {
+  try {
+    const url = new URL(origin);
+    return url.hostname;
+  } catch {
+    return "localhost";
+  }
+}
+
+export async function POST(request: Request) {
   try {
     const user = await getCurrentUserWithRole();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    // Get origin from request headers
+    const origin = request.headers.get("origin") || "http://localhost:3000";
+    const rpID = getRPIDFromOrigin(origin);
 
     // Get user's existing passkeys
     const existingPasskeys = await prisma.passkey.findMany({
@@ -36,7 +48,9 @@ export async function POST() {
       authenticatorSelection: {
         residentKey: "preferred",
         userVerification: "preferred",
-        authenticatorAttachment: "cross-platform",
+        requireResidentKey: false,
+        // Omitting authenticatorAttachment allows mobile/desktop platform authenticators
+        // This enables Face ID, Touch ID, Windows Hello, and Android biometrics
       },
     });
 
@@ -56,7 +70,7 @@ export async function POST() {
       },
     });
 
-    return NextResponse.json({ options });
+    return NextResponse.json(options);
   } catch (error) {
     console.error("Error generating passkey registration options:", error);
     return NextResponse.json(

@@ -7,6 +7,7 @@ export interface ConversationalMessage {
     questionId?: string;
     domainSlug?: string;
     confidence?: number;
+    tokenUsage?: TokenUsage;
   };
 }
 
@@ -20,6 +21,8 @@ export interface ConversationalSession {
   isComplete: boolean;
   isTrial: boolean;
   questions: Question[];
+  totalTokenUsage?: TokenUsage;
+  clarificationAttempts?: number; // Track how many times we've asked for clarification on current question
 }
 
 export interface AnswerExtraction {
@@ -56,6 +59,12 @@ export interface ConversationalAIProvider {
     session: ConversationalSession,
     scores: Record<string, number>
   ): Promise<string>;
+}
+
+export interface TokenUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
 }
 
 export interface Question {

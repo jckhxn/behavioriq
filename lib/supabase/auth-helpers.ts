@@ -84,50 +84,66 @@ export async function getCurrentUser() {
  * Get current user with full database data including role
  */
 export async function getCurrentUserWithRole() {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  try {
+    const supabase = await createServerSupabaseClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  if (!user) {
-    return null;
-  }
-
-  // Use Supabase service role client to query database
-  // Service role bypasses RLS policies
-  const { createClient } = await import("@supabase/supabase-js");
-  const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
+    if (!user) {
+      return null;
     }
-  );
 
-  // Query user from database using Supabase (not Prisma)
-  const { data: dbUser, error } = await supabaseAdmin
-    .from("users")
-    .select(
-      `
+    // Validate required environment variables
+    if (
+      !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+      !process.env.SUPABASE_SERVICE_ROLE_KEY
+    ) {
+      console.error(
+        "Missing required environment variables: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY"
+      );
+      throw new Error("Server configuration error");
+    }
+
+    // Use Supabase service role client to query database
+    // Service role bypasses RLS policies
+    const { createClient } = await import("@supabase/supabase-js");
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
+    );
+
+    // Query user from database using Supabase (not Prisma)
+    const { data: dbUser, error } = await supabaseAdmin
+      .from("users")
+      .select(
+        `
       *,
       licenses:user_licenses(
         *,
         license:licenses(*)
       )
     `
-    )
-    .eq("id", user.id)
-    .single();
+      )
+      .eq("id", user.id)
+      .single();
 
-  if (error) {
-    console.error("Error fetching user from database:", error);
-    return null;
+    if (error) {
+      console.error("Error fetching user from database:", error);
+      return null;
+    }
+
+    return dbUser as any;
+  } catch (error) {
+    console.error("Error in getCurrentUserWithRole:", error);
+    throw error;
   }
-
-  return dbUser as any;
 }
 
 /**

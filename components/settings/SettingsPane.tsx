@@ -27,7 +27,6 @@ import {
   Shield,
   Download,
   Trash2,
-  Database,
   Activity,
   PlayCircle,
   Key,
@@ -37,10 +36,10 @@ import {
   XCircle,
   AlertCircle,
 } from "lucide-react";
-import SuperAdminPanel from "@/components/admin/SuperAdminPanel";
 import BillingSection from "@/components/settings/BillingSection";
 import { MFASettings } from "@/components/settings/MFASettings";
 import { PasskeySettings } from "@/components/settings/PasskeySettings";
+import NotificationPreferences from "@/components/settings/NotificationPreferences";
 import { useOnboarding } from "@/lib/contexts/OnboardingContext";
 
 interface UserSettings {
@@ -66,11 +65,6 @@ const SettingsPane: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
 
-  // Helper function to check if user is admin
-  const isAdmin = () => {
-    const userRole = userData?.role;
-    return userRole === "ADMIN" || userRole === "SUPER_ADMIN";
-  };
 
   // Check for billing tab in URL params and scroll to upgrade section
   useEffect(() => {
@@ -207,17 +201,7 @@ const SettingsPane: React.FC = () => {
         setUserSettings(JSON.parse(saved));
       }
 
-      // Load system settings if admin or super admin
-      if (isAdmin()) {
-        // In a real app, this would fetch from an API
-        setSystemSettings({
-          maxDailyAICalls: 1000,
-          maxMonthlyCost: 1000,
-          enableDataExport: true,
-          enableMockMode: true,
-        });
-      }
-    } catch (error) {
+      } catch (error) {
       console.error("Failed to load settings:", error);
     }
   };
@@ -449,7 +433,7 @@ const SettingsPane: React.FC = () => {
           </TabsTrigger>
           <TabsTrigger value="preferences" className="text-xs">
             <Settings className="h-3 w-3 mr-1" />
-            {isAdmin() ? "Admin Settings" : "Preferences"}
+            Preferences
           </TabsTrigger>
         </TabsList>
 
@@ -780,84 +764,54 @@ const SettingsPane: React.FC = () => {
         </TabsContent>
 
         {/* Preferences Tab */}
-        <TabsContent value="preferences" className="space-y-3">
-          {/* Super Admin Settings - Main Content */}
-          {isAdmin() && <SuperAdminPanel />}
+        <TabsContent value="preferences" className="space-y-3 overflow-auto max-h-[calc(100vh-200px)]">
+          {/* App Preferences */}
+          <Card className="border-border bg-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm">App Preferences</CardTitle>
+              <CardDescription className="text-xs">
+                Customize your personal application settings
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="text-xs">Dark Mode</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Switch theme
+                  </p>
+                </div>
+                <Switch
+                  checked={theme === "dark"}
+                  onCheckedChange={(checked) => {
+                    setTheme(checked ? "dark" : "light");
+                  }}
+                />
+              </div>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="text-xs">Compact View</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Show more info
+                  </p>
+                </div>
+                <Switch
+                  checked={userSettings.compactView}
+                  onCheckedChange={(checked) => {
+                    const newSettings = {
+                      ...userSettings,
+                      compactView: checked,
+                    };
+                    saveUserSettings(newSettings);
+                  }}
+                />
+              </div>
+            </CardContent>
+          </Card>
 
-          {/* User Preferences - Secondary for Admins */}
-          {!isAdmin() && (
-            <Card className="border-border bg-card">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">User Preferences</CardTitle>
-                <CardDescription className="text-xs">
-                  Customize your personal application settings
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label className="text-xs">Dark Mode</Label>
-                    <p className="text-xs text-muted-foreground">
-                      Switch theme
-                    </p>
-                  </div>
-                  <Switch
-                    checked={theme === "dark"}
-                    onCheckedChange={(checked) => {
-                      setTheme(checked ? "dark" : "light");
-                    }}
-                  />
-                </div>
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label className="text-xs">Compact View</Label>
-                    <p className="text-xs text-muted-foreground">
-                      Show more info
-                    </p>
-                  </div>
-                  <Switch
-                    checked={userSettings.compactView}
-                    onCheckedChange={(checked) => {
-                      const newSettings = {
-                        ...userSettings,
-                        compactView: checked,
-                      };
-                      saveUserSettings(newSettings);
-                    }}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Basic Theme Settings for Admins */}
-          {isAdmin() && (
-            <Card className="border-border bg-card">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Personal Preferences</CardTitle>
-                <CardDescription className="text-xs">
-                  Your personal settings
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label className="text-xs">Dark Mode</Label>
-                    <p className="text-xs text-muted-foreground">
-                      Switch theme
-                    </p>
-                  </div>
-                  <Switch
-                    checked={theme === "dark"}
-                    onCheckedChange={(checked) => {
-                      setTheme(checked ? "dark" : "light");
-                    }}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          {/* Notification Preferences */}
+          <NotificationPreferences />
         </TabsContent>
       </Tabs>
     </div>

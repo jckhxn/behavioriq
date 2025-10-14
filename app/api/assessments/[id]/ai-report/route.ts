@@ -8,6 +8,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { AIReportService } from "@/lib/reports/ai-report-service";
 import { resolveAssessmentId } from "@/lib/utils/assessmentResolver";
+import { areAIReportsEnabled, getMaxAIReportsPerUser } from "@/lib/platform/settings";
+import { prisma } from "@/lib/db/prisma";
 
 export async function POST(
   request: NextRequest,
@@ -17,6 +19,32 @@ export async function POST(
     const user = await getCurrentUserWithRole();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Check if AI reports are enabled globally
+    const aiReportsEnabled = await areAIReportsEnabled();
+    if (!aiReportsEnabled) {
+      return NextResponse.json(
+        { error: "AI report generation is currently disabled by the administrator" },
+        { status: 403 }
+      );
+    }
+
+    // Check user's AI report count against the global limit
+    const maxReports = await getMaxAIReportsPerUser();
+    const userReportCount = await prisma.aIReport.count({
+      where: { userId: user.id },
+    });
+
+    if (userReportCount >= maxReports) {
+      return NextResponse.json(
+        {
+          error: `You have reached the maximum limit of ${maxReports} AI reports. Please contact support if you need additional reports.`,
+          currentCount: userReportCount,
+          maxAllowed: maxReports,
+        },
+        { status: 403 }
+      );
     }
 
     const identifier = (await params).id;

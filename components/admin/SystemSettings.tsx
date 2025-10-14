@@ -9,13 +9,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import LicenseManager from "./LicenseManager";
 import EmailSettings from "./EmailSettings";
 import { BrandingManager } from "./BrandingManager";
-import { Key, Mail, Palette, Settings, Shield, Cog } from "lucide-react";
+import { Mail, Palette } from "lucide-react";
 
 export function SystemSettings() {
-  const [activeSubTab, setActiveSubTab] = useState("licenses");
+  const [activeSubTab, setActiveSubTab] = useState("branding");
 
   return (
     <div className="space-y-6">
@@ -23,31 +22,12 @@ export function SystemSettings() {
       <div>
         <h2 className="text-3xl font-bold tracking-tight">System Settings</h2>
         <p className="text-muted-foreground">
-          Configure system-wide settings, licensing, branding, and email
-          notifications
+          Configure branding and email notifications
         </p>
       </div>
 
       {/* Quick Settings Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card
-          className="cursor-pointer hover:shadow-md transition-shadow"
-          onClick={() => setActiveSubTab("licenses")}
-        >
-          <CardHeader className="flex flex-row items-center space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              License Management
-            </CardTitle>
-            <Key className="h-4 w-4 ml-auto text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">Manage Licenses</div>
-            <p className="text-xs text-muted-foreground">
-              Track usage, assign licenses, and manage subscription limits
-            </p>
-          </CardContent>
-        </Card>
-
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card
           className="cursor-pointer hover:shadow-md transition-shadow"
           onClick={() => setActiveSubTab("branding")}
@@ -87,11 +67,7 @@ export function SystemSettings() {
 
       {/* Sub-tabs */}
       <Tabs value={activeSubTab} onValueChange={setActiveSubTab}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="licenses" className="flex items-center gap-2">
-            <Key className="h-4 w-4" />
-            Licenses
-          </TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="branding" className="flex items-center gap-2">
             <Palette className="h-4 w-4" />
             Branding
@@ -101,10 +77,6 @@ export function SystemSettings() {
             Email
           </TabsTrigger>
         </TabsList>
-
-        <TabsContent value="licenses" className="mt-6">
-          <LicenseManager />
-        </TabsContent>
 
         <TabsContent value="branding" className="mt-6">
           <BrandingManager organizationId="default" />

@@ -3,7 +3,7 @@ import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { prisma } from "@/lib/db/prisma";
 import { openai } from "@ai-sdk/openai";
 import { streamText } from "ai";
-import { MOCK_RECOMMENDATIONS } from "@/lib/config/ai-config";
+import { MOCK_RECOMMENDATIONS, AI_PARAMETERS, SYSTEM_PROMPTS } from "@/lib/config/ai-config";
 import { checkAIRateLimit, recordAICall } from "@/lib/ai/rateLimiter";
 import { resolveAssessmentId } from "@/lib/utils/assessmentResolver";
 
@@ -41,7 +41,7 @@ export async function POST(
       );
     }
 
-    // Fetch assessment with scores
+    // Fetch assessment with scores and domain template data
     const assessment = await prisma.assessment.findUnique({
       where: {
         id: assessmentId,
@@ -49,6 +49,14 @@ export async function POST(
       },
       include: {
         scores: {
+          include: {
+            domainTemplate: {
+              select: {
+                name: true,
+                resources: true,
+              },
+            },
+          },
           orderBy: { timestamp: "desc" },
         },
       },
@@ -139,9 +147,10 @@ async function streamRecommendations(assessment: any, userId: string) {
   console.log("streamRecommendations called");
   const scores = assessment.scores;
 
-  // Prepare score summary for AI
+  // Prepare score summary for AI with domain names and resources
   const scoreSummary = scores.map((score: any) => ({
-    domain: score.domain,
+    domain: score.domain, // Keep enum for backwards compatibility
+    domainName: score.domainName || score.domainTemplate?.name || score.domain, // Human-readable name
     rawScore: score.rawScore,
     totalPossible: score.totalPossible,
     percentage: ((score.rawScore / score.totalPossible) * 100).toFixed(1),
@@ -149,6 +158,7 @@ async function streamRecommendations(assessment: any, userId: string) {
     confidence: score.confidence,
     questionsAnswered: score.questionsAnswered,
     wasTerminatedEarly: score.wasTerminatedEarly,
+    resources: score.domainTemplate?.resources || [], // Domain-specific resources
   }));
 
   console.log("MOCK_RECOMMENDATIONS.ENABLED:", MOCK_RECOMMENDATIONS.ENABLED);
@@ -201,93 +211,49 @@ async function streamRecommendations(assessment: any, userId: string) {
   // Record the AI call for rate limiting and cost tracking
   recordAICall(userId);
 
+  // Format domain analysis with names and resources
   const domainAnalysis = scoreSummary
-    .map(
-      (score: any) =>
-        `${score.domain}: ${score.rawScore}/${score.totalPossible} (${score.riskLevel} risk, ${(score.confidence * 100).toFixed(0)}% confidence)`
-    )
+    .map((score: any) => {
+      const resourceInfo = score.resources && score.resources.length > 0
+        ? `\n  Resources available: ${score.resources.map((r: any) => r.title || r.category).join(", ")}`
+        : "";
+      return `- **${score.domainName}**: ${score.rawScore}/${score.totalPossible} (${score.percentage}%, ${score.riskLevel.replace("_", " ")} risk)${resourceInfo}`;
+    })
     .join("\n");
 
-  return streamText({
-    model: openai("gpt-4o-mini"),
-    messages: [
-      {
-        role: "system",
-        content: `You are a behavioral assessment specialist. Generate comprehensive recommendations based on assessment scores. Include specific, actionable guidance and relevant professional resources with clickable links in [Title](URL) format.
+  // Include resources as structured data for AI
+  const domainResources = scoreSummary
+    .filter((score: any) => score.resources && score.resources.length > 0)
+    .map((score: any) => ({
+      domain: score.domainName,
+      resources: score.resources,
+    }));
 
-Format your response with:
-# 📊 Assessment Overview
-# 🔗 Domain Interactions  
-# 📚 Trusted Resources
-# ⚠️ Important Disclaimer
-
-Make the response engaging with emojis and clear sections. Include real, working URLs for resources.`,
-      },
-      {
-        role: "user",
-        content: `Generate recommendations for assessment of ${assessment.subjectName}:
+  const userPrompt = `Generate recommendations for assessment of ${assessment.subjectName}:
 
 Domain Scores:
 ${domainAnalysis}
 
-Include specific resources with clickable links in [Title](URL) format.`,
-      },
-    ],
-    temperature: 0.7,
-  });
-  const systemMessage = `You are a professional behavioral assessment specialist providing detailed, evidence-based recommendations. 
-
-Your response should include embedded resources and citations in this format:
-- For resources, use: **Resource:** [Title](URL) - Description
-- Organize your response with clear headings and actionable bullet points
-- Include both interventions and helpful resources throughout your recommendations`;
-
-  const userPrompt = `Based on the following assessment results for "${assessment.subjectName}", provide detailed, actionable recommendations for intervention, support, and monitoring.
-
-Assessment Results:
-${scoreSummary
-  .map(
-    (score: any) => `
-- ${score.domain} Domain:
-  * Score: ${score.rawScore}/${score.totalPossible} (${score.percentage}%)
-  * Risk Level: ${score.riskLevel.replace("_", " ")}
-  * Questions Answered: ${score.questionsAnswered}
-  * Assessment Confidence: ${(score.confidence * 100).toFixed(0)}%
-  ${score.wasTerminatedEarly ? "* Note: Assessment was terminated early due to low risk indicators" : ""}
-`
-  )
-  .join("")}
-
-Please provide comprehensive recommendations with embedded resources:
-
-1. **Overall Risk Assessment**: Summary of key findings and overall risk profile
-2. **Priority Areas**: Which domains require immediate attention with relevant resources
-3. **Specific Interventions**: Detailed, actionable interventions for each high-risk domain with supporting resources
-4. **Monitoring Plan**: How to track progress and when to reassess with tracking tools/resources
-5. **Professional Support**: Types of professional support or programs with specific resource recommendations
-6. **Family/Caregiver Guidance**: Practical advice for daily management with helpful resources
-
-Include relevant resources throughout each section such as:
-- Professional organizations (APA, AACAP, etc.)
-- Evidence-based therapy approaches with links to information
-- Assessment tools and tracking resources
-- Educational materials and support groups
-- Crisis resources if applicable
-
-Keep recommendations professional, evidence-based, and actionable while embedding helpful resources throughout.`;
+${domainResources.length > 0 ? `\nAvailable Resources by Domain:
+${domainResources.map((d: any) =>
+  `${d.domain}:\n${d.resources.map((r: any) =>
+    `  - ${r.title}: ${r.description}${r.url ? ` (${r.url})` : ""}`
+  ).join("\n")}`
+).join("\n\n")}` : ""}`;
 
   return streamText({
-    model: openai("gpt-4o"),
+    model: openai(AI_PARAMETERS.ASSESSMENT.MODEL),
     messages: [
       {
         role: "system",
-        content: systemMessage,
+        content: SYSTEM_PROMPTS.ASSESSMENT_ANALYSIS,
       },
       {
         role: "user",
         content: userPrompt,
       },
     ],
-    temperature: 0.7,
+    temperature: AI_PARAMETERS.ASSESSMENT.TEMPERATURE,
+    // Note: maxTokens is controlled by the model configuration and system prompt
   });
 }

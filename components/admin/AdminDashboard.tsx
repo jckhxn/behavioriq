@@ -4,10 +4,9 @@ import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SystemStats } from "./SystemStats";
 import { AssessmentBuilder } from "./AssessmentBuilder";
-import TrialAssessmentCustomizer from "./TrialAssessmentCustomizer";
-import { UserManagement } from "./UserManagement";
+import { UserManagementTab } from "./UserManagementTab";
 import { SystemSettings } from "./SystemSettings";
-import { Users, BarChart3, Key, FileText, Brain } from "lucide-react";
+import { Users, BarChart3, Settings, FileText } from "lucide-react";
 
 export function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("builder");
@@ -29,21 +28,14 @@ export function AdminDashboard() {
         onValueChange={setActiveTab}
         className="space-y-4"
       >
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 h-auto">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto">
           <TabsTrigger
             value="builder"
             className="flex items-center gap-1 sm:gap-2 py-2 text-xs sm:text-sm"
           >
             <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
-            <span className="hidden sm:inline">Assessment</span>
-            <span className="sm:hidden">Assess</span>
-          </TabsTrigger>
-          <TabsTrigger
-            value="trial"
-            className="flex items-center gap-1 sm:gap-2 py-2 text-xs sm:text-sm"
-          >
-            <Brain className="h-3 w-3 sm:h-4 sm:w-4" />
-            Trial
+            <span className="hidden sm:inline">Templates</span>
+            <span className="sm:hidden">Templates</span>
           </TabsTrigger>
           <TabsTrigger
             value="users"
@@ -56,7 +48,7 @@ export function AdminDashboard() {
             value="settings"
             className="flex items-center gap-1 sm:gap-2 py-2 text-xs sm:text-sm"
           >
-            <Key className="h-3 w-3 sm:h-4 sm:w-4" />
+            <Settings className="h-3 w-3 sm:h-4 sm:w-4" />
             Settings
           </TabsTrigger>
           <TabsTrigger
@@ -72,12 +64,8 @@ export function AdminDashboard() {
           <AssessmentBuilder />
         </TabsContent>
 
-        <TabsContent value="trial">
-          <TrialAssessmentCustomizer />
-        </TabsContent>
-
         <TabsContent value="users">
-          <UserManagement />
+          <UserManagementTab />
         </TabsContent>
 
         <TabsContent value="settings">

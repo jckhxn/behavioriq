@@ -64,7 +64,8 @@ export async function POST(
       completedAt: assessment.completedAt?.toISOString() || null,
       status: assessment.status,
       scores: assessment.scores.map((score: any) => ({
-        domain: score.domainName || score.domain || "Unknown",
+        domain: score.domain || "Unknown",
+        domainName: score.domainName || score.domain || "Unknown", // Human-readable name for Tailwind PDF
         rawScore: score.rawScore,
         totalPossible: score.totalPossible,
         riskLevel: score.riskLevel,

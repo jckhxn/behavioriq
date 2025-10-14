@@ -58,33 +58,84 @@ export function PasskeySettings() {
   };
 
   const registerPasskey = async () => {
-    setIsLoading(true);
     try {
+      setIsLoading(true);
+
       // Get registration options from server
       const optionsResponse = await fetch("/api/auth/passkeys/register", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
       });
 
       if (!optionsResponse.ok) {
-        throw new Error("Failed to get registration options");
+        const errorData = await optionsResponse.json();
+        throw new Error(
+          errorData.error || "Failed to get registration options"
+        );
       }
 
       const options = await optionsResponse.json();
 
+      // Validate options structure
+      if (!options || typeof options !== "object" || !options.challenge) {
+        console.error("Invalid options received:", options);
+        throw new Error("Invalid registration options from server");
+      }
+
+      // Ensure all required fields are present and properly formatted
+      const validatedOptions = {
+        ...options,
+        challenge: options.challenge,
+        rp: {
+          name: options.rp?.name || "AI Diagnostic",
+          id: options.rp?.id || window.location.hostname,
+        },
+        user: {
+          id: options.user?.id || "",
+          name: options.user?.name || "",
+          displayName: options.user?.displayName || "",
+        },
+        pubKeyCredParams: options.pubKeyCredParams || [
+          { alg: -7, type: "public-key" },    // ES256
+          { alg: -257, type: "public-key" },  // RS256
+        ],
+        timeout: options.timeout || 60000,
+        attestation: options.attestation || "none",
+        // Mobile-friendly settings: allow platform authenticators (Face ID, Touch ID, biometrics)
+        authenticatorSelection: options.authenticatorSelection || {
+          residentKey: "preferred",      // Allow discoverable credentials
+          userVerification: "preferred", // Use biometrics when available
+          requireResidentKey: false,     // Don't require it for better compatibility
+        },
+      };
+
       // Start registration with the browser's WebAuthn API
-      const credential = await startRegistration(options);
+      const credential = await startRegistration(validatedOptions);
+
+      // Prompt for passkey name
+      const passkeyName = prompt(
+        "Give this passkey a name (e.g., 'MacBook Touch ID', 'YubiKey'):",
+        `${navigator.userAgent.includes("Mac") ? "Mac" : "Device"} ${new Date().toLocaleDateString()}`
+      );
+
+      if (!passkeyName) {
+        toast.error("Passkey name is required");
+        return;
+      }
 
       // Verify registration with server
       const verifyResponse = await fetch("/api/auth/passkeys/verify", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ credential }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          credential,
+          name: passkeyName.trim(),
+        }),
       });
 
       if (!verifyResponse.ok) {
-        throw new Error("Failed to verify passkey");
+        const errorData = await verifyResponse.json();
+        throw new Error(errorData.error || "Failed to verify passkey");
       }
 
       toast.success("Passkey registered successfully!");
