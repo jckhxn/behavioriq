@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db/prisma";
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getCurrentUserWithRole();
@@ -14,6 +14,7 @@ export async function PUT(
     }
 
     const { licenseType } = await request.json();
+    const { id } = await params;
 
     if (!licenseType || !["BASIC", "PROFESSIONAL", "ENTERPRISE"].includes(licenseType)) {
       return NextResponse.json(
@@ -23,7 +24,7 @@ export async function PUT(
     }
 
     const targetUser = await prisma.user.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         licenses: {
           where: { isActive: true },

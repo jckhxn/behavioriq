@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth/config";
 import { EmailRateLimiter } from "@/lib/services/email-rate-limiter";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 
 /**
  * GET /api/admin/email-analytics
@@ -11,13 +10,13 @@ import { EmailRateLimiter } from "@/lib/services/email-rate-limiter";
 export async function GET(request: Request) {
   try {
     // Check authentication and authorization
-    const session = await getServerSession(authOptions);
+    const currentUser = await getCurrentUserWithRole();
 
-    if (!session?.user) {
+    if (!currentUser?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (session.user.role !== "SUPER_ADMIN") {
+    if (currentUser.role !== "SUPER_ADMIN") {
       return NextResponse.json(
         { error: "Forbidden - Super Admin access required" },
         { status: 403 }

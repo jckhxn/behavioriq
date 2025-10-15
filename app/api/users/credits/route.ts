@@ -1,26 +1,33 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth/config";
 import prisma from "@/lib/db/prisma";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
+    const user = await getCurrentUserWithRole();
 
-    if (!session?.user?.id) {
+    if (!user?.id) {
       return NextResponse.json({ credits: 0 }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+    const creditsValue =
+      typeof user.credits === "number"
+        ? user.credits
+        : user.credits === null
+        ? 0
+        : undefined;
+
+    if (creditsValue !== undefined) {
+      return NextResponse.json({ credits: creditsValue });
+    }
+
+    // Fallback to Prisma query if credits not included in Supabase payload
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
       select: { credits: true },
     });
 
-    if (!user) {
-      return NextResponse.json({ credits: 0 }, { status: 404 });
-    }
-
-    return NextResponse.json({ credits: user.credits ?? 0 });
+    return NextResponse.json({ credits: dbUser?.credits ?? 0 });
   } catch (error) {
     console.error("Failed to fetch credits:", error);
     return NextResponse.json(

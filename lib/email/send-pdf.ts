@@ -1,4 +1,4 @@
-import { generateAssessmentPDF } from "@/lib/pdf/pdf-generator";
+import { generateAssessmentPDF } from "@/lib/pdf/generator";
 import prisma from "@/lib/db/prisma";
 import {
   checkBudgetAvailable,
@@ -28,7 +28,7 @@ export async function sendAssessmentPDFEmail({
         template: true,
         scores: {
           include: {
-            domain: true,
+            domainTemplate: true,
           },
         },
       },
@@ -38,8 +38,38 @@ export async function sendAssessmentPDFEmail({
       throw new Error("Assessment not found or not completed");
     }
 
+    // Prepare assessment data for PDF generation
+    const templateName = assessment.template?.name || "BehaviorIQ Assessment";
+
+    const assessmentData = {
+      id: assessment.id,
+      subjectName: assessment.subjectName,
+      startedAt: assessment.startedAt.toISOString(),
+      completedAt: assessment.completedAt?.toISOString() || null,
+      status: assessment.status,
+      scores: assessment.scores.map((score: any) => ({
+        domain:
+          score.domainName ||
+          score.domainTemplate?.name ||
+          score.domain ||
+          "Unknown",
+        domainName:
+          score.domainName ||
+          score.domainTemplate?.name ||
+          score.domain ||
+          "Unknown",
+        rawScore: score.rawScore,
+        totalPossible: score.totalPossible,
+        riskLevel: score.riskLevel,
+      })),
+      user: {
+        name: assessment.user?.name || null,
+        email: assessment.user?.email || to,
+      },
+    };
+
     // Generate PDF buffer
-    const pdfBuffer = await generateAssessmentPDF(assessmentId);
+    const pdfBuffer = await generateAssessmentPDF(assessmentData);
 
     // Use SES if enabled
     const useSES = process.env.USE_SES === "true";
@@ -48,7 +78,7 @@ export async function sendAssessmentPDFEmail({
       const result = await SESEmailService.sendAssessmentReport({
         to,
         userName,
-        assessmentName: assessment.template.name,
+        assessmentName: templateName,
         assessmentId: assessment.id,
         pdfBuffer,
       });
@@ -69,7 +99,7 @@ export async function sendAssessmentPDFEmail({
         from:
           process.env.EMAIL_FROM || "AI Diagnostic <noreply@yourdomain.com>",
         to,
-        subject: `Your ${assessment.template.name} Assessment Report`,
+        subject: `Your ${templateName} Assessment Report`,
         html: `
           <!DOCTYPE html>
           <html>

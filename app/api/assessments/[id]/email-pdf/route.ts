@@ -1,17 +1,16 @@
-import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth/config";
+import { NextRequest, NextResponse } from "next/server";
 import { sendAssessmentPDFEmail } from "@/lib/email/send-pdf";
 import prisma from "@/lib/db/prisma";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 
 export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const currentUser = await getCurrentUserWithRole();
 
-    if (!session?.user?.email) {
+    if (!currentUser?.id || !currentUser.email) {
       return NextResponse.json(
         { error: "Unauthorized - email required" },
         { status: 401 }
@@ -19,8 +18,10 @@ export async function POST(
     }
 
     // Verify assessment exists and belongs to user
+    const { id } = await params;
+
     const assessment = await prisma.assessment.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: {
         id: true,
         userId: true,
@@ -41,7 +42,7 @@ export async function POST(
       );
     }
 
-    if (assessment.userId !== session.user.id) {
+    if (assessment.userId !== currentUser.id) {
       return NextResponse.json(
         { error: "You do not have permission to access this assessment" },
         { status: 403 }
@@ -57,9 +58,13 @@ export async function POST(
 
     // Send the email with PDF attachment
     const result = await sendAssessmentPDFEmail({
-      to: session.user.email,
-      assessmentId: params.id,
-      userName: session.user.name || "User",
+      to: currentUser.email,
+      assessmentId: id,
+      userName:
+        currentUser.name ||
+        assessment.user?.name ||
+        assessment.user?.email ||
+        "User",
     });
 
     return NextResponse.json(result);

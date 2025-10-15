@@ -2,7 +2,6 @@ import { prisma } from "@/lib/db/prisma";
 import { NextResponse } from "next/server";
 import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import React from "react";
-import ReactDOMServer from "react-dom/server";
 import SimpleEmail from "@/components/admin/JSXEmailTemplates/SimpleEmail";
 
 type RenderRequest = {
@@ -31,7 +30,8 @@ export async function POST(req: Request) {
       body: payload.body || "",
     });
 
-    const rendered = ReactDOMServer.renderToStaticMarkup(element);
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const rendered = renderToStaticMarkup(element);
 
     // Wrap with a minimal HTML document for safety
     const html = `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/></head><body>${rendered}</body></html>`;
