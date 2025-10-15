@@ -44,11 +44,14 @@ export async function GET(request: NextRequest) {
               assessmentsUsed: true,
               conversationalAssessmentsAllowed: true,
               conversationalAssessmentsUsed: true,
+              conversationalReportsAllowed: true,
+              conversationalReportsUsed: true,
               isActive: true,
               license: {
                 select: {
                   type: true,
                   maxAssessments: true,
+                  maxConversationalReports: true,
                 },
               },
             },
@@ -67,18 +70,67 @@ export async function GET(request: NextRequest) {
 
     const formattedUsers = users.map((user) => {
       const activeLicense = user.licenses[0];
+
+      if (!activeLicense) {
+        return {
+          ...user,
+          activeLicense: null,
+          totalDocuments: user._count.documents,
+          totalAssessments: user._count.assessments,
+          totalChatSessions: user._count.chatSessions,
+        };
+      }
+
+      const assessmentsAllowed = activeLicense.assessmentsAllowed ?? 0;
+      const assessmentsUsed = activeLicense.assessmentsUsed ?? 0;
+      const conversationalAssessmentsAllowed =
+        activeLicense.conversationalAssessmentsAllowed ?? 0;
+      const conversationalAssessmentsUsed =
+        activeLicense.conversationalAssessmentsUsed ?? 0;
+      const conversationalReportsAllowed =
+        activeLicense.conversationalReportsAllowed ?? 0;
+      const conversationalReportsUsed =
+        activeLicense.conversationalReportsUsed ?? 0;
+      const hasManualReportLimit = conversationalReportsAllowed > 0;
+      const licenseReportLimit =
+        activeLicense.license.maxConversationalReports;
+      let conversationalReportLimit: number | null;
+      if (hasManualReportLimit) {
+        conversationalReportLimit = conversationalReportsAllowed;
+      } else if (licenseReportLimit === null) {
+        conversationalReportLimit = null;
+      } else if (typeof licenseReportLimit === "number") {
+        conversationalReportLimit = licenseReportLimit;
+      } else {
+        conversationalReportLimit = 0;
+      }
+      const hasUnlimitedConversationalReports =
+        conversationalReportLimit === null;
+      const conversationalReportCreditsRemaining =
+        conversationalReportLimit === null
+          ? null
+          : Math.max(
+              0,
+              (conversationalReportLimit ?? 0) - conversationalReportsUsed
+            );
+
       return {
         ...user,
-        activeLicense: activeLicense
-          ? {
-              ...activeLicense,
-              creditsRemaining:
-                activeLicense.assessmentsAllowed - activeLicense.assessmentsUsed,
-              conversationalCreditsRemaining:
-                activeLicense.conversationalAssessmentsAllowed -
-                activeLicense.conversationalAssessmentsUsed,
-            }
-          : null,
+        activeLicense: {
+          ...activeLicense,
+          assessmentsAllowed,
+          assessmentsUsed,
+          conversationalAssessmentsAllowed,
+          conversationalAssessmentsUsed,
+          conversationalReportsAllowed,
+          conversationalReportsUsed,
+          creditsRemaining: assessmentsAllowed - assessmentsUsed,
+          conversationalCreditsRemaining:
+            conversationalAssessmentsAllowed - conversationalAssessmentsUsed,
+          conversationalReportLimit,
+          hasUnlimitedConversationalReports,
+          conversationalReportCreditsRemaining,
+        },
         totalDocuments: user._count.documents,
         totalAssessments: user._count.assessments,
         totalChatSessions: user._count.chatSessions,

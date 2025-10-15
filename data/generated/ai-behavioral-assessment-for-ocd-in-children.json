@@ -1,0 +1,119 @@
+{
+  "keyword": "ai behavioral assessment for ocd in children",
+  "slug": "ai-behavioral-assessment-for-ocd-in-children",
+  "meta_title": "AI Behavioral Assessment for OCD in Children | BehaviorIQ™",
+  "meta_description": "Discover how BehaviorIQ™ offers AI behavioral assessments for OCD in children, providing insights for parents and educators.",
+  "canonical_path": "/ai-behavioral-assessment-for-ocd-in-children",
+  "hero": {
+    "headline": "Transforming OCD Insights with AI",
+    "subheadline": "Unlock personalized behavioral assessments for children struggling with OCD. Empower your child’s journey with BehaviorIQ™ today.",
+    "cta_label": "Start Your Free Assessment",
+    "cta_href": "/trial-assessment",
+    "supporting_text": "Join thousands of parents and educators using AI to support children’s mental health.",
+    "trust_badges": [
+      "Trusted by Educators",
+      "Backed by Research",
+      "Privacy-Focused"
+    ]
+  },
+  "social_proof": {
+    "heading": "What Parents Are Saying",
+    "items": [
+      "\"BehaviorIQ™ changed our approach to understanding OCD!\"",
+      "\"The insights were eye-opening for our family.\"",
+      "\"A must-have tool for schools and parents alike.\""
+    ]
+  },
+  "definition_section": {
+    "heading": "What is AI Behavioral Assessment for OCD?",
+    "paragraphs": [
+      "AI behavioral assessment for OCD utilizes advanced algorithms to analyze children's behaviors, providing tailored insights and recommendations.",
+      "This method empowers parents and educators to understand and support children effectively, ensuring timely interventions."
+    ]
+  },
+  "process": {
+    "heading": "How It Works",
+    "steps": [
+      {
+        "step": "1",
+        "title": "Sign Up for Free",
+        "description": "Join BehaviorIQ™ and create an account to access our AI-powered assessment tools."
+      },
+      {
+        "step": "2",
+        "title": "Complete the Assessment",
+        "description": "Guided by our platform, answer questions to evaluate your child's behavior related to OCD."
+      },
+      {
+        "step": "3",
+        "title": "Receive Customized Insights",
+        "description": "Get detailed reports and recommendations tailored to your child's needs, helping you take informed actions."
+      }
+    ]
+  },
+  "comparison": {
+    "heading": "BehaviorIQ™ vs. Traditional Assessments",
+    "rows": [
+      {
+        "label": "Speed of Results",
+        "traditional": "Weeks to receive reports",
+        "behavioriq": "Instant insights after assessment"
+      },
+      {
+        "label": "Cost",
+        "traditional": "High fees for evaluations",
+        "behavioriq": "Affordable subscription model"
+      },
+      {
+        "label": "Convenience",
+        "traditional": "In-person visits required",
+        "behavioriq": "Complete assessments from home"
+      },
+      {
+        "label": "Insight Quality",
+        "traditional": "Generic evaluations",
+        "behavioriq": "AI-driven, personalized insights"
+      }
+    ]
+  },
+  "faq": [
+    {
+      "question": "Is my child's data safe with BehaviorIQ™?",
+      "answer": "Yes, we prioritize privacy and security, ensuring your child's data is protected at all times."
+    },
+    {
+      "question": "How accurate are the assessments?",
+      "answer": "Our AI assessments are backed by research and clinical validation for high accuracy and reliability."
+    },
+    {
+      "question": "Can BehaviorIQ™ help in school settings?",
+      "answer": "Absolutely! Our insights support educators in creating tailored interventions for children with OCD."
+    }
+  ],
+  "lead_magnet": {
+    "heading": "Get Started with a Free Assessment",
+    "subheading": "Discover how AI can transform your understanding of OCD in children.",
+    "cta_label": "Claim Your Free Assessment",
+    "cta_href": "/trial-assessment",
+    "supporting_text": "Take the first step towards empowering your child with BehaviorIQ™."
+  },
+  "footer": {
+    "text": "Explore more resources and support for your child's mental health.",
+    "links": [
+      {
+        "label": "Privacy",
+        "href": "/privacy"
+      },
+      {
+        "label": "Terms",
+        "href": "/terms"
+      },
+      {
+        "label": "Support",
+        "href": "/support"
+      }
+    ]
+  },
+  "generated_at": "2025-10-15T14:52:51.399Z",
+  "source": "openai"
+}

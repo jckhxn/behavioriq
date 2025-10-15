@@ -22,6 +22,8 @@ interface License {
   status: LicenseStatus;
   maxUsers: number;
   maxAssessments: number | null;
+  maxConversationalAssessments?: number | null;
+  maxConversationalReports?: number | null;
   validUntil: Date | null;
   features: any;
   organizationId?: string | null;
@@ -36,11 +38,14 @@ interface UserLicense {
   assignedBy?: string | null;
   assignedAt: Date;
   isActive: boolean;
+  conversationalReportsAllowed?: number;
+  conversationalReportsUsed?: number;
 }
 
 export interface LicenseFeatures {
   maxAssessments?: number;
   maxPDFReports?: number;
+  maxConversationalReports?: number;
   maxUsers?: number;
   aiRecommendations?: boolean;
   advancedReports?: boolean;
@@ -135,6 +140,7 @@ export class LicensingService {
         return {
           maxAssessments: 5,
           maxPDFReports: 2,
+          maxConversationalReports: 0,
           maxUsers: 1,
           aiRecommendations: true,
           advancedReports: false,
@@ -150,6 +156,7 @@ export class LicensingService {
         return {
           maxAssessments: 50,
           maxPDFReports: 25,
+          maxConversationalReports: 0,
           maxUsers: 1,
           aiRecommendations: true,
           advancedReports: true,
@@ -165,6 +172,7 @@ export class LicensingService {
         return {
           maxAssessments: 500,
           maxPDFReports: 250,
+          maxConversationalReports: undefined, // Unlimited
           maxUsers: 5,
           aiRecommendations: true,
           advancedReports: true,
@@ -180,6 +188,7 @@ export class LicensingService {
         return {
           maxAssessments: undefined, // Unlimited
           maxPDFReports: undefined, // Unlimited
+          maxConversationalReports: undefined, // Unlimited
           maxUsers: 50,
           aiRecommendations: true,
           advancedReports: true,
@@ -195,6 +204,7 @@ export class LicensingService {
         return {
           maxAssessments: 0,
           maxPDFReports: 0,
+          maxConversationalReports: 0,
           maxUsers: 0,
           aiRecommendations: false,
           advancedReports: false,

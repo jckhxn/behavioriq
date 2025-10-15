@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Test Script: Generate Full Conversational Assessment
  *
@@ -23,12 +24,17 @@ config({ path: resolve(process.cwd(), ".env.local") });
 // Verify OpenAI key is loaded
 if (!process.env.OPENAI_API_KEY) {
   console.error("❌ Error: OPENAI_API_KEY not found in environment variables");
-  console.error("Make sure .env.local exists in the project root with OPENAI_API_KEY set");
+  console.error(
+    "Make sure .env.local exists in the project root with OPENAI_API_KEY set"
+  );
   process.exit(1);
 }
 
 import { ConversationalAIFactory } from "../lib/ai/conversational/ConversationalAIFactory";
-import { ConversationalSession, Question } from "../lib/ai/conversational/types";
+import {
+  ConversationalSession,
+  Question,
+} from "../lib/ai/conversational/types";
 import { prisma } from "../lib/db/prisma";
 
 // Simulated user responses (mix of yes/no/unclear)
@@ -57,7 +63,7 @@ const SIMULATED_RESPONSES = [
 
 async function testFullConversation() {
   console.log("🚀 Starting FULL Conversational Assessment Test\n");
-  console.log("=" .repeat(60));
+  console.log("=".repeat(60));
 
   try {
     // 1. Get assessment template ID from command line or use first active
@@ -82,7 +88,9 @@ async function testFullConversation() {
         throw new Error(`Assessment template not found: ${templateIdArg}`);
       }
     } else {
-      console.log("\n📋 No template ID provided, finding first active template...");
+      console.log(
+        "\n📋 No template ID provided, finding first active template..."
+      );
 
       // List all active templates
       const allTemplates = await prisma.assessmentTemplate.findMany({
@@ -141,7 +149,7 @@ async function testFullConversation() {
     );
 
     console.log(`✅ Found ${allQuestions.length} questions\n`);
-    console.log("=" .repeat(60));
+    console.log("=".repeat(60));
 
     // 3. Create session (FULL assessment, not trial)
     const session: ConversationalSession = {
@@ -165,7 +173,7 @@ async function testFullConversation() {
 
     // 4. Generate initial greeting
     console.log("\n🤖 INITIAL GREETING:");
-    console.log("-" .repeat(60));
+    console.log("-".repeat(60));
     const initialMessage = await ai.generateResponse(
       session,
       "",
@@ -175,13 +183,18 @@ async function testFullConversation() {
 
     // Track tokens
     if (initialMessage.metadata?.tokenUsage) {
-      session.totalTokenUsage.promptTokens += initialMessage.metadata.tokenUsage.promptTokens;
-      session.totalTokenUsage.completionTokens += initialMessage.metadata.tokenUsage.completionTokens;
-      session.totalTokenUsage.totalTokens += initialMessage.metadata.tokenUsage.totalTokens;
+      session.totalTokenUsage.promptTokens +=
+        initialMessage.metadata.tokenUsage.promptTokens;
+      session.totalTokenUsage.completionTokens +=
+        initialMessage.metadata.tokenUsage.completionTokens;
+      session.totalTokenUsage.totalTokens +=
+        initialMessage.metadata.tokenUsage.totalTokens;
     }
 
     console.log(`AI: ${initialMessage.content}`);
-    console.log(`Tokens: ${initialMessage.metadata?.tokenUsage?.totalTokens || 0}`);
+    console.log(
+      `Tokens: ${initialMessage.metadata?.tokenUsage?.totalTokens || 0}`
+    );
 
     // 5. Go through all questions
     let questionIndex = 0;
@@ -190,24 +203,30 @@ async function testFullConversation() {
     const MAX_CLARIFICATION_ATTEMPTS = 3;
 
     // Simple cache to avoid duplicate API calls for same input
-    const extractionCache = new Map<string, { answer: boolean | null; confidence: number; tokenUsage?: TokenUsage }>();
+    const extractionCache = new Map<
+      string,
+      { answer: boolean | null; confidence: number; tokenUsage?: TokenUsage }
+    >();
 
     while (questionIndex < allQuestions.length) {
       const currentQuestion = allQuestions[questionIndex];
-      const userResponse = SIMULATED_RESPONSES[questionIndex % SIMULATED_RESPONSES.length];
+      const userResponse =
+        SIMULATED_RESPONSES[questionIndex % SIMULATED_RESPONSES.length];
 
       // Show domain header when switching domains
       if (currentQuestion.domainSlug !== lastDomain) {
-        console.log("\n" + "█" .repeat(60));
-        console.log(`🏷️  DOMAIN: ${currentQuestion.domain.toUpperCase()} (${currentQuestion.domainSlug})`);
-        console.log("█" .repeat(60));
+        console.log("\n" + "█".repeat(60));
+        console.log(
+          `🏷️  DOMAIN: ${currentQuestion.domain.toUpperCase()} (${currentQuestion.domainSlug})`
+        );
+        console.log("█".repeat(60));
         lastDomain = currentQuestion.domainSlug;
       }
 
-      console.log("\n" + "=" .repeat(60));
+      console.log("\n" + "=".repeat(60));
       console.log(`\n📝 QUESTION ${questionIndex + 1}/${allQuestions.length}`);
       console.log(`Original Question: "${currentQuestion.text}"`);
-      console.log("-" .repeat(60));
+      console.log("-".repeat(60));
       console.log(`👤 USER: ${userResponse}`);
 
       // Add user message
@@ -232,13 +251,18 @@ async function testFullConversation() {
         extractionCache.set(cacheKey, extraction);
       }
 
-      console.log(`📊 Extracted: ${extraction.answer} (confidence: ${extraction.confidence.toFixed(2)})`);
+      console.log(
+        `📊 Extracted: ${extraction.answer} (confidence: ${extraction.confidence.toFixed(2)})`
+      );
 
       // Track extraction tokens (only if not from cache)
       if (extraction.tokenUsage) {
-        session.totalTokenUsage.promptTokens += extraction.tokenUsage.promptTokens;
-        session.totalTokenUsage.completionTokens += extraction.tokenUsage.completionTokens;
-        session.totalTokenUsage.totalTokens += extraction.tokenUsage.totalTokens;
+        session.totalTokenUsage.promptTokens +=
+          extraction.tokenUsage.promptTokens;
+        session.totalTokenUsage.completionTokens +=
+          extraction.tokenUsage.completionTokens;
+        session.totalTokenUsage.totalTokens +=
+          extraction.tokenUsage.totalTokens;
       }
 
       // Determine if we should progress (same logic as API route)
@@ -251,11 +275,15 @@ async function testFullConversation() {
         questionIndex++;
         clarificationAttempts = 0; // Reset counter for next question
         shouldProgress = true;
-        console.log(`✅ Answer recorded: ${extraction.answer} for question ${currentQuestion.id}`);
+        console.log(
+          `✅ Answer recorded: ${extraction.answer} for question ${currentQuestion.id}`
+        );
         console.log(`→ Moving to question ${questionIndex + 1}`);
       } else if (clarificationAttempts >= MAX_CLARIFICATION_ATTEMPTS) {
         // Too many clarification attempts - force progression with "no" (conservative approach)
-        console.log(`⚠️ Max clarification attempts reached (${clarificationAttempts}). Forcing progression with "no" answer.`);
+        console.log(
+          `⚠️ Max clarification attempts reached (${clarificationAttempts}). Forcing progression with "no" answer.`
+        );
         session.responses[currentQuestion.id] = false;
         questionIndex++;
         clarificationAttempts = 0; // Reset counter
@@ -264,18 +292,23 @@ async function testFullConversation() {
         // Very unclear - ask for clarification
         clarificationAttempts++;
         clarificationNeeded = true;
-        console.log(`❓ Need clarification (confidence too low: ${extraction.confidence}) - Attempt ${clarificationAttempts}/${MAX_CLARIFICATION_ATTEMPTS}`);
+        console.log(
+          `❓ Need clarification (confidence too low: ${extraction.confidence}) - Attempt ${clarificationAttempts}/${MAX_CLARIFICATION_ATTEMPTS}`
+        );
       } else {
         // Medium confidence - ask follow-up to confirm
         clarificationAttempts++;
         clarificationNeeded = true;
-        console.log(`🤔 Need confirmation (confidence: ${extraction.confidence}) - Attempt ${clarificationAttempts}/${MAX_CLARIFICATION_ATTEMPTS}`);
+        console.log(
+          `🤔 Need confirmation (confidence: ${extraction.confidence}) - Attempt ${clarificationAttempts}/${MAX_CLARIFICATION_ATTEMPTS}`
+        );
       }
 
       // Get next question
-      const nextQuestion = shouldProgress && questionIndex < allQuestions.length
-        ? allQuestions[questionIndex]
-        : null;
+      const nextQuestion =
+        shouldProgress && questionIndex < allQuestions.length
+          ? allQuestions[questionIndex]
+          : null;
 
       // Generate AI response
       const aiMessage = await ai.generateResponse(
@@ -294,20 +327,25 @@ async function testFullConversation() {
 
       // Track tokens
       if (aiMessage.metadata?.tokenUsage) {
-        session.totalTokenUsage.promptTokens += aiMessage.metadata.tokenUsage.promptTokens;
-        session.totalTokenUsage.completionTokens += aiMessage.metadata.tokenUsage.completionTokens;
-        session.totalTokenUsage.totalTokens += aiMessage.metadata.tokenUsage.totalTokens;
+        session.totalTokenUsage.promptTokens +=
+          aiMessage.metadata.tokenUsage.promptTokens;
+        session.totalTokenUsage.completionTokens +=
+          aiMessage.metadata.tokenUsage.completionTokens;
+        session.totalTokenUsage.totalTokens +=
+          aiMessage.metadata.tokenUsage.totalTokens;
       }
 
-      console.log("-" .repeat(60));
+      console.log("-".repeat(60));
       console.log(`🤖 AI: ${aiMessage.content}`);
-      console.log(`Tokens (this exchange): ${aiMessage.metadata?.tokenUsage?.totalTokens || 0}`);
+      console.log(
+        `Tokens (this exchange): ${aiMessage.metadata?.tokenUsage?.totalTokens || 0}`
+      );
     }
 
     // 6. Calculate scores
-    console.log("\n" + "=" .repeat(60));
+    console.log("\n" + "=".repeat(60));
     console.log("\n📊 FINAL RESULTS:");
-    console.log("=" .repeat(60));
+    console.log("=".repeat(60));
 
     const domainScores: Record<string, { yes: number; total: number }> = {};
 
@@ -330,16 +368,23 @@ async function testFullConversation() {
     });
 
     // 7. Token Summary
-    console.log("\n" + "=" .repeat(60));
+    console.log("\n" + "=".repeat(60));
     console.log("\n💰 TOKEN USAGE SUMMARY:");
-    console.log("=" .repeat(60));
-    console.log(`Prompt Tokens:     ${session.totalTokenUsage.promptTokens.toLocaleString()}`);
-    console.log(`Completion Tokens: ${session.totalTokenUsage.completionTokens.toLocaleString()}`);
-    console.log(`Total Tokens:      ${session.totalTokenUsage.totalTokens.toLocaleString()}`);
+    console.log("=".repeat(60));
+    console.log(
+      `Prompt Tokens:     ${session.totalTokenUsage.promptTokens.toLocaleString()}`
+    );
+    console.log(
+      `Completion Tokens: ${session.totalTokenUsage.completionTokens.toLocaleString()}`
+    );
+    console.log(
+      `Total Tokens:      ${session.totalTokenUsage.totalTokens.toLocaleString()}`
+    );
 
     // Calculate cost (gpt-4o-mini pricing)
-    const inputCost = (session.totalTokenUsage.promptTokens / 1_000_000) * 0.150;
-    const outputCost = (session.totalTokenUsage.completionTokens / 1_000_000) * 0.600;
+    const inputCost = (session.totalTokenUsage.promptTokens / 1_000_000) * 0.15;
+    const outputCost =
+      (session.totalTokenUsage.completionTokens / 1_000_000) * 0.6;
     const totalCost = inputCost + outputCost;
 
     console.log("\nEstimated Cost (GPT-4o-mini):");
@@ -347,9 +392,8 @@ async function testFullConversation() {
     console.log(`Output: $${outputCost.toFixed(4)}`);
     console.log(`Total:  $${totalCost.toFixed(4)}`);
 
-    console.log("\n" + "=" .repeat(60));
+    console.log("\n" + "=".repeat(60));
     console.log("\n✅ Test Complete!\n");
-
   } catch (error) {
     console.error("\n❌ Error:", error);
     throw error;

@@ -36,8 +36,8 @@ export async function GET(
 
 // DELETE /api/assessments/[id] - Delete an assessment
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   console.log("[Delete Assessment] Request received");
   try {

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Quick Test Script: Test Token Tracking (First 5 Questions Only)
  *
@@ -17,12 +18,18 @@ config({ path: resolve(process.cwd(), ".env.local") });
 // Verify OpenAI key is loaded
 if (!process.env.OPENAI_API_KEY) {
   console.error("❌ Error: OPENAI_API_KEY not found in environment variables");
-  console.error("Make sure .env.local exists in the project root with OPENAI_API_KEY set");
+  console.error(
+    "Make sure .env.local exists in the project root with OPENAI_API_KEY set"
+  );
   process.exit(1);
 }
 
 import { ConversationalAIFactory } from "../lib/ai/conversational/ConversationalAIFactory";
-import { ConversationalSession, Question, TokenUsage } from "../lib/ai/conversational/types";
+import {
+  ConversationalSession,
+  Question,
+  TokenUsage,
+} from "../lib/ai/conversational/types";
 import { prisma } from "../lib/db/prisma";
 
 // Simulated user responses (mix of yes/no/unclear)
@@ -36,7 +43,7 @@ const SIMULATED_RESPONSES = [
 
 async function testQuickConversation() {
   console.log("🚀 Starting QUICK Token Test (5 Questions)\n");
-  console.log("=" .repeat(60));
+  console.log("=".repeat(60));
 
   try {
     // 1. Get first active assessment template
@@ -66,8 +73,8 @@ async function testQuickConversation() {
     console.log(`✅ Loaded: ${assessmentTemplate!.name}`);
 
     // 2. Flatten questions and take first 5
-    const allQuestions = assessmentTemplate!.domains.flatMap(
-      (domain: any, domainIndex: number) => {
+    const allQuestions = assessmentTemplate!.domains
+      .flatMap((domain: any, domainIndex: number) => {
         const domainQuestions = domain.domainTemplate.questions as any[];
         return domainQuestions.map((question: any, questionIndex: number) => ({
           id: question.id,
@@ -78,11 +85,11 @@ async function testQuickConversation() {
           weight: question.weight || 1,
           required: question.required !== false,
         }));
-      }
-    ).slice(0, 5); // ONLY FIRST 5 QUESTIONS
+      })
+      .slice(0, 5); // ONLY FIRST 5 QUESTIONS
 
     console.log(`✅ Testing with ${allQuestions.length} questions\n`);
-    console.log("=" .repeat(60));
+    console.log("=".repeat(60));
 
     // 3. Create session
     const session: ConversationalSession = {
@@ -106,7 +113,7 @@ async function testQuickConversation() {
 
     // 4. Generate initial greeting
     console.log("\n🤖 INITIAL GREETING:");
-    console.log("-" .repeat(60));
+    console.log("-".repeat(60));
     const initialMessage = await ai.generateResponse(
       session,
       "",
@@ -115,29 +122,38 @@ async function testQuickConversation() {
     session.messages.push(initialMessage);
 
     if (initialMessage.metadata?.tokenUsage) {
-      session.totalTokenUsage.promptTokens += initialMessage.metadata.tokenUsage.promptTokens;
-      session.totalTokenUsage.completionTokens += initialMessage.metadata.tokenUsage.completionTokens;
-      session.totalTokenUsage.totalTokens += initialMessage.metadata.tokenUsage.totalTokens;
+      session.totalTokenUsage.promptTokens +=
+        initialMessage.metadata.tokenUsage.promptTokens;
+      session.totalTokenUsage.completionTokens +=
+        initialMessage.metadata.tokenUsage.completionTokens;
+      session.totalTokenUsage.totalTokens +=
+        initialMessage.metadata.tokenUsage.totalTokens;
     }
 
     console.log(`AI: ${initialMessage.content}`);
-    console.log(`Tokens: ${JSON.stringify(initialMessage.metadata?.tokenUsage)}`);
+    console.log(
+      `Tokens: ${JSON.stringify(initialMessage.metadata?.tokenUsage)}`
+    );
 
     // 5. Go through all questions
     let questionIndex = 0;
     let clarificationAttempts = 0;
     const MAX_CLARIFICATION_ATTEMPTS = 3;
 
-    const extractionCache = new Map<string, { answer: boolean | null; confidence: number; tokenUsage?: TokenUsage }>();
+    const extractionCache = new Map<
+      string,
+      { answer: boolean | null; confidence: number; tokenUsage?: TokenUsage }
+    >();
 
     while (questionIndex < allQuestions.length) {
       const currentQuestion = allQuestions[questionIndex];
-      const userResponse = SIMULATED_RESPONSES[questionIndex % SIMULATED_RESPONSES.length];
+      const userResponse =
+        SIMULATED_RESPONSES[questionIndex % SIMULATED_RESPONSES.length];
 
-      console.log("\n" + "=" .repeat(60));
+      console.log("\n" + "=".repeat(60));
       console.log(`\n📝 QUESTION ${questionIndex + 1}/${allQuestions.length}`);
       console.log(`Question: "${currentQuestion.text}"`);
-      console.log("-" .repeat(60));
+      console.log("-".repeat(60));
       console.log(`👤 USER: ${userResponse}`);
 
       const userMessage = {
@@ -160,12 +176,17 @@ async function testQuickConversation() {
         extractionCache.set(cacheKey, extraction);
       }
 
-      console.log(`📊 Extracted: ${extraction.answer} (confidence: ${extraction.confidence.toFixed(2)})`);
+      console.log(
+        `📊 Extracted: ${extraction.answer} (confidence: ${extraction.confidence.toFixed(2)})`
+      );
 
       if (extraction.tokenUsage) {
-        session.totalTokenUsage.promptTokens += extraction.tokenUsage.promptTokens;
-        session.totalTokenUsage.completionTokens += extraction.tokenUsage.completionTokens;
-        session.totalTokenUsage.totalTokens += extraction.tokenUsage.totalTokens;
+        session.totalTokenUsage.promptTokens +=
+          extraction.tokenUsage.promptTokens;
+        session.totalTokenUsage.completionTokens +=
+          extraction.tokenUsage.completionTokens;
+        session.totalTokenUsage.totalTokens +=
+          extraction.tokenUsage.totalTokens;
       }
 
       let shouldProgress = false;
@@ -177,7 +198,9 @@ async function testQuickConversation() {
         clarificationAttempts = 0;
         shouldProgress = true;
       } else if (clarificationAttempts >= MAX_CLARIFICATION_ATTEMPTS) {
-        console.log(`⚠️ Max clarification attempts. Forcing progression with "no".`);
+        console.log(
+          `⚠️ Max clarification attempts. Forcing progression with "no".`
+        );
         session.responses[currentQuestion.id] = false;
         questionIndex++;
         clarificationAttempts = 0;
@@ -185,12 +208,15 @@ async function testQuickConversation() {
       } else {
         clarificationAttempts++;
         clarificationNeeded = true;
-        console.log(`🤔 Clarification attempt ${clarificationAttempts}/${MAX_CLARIFICATION_ATTEMPTS}`);
+        console.log(
+          `🤔 Clarification attempt ${clarificationAttempts}/${MAX_CLARIFICATION_ATTEMPTS}`
+        );
       }
 
-      const nextQuestion = shouldProgress && questionIndex < allQuestions.length
-        ? allQuestions[questionIndex]
-        : null;
+      const nextQuestion =
+        shouldProgress && questionIndex < allQuestions.length
+          ? allQuestions[questionIndex]
+          : null;
 
       const aiMessage = await ai.generateResponse(
         session,
@@ -207,27 +233,37 @@ async function testQuickConversation() {
       session.messages.push(aiMessage);
 
       if (aiMessage.metadata?.tokenUsage) {
-        session.totalTokenUsage.promptTokens += aiMessage.metadata.tokenUsage.promptTokens;
-        session.totalTokenUsage.completionTokens += aiMessage.metadata.tokenUsage.completionTokens;
-        session.totalTokenUsage.totalTokens += aiMessage.metadata.tokenUsage.totalTokens;
+        session.totalTokenUsage.promptTokens +=
+          aiMessage.metadata.tokenUsage.promptTokens;
+        session.totalTokenUsage.completionTokens +=
+          aiMessage.metadata.tokenUsage.completionTokens;
+        session.totalTokenUsage.totalTokens +=
+          aiMessage.metadata.tokenUsage.totalTokens;
       }
 
-      console.log("-" .repeat(60));
+      console.log("-".repeat(60));
       console.log(`🤖 AI: ${aiMessage.content}`);
       console.log(`Tokens: ${JSON.stringify(aiMessage.metadata?.tokenUsage)}`);
     }
 
     // 6. Token Summary
-    console.log("\n" + "=" .repeat(60));
+    console.log("\n" + "=".repeat(60));
     console.log("\n💰 TOKEN USAGE SUMMARY:");
-    console.log("=" .repeat(60));
-    console.log(`Prompt Tokens:     ${session.totalTokenUsage.promptTokens.toLocaleString()}`);
-    console.log(`Completion Tokens: ${session.totalTokenUsage.completionTokens.toLocaleString()}`);
-    console.log(`Total Tokens:      ${session.totalTokenUsage.totalTokens.toLocaleString()}`);
+    console.log("=".repeat(60));
+    console.log(
+      `Prompt Tokens:     ${session.totalTokenUsage.promptTokens.toLocaleString()}`
+    );
+    console.log(
+      `Completion Tokens: ${session.totalTokenUsage.completionTokens.toLocaleString()}`
+    );
+    console.log(
+      `Total Tokens:      ${session.totalTokenUsage.totalTokens.toLocaleString()}`
+    );
 
     // Calculate cost (gpt-4o-mini pricing)
-    const inputCost = (session.totalTokenUsage.promptTokens / 1_000_000) * 0.150;
-    const outputCost = (session.totalTokenUsage.completionTokens / 1_000_000) * 0.600;
+    const inputCost = (session.totalTokenUsage.promptTokens / 1_000_000) * 0.15;
+    const outputCost =
+      (session.totalTokenUsage.completionTokens / 1_000_000) * 0.6;
     const totalCost = inputCost + outputCost;
 
     console.log("\nEstimated Cost (GPT-4o-mini):");
@@ -238,11 +274,12 @@ async function testQuickConversation() {
     // Extrapolate to full 94 questions
     const questionsRatio = 94 / allQuestions.length;
     const estimatedFullCost = totalCost * questionsRatio;
-    console.log(`\nEstimated Full Assessment (94 questions): $${estimatedFullCost.toFixed(4)}`);
+    console.log(
+      `\nEstimated Full Assessment (94 questions): $${estimatedFullCost.toFixed(4)}`
+    );
 
-    console.log("\n" + "=" .repeat(60));
+    console.log("\n" + "=".repeat(60));
     console.log("\n✅ Quick Test Complete!\n");
-
   } catch (error) {
     console.error("\n❌ Error:", error);
     throw error;

@@ -29,7 +29,7 @@ import { UserManagementTab } from "@/components/admin/UserManagementTab";
 import ResourceLibraryManager from "@/components/admin/ResourceLibraryManager";
 import { AssessmentBuilder } from "@/components/admin/AssessmentBuilder";
 import { SystemStats } from "@/components/admin/SystemStats";
-import { TemplatesAndStylesTab } from "@/components/admin/TemplatesAndStylesTab";
+import TemplatesAndStylesTab from "@/components/admin/TemplatesAndStylesTab";
 
 interface PlatformSettings {
   maintenanceMode: boolean;
@@ -156,7 +156,9 @@ const SuperAdminPanel: React.FC = () => {
   return (
     <div className="space-y-4">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className={`grid w-full mb-3 ${userData?.role === "SUPER_ADMIN" ? "grid-cols-4" : "grid-cols-2"}`}>
+        <TabsList
+          className={`grid w-full mb-3 ${userData?.role === "SUPER_ADMIN" ? "grid-cols-4" : "grid-cols-2"}`}
+        >
           <TabsTrigger value="platform" className="text-xs">
             <Settings className="h-3 w-3 mr-1" />
             Platform
@@ -213,149 +215,150 @@ const SuperAdminPanel: React.FC = () => {
             </CardContent>
           </Card>
 
-      {/* Platform Settings */}
-      <Card className="border-border bg-card">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center">
-            <Settings className="h-4 w-4 mr-2" />
-            Platform Settings
-          </CardTitle>
-          <CardDescription className="text-xs">
-            Global platform configuration and features
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label className="text-xs">Maintenance Mode</Label>
-              <p className="text-xs text-muted-foreground">
-                Disable platform access for maintenance
-              </p>
-            </div>
-            <Switch
-              checked={platformSettings.maintenanceMode}
-              onCheckedChange={(checked) =>
-                setPlatformSettings((prev) => ({
-                  ...prev,
-                  maintenanceMode: checked,
-                }))
-              }
-            />
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label className="text-xs">User Registration</Label>
-              <p className="text-xs text-muted-foreground">
-                Allow new user registrations
-              </p>
-            </div>
-            <Switch
-              checked={platformSettings.registrationEnabled}
-              onCheckedChange={(checked) =>
-                setPlatformSettings((prev) => ({
-                  ...prev,
-                  registrationEnabled: checked,
-                }))
-              }
-            />
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label className="text-xs">Trial Assessments</Label>
-              <p className="text-xs text-muted-foreground">
-                Allow users to take trial assessments
-              </p>
-            </div>
-            <Switch
-              checked={platformSettings.trialAssessmentsEnabled}
-              onCheckedChange={(checked) =>
-                setPlatformSettings((prev) => ({
-                  ...prev,
-                  trialAssessmentsEnabled: checked,
-                }))
-              }
-            />
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label className="text-xs">AI Reports</Label>
-              <p className="text-xs text-muted-foreground">
-                Enable AI-generated assessment reports for all users
-              </p>
-            </div>
-            <Switch
-              checked={platformSettings.aiReportsEnabled}
-              onCheckedChange={(checked) =>
-                setPlatformSettings((prev) => ({
-                  ...prev,
-                  aiReportsEnabled: checked,
-                }))
-              }
-            />
-          </div>
-          <Separator />
-          <div className="grid gap-2">
-            <Label htmlFor="maxReports" className="text-xs">
-              Max AI Reports per User
-            </Label>
-            <p className="text-xs text-muted-foreground">
-              Maximum AI reports allowed per user (supersedes license limits)
-            </p>
-            <Input
-              id="maxReports"
-              type="number"
-              value={platformSettings.maxAiReportsPerUser}
-              onChange={(e) =>
-                setPlatformSettings((prev) => ({
-                  ...prev,
-                  maxAiReportsPerUser: parseInt(e.target.value) || 10,
-                }))
-              }
-              className="h-8 text-xs"
-              min="1"
-              max="1000"
-            />
-          </div>
-          <Separator />
-          <div className="grid gap-2">
-            <Label htmlFor="maxConvos" className="text-xs">
-              Max Conversational Sessions per User
-            </Label>
-            <p className="text-xs text-muted-foreground">
-              Maximum conversational AI sessions allowed per user.
-            </p>
-            <Input
-              id="maxConvos"
-              type="number"
-              value={platformSettings.maxConversationalSessionsPerUser}
-              onChange={(e) =>
-                setPlatformSettings((prev) => ({
-                  ...prev,
-                  maxConversationalSessionsPerUser: Math.max(
-                    0,
-                    parseInt(e.target.value) || 0
-                  ),
-                }))
-              }
-              className="h-8 text-xs"
-              min="0"
-              max="1000"
-            />
-          </div>
-          <Button
-            onClick={savePlatformSettings}
-            disabled={loading}
-            size="sm"
-            className="w-full mt-3"
-          >
-            <Save className="h-3 w-3 mr-1" />
-            {loading ? "Saving..." : "Save Platform Settings"}
-          </Button>
-        </CardContent>
-      </Card>
+          {/* Platform Settings */}
+          <Card className="border-border bg-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center">
+                <Settings className="h-4 w-4 mr-2" />
+                Platform Settings
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Global platform configuration and features
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="text-xs">Maintenance Mode</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Disable platform access for maintenance
+                  </p>
+                </div>
+                <Switch
+                  checked={platformSettings.maintenanceMode}
+                  onCheckedChange={(checked) =>
+                    setPlatformSettings((prev) => ({
+                      ...prev,
+                      maintenanceMode: checked,
+                    }))
+                  }
+                />
+              </div>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="text-xs">User Registration</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Allow new user registrations
+                  </p>
+                </div>
+                <Switch
+                  checked={platformSettings.registrationEnabled}
+                  onCheckedChange={(checked) =>
+                    setPlatformSettings((prev) => ({
+                      ...prev,
+                      registrationEnabled: checked,
+                    }))
+                  }
+                />
+              </div>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="text-xs">Trial Assessments</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Allow users to take trial assessments
+                  </p>
+                </div>
+                <Switch
+                  checked={platformSettings.trialAssessmentsEnabled}
+                  onCheckedChange={(checked) =>
+                    setPlatformSettings((prev) => ({
+                      ...prev,
+                      trialAssessmentsEnabled: checked,
+                    }))
+                  }
+                />
+              </div>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="text-xs">AI Reports</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Enable AI-generated assessment reports for all users
+                  </p>
+                </div>
+                <Switch
+                  checked={platformSettings.aiReportsEnabled}
+                  onCheckedChange={(checked) =>
+                    setPlatformSettings((prev) => ({
+                      ...prev,
+                      aiReportsEnabled: checked,
+                    }))
+                  }
+                />
+              </div>
+              <Separator />
+              <div className="grid gap-2">
+                <Label htmlFor="maxReports" className="text-xs">
+                  Max AI Reports per User
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Maximum AI reports allowed per user (supersedes license
+                  limits)
+                </p>
+                <Input
+                  id="maxReports"
+                  type="number"
+                  value={platformSettings.maxAiReportsPerUser}
+                  onChange={(e) =>
+                    setPlatformSettings((prev) => ({
+                      ...prev,
+                      maxAiReportsPerUser: parseInt(e.target.value) || 10,
+                    }))
+                  }
+                  className="h-8 text-xs"
+                  min="1"
+                  max="1000"
+                />
+              </div>
+              <Separator />
+              <div className="grid gap-2">
+                <Label htmlFor="maxConvos" className="text-xs">
+                  Max Conversational Sessions per User
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Maximum conversational AI sessions allowed per user.
+                </p>
+                <Input
+                  id="maxConvos"
+                  type="number"
+                  value={platformSettings.maxConversationalSessionsPerUser}
+                  onChange={(e) =>
+                    setPlatformSettings((prev) => ({
+                      ...prev,
+                      maxConversationalSessionsPerUser: Math.max(
+                        0,
+                        parseInt(e.target.value) || 0
+                      ),
+                    }))
+                  }
+                  className="h-8 text-xs"
+                  min="0"
+                  max="1000"
+                />
+              </div>
+              <Button
+                onClick={savePlatformSettings}
+                disabled={loading}
+                size="sm"
+                className="w-full mt-3"
+              >
+                <Save className="h-3 w-3 mr-1" />
+                {loading ? "Saving..." : "Save Platform Settings"}
+              </Button>
+            </CardContent>
+          </Card>
 
           {/* Data Export */}
           <Card className="border-border bg-card">

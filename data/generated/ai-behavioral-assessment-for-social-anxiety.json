@@ -1,0 +1,119 @@
+{
+  "keyword": "ai behavioral assessment for social anxiety",
+  "slug": "ai-behavioral-assessment-for-social-anxiety",
+  "meta_title": "AI Behavioral Assessment for Social Anxiety | BehaviorIQ™",
+  "meta_description": "Discover BehaviorIQ™'s AI behavioral assessment for social anxiety—quick, accurate insights for children, parents, and educators.",
+  "canonical_path": "/ai-behavioral-assessment-for-social-anxiety",
+  "hero": {
+    "headline": "Transform How You Understand Social Anxiety",
+    "subheadline": "Unlock insights with BehaviorIQ™'s AI-powered assessments, tailored for children and backed by research.",
+    "cta_label": "Start Your Free Trial",
+    "cta_href": "/trial-assessment",
+    "supporting_text": "Empower children to thrive with actionable insights into their social behaviors.",
+    "trust_badges": [
+      "Trusted by Schools",
+      "Clinically Validated",
+      "Backed by Research"
+    ]
+  },
+  "social_proof": {
+    "heading": "Join Thousands of Satisfied Families",
+    "items": [
+      "“BehaviorIQ™ changed how we approach social anxiety!”",
+      "“A game-changer for our school!”",
+      "“Insightful and easy to use!”"
+    ]
+  },
+  "definition_section": {
+    "heading": "What is AI Behavioral Assessment for Social Anxiety?",
+    "paragraphs": [
+      "AI behavioral assessment utilizes advanced algorithms to analyze behavioral patterns, offering insights into social anxiety in children.",
+      "With BehaviorIQ™, parents and educators receive actionable data to support children in overcoming challenges."
+    ]
+  },
+  "process": {
+    "heading": "How It Works",
+    "steps": [
+      {
+        "step": "1",
+        "title": "Sign Up for Your Free Trial",
+        "description": "Create an account and access our intuitive platform."
+      },
+      {
+        "step": "2",
+        "title": "Complete the Assessment",
+        "description": "Engage with a quick, AI-driven assessment tailored for your child."
+      },
+      {
+        "step": "3",
+        "title": "Receive Your Insights",
+        "description": "Get immediate feedback and actionable strategies to address social anxiety."
+      }
+    ]
+  },
+  "comparison": {
+    "heading": "Why Choose BehaviorIQ™?",
+    "rows": [
+      {
+        "label": "Time to Results",
+        "traditional": "Weeks",
+        "behavioriq": "Minutes"
+      },
+      {
+        "label": "Cost",
+        "traditional": "$300+",
+        "behavioriq": "$79"
+      },
+      {
+        "label": "Convenience",
+        "traditional": "In-person visits",
+        "behavioriq": "Online access anytime"
+      },
+      {
+        "label": "Insight Quality",
+        "traditional": "Limited",
+        "behavioriq": "Comprehensive and actionable"
+      }
+    ]
+  },
+  "faq": [
+    {
+      "question": "Is my child's data secure?",
+      "answer": "Yes, we prioritize privacy and use encrypted data protection measures."
+    },
+    {
+      "question": "How accurate are the assessments?",
+      "answer": "Our assessments are clinically validated and continuously refined for accuracy."
+    },
+    {
+      "question": "Is BehaviorIQ™ suitable for all ages?",
+      "answer": "BehaviorIQ™ is designed for children, providing age-appropriate insights."
+    }
+  ],
+  "lead_magnet": {
+    "heading": "Get Started with a Free Trial",
+    "subheading": "Experience the power of AI behavioral assessments for social anxiety.",
+    "cta_label": "Claim Your Free Trial",
+    "cta_href": "/trial-assessment",
+    "supporting_text": "Empower your child with insights that make a difference."
+  },
+  "footer": {
+    "text": "© 2023 BehaviorIQ™. All rights reserved.",
+    "links": [
+      {
+        "label": "Privacy",
+        "href": "/privacy"
+      },
+      {
+        "label": "Terms",
+        "href": "/terms"
+      },
+      {
+        "label": "Support",
+        "href": "/support"
+      }
+    ]
+  },
+  "generated_at": "2025-10-15T14:53:07.191Z",
+  "source": "openai"
+}

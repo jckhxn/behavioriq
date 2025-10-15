@@ -60,6 +60,13 @@ export interface ConversationalAIProvider {
     session: ConversationalSession,
     scores: Record<string, number>
   ): Promise<string>;
+
+  generateStreamingResponse?(
+    session: ConversationalSession,
+    userMessage: string,
+    currentQuestion: Question,
+    context?: ResponseContext
+  ): Promise<any>;
 }
 
 export interface TokenUsage {

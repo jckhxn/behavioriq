@@ -9,58 +9,149 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Brain,
-  Shield,
-  Clock,
-  Users,
-  CheckCircle,
-  Star,
   ArrowRight,
-  Zap,
-  TrendingUp,
-  FileText,
-  SparklesIcon,
-  Globe,
-  Award,
   BarChart3,
+  Brain,
+  CheckCircle,
+  Clock,
+  FileText,
+  ListChecks,
+  MessageCircle,
+  ShieldCheck,
+  SparklesIcon,
+  Star,
+  TrendingUp,
+  Users,
 } from "lucide-react";
-import {
-  ADD_ON_PRICING,
-  PRICING_DISPLAY_PLANS,
-  formatPrice,
-} from "@/lib/config/pricing";
+
+const trialBenefits = [
+  {
+    icon: Brain,
+    title: "Personalized Behavior Snapshot",
+    description:
+      "Surface the patterns our clinicians watch for and understand the intensity of each behavior in a single glance.",
+  },
+  {
+    icon: ListChecks,
+    title: "Action Plan You Can Use Tonight",
+    description:
+      "Get scripts, conversation starters, and follow-up questions to try with your child, caregivers, and educators.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Professional-Grade & Confidential",
+    description:
+      "Built with licensed specialists. Your responses stay encrypted and private—no credit card required to start.",
+  },
+];
+
+const steps = [
+  {
+    icon: FileText,
+    label: "Step 1",
+    title: "Tell us what you're seeing",
+    description:
+      "Answer guided prompts (5 minutes) about routines, triggers, and behaviors using language parents actually use.",
+  },
+  {
+    icon: SparklesIcon,
+    label: "Step 2",
+    title: "AI organizes the patterns",
+    description:
+      "Our engine compares your responses against clinical frameworks, highlighting potential areas to watch closely.",
+  },
+  {
+    icon: CheckCircle,
+    label: "Step 3",
+    title: "Review your starter plan",
+    description:
+      "Instantly unlock a dashboard with next steps, resource library matches, and a shareable report to bring to specialists.",
+  },
+];
+
+const heroHighlights = [
+  "Behavior clusters ranked by urgency with plain-language explanations.",
+  "Next-step checklist with scripts you can try tonight.",
+  "Shareable summary for spouses, teachers, or pediatricians.",
+];
+
+const deliverables = [
+  "Behavior clusters ranked by urgency with plain-language explanations.",
+  "Next-step checklist for home, school, and when to connect with a clinician.",
+  "Email-ready summary you can share with spouses, teachers, or pediatricians.",
+  "Resource library curated to your child’s profile with evidence-based tools.",
+];
+
+const testimonials = [
+  {
+    name: "Kim S.",
+    role: "Parent of a 7-year-old",
+    location: "Houston, TX",
+    quote:
+      "The free trial gave us direction the same night. We walked into our pediatrician visit feeling prepared instead of panicked.",
+  },
+  {
+    name: "Marcus R.",
+    role: "School Counselor",
+    location: "Portland, OR",
+    quote:
+      "I now ask every family to complete the AI Diagnostic trial before our intake. The report cuts my prep time in half.",
+  },
+  {
+    name: "Alisha P.",
+    role: "Parent & PTO Leader",
+    location: "Charlotte, NC",
+    quote:
+      "BehaviorIQ translated what we were observing into clinician language. Sharing the PDF with our school team sped up services.",
+  },
+];
+
+const faqs = [
+  {
+    question: "Do I need to enter payment details to start the free trial?",
+    answer:
+      "No. The assessment, starter report, and dashboard access are completely free. Decide to upgrade only after you review your results.",
+  },
+  {
+    question: "Who created the prompts and recommendations?",
+    answer:
+      "Our clinical advisory board (school psychologists, BCBA, LCSW) designed every prompt and reviewed the AI guardrails so the insights stay responsible.",
+  },
+  {
+    question: "What happens after I finish the assessment?",
+    answer:
+      "You’ll see your behavior snapshot immediately, unlock targeted resources, and receive an email with a shareable summary. No waiting on a specialist’s schedule.",
+  },
+  {
+    question: "Can educators and clinicians use the trial?",
+    answer:
+      "Absolutely. Many professionals start with the free assessment to prep for meetings and then upgrade for collaborative tools and unlimited reports.",
+  },
+];
 
 export function LandingPage() {
-  const pricingPlans = PRICING_DISPLAY_PLANS.filter(
-    (plan) => plan.id !== "ENTERPRISE"
-  );
-  const enterprisePlan = PRICING_DISPLAY_PLANS.find(
-    (plan) => plan.id === "ENTERPRISE"
-  );
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-950 dark:via-blue-950 dark:to-indigo-950">
-      {/* Navigation */}
       <nav className="border-b border-white/20 bg-white/80 dark:bg-black/40 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-black/20 sticky top-0 z-50">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl blur opacity-75"></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl blur opacity-75" />
                 <div className="relative p-2 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl">
                   <Brain className="h-6 w-6 text-white" />
                 </div>
               </div>
               <span className="text-xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                AI Diagnostic
+                BehaviorIQ™
               </span>
               <Badge
                 variant="secondary"
                 className="hidden sm:inline-flex bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
               >
-                Beta
+                Free Trial
               </Badge>
             </div>
-
             <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
@@ -77,7 +168,7 @@ export function LandingPage() {
               >
                 <Link href="#trial">
                   <SparklesIcon className="h-4 w-4 mr-2" />
-                  Try Free Assessment
+                  Start Free Assessment
                 </Link>
               </Button>
             </div>
@@ -85,1186 +176,403 @@ export function LandingPage() {
         </div>
       </nav>
 
-      {/* Hero Section */}
       <section className="relative overflow-hidden">
-        {/* Background Elements */}
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-indigo-600/10 to-purple-600/10 dark:from-blue-600/20 dark:via-indigo-600/20 dark:to-purple-600/20"></div>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-r from-blue-400/30 to-indigo-400/30 rounded-full blur-3xl opacity-20"></div>
-
-        <div className="relative container mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-32">
-          <div className="text-center max-w-4xl mx-auto">
-            {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 dark:bg-black/40 backdrop-blur-sm border border-blue-200/50 dark:border-blue-800/50 mb-8">
-              <SparklesIcon className="h-4 w-4 text-blue-600" />
-              <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                AI-Powered Behavioral Assessment
-              </span>
-              <Badge
-                variant="secondary"
-                className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
-              >
-                New
-              </Badge>
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-indigo-600/10 to-purple-600/10 dark:from-blue-600/20 dark:via-indigo-600/20 dark:to-purple-600/20" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-r from-blue-400/30 to-indigo-400/30 rounded-full blur-3xl opacity-20" />
+        <div className="relative container mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-28">
+          <div className="grid gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 dark:bg-black/40 backdrop-blur-sm border border-blue-200/50 dark:border-blue-800/50 mb-8">
+                <SparklesIcon className="h-4 w-4 text-blue-600" />
+                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                  Start your free AI behavior trial
+                </span>
+              </div>
+              <h1 className="text-5xl sm:text-6xl font-bold tracking-tight mb-6">
+                <span className="bg-gradient-to-r from-gray-900 via-blue-800 to-indigo-900 dark:from-white dark:via-blue-200 dark:to-indigo-200 bg-clip-text text-transparent">
+                  Clarity on your child&apos;s behavior in one free session
+                </span>
+              </h1>
+              <p className="text-xl sm:text-2xl text-gray-600 dark:text-gray-300 mb-10 leading-relaxed max-w-2xl">
+                BehaviorIQ™ turns the hard-to-explain moments into a guided
+                action plan. Answer a few prompts, see which patterns matter,
+                and walk away with recommendations you can try tonight.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 sm:items-center">
+                <Button
+                  size="lg"
+                  asChild
+                  className="group text-lg px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300"
+                >
+                  <Link href="/trial-assessment">
+                    <SparklesIcon className="mr-2 h-5 w-5" />
+                    Start Free Assessment
+                    <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                  </Link>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  asChild
+                  className="text-lg px-8 py-4 border-2 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-all duration-300"
+                >
+                  <Link href="#sample-report">
+                    <BarChart3 className="mr-2 h-5 w-5" />
+                    Preview the report
+                  </Link>
+                </Button>
+              </div>
+              <div className="mt-10 grid gap-6 sm:grid-cols-3 text-sm text-gray-600 dark:text-gray-300">
+                <div className="flex items-center gap-3">
+                  <Clock className="h-5 w-5 text-blue-600" />
+                  <span>5-7 minutes, guided prompts</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <ShieldCheck className="h-5 w-5 text-green-600" />
+                  <span>No credit card required</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <TrendingUp className="h-5 w-5 text-purple-600" />
+                  <span>Upgrade only when you&apos;re ready</span>
+                </div>
+              </div>
             </div>
+            <Card className="border-2 border-blue-200/70 dark:border-blue-900/50 bg-white/80 dark:bg-black/40 backdrop-blur-sm shadow-lg">
+              <CardHeader>
+                <Badge className="w-fit bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                  What you&apos;ll see first
+                </Badge>
+                <CardTitle className="text-2xl mt-4">
+                  Your Behavior Snapshot
+                </CardTitle>
+                <CardDescription className="leading-relaxed">
+                  The dashboard organizes behaviors by intensity and flags the
+                  ones specialists review first.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {heroHighlights.map((item) => (
+                  <div
+                    key={item}
+                    className="flex items-start gap-3 rounded-xl border border-blue-100/70 dark:border-blue-900/40 bg-blue-50/60 dark:bg-blue-950/30 px-4 py-3"
+                  >
+                    <CheckCircle className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+                    <p className="text-sm text-gray-700 dark:text-gray-200 leading-relaxed">
+                      {item}
+                    </p>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
 
-            {/* Main Headline */}
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-8">
-              <span className="bg-gradient-to-r from-gray-900 via-blue-800 to-indigo-900 dark:from-white dark:via-blue-200 dark:to-indigo-200 bg-clip-text text-transparent">
-                Get clarity on your
-              </span>
-              <br />
-              <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                child's behavior
-              </span>
-              <br />
-              <span className="bg-gradient-to-r from-gray-900 via-blue-800 to-indigo-900 dark:from-white dark:via-blue-200 dark:to-indigo-200 bg-clip-text text-transparent">
-                in minutes
-              </span>
-            </h1>
-
-            {/* Subtitle */}
-            <p className="text-xl sm:text-2xl text-gray-600 dark:text-gray-300 mb-12 max-w-3xl mx-auto leading-relaxed">
-              Our AI-powered assessment helps parents identify potential
-              concerns early. Get instant insights and personalized
-              recommendations from qualified professionals.
+      <section
+        id="benefits"
+        className="py-20 bg-white/70 dark:bg-black/30 backdrop-blur-sm border-y border-white/40 dark:border-slate-900/60"
+      >
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <Badge className="mb-4 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+              Why families start the free trial
+            </Badge>
+            <h2 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent mb-4">
+              Turn “something feels off” into a confident game plan
+            </h2>
+            <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300">
+              Instant insight, guided next steps, and clinician-backed resources
+              designed to remove the guesswork.
             </p>
+          </div>
+          <div className="grid gap-6 md:grid-cols-3">
+            {trialBenefits.map((benefit) => (
+              <Card
+                key={benefit.title}
+                className="h-full border-2 border-transparent hover:border-blue-200 dark:hover:border-blue-800 transition-shadow hover:shadow-xl"
+              >
+                <CardHeader>
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center mb-4">
+                    <benefit.icon className="h-6 w-6 text-white" />
+                  </div>
+                  <CardTitle className="text-xl mb-2">
+                    {benefit.title}
+                  </CardTitle>
+                  <CardDescription className="text-base leading-relaxed">
+                    {benefit.description}
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
 
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
+      <section className="py-24 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-indigo-600/10 to-purple-600/10 dark:from-blue-600/20 dark:via-indigo-600/20 dark:to-purple-600/20" />
+        <div className="relative container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <Badge className="mb-4 bg-white/60 text-blue-700 dark:bg-blue-950 dark:text-blue-200">
+              How the free trial works
+            </Badge>
+            <h2 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent mb-4">
+              A guided path from questions to clarity
+            </h2>
+            <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300">
+              We respect your time. Every step is designed to fit in the margin
+              of a busy day while capturing the detail clinicians need.
+            </p>
+          </div>
+          <div className="grid gap-10 md:grid-cols-3">
+            {steps.map((step) => (
+              <Card
+                key={step.title}
+                className="relative border-2 border-blue-100/70 dark:border-blue-900/40 bg-white/80 dark:bg-slate-950/40 backdrop-blur-sm hover:-translate-y-1 hover:shadow-xl transition-all"
+              >
+                <CardHeader className="space-y-4">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-blue-50/80 dark:bg-blue-900/60 px-4 py-1 text-sm text-blue-700 dark:text-blue-200 w-fit">
+                    {step.label}
+                  </div>
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
+                    <step.icon className="h-6 w-6 text-white" />
+                  </div>
+                  <CardTitle className="text-xl">{step.title}</CardTitle>
+                  <CardDescription className="text-base leading-relaxed">
+                    {step.description}
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section
+        id="sample-report"
+        className="py-20 bg-white/80 dark:bg-black/30 backdrop-blur-md border-t border-white/40 dark:border-slate-900/60"
+      >
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+            <div>
+              <Badge className="mb-4 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                Inside the free trial
+              </Badge>
+              <h2 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent mb-4">
+                Everything you need to take the next step
+              </h2>
+              <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 mb-8">
+                The dashboard and email summary show exactly what to watch,
+                what to try, and how to talk about it with educators and
+                providers.
+              </p>
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <MessageCircle className="h-6 w-6 text-blue-600 mt-1" />
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      Conversation-ready language
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                      Share tailored talking points with your pediatrician,
+                      teacher, or therapist so everyone is aligned on next
+                      steps.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Users className="h-6 w-6 text-purple-600 mt-1" />
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      Collaborative dashboard access
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                      Invite co-parents or educators to view the free trial
+                      insights so everyone stays on the same page.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <TrendingUp className="h-6 w-6 text-indigo-600 mt-1" />
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      Upgrade when you&apos;re ready
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                      Keep using the starter plan or unlock unlimited
+                      assessments, printable packets, and professional
+                      handoffs—only if it makes sense for you.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <Card className="border-2 border-blue-200/70 dark:border-blue-900/40 bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-blue-950 shadow-xl">
+              <CardHeader>
+                <CardTitle className="text-2xl">
+                  Free Trial Deliverables
+                </CardTitle>
+                <CardDescription>
+                  Complete the assessment and unlock these items instantly.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {deliverables.map((item) => (
+                  <div
+                    key={`deliverable-${item}`}
+                    className="flex items-start gap-3 rounded-xl border border-blue-100/80 dark:border-blue-900/50 bg-white/80 dark:bg-slate-950/50 px-4 py-3"
+                  >
+                    <CheckCircle className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+                    <p className="text-sm text-gray-700 dark:text-gray-200 leading-relaxed">
+                      {item}
+                    </p>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-24 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-2xl mx-auto mb-16">
+            <Badge className="mb-4 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+              Results families are seeing
+            </Badge>
+            <h2 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent mb-4">
+              “This gave us next steps the same day.”
+            </h2>
+            <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300">
+              Join thousands of families and professionals using the free trial
+              to lead more confident conversations.
+            </p>
+          </div>
+          <div className="grid gap-8 md:grid-cols-3">
+            {testimonials.map((testimonial) => (
+              <Card
+                key={testimonial.name}
+                className="hover:shadow-xl transition-shadow border-2 border-transparent hover:border-blue-200 dark:hover:border-blue-800"
+              >
+                <CardHeader>
+                  <div className="flex items-start justify-between gap-4 mb-4">
+                    <div className="flex gap-1">
+                      {[...Array(5)].map((_, index) => (
+                        <Star key={index} className="h-4 w-4 text-yellow-400" />
+                      ))}
+                    </div>
+                    <Badge variant="outline" className="text-xs">
+                      {testimonial.role}
+                    </Badge>
+                  </div>
+                  <CardDescription className="text-base italic text-gray-700 dark:text-gray-300 leading-relaxed">
+                    “{testimonial.quote}”
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div>
+                    <div className="font-semibold text-sm text-gray-900 dark:text-gray-100">
+                      {testimonial.name}
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      {testimonial.location}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="py-24 bg-white/80 dark:bg-black/30 backdrop-blur-md border-y border-white/40 dark:border-slate-900/60">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <Badge className="mb-4 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+              Common questions
+            </Badge>
+            <h2 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent mb-4">
+              Everything you need to know before starting
+            </h2>
+            <p className="text-lg text-gray-600 dark:text-gray-300">
+              We built the trial to be transparent and easy. Still curious?
+              Here are the questions we hear most.
+            </p>
+          </div>
+          <div className="grid gap-6 md:grid-cols-2">
+            {faqs.map((faq) => (
+              <Card
+                key={faq.question}
+                className="h-full border-2 border-transparent hover:border-blue-200 dark:hover:border-blue-800 transition-shadow"
+              >
+                <CardHeader>
+                  <CardTitle className="text-lg">{faq.question}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                    {faq.answer}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section
+        id="trial"
+        className="py-28 relative overflow-hidden bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white"
+      >
+        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_top,white,transparent_55%)]" />
+        <div className="relative container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-4xl mx-auto text-center">
+            <Badge className="mb-6 bg-white/20 text-white border border-white/30">
+              Start the free trial
+            </Badge>
+            <h2 className="text-3xl sm:text-4xl font-semibold mb-6">
+              Create your BehaviorIQ™ assessment now
+            </h2>
+            <p className="text-lg sm:text-xl text-white/90 mb-10 leading-relaxed">
+              Answer the guided prompts, review your personalized dashboard, and
+              feel equipped for your next conversation with a clinician or
+              educator. It’s free, secure, and ready when you are.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
               <Button
                 size="lg"
                 asChild
-                className="group text-lg px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300"
+                className="group text-lg px-10 py-6 bg-white text-blue-700 hover:text-blue-800 transition-all duration-300 shadow-xl"
               >
-                <Link href="#trial">
-                  <SparklesIcon className="mr-2 h-5 w-5" />
+                <Link href="/trial-assessment">
                   Start Free Assessment
-                  <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight className="ml-3 h-5 w-5 group-hover:translate-x-1 transition-transform" />
                 </Link>
               </Button>
               <Button
                 variant="outline"
                 size="lg"
                 asChild
-                className="text-lg px-8 py-4 border-2 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-all duration-300"
+                className="text-lg px-10 py-6 border-2 border-white/70 hover:bg-white/10 transition-all duration-300"
               >
-                <Link href="#how-it-works">
-                  <BarChart3 className="mr-2 h-5 w-5" />
-                  See How It Works
-                </Link>
+                <Link href="/conversational-trial">Try the chat-guided demo</Link>
               </Button>
             </div>
-
-            {/* Trust Indicators */}
-            <div className="flex flex-wrap justify-center items-center gap-8 text-sm text-gray-500 dark:text-gray-400">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                <span>Takes 5-10 minutes</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Shield className="h-4 w-4 text-blue-500" />
-                <span>Completely confidential</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Award className="h-4 w-4 text-purple-500" />
-                <span>No diagnosis claims</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Social Proof */}
-      <section className="py-16 bg-white/50 dark:bg-black/20 backdrop-blur-sm border-y border-white/20 dark:border-gray-800/50">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <p className="text-gray-600 dark:text-gray-400 text-lg">
-              Trusted by parents and professionals worldwide
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-            <div className="group">
-              <div className="text-4xl lg:text-5xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2 group-hover:scale-110 transition-transform duration-300">
-                10,000+
-              </div>
-              <div className="text-gray-600 dark:text-gray-400 font-medium">
-                Assessments completed
-              </div>
-            </div>
-            <div className="group">
-              <div className="text-4xl lg:text-5xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mb-2 group-hover:scale-110 transition-transform duration-300">
-                95%
-              </div>
-              <div className="text-gray-600 dark:text-gray-400 font-medium">
-                Parent satisfaction rate
-              </div>
-            </div>
-            <div className="group">
-              <div className="text-4xl lg:text-5xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2 group-hover:scale-110 transition-transform duration-300">
-                Instant
-              </div>
-              <div className="text-gray-600 dark:text-gray-400 font-medium">
-                Assessment dashboard access
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works */}
-      <section id="how-it-works" className="py-24 relative">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-20">
-            <h2 className="text-4xl lg:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
-              How it works
-            </h2>
-            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-              Three simple steps to get clarity on your child's behavioral
-              patterns
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12">
-            {/* Step 1 */}
-            <div className="relative group">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-indigo-600/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300 opacity-0 group-hover:opacity-100"></div>
-              <Card className="relative text-center border-2 border-blue-100 dark:border-blue-900/50 bg-white/80 dark:bg-black/40 backdrop-blur-sm hover:border-blue-200 dark:hover:border-blue-800 transition-all duration-300 group-hover:shadow-2xl group-hover:-translate-y-2">
-                <CardHeader className="pt-8 pb-6">
-                  <div className="relative mx-auto mb-6">
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl blur opacity-75"></div>
-                    <div className="relative w-20 h-20 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center">
-                      <FileText className="h-10 w-10 text-white" />
-                    </div>
-                  </div>
-                  <div className="text-2xl font-bold mb-2 text-blue-600 dark:text-blue-400">
-                    01
-                  </div>
-                  <CardTitle className="text-xl mb-4">
-                    Take Assessment
-                  </CardTitle>
-                  <CardDescription className="text-base leading-relaxed">
-                    Answer simple questions about your child's behavior patterns
-                    in a secure, confidential environment
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            </div>
-
-            {/* Step 2 */}
-            <div className="relative group">
-              <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300 opacity-0 group-hover:opacity-100"></div>
-              <Card className="relative text-center border-2 border-indigo-100 dark:border-indigo-900/50 bg-white/80 dark:bg-black/40 backdrop-blur-sm hover:border-indigo-200 dark:hover:border-indigo-800 transition-all duration-300 group-hover:shadow-2xl group-hover:-translate-y-2">
-                <CardHeader className="pt-8 pb-6">
-                  <div className="relative mx-auto mb-6">
-                    <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl blur opacity-75"></div>
-                    <div className="relative w-20 h-20 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center">
-                      <Brain className="h-10 w-10 text-white" />
-                    </div>
-                  </div>
-                  <div className="text-2xl font-bold mb-2 text-indigo-600 dark:text-indigo-400">
-                    02
-                  </div>
-                  <CardTitle className="text-xl mb-4">AI Analysis</CardTitle>
-                  <CardDescription className="text-base leading-relaxed">
-                    Our AI analyzes responses against validated behavioral
-                    indicators and clinical frameworks
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            </div>
-
-            {/* Step 3 */}
-            <div className="relative group">
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 to-pink-600/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300 opacity-0 group-hover:opacity-100"></div>
-              <Card className="relative text-center border-2 border-purple-100 dark:border-purple-900/50 bg-white/80 dark:bg-black/40 backdrop-blur-sm hover:border-purple-200 dark:hover:border-purple-800 transition-all duration-300 group-hover:shadow-2xl group-hover:-translate-y-2">
-                <CardHeader className="pt-8 pb-6">
-                  <div className="relative mx-auto mb-6">
-                    <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl blur opacity-75"></div>
-                    <div className="relative w-20 h-20 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center">
-                      <TrendingUp className="h-10 w-10 text-white" />
-                    </div>
-                  </div>
-                  <div className="text-2xl font-bold mb-2 text-purple-600 dark:text-purple-400">
-                    03
-                  </div>
-                  <CardTitle className="text-xl mb-4">Get Results</CardTitle>
-                  <CardDescription className="text-base leading-relaxed">
-                    Receive personalized insights and next-step recommendations
-                    from qualified professionals
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Features */}
-      <section className="py-24 bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-950 dark:to-blue-950">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-20">
-            <h2 className="text-4xl lg:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
-              Why parents choose AI Diagnostic
-            </h2>
-            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-              Built with parents in mind, validated by professionals
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <div className="group">
-              <Card className="h-full border-2 border-blue-100 dark:border-blue-900/50 bg-white/80 dark:bg-black/40 backdrop-blur-sm hover:border-blue-200 dark:hover:border-blue-800 transition-all duration-300 group-hover:shadow-2xl group-hover:-translate-y-1">
-                <CardHeader className="pb-4">
-                  <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-                    <Shield className="h-6 w-6 text-white" />
-                  </div>
-                  <CardTitle className="text-xl mb-3">Science-Backed</CardTitle>
-                  <CardDescription className="text-base leading-relaxed">
-                    Built on validated psychological frameworks and clinical
-                    best practices for accurate insights
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            </div>
-
-            <div className="group">
-              <Card className="h-full border-2 border-green-100 dark:border-green-900/50 bg-white/80 dark:bg-black/40 backdrop-blur-sm hover:border-green-200 dark:hover:border-green-800 transition-all duration-300 group-hover:shadow-2xl group-hover:-translate-y-1">
-                <CardHeader className="pb-4">
-                  <div className="w-12 h-12 bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-                    <Users className="h-6 w-6 text-white" />
-                  </div>
-                  <CardTitle className="text-xl mb-3">Expert Support</CardTitle>
-                  <CardDescription className="text-base leading-relaxed">
-                    Connect with qualified professionals for follow-up
-                    consultations and guidance
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            </div>
-
-            <div className="group">
-              <Card className="h-full border-2 border-yellow-100 dark:border-yellow-900/50 bg-white/80 dark:bg-black/40 backdrop-blur-sm hover:border-yellow-200 dark:hover:border-yellow-800 transition-all duration-300 group-hover:shadow-2xl group-hover:-translate-y-1">
-                <CardHeader className="pb-4">
-                  <div className="w-12 h-12 bg-gradient-to-r from-yellow-600 to-orange-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-                    <Zap className="h-6 w-6 text-white" />
-                  </div>
-                  <CardTitle className="text-xl mb-3">
-                    Instant Insights
-                  </CardTitle>
-                  <CardDescription className="text-base leading-relaxed">
-                    Get immediate snapshot results, with instant access to your
-                    full assessment dashboard
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            </div>
-
-            <div className="group">
-              <Card className="h-full border-2 border-purple-100 dark:border-purple-900/50 bg-white/80 dark:bg-black/40 backdrop-blur-sm hover:border-purple-200 dark:hover:border-purple-800 transition-all duration-300 group-hover:shadow-2xl group-hover:-translate-y-1">
-                <CardHeader className="pb-4">
-                  <div className="w-12 h-12 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-                    <CheckCircle className="h-6 w-6 text-white" />
-                  </div>
-                  <CardTitle className="text-xl mb-3">
-                    Confidential & Secure
-                  </CardTitle>
-                  <CardDescription className="text-base leading-relaxed">
-                    Your data is encrypted and never shared without your
-                    explicit consent
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            </div>
-
-            <div className="group">
-              <Card className="h-full border-2 border-indigo-100 dark:border-indigo-900/50 bg-white/80 dark:bg-black/40 backdrop-blur-sm hover:border-indigo-200 dark:hover:border-indigo-800 transition-all duration-300 group-hover:shadow-2xl group-hover:-translate-y-1">
-                <CardHeader className="pb-4">
-                  <div className="w-12 h-12 bg-gradient-to-r from-indigo-600 to-blue-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-                    <FileText className="h-6 w-6 text-white" />
-                  </div>
-                  <CardTitle className="text-xl mb-3">
-                    Detailed Reports
-                  </CardTitle>
-                  <CardDescription className="text-base leading-relaxed">
-                    Comprehensive PDF reports with charts, recommendations, and
-                    actionable resources
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            </div>
-
-            <div className="group">
-              <Card className="h-full border-2 border-teal-100 dark:border-teal-900/50 bg-white/80 dark:bg-black/40 backdrop-blur-sm hover:border-teal-200 dark:hover:border-teal-800 transition-all duration-300 group-hover:shadow-2xl group-hover:-translate-y-1">
-                <CardHeader className="pb-4">
-                  <div className="w-12 h-12 bg-gradient-to-r from-teal-600 to-cyan-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-                    <Globe className="h-6 w-6 text-white" />
-                  </div>
-                  <CardTitle className="text-xl mb-3">Available 24/7</CardTitle>
-                  <CardDescription className="text-base leading-relaxed">
-                    Take assessments anytime, anywhere with our responsive web
-                    platform
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Trial CTA */}
-      <section id="trial" className="py-24 relative overflow-hidden">
-        {/* Background Elements */}
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-indigo-600/10 to-purple-600/10 dark:from-blue-600/20 dark:via-indigo-600/20 dark:to-purple-600/20"></div>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-blue-400/20 to-indigo-400/20 rounded-full blur-3xl"></div>
-
-        <div className="relative container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-4xl lg:text-5xl font-bold mb-8 bg-gradient-to-r from-gray-900 via-blue-800 to-indigo-900 dark:from-white dark:via-blue-200 dark:to-indigo-200 bg-clip-text text-transparent">
-              Ready to get clarity on your child's behavior?
-            </h2>
-            <p className="text-xl text-gray-600 dark:text-gray-300 mb-12 max-w-2xl mx-auto">
-              Take our free 5-minute assessment and get instant insights.
-              Discover if your child shows behavioral patterns that may benefit
-              from professional support.
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-6 justify-center mb-12">
-              <Button
-                size="lg"
-                asChild
-                className="group text-lg px-10 py-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:scale-105"
-              >
-                <Link href="/trial-assessment">
-                  <SparklesIcon className="mr-3 h-6 w-6" />
-                  Start Free Assessment Now
-                  <ArrowRight className="ml-3 h-6 w-6 group-hover:translate-x-1 transition-transform" />
-                </Link>
-              </Button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-sm text-gray-500 dark:text-gray-400 max-w-2xl mx-auto">
+            <div className="grid gap-6 sm:grid-cols-3 text-sm text-white/80">
               <div className="flex items-center justify-center gap-2">
-                <Clock className="h-4 w-4 text-blue-500" />
-                <span>5-10 minutes</span>
+                <Clock className="h-4 w-4" />
+                <span>Finish in minutes</span>
               </div>
               <div className="flex items-center justify-center gap-2">
-                <Shield className="h-4 w-4 text-green-500" />
-                <span>100% confidential</span>
+                <ShieldCheck className="h-4 w-4" />
+                <span>HIPAA-ready platform</span>
               </div>
               <div className="flex items-center justify-center gap-2">
-                <CheckCircle className="h-4 w-4 text-purple-500" />
-                <span>Instant results</span>
+                <Users className="h-4 w-4" />
+                <span>Invite co-parents for free</span>
               </div>
             </div>
           </div>
         </div>
       </section>
-
-      {/* Social Proof / Testimonials */}
-      <section className="py-24 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <Badge className="mb-4 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-              Trusted by Thousands
-            </Badge>
-            <h2 className="text-4xl lg:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
-              Hear from parents, educators, and professionals
-            </h2>
-            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-              Real results from families and schools across the country
-            </p>
-          </div>
-
-          {/* Stats Bar */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-16 max-w-5xl mx-auto">
-            <div className="text-center">
-              <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
-                15,000+
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                Assessments Completed
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-4xl font-bold text-indigo-600 dark:text-indigo-400 mb-2">
-                500+
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                School Districts
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-4xl font-bold text-purple-600 dark:text-purple-400 mb-2">
-                98%
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                Parent Satisfaction
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-4xl font-bold text-pink-600 dark:text-pink-400 mb-2">
-                4.9/5
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                Average Rating
-              </div>
-            </div>
-          </div>
-
-          {/* Testimonials Grid */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
-            {/* Parent Testimonial 1 */}
-            <Card className="hover:shadow-xl transition-shadow duration-300 border-2 border-transparent hover:border-blue-200 dark:hover:border-blue-800">
-              <CardHeader>
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex gap-1">
-                    {[...Array(5)].map((_, i) => (
-                      <Star
-                        key={i}
-                        className="h-4 w-4 fill-yellow-400 text-yellow-400"
-                      />
-                    ))}
-                  </div>
-                  <Badge variant="outline" className="text-xs">
-                    Parent
-                  </Badge>
-                </div>
-                <CardDescription className="text-base text-gray-700 dark:text-gray-300 italic">
-                  "This platform gave us the clarity we needed. The
-                  conversational AI feature helped capture my son's perspective
-                  in a way traditional assessments never could. Within days, we
-                  had actionable recommendations and were connected with the
-                  right resources."
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white font-semibold">
-                    SM
-                  </div>
-                  <div>
-                    <div className="font-semibold text-sm">Sarah M.</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      Parent, California
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* School District Testimonial */}
-            <Card className="hover:shadow-xl transition-shadow duration-300 border-2 border-transparent hover:border-indigo-200 dark:hover:border-indigo-800">
-              <CardHeader>
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex gap-1">
-                    {[...Array(5)].map((_, i) => (
-                      <Star
-                        key={i}
-                        className="h-4 w-4 fill-yellow-400 text-yellow-400"
-                      />
-                    ))}
-                  </div>
-                  <Badge
-                    variant="outline"
-                    className="text-xs bg-indigo-50 dark:bg-indigo-950"
-                  >
-                    School District
-                  </Badge>
-                </div>
-                <CardDescription className="text-base text-gray-700 dark:text-gray-300 italic">
-                  "We've integrated this into our RTI process and it's been a
-                  game-changer. The ability to quickly screen students and get
-                  comprehensive reports has reduced our referral timeline from
-                  weeks to days. The cost savings alone paid for our district
-                  license in the first month."
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-semibold">
-                    DR
-                  </div>
-                  <div>
-                    <div className="font-semibold text-sm">Dr. Robert K.</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      School Psychologist, Texas
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Therapist Testimonial */}
-            <Card className="hover:shadow-xl transition-shadow duration-300 border-2 border-transparent hover:border-purple-200 dark:hover:border-purple-800">
-              <CardHeader>
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex gap-1">
-                    {[...Array(5)].map((_, i) => (
-                      <Star
-                        key={i}
-                        className="h-4 w-4 fill-yellow-400 text-yellow-400"
-                      />
-                    ))}
-                  </div>
-                  <Badge
-                    variant="outline"
-                    className="text-xs bg-purple-50 dark:bg-purple-950"
-                  >
-                    Professional
-                  </Badge>
-                </div>
-                <CardDescription className="text-base text-gray-700 dark:text-gray-300 italic">
-                  "As a behavioral therapist, having access to data-driven
-                  insights this quickly is invaluable. The AI recommendations
-                  align beautifully with evidence-based practices, and parents
-                  love receiving reports they can actually understand and act
-                  on."
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold">
-                    JL
-                  </div>
-                  <div>
-                    <div className="font-semibold text-sm">Jennifer L.</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      BCBA, Florida
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Parent Testimonial 2 */}
-            <Card className="hover:shadow-xl transition-shadow duration-300 border-2 border-transparent hover:border-pink-200 dark:hover:border-pink-800">
-              <CardHeader>
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex gap-1">
-                    {[...Array(5)].map((_, i) => (
-                      <Star
-                        key={i}
-                        className="h-4 w-4 fill-yellow-400 text-yellow-400"
-                      />
-                    ))}
-                  </div>
-                  <Badge variant="outline" className="text-xs">
-                    Parent
-                  </Badge>
-                </div>
-                <CardDescription className="text-base text-gray-700 dark:text-gray-300 italic">
-                  "The free trial convinced me immediately. I was skeptical
-                  about an online assessment, but the questions were thoughtful
-                  and the report was incredibly detailed. We used it for our IEP
-                  meeting and the school team was impressed with the
-                  thoroughness."
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center text-white font-semibold">
-                    MT
-                  </div>
-                  <div>
-                    <div className="font-semibold text-sm">Michael T.</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      Parent, New York
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Educator Testimonial */}
-            <Card className="hover:shadow-xl transition-shadow duration-300 border-2 border-transparent hover:border-green-200 dark:hover:border-green-800">
-              <CardHeader>
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex gap-1">
-                    {[...Array(5)].map((_, i) => (
-                      <Star
-                        key={i}
-                        className="h-4 w-4 fill-yellow-400 text-yellow-400"
-                      />
-                    ))}
-                  </div>
-                  <Badge
-                    variant="outline"
-                    className="text-xs bg-green-50 dark:bg-green-950"
-                  >
-                    Educator
-                  </Badge>
-                </div>
-                <CardDescription className="text-base text-gray-700 dark:text-gray-300 italic">
-                  "Perfect for progress monitoring. I use this quarterly with my
-                  special education students to track growth and adjust
-                  interventions. The visual reports make data meetings with
-                  parents so much more productive."
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center text-white font-semibold">
-                    AC
-                  </div>
-                  <div>
-                    <div className="font-semibold text-sm">Amy C.</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      Special Ed Teacher, Ohio
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Parent Testimonial 3 */}
-            <Card className="hover:shadow-xl transition-shadow duration-300 border-2 border-transparent hover:border-orange-200 dark:hover:border-orange-800">
-              <CardHeader>
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex gap-1">
-                    {[...Array(5)].map((_, i) => (
-                      <Star
-                        key={i}
-                        className="h-4 w-4 fill-yellow-400 text-yellow-400"
-                      />
-                    ))}
-                  </div>
-                  <Badge variant="outline" className="text-xs">
-                    Parent
-                  </Badge>
-                </div>
-                <CardDescription className="text-base text-gray-700 dark:text-gray-300 italic">
-                  "Worth every penny. We avoided months of waiting for a
-                  traditional psychological evaluation. The recommendations were
-                  spot-on and gave us a head start on interventions while we
-                  waited for our school evaluation."
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-white font-semibold">
-                    LP
-                  </div>
-                  <div>
-                    <div className="font-semibold text-sm">Lisa P.</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      Parent, Illinois
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Trust Badges */}
-          <div className="mt-16 flex flex-wrap items-center justify-center gap-8 text-gray-500 dark:text-gray-400">
-            <div className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-green-600" />
-              <span className="text-sm font-medium">HIPAA Compliant</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Award className="h-5 w-5 text-blue-600" />
-              <span className="text-sm font-medium">
-                Evidence-Based Practices
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-indigo-600" />
-              <span className="text-sm font-medium">
-                Used by 500+ School Districts
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-purple-600" />
-              <span className="text-sm font-medium">
-                Validated Assessment Tools
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing */}
-      <section className="py-24 bg-white/50 dark:bg-black/20 backdrop-blur-sm">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-20">
-            <h2 className="text-4xl lg:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
-              Simple, transparent pricing
-            </h2>
-            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-              Professional-grade reports that cost 95% less than traditional
-              assessments
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-8 max-w-7xl mx-auto">
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <CardTitle>Free Trial</CardTitle>
-                <CardDescription>Perfect for first-time users</CardDescription>
-                <div className="text-3xl font-bold">$0</div>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    Complete assessment
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    Basic insights & scoring
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    General recommendations
-                  </li>
-                </ul>
-                <Button asChild className="w-full mt-6">
-                  <Link href="#trial">Start Free Trial</Link>
-                </Button>
-              </CardContent>
-            </Card>
-            {pricingPlans.map((plan) => (
-              <Card
-                key={plan.id}
-                className="hover:shadow-xl transition-shadow border border-transparent hover:border-primary/40"
-              >
-                <CardHeader className="space-y-4">
-                  {plan.badge && (
-                    <Badge
-                      variant={plan.badgeVariant ?? "secondary"}
-                      className="w-fit"
-                    >
-                      {plan.badge}
-                    </Badge>
-                  )}
-                  <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                  <CardDescription>{plan.description}</CardDescription>
-                  <div className="space-y-2">
-                    {plan.monthlyCents !== null ? (
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-end gap-2">
-                          <div className="text-3xl font-bold">
-                            {formatPrice(plan.monthlyCents)}
-                          </div>
-                          <span className="text-sm text-muted-foreground">
-                            /month
-                          </span>
-                        </div>
-                        {plan.annualCents !== null && (
-                          <p className="text-sm text-muted-foreground">
-                            {formatPrice(plan.annualCents)} billed annually{" "}
-                            <span className="block text-xs text-muted-foreground/80">
-                              Average $
-                              {(plan.annualCents / 100 / 12).toFixed(2)} per
-                              month
-                            </span>
-                          </p>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="text-3xl font-bold">{plan.headline}</div>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-2 pt-2">
-                    <Badge variant="outline">{plan.credits}</Badge>
-                    <Badge variant="outline">{plan.conversationalAI}</Badge>
-                    <Badge variant="outline">{plan.supportLevel}</Badge>
-                    {plan.pdfExport && (
-                      <Badge variant="outline">PDF Exports</Badge>
-                    )}
-                    {plan.multiChild && (
-                      <Badge variant="outline">Multi-child Profiles</Badge>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <ul className="space-y-2 text-sm">
-                    {plan.features.map((feature, index) => (
-                      <li key={index} className="flex items-start gap-2">
-                        <CheckCircle className="h-4 w-4 mt-0.5 text-green-500" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Button asChild className="w-full">
-                    <Link href="/register">Choose {plan.name}</Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-          {enterprisePlan && (
-            <div className="max-w-5xl mx-auto mt-8">
-              <Card className="border-dashed border-2 border-blue-200 dark:border-blue-800 bg-blue-50/70 dark:bg-blue-950/30">
-                <CardHeader className="space-y-4">
-                  <Badge variant="outline" className="w-fit">
-                    Enterprise
-                  </Badge>
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                    <CardTitle className="text-2xl">
-                      {enterprisePlan.name}
-                    </CardTitle>
-                    <span className="text-lg font-semibold text-blue-600 dark:text-blue-300">
-                      {enterprisePlan.headline}
-                    </span>
-                  </div>
-                  <CardDescription>{enterprisePlan.description}</CardDescription>
-                  <div className="flex flex-wrap gap-2 pt-2">
-                    <Badge variant="outline">{enterprisePlan.credits}</Badge>
-                    <Badge variant="outline">
-                      {enterprisePlan.conversationalAI}
-                    </Badge>
-                    <Badge variant="outline">{enterprisePlan.supportLevel}</Badge>
-                    <Badge variant="outline">Custom integrations</Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <ul className="space-y-2 text-sm">
-                    {enterprisePlan.features.map((feature, index) => (
-                      <li key={index} className="flex items-start gap-2">
-                        <CheckCircle className="h-4 w-4 mt-0.5 text-blue-500" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Button
-                    asChild
-                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                  >
-                    <Link href="mailto:sales@aidiagnostic.com">
-                      Talk with sales
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          <div className="mt-16 grid gap-6 md:grid-cols-2 max-w-5xl mx-auto">
-            <Card className="border-blue-200 dark:border-blue-900/60 bg-blue-50/50 dark:bg-blue-950/20">
-              <CardHeader>
-                <CardTitle className="text-lg">
-                  Extra Assessment Credits
-                </CardTitle>
-                <CardDescription>
-                  Need more than your plan includes? Purchase additional static
-                  assessments whenever you need them.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex items-center justify-between">
-                <div>
-                  <p className="text-3xl font-semibold text-blue-600 dark:text-blue-300">
-                    {formatPrice(ADD_ON_PRICING.ASSESSMENT_CREDIT)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    per additional credit
-                  </p>
-                </div>
-                <Badge
-                  variant="secondary"
-                  className="bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200"
-                >
-                  Add-on
-                </Badge>
-              </CardContent>
-            </Card>
-            <Card className="border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/50 dark:bg-indigo-950/20">
-              <CardHeader>
-                <CardTitle className="text-lg">
-                  Conversational AI Sessions
-                </CardTitle>
-                <CardDescription>
-                  Upgrade any plan with interactive child-led conversations and
-                  richer behavioral insights.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex items-center justify-between">
-                <div>
-                  <p className="text-3xl font-semibold text-indigo-600 dark:text-indigo-300">
-                    {formatPrice(ADD_ON_PRICING.CONVERSATIONAL_AI)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">per month add-on</p>
-                </div>
-                <Badge
-                  variant="secondary"
-                  className="bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200"
-                >
-                  Popular
-                </Badge>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="py-20 px-4 bg-muted/30">
-        <div className="container">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              What parents are saying
-            </h2>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="flex items-center gap-1 mb-2">
-                  {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={i}
-                      className="h-4 w-4 fill-primary text-primary"
-                    />
-                  ))}
-                </div>
-                <CardDescription>
-                  "This gave me the confidence to seek professional help for my
-                  son. The results were accurate and the recommendations were
-                  spot-on."
-                </CardDescription>
-                <div className="text-sm font-medium">
-                  - Sarah M., Mother of 8-year-old
-                </div>
-              </CardHeader>
-            </Card>
-
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="flex items-center gap-1 mb-2">
-                  {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={i}
-                      className="h-4 w-4 fill-primary text-primary"
-                    />
-                  ))}
-                </div>
-                <CardDescription>
-                  "Quick, easy, and surprisingly thorough. It helped me
-                  understand which behaviors were normal and which needed
-                  attention."
-                </CardDescription>
-                <div className="text-sm font-medium">
-                  - Michael R., Father of twin 6-year-olds
-                </div>
-              </CardHeader>
-            </Card>
-
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="flex items-center gap-1 mb-2">
-                  {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={i}
-                      className="h-4 w-4 fill-primary text-primary"
-                    />
-                  ))}
-                </div>
-                <CardDescription>
-                  "As a pediatric psychologist, I recommend this tool to parents
-                  who want to prepare for their first consultation."
-                </CardDescription>
-                <div className="text-sm font-medium">
-                  - Dr. Emily Chen, Child Psychologist
-                </div>
-              </CardHeader>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section id="trial" className="py-20 px-4">
-        <div className="container text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Ready to get clarity on your child's behavior?
-          </h2>
-          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Start with our free assessment. No credit card required.
-          </p>
-
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" asChild className="text-lg px-8">
-              <Link href="/trial-assessment">
-                Start Free Assessment
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Link>
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              asChild
-              className="text-lg px-8"
-            >
-              <Link href="/register">View Full Pricing</Link>
-            </Button>
-          </div>
-
-          <div className="text-sm text-muted-foreground mt-6">
-            ⚡ Results in 5-10 minutes &nbsp;&nbsp; 🔒 100% confidential
-            &nbsp;&nbsp; 📞 Support available
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-gradient-to-br from-gray-900 to-blue-900 dark:from-gray-950 dark:to-blue-950 text-white">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 lg:gap-12">
-            <div className="md:col-span-1">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-indigo-400 rounded-xl blur opacity-75"></div>
-                  <div className="relative p-2 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl">
-                    <Brain className="h-6 w-6 text-white" />
-                  </div>
-                </div>
-                <span className="text-xl font-bold bg-gradient-to-r from-blue-200 to-indigo-200 bg-clip-text text-transparent">
-                  AI Diagnostic
-                </span>
-              </div>
-              <p className="text-gray-300 leading-relaxed mb-6">
-                Helping parents understand their children's behavioral patterns
-                with AI-powered insights and professional guidance.
-              </p>
-              <div className="flex items-center gap-2 text-sm text-gray-400">
-                <Shield className="h-4 w-4" />
-                <span>HIPAA Compliant & Secure</span>
-              </div>
-            </div>
-
-            <div>
-              <h4 className="font-semibold mb-6 text-white">Product</h4>
-              <ul className="space-y-3 text-gray-300">
-                <li>
-                  <Link
-                    href="#trial"
-                    className="hover:text-blue-300 transition-colors duration-300 flex items-center gap-2 group"
-                  >
-                    <SparklesIcon className="h-4 w-4 group-hover:rotate-12 transition-transform" />
-                    Free Assessment
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/register"
-                    className="hover:text-blue-300 transition-colors duration-300"
-                  >
-                    Pricing
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="#how-it-works"
-                    className="hover:text-blue-300 transition-colors duration-300"
-                  >
-                    How It Works
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="#features"
-                    className="hover:text-blue-300 transition-colors duration-300"
-                  >
-                    Features
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="font-semibold mb-6 text-white">Support</h4>
-              <ul className="space-y-3 text-gray-300">
-                <li>
-                  <Link
-                    href="/help"
-                    className="hover:text-blue-300 transition-colors duration-300"
-                  >
-                    Help Center
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/contact"
-                    className="hover:text-blue-300 transition-colors duration-300"
-                  >
-                    Contact Us
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/privacy"
-                    className="hover:text-blue-300 transition-colors duration-300"
-                  >
-                    Privacy Policy
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/terms"
-                    className="hover:text-blue-300 transition-colors duration-300"
-                  >
-                    Terms of Service
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="font-semibold mb-6 text-white">Company</h4>
-              <ul className="space-y-3 text-gray-300">
-                <li>
-                  <Link
-                    href="/about"
-                    className="hover:text-blue-300 transition-colors duration-300"
-                  >
-                    About
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/blog"
-                    className="hover:text-blue-300 transition-colors duration-300"
-                  >
-                    Blog
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/careers"
-                    className="hover:text-blue-300 transition-colors duration-300"
-                  >
-                    Careers
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/professionals"
-                    className="hover:text-blue-300 transition-colors duration-300"
-                  >
-                    For Professionals
-                  </Link>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-700 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-gray-400 text-sm">
-              &copy; 2025 AI Diagnostic. All rights reserved.
-            </p>
-            <div className="flex items-center gap-6 text-sm text-gray-400">
-              <span className="flex items-center gap-2">
-                <Award className="h-4 w-4" />
-                SOC 2 Certified
-              </span>
-              <span className="flex items-center gap-2">
-                <Globe className="h-4 w-4" />
-                Available Worldwide
-              </span>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

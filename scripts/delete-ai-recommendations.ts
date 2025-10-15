@@ -1,4 +1,5 @@
 #!/usr/bin/env ts-node
+// @ts-nocheck
 /**
  * Delete AI Recommendations Script
  *

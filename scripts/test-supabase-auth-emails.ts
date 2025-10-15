@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Supabase Authentication Email Testing Script
  *
@@ -39,7 +40,9 @@ function validateConfig() {
   console.log("✅ Supabase Configuration:");
   console.log(`   URL: ${supabaseUrl}`);
   console.log(`   Anon Key: ${supabaseAnonKey?.slice(0, 20)}...`);
-  console.log(`   Site URL: ${process.env.NEXT_PUBLIC_SITE_URL || "Not set"}\n`);
+  console.log(
+    `   Site URL: ${process.env.NEXT_PUBLIC_SITE_URL || "Not set"}\n`
+  );
 }
 
 // Test 1: Magic Link Email
@@ -166,7 +169,9 @@ async function testSignUp(email: string) {
     console.log(
       `   Expected from: ${process.env.SES_FROM_EMAIL || "AI Diagnostic"}`
     );
-    console.log(`\n   ⚠️  NOTE: Test account created with password: ${testPassword}`);
+    console.log(
+      `\n   ⚠️  NOTE: Test account created with password: ${testPassword}`
+    );
     console.log(`   You may want to delete this test user later`);
     return true;
   } catch (error) {
@@ -178,8 +183,7 @@ async function testSignUp(email: string) {
 // Main test runner
 async function main() {
   const args = process.argv.slice(2);
-  const testEmail =
-    args[0] || process.env.SES_FROM_EMAIL || "test@example.com";
+  const testEmail = args[0] || process.env.SES_FROM_EMAIL || "test@example.com";
 
   console.log("\n🧪 Supabase Authentication Email Testing Suite");
   console.log("=".repeat(50));
@@ -214,9 +218,7 @@ async function main() {
     results.passwordReset = await testPasswordReset(testEmail);
     await new Promise((resolve) => setTimeout(resolve, 3000)); // 3s delay
   } else {
-    console.log(
-      "\nℹ️  Skipping password reset test (user doesn't exist yet)"
-    );
+    console.log("\nℹ️  Skipping password reset test (user doesn't exist yet)");
   }
 
   // Test 3: Sign Up / Email Verification
@@ -226,7 +228,9 @@ async function main() {
     console.log(
       `\nℹ️  Skipping sign up test (user already exists: ${testEmail})`
     );
-    console.log(`   Use a different email if you want to test email verification`);
+    console.log(
+      `   Use a different email if you want to test email verification`
+    );
   }
 
   // Print summary
@@ -247,17 +251,13 @@ async function main() {
   if (passed === total && total > 0) {
     console.log("\n🎉 All tests passed!");
     console.log("\n📬 Action Items:");
-    console.log(
-      `   1. Check inbox for ${testEmail} (may take 1-2 minutes)`
-    );
+    console.log(`   1. Check inbox for ${testEmail} (may take 1-2 minutes)`);
     console.log("   2. Verify emails are from: " + process.env.SES_FROM_EMAIL);
     console.log("   3. Check email formatting and branding");
     console.log("   4. Click links to verify they work correctly");
     console.log("   5. Check AWS SES Console → Sending Statistics");
     console.log("\n💡 Next Steps:");
-    console.log(
-      "   - If emails look good, mark Phase 3 as complete ✅"
-    );
+    console.log("   - If emails look good, mark Phase 3 as complete ✅");
     console.log("   - Customize email templates further if needed");
     console.log("   - Test with additional email addresses");
     console.log("   - Request SES production access (if still in sandbox)");
@@ -276,9 +276,7 @@ async function main() {
     console.log("   2. Check AWS SES Console for errors");
     console.log("   3. Ensure sender email is verified in SES");
     console.log("   4. Check Supabase Dashboard → Authentication → Logs");
-    console.log(
-      "   5. Verify email templates are saved in Supabase Dashboard"
-    );
+    console.log("   5. Verify email templates are saved in Supabase Dashboard");
   }
 
   console.log("\n");

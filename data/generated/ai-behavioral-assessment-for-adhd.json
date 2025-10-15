@@ -1,0 +1,119 @@
+{
+  "keyword": "ai behavioral assessment for adhd",
+  "slug": "ai-behavioral-assessment-for-adhd",
+  "meta_title": "AI Behavioral Assessment for ADHD | BehaviorIQ™",
+  "meta_description": "Discover BehaviorIQ™, the AI behavioral assessment for ADHD that offers quick, accurate insights for children, parents, and educators.",
+  "canonical_path": "/ai-behavioral-assessment-for-adhd",
+  "hero": {
+    "headline": "Transform How You Understand ADHD",
+    "subheadline": "Unlock powerful insights into your child's behavior with BehaviorIQ™—the AI-driven assessment tailored for parents, schools, and clinicians.",
+    "cta_label": "Start Your Free Trial",
+    "cta_href": "/trial-assessment",
+    "supporting_text": "Gain actionable insights that empower you to support your child effectively.",
+    "trust_badges": [
+      "AS FEATURED IN",
+      "ENDORSED BY EDUCATORS",
+      "RESEARCH-BACKED INSIGHTS"
+    ]
+  },
+  "social_proof": {
+    "heading": "Join Thousands of Satisfied Families and Educators",
+    "items": [
+      "\"Life-changing insights!\" - Parent",
+      "\"A game-changer for our school!\" - Educator",
+      "\"Accurate and easy to use!\" - Clinician"
+    ]
+  },
+  "definition_section": {
+    "heading": "What is AI Behavioral Assessment for ADHD?",
+    "paragraphs": [
+      "AI behavioral assessment for ADHD leverages advanced technology to analyze children's behaviors and provide actionable insights.",
+      "BehaviorIQ™ utilizes research-backed methodologies to offer a comprehensive understanding of ADHD symptoms and challenges."
+    ]
+  },
+  "process": {
+    "heading": "Simple Assessment Process",
+    "steps": [
+      {
+        "step": "1",
+        "title": "Sign Up Easily",
+        "description": "Create an account in minutes to get started with your child's assessment."
+      },
+      {
+        "step": "2",
+        "title": "Complete the Assessment",
+        "description": "Engage with our AI-driven assessment tailored to identify ADHD-related behaviors."
+      },
+      {
+        "step": "3",
+        "title": "Receive Insights Instantly",
+        "description": "Get personalized insights and recommendations to support your child's journey."
+      }
+    ]
+  },
+  "comparison": {
+    "heading": "Why Choose BehaviorIQ™?",
+    "rows": [
+      {
+        "label": "Assessment Speed",
+        "traditional": "Weeks for results",
+        "behavioriq": "Instant insights"
+      },
+      {
+        "label": "Cost Effectiveness",
+        "traditional": "High costs per assessment",
+        "behavioriq": "Affordable monthly plans"
+      },
+      {
+        "label": "Convenience",
+        "traditional": "In-person visits required",
+        "behavioriq": "Online assessments available anytime"
+      },
+      {
+        "label": "Insight Quality",
+        "traditional": "Generic reports",
+        "behavioriq": "Tailored, AI-driven reports"
+      }
+    ]
+  },
+  "faq": [
+    {
+      "question": "Is my child's data secure?",
+      "answer": "Yes, we prioritize privacy and ensure all data is handled in compliance with regulations."
+    },
+    {
+      "question": "How accurate are the assessments?",
+      "answer": "Our assessments are backed by research and continuously validated for accuracy."
+    },
+    {
+      "question": "Is BehaviorIQ™ clinically aligned?",
+      "answer": "Yes, our assessments are designed in collaboration with leading clinicians in the field."
+    }
+  ],
+  "lead_magnet": {
+    "heading": "Get Started with a Free Assessment",
+    "subheading": "Explore how BehaviorIQ™ can help you understand your child's behavior better.",
+    "cta_label": "Claim Your Free Trial",
+    "cta_href": "/trial-assessment",
+    "supporting_text": "No credit card required—just valuable insights!"
+  },
+  "footer": {
+    "text": "© 2023 BehaviorIQ™. All rights reserved.",
+    "links": [
+      {
+        "label": "Privacy",
+        "href": "/privacy"
+      },
+      {
+        "label": "Terms",
+        "href": "/terms"
+      },
+      {
+        "label": "Support",
+        "href": "/support"
+      }
+    ]
+  },
+  "generated_at": "2025-10-15T14:51:39.442Z",
+  "source": "openai"
+}

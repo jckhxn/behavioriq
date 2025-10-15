@@ -513,6 +513,8 @@ model License {
   status         LicenseStatus @default(ACTIVE)
   maxUsers       Int           @default(1)
   maxAssessments Int?
+  maxConversationalAssessments Int?
+  maxConversationalReports Int?
   features       Json?
   validFrom      DateTime      @default(now())
   validUntil     DateTime?
@@ -567,6 +569,8 @@ model UserLicense {
   assessmentsUsed                 Int      @default(0)  // Number of regular assessments actually used
   conversationalAssessmentsAllowed Int     @default(0)  // Number of conversational assessments allowed ($9 addon)
   conversationalAssessmentsUsed   Int      @default(0)  // Number of conversational assessments actually used
+  conversationalReportsAllowed    Int      @default(0)
+  conversationalReportsUsed       Int      @default(0)
   license                         License  @relation(fields: [licenseId], references: [id], onDelete: Cascade)
   user                            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 

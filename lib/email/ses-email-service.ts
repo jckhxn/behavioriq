@@ -10,12 +10,27 @@ import {
   checkBudgetAvailable,
   logEmailSent,
 } from "@/lib/services/email-budget-service";
-import { EmailRateLimiter, type EmailType } from "@/lib/services/email-rate-limiter";
-import type Mail from "nodemailer/lib/mailer";
+import {
+  EmailRateLimiter,
+  type EmailType,
+} from "@/lib/services/email-rate-limiter";
+import type { Transporter, SendMailOptions } from "nodemailer";
+import type { Options as SESOptions } from "nodemailer/lib/ses-transport";
 
 // Lazy initialization for SES client
 let sesClient: SESClient | null = null;
-let transporter: ReturnType<typeof nodemailer.createTransport> | null = null;
+let transporter: Transporter | null = null;
+
+function getTransporter(): Transporter {
+  if (!transporter) {
+    const client = getSESClient();
+    transporter = nodemailer.createTransport({
+      SES: client,
+      aws: { SendRawEmailCommand },
+    } as any);
+  }
+  return transporter;
+}
 
 function getSESClient(): SESClient {
   if (!sesClient) {
@@ -38,16 +53,17 @@ function getSESClient(): SESClient {
     });
   }
   return sesClient;
-}
 
-function getTransporter(): ReturnType<typeof nodemailer.createTransport> {
-  if (!transporter) {
-    const client = getSESClient();
-    transporter = nodemailer.createTransport({
-      SES: { ses: client, aws: { SendRawEmailCommand } },
-    });
+  function getTransporter(): Transporter {
+    if (!transporter) {
+      const client = getSESClient();
+      transporter = nodemailer.createTransport({
+        SES: client,
+        aws: { SendRawEmailCommand },
+      } as any);
+    }
+    return transporter;
   }
-  return transporter;
 }
 
 export interface EmailOptions {
@@ -103,13 +119,16 @@ export class SESEmailService {
     const recipient = Array.isArray(options.to) ? options.to[0] : options.to;
 
     // Determine email type
-    const emailType: EmailType = providedEmailType || this.inferEmailType(options.subject);
+    const emailType: EmailType =
+      providedEmailType || this.inferEmailType(options.subject);
 
     try {
       // 1. Check global rate limit (platform-wide)
       const globalCheck = await EmailRateLimiter.checkGlobalLimit();
       if (!globalCheck.allowed) {
-        console.error(`[SES] 🚫 Global rate limit exceeded: ${globalCheck.reason}`);
+        console.error(
+          `[SES] 🚫 Global rate limit exceeded: ${globalCheck.reason}`
+        );
         await EmailRateLimiter.logEmail({
           userId,
           recipientEmail: recipient,
@@ -123,9 +142,14 @@ export class SESEmailService {
 
       // 2. Check per-user rate limit (if userId provided)
       if (userId) {
-        const userCheck = await EmailRateLimiter.checkUserLimit(userId, emailType);
+        const userCheck = await EmailRateLimiter.checkUserLimit(
+          userId,
+          emailType
+        );
         if (!userCheck.allowed) {
-          console.warn(`[SES] 🚫 User rate limit exceeded: ${userCheck.reason}`);
+          console.warn(
+            `[SES] 🚫 User rate limit exceeded: ${userCheck.reason}`
+          );
           await EmailRateLimiter.logEmail({
             userId,
             recipientEmail: recipient,
@@ -139,9 +163,12 @@ export class SESEmailService {
       }
 
       // 3. Check recipient rate limit
-      const recipientCheck = await EmailRateLimiter.checkRecipientLimit(recipient);
+      const recipientCheck =
+        await EmailRateLimiter.checkRecipientLimit(recipient);
       if (!recipientCheck.allowed) {
-        console.warn(`[SES] 🚫 Recipient rate limit exceeded: ${recipientCheck.reason}`);
+        console.warn(
+          `[SES] 🚫 Recipient rate limit exceeded: ${recipientCheck.reason}`
+        );
         await EmailRateLimiter.logEmail({
           userId,
           recipientEmail: recipient,
@@ -174,7 +201,7 @@ export class SESEmailService {
       }
 
       // 5. Prepare and send email
-      const mailOptions: Mail.Options = {
+      const mailOptions: SendMailOptions = {
         from: this.getFromAddress(),
         to: options.to,
         subject: options.subject,
@@ -234,14 +261,21 @@ export class SESEmailService {
     const lowerSubject = subject.toLowerCase();
 
     if (lowerSubject.includes("assessment report")) return "ASSESSMENT_REPORT";
-    if (lowerSubject.includes("pdf") || lowerSubject.includes("report")) return "PDF_REPORT";
-    if (lowerSubject.includes("license") && lowerSubject.includes("expir")) return "LICENSE_NOTIFICATION";
-    if (lowerSubject.includes("license") && lowerSubject.includes("renew")) return "LICENSE_RENEWED";
+    if (lowerSubject.includes("pdf") || lowerSubject.includes("report"))
+      return "PDF_REPORT";
+    if (lowerSubject.includes("license") && lowerSubject.includes("expir"))
+      return "LICENSE_NOTIFICATION";
+    if (lowerSubject.includes("license") && lowerSubject.includes("renew"))
+      return "LICENSE_RENEWED";
     if (lowerSubject.includes("welcome")) return "WELCOME";
-    if (lowerSubject.includes("password") || lowerSubject.includes("reset")) return "PASSWORD_RESET";
-    if (lowerSubject.includes("magic link") || lowerSubject.includes("sign in")) return "MAGIC_LINK";
-    if (lowerSubject.includes("verify") || lowerSubject.includes("confirm")) return "EMAIL_VERIFICATION";
-    if (lowerSubject.includes("email") && lowerSubject.includes("change")) return "EMAIL_CHANGE";
+    if (lowerSubject.includes("password") || lowerSubject.includes("reset"))
+      return "PASSWORD_RESET";
+    if (lowerSubject.includes("magic link") || lowerSubject.includes("sign in"))
+      return "MAGIC_LINK";
+    if (lowerSubject.includes("verify") || lowerSubject.includes("confirm"))
+      return "EMAIL_VERIFICATION";
+    if (lowerSubject.includes("email") && lowerSubject.includes("change"))
+      return "EMAIL_CHANGE";
     if (lowerSubject.includes("system")) return "SYSTEM";
 
     return "GENERIC";

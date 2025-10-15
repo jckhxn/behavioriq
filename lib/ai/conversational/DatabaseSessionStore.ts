@@ -25,11 +25,11 @@ class DatabaseSessionStore {
           userId: session.userId || null,
           currentQuestionIndex: session.currentQuestionIndex,
           responses: session.responses,
-          messages: session.messages,
+          messages: session.messages as any,
           isComplete: session.isComplete,
           isTrial: session.isTrial,
-          questions: session.questions,
-          totalTokenUsage: session.totalTokenUsage || null,
+          questions: session.questions as any,
+          totalTokenUsage: session.totalTokenUsage as any,
           clarificationAttempts: session.clarificationAttempts || 0,
           lastSubmittedAt: new Date(),
           submissionCount: 0,
@@ -37,9 +37,10 @@ class DatabaseSessionStore {
         update: {
           currentQuestionIndex: session.currentQuestionIndex,
           responses: session.responses,
-          messages: session.messages,
+          messages: session.messages as any,
+          questions: session.questions as any,
+          totalTokenUsage: session.totalTokenUsage as any,
           isComplete: session.isComplete,
-          totalTokenUsage: session.totalTokenUsage || null,
           clarificationAttempts: session.clarificationAttempts || 0,
           lastSubmittedAt: new Date(),
           submissionCount: {
@@ -48,9 +49,14 @@ class DatabaseSessionStore {
         },
       });
 
-      console.log(`[DatabaseSessionStore] Session ${sessionId} saved to database`);
+      console.log(
+        `[DatabaseSessionStore] Session ${sessionId} saved to database`
+      );
     } catch (error) {
-      console.error(`[DatabaseSessionStore] Error saving session ${sessionId}:`, error);
+      console.error(
+        `[DatabaseSessionStore] Error saving session ${sessionId}:`,
+        error
+      );
       throw error;
     }
   }
@@ -69,7 +75,9 @@ class DatabaseSessionStore {
         return undefined;
       }
 
-      console.log(`[DatabaseSessionStore] Session ${sessionId} retrieved from database`);
+      console.log(
+        `[DatabaseSessionStore] Session ${sessionId} retrieved from database`
+      );
 
       // Convert database model to ConversationalSession type
       return {
@@ -77,16 +85,19 @@ class DatabaseSessionStore {
         assessmentId: session.assessmentId,
         userId: session.userId || undefined,
         currentQuestionIndex: session.currentQuestionIndex,
-        responses: session.responses as Record<string, boolean>,
-        messages: session.messages as any[],
+        responses: session.responses as any,
+        questions: session.questions as any,
+        messages: session.messages as any,
         isComplete: session.isComplete,
         isTrial: session.isTrial,
-        questions: session.questions as any[],
         totalTokenUsage: session.totalTokenUsage as any,
         clarificationAttempts: session.clarificationAttempts,
       };
     } catch (error) {
-      console.error(`[DatabaseSessionStore] Error retrieving session ${sessionId}:`, error);
+      console.error(
+        `[DatabaseSessionStore] Error retrieving session ${sessionId}:`,
+        error
+      );
       return undefined;
     }
   }
@@ -94,7 +105,9 @@ class DatabaseSessionStore {
   /**
    * Get session by assessment ID (for resumption)
    */
-  async getByAssessmentId(assessmentId: string): Promise<ConversationalSession | undefined> {
+  async getByAssessmentId(
+    assessmentId: string
+  ): Promise<ConversationalSession | undefined> {
     try {
       const session = await prisma.conversationalSession.findUnique({
         where: { assessmentId },
@@ -118,7 +131,10 @@ class DatabaseSessionStore {
         clarificationAttempts: session.clarificationAttempts,
       };
     } catch (error) {
-      console.error(`[DatabaseSessionStore] Error retrieving session by assessment ${assessmentId}:`, error);
+      console.error(
+        `[DatabaseSessionStore] Error retrieving session by assessment ${assessmentId}:`,
+        error
+      );
       return undefined;
     }
   }
@@ -132,10 +148,15 @@ class DatabaseSessionStore {
         where: { id: sessionId },
       });
 
-      console.log(`[DatabaseSessionStore] Session ${sessionId} deleted from database`);
+      console.log(
+        `[DatabaseSessionStore] Session ${sessionId} deleted from database`
+      );
       return true;
     } catch (error) {
-      console.error(`[DatabaseSessionStore] Error deleting session ${sessionId}:`, error);
+      console.error(
+        `[DatabaseSessionStore] Error deleting session ${sessionId}:`,
+        error
+      );
       return false;
     }
   }
@@ -150,7 +171,10 @@ class DatabaseSessionStore {
       });
       return count > 0;
     } catch (error) {
-      console.error(`[DatabaseSessionStore] Error checking session ${sessionId}:`, error);
+      console.error(
+        `[DatabaseSessionStore] Error checking session ${sessionId}:`,
+        error
+      );
       return false;
     }
   }
@@ -162,7 +186,10 @@ class DatabaseSessionStore {
     try {
       return await prisma.conversationalSession.count();
     } catch (error) {
-      console.error(`[DatabaseSessionStore] Error getting session count:`, error);
+      console.error(
+        `[DatabaseSessionStore] Error getting session count:`,
+        error
+      );
       return 0;
     }
   }
@@ -195,16 +222,19 @@ class DatabaseSessionStore {
         },
       });
 
-      console.log(`[DatabaseSessionStore] Submission recorded for question ${questionId}`);
+      console.log(
+        `[DatabaseSessionStore] Submission recorded for question ${questionId}`
+      );
       return true;
     } catch (error: any) {
       // Check if this is a unique constraint violation (duplicate submission)
       if (error?.code === "P2002") {
-        console.log(`[DatabaseSessionStore] Duplicate submission detected for question ${questionId}`);
+        console.log(
+          `[DatabaseSessionStore] Duplicate submission detected for question ${questionId}`
+        );
         return false;
       }
-
-      console.error(`[DatabaseSessionStore] Error recording submission:`, error);
+      // Other errors
       throw error;
     }
   }
@@ -212,7 +242,10 @@ class DatabaseSessionStore {
   /**
    * Check rate limiting - returns true if user is submitting too fast
    */
-  async isRateLimited(sessionId: string, minSecondsBetweenSubmissions: number = 2): Promise<boolean> {
+  async isRateLimited(
+    sessionId: string,
+    minSecondsBetweenSubmissions: number = 2
+  ): Promise<boolean> {
     try {
       const session = await prisma.conversationalSession.findUnique({
         where: { id: sessionId },
@@ -245,7 +278,10 @@ class DatabaseSessionStore {
 
       return session?.submissionCount || 0;
     } catch (error) {
-      console.error(`[DatabaseSessionStore] Error getting submission count:`, error);
+      console.error(
+        `[DatabaseSessionStore] Error getting submission count:`,
+        error
+      );
       return 0;
     }
   }
@@ -266,10 +302,15 @@ class DatabaseSessionStore {
         },
       });
 
-      console.log(`[DatabaseSessionStore] Cleaned up ${result.count} old sessions`);
+      console.log(
+        `[DatabaseSessionStore] Cleaned up ${result.count} old sessions`
+      );
       return result.count;
     } catch (error) {
-      console.error(`[DatabaseSessionStore] Error cleaning up old sessions:`, error);
+      console.error(
+        `[DatabaseSessionStore] Error cleaning up old sessions:`,
+        error
+      );
       return 0;
     }
   }

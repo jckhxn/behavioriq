@@ -1,10 +1,10 @@
 import NextAuth from "next-auth";
-import type { NextAuthOptions } from "next-auth";
+import type { NextAuthConfig } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import AppleProvider from "next-auth/providers/apple";
-import { supabaseClient } from "@/lib/supabase/supabaseClient";
+import { createClient } from "@/lib/supabase/client";
 
-export const authOptions: NextAuthOptions = {
+export const authOptions: NextAuthConfig = {
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -47,7 +47,7 @@ export const authOptions: NextAuthOptions = {
     signOut: "/auth/signout",
     error: "/auth/error",
     verifyRequest: "/auth/verify-request",
-    newUser: null, // Will disable the new account creation screen
+    // newUser: undefined, // Omit or set to undefined for v5
   },
   secret: process.env.NEXTAUTH_SECRET,
 };

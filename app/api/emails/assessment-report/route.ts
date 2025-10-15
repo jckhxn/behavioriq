@@ -25,7 +25,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { assessmentId, recipientEmail, includePdf } = body;
 
-    console.log("[Email Report] Request received:", { assessmentId, recipientEmail, includePdf });
+    console.log("[Email Report] Request received:", {
+      assessmentId,
+      recipientEmail,
+      includePdf,
+    });
 
     if (!assessmentId || !recipientEmail) {
       return NextResponse.json(
@@ -41,7 +45,10 @@ export async function POST(request: NextRequest) {
     console.log("[Email Report] Assessment found:", assessment ? "yes" : "no");
 
     if (!assessment) {
-      console.error("[Email Report] Assessment not found for ID:", assessmentId);
+      console.error(
+        "[Email Report] Assessment not found for ID:",
+        assessmentId
+      );
       return NextResponse.json(
         { error: "Assessment not found" },
         { status: 404 }
@@ -83,7 +90,10 @@ export async function POST(request: NextRequest) {
     let reportPdf: Buffer | undefined;
     if (includePdf) {
       try {
-        console.log("[Email Report] Generating PDF for assessment:", assessmentId);
+        console.log(
+          "[Email Report] Generating PDF for assessment:",
+          assessmentId
+        );
 
         // Prepare assessment data for PDF generation
         const assessmentData = {
@@ -92,18 +102,30 @@ export async function POST(request: NextRequest) {
           startedAt: assessment.startedAt.toISOString(),
           completedAt: assessment.completedAt?.toISOString() || null,
           status: assessment.status,
-          scores: assessmentWithDetails?.scores.map((score: any) => ({
-            domain: score.domain || "Unknown",
-            domainName: score.domainName || score.domain || "Unknown",
-            rawScore: score.rawScore,
-            totalPossible: score.totalPossible,
-            riskLevel: score.riskLevel,
-          })) || [],
-          user: assessmentWithDetails?.user || { name: assessment.subjectName, email: null },
+          scores:
+            assessmentWithDetails?.scores.map((score: any) => ({
+              domain: score.domain || "Unknown",
+              domainName: score.domainName || score.domain || "Unknown",
+              rawScore: score.rawScore,
+              totalPossible: score.totalPossible,
+              riskLevel: score.riskLevel,
+            })) || [],
+          user:
+            assessmentWithDetails?.user &&
+            assessmentWithDetails.user.email != null
+              ? {
+                  name: assessmentWithDetails.user.name,
+                  email: assessmentWithDetails.user.email,
+                }
+              : { name: assessment.subjectName, email: "" },
         };
 
         reportPdf = await generateAssessmentPDF(assessmentData);
-        console.log("[Email Report] PDF generated successfully, size:", reportPdf.length, "bytes");
+        console.log(
+          "[Email Report] PDF generated successfully, size:",
+          reportPdf.length,
+          "bytes"
+        );
       } catch (error) {
         console.error("[Email Report] PDF generation failed:", error);
         // Continue without PDF if generation fails
@@ -119,7 +141,8 @@ export async function POST(request: NextRequest) {
       const { SESEmailService } = await import("@/lib/email/ses-email-service");
       result = await SESEmailService.sendAssessmentReport({
         to: recipientEmail,
-        userName: assessmentWithDetails?.user.name || assessment.subjectName || "User",
+        userName:
+          assessmentWithDetails?.user.name || assessment.subjectName || "User",
         assessmentName: `Assessment for ${assessment.subjectName}`,
         assessmentId: assessment.id,
         pdfBuffer: reportPdf,
@@ -128,7 +151,8 @@ export async function POST(request: NextRequest) {
     } else {
       // Fallback to legacy EmailService
       result = await EmailService.sendAssessmentReport({
-        recipientName: assessmentWithDetails?.user.name || assessment.subjectName || "User",
+        recipientName:
+          assessmentWithDetails?.user.name || assessment.subjectName || "User",
         recipientEmail,
         assessmentTitle: `Assessment for ${assessment.subjectName}`,
         riskLevel,

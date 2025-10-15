@@ -1,11 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Loader2 } from "lucide-react";
 
-export default function AutoLoginPage() {
+function LoadingState() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="text-center space-y-4">
+        <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+        <div className="text-lg font-medium">Signing you in...</div>
+        <div className="text-sm text-muted-foreground">Please wait</div>
+      </div>
+    </div>
+  );
+}
+
+function AutoLoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
@@ -102,13 +114,13 @@ export default function AutoLoginPage() {
     );
   }
 
+  return <LoadingState />;
+}
+
+export default function AutoLoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="text-center space-y-4">
-        <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-        <div className="text-lg font-medium">Signing you in...</div>
-        <div className="text-sm text-muted-foreground">Please wait</div>
-      </div>
-    </div>
+    <Suspense fallback={<LoadingState />}>
+      <AutoLoginContent />
+    </Suspense>
   );
 }

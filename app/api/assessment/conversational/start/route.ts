@@ -8,7 +8,8 @@ import { getMaxConversationalSessionsPerUser } from "@/lib/platform/settings";
 
 export async function POST(request: NextRequest) {
   try {
-    const { isTrial, assessmentTemplateId, subjectName, assessmentId } = await request.json();
+    const { isTrial, assessmentTemplateId, subjectName, assessmentId } =
+      await request.json();
 
     // Get authenticated user if available
     const user = await getCurrentUserWithRole();
@@ -16,16 +17,22 @@ export async function POST(request: NextRequest) {
 
     // 🔄 SESSION RESUMPTION: Check if an existing session exists for this assessment
     if (assessmentId) {
-      const existingSession = await databaseSessionStore.getByAssessmentId(assessmentId);
+      const existingSession =
+        await databaseSessionStore.getByAssessmentId(assessmentId);
 
       if (existingSession && !existingSession.isComplete) {
-        console.log(`[Conversational] 🔄 Resuming existing session ${existingSession.id} for assessment ${assessmentId}`);
-        console.log(`[Conversational] Progress: ${Object.keys(existingSession.responses).length}/${existingSession.questions.length} questions answered`);
+        console.log(
+          `[Conversational] 🔄 Resuming existing session ${existingSession.id} for assessment ${assessmentId}`
+        );
+        console.log(
+          `[Conversational] Progress: ${Object.keys(existingSession.responses).length}/${existingSession.questions.length} questions answered`
+        );
 
         // Return existing session - user can continue from where they left off
         return NextResponse.json({
           sessionId: existingSession.id,
-          message: existingSession.messages[existingSession.messages.length - 1], // Last message
+          message:
+            existingSession.messages[existingSession.messages.length - 1], // Last message
           assessmentId: assessmentId,
           tokenUsage: {
             session: existingSession.totalTokenUsage,
@@ -47,8 +54,7 @@ export async function POST(request: NextRequest) {
     let assessmentTemplate: any;
     let actualAssessmentId: string | null = assessmentId || null;
     let existingAssessment: any = null;
-    let resolvedAssessmentTemplateId =
-      assessmentTemplateId || null;
+    let resolvedAssessmentTemplateId = assessmentTemplateId || null;
     let resolvedSubjectName = subjectName || null;
 
     if (!isTrial && !assessmentId && user && subjectName) {
@@ -67,10 +73,15 @@ export async function POST(request: NextRequest) {
         existingAssessment = existingInProgress;
         actualAssessmentId = existingAssessment.id;
         resolvedAssessmentTemplateId =
-          resolvedAssessmentTemplateId || existingAssessment.assessmentTemplateId || null;
+          resolvedAssessmentTemplateId ||
+          existingAssessment.assessmentTemplateId ||
+          null;
         resolvedSubjectName =
           resolvedSubjectName || existingAssessment.subjectName || null;
-        if (!existingAssessment.assessmentTemplateId && resolvedAssessmentTemplateId) {
+        if (
+          !existingAssessment.assessmentTemplateId &&
+          resolvedAssessmentTemplateId
+        ) {
           existingAssessment = await prisma.assessment.update({
             where: { id: existingAssessment.id },
             data: { assessmentTemplateId: resolvedAssessmentTemplateId },
@@ -105,7 +116,9 @@ export async function POST(request: NextRequest) {
           });
           actualAssessmentId = existingAssessment.id;
           resolvedAssessmentTemplateId =
-            resolvedAssessmentTemplateId || existingAssessment.assessmentTemplateId || null;
+            resolvedAssessmentTemplateId ||
+            existingAssessment.assessmentTemplateId ||
+            null;
           resolvedSubjectName =
             resolvedSubjectName || existingAssessment.subjectName || null;
           console.log(
@@ -158,7 +171,10 @@ export async function POST(request: NextRequest) {
     } else {
       // Handle regular assessment (authenticated users)
       if (!user) {
-        return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+        return NextResponse.json(
+          { error: "Authentication required" },
+          { status: 401 }
+        );
       }
 
       // Check if we're resuming an existing assessment
@@ -184,10 +200,7 @@ export async function POST(request: NextRequest) {
         }
 
         if (assessmentToResume.userId !== user.id) {
-          return NextResponse.json(
-            { error: "Unauthorized" },
-            { status: 403 }
-          );
+          return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
         }
 
         if (assessmentToResume.status === "ABANDONED") {
@@ -213,10 +226,15 @@ export async function POST(request: NextRequest) {
         }
 
         resolvedAssessmentTemplateId =
-          resolvedAssessmentTemplateId || assessmentToResume.assessmentTemplateId || null;
+          resolvedAssessmentTemplateId ||
+          assessmentToResume.assessmentTemplateId ||
+          null;
         resolvedSubjectName =
           resolvedSubjectName || assessmentToResume.subjectName || null;
-        if (!assessmentToResume.assessmentTemplateId && resolvedAssessmentTemplateId) {
+        if (
+          !assessmentToResume.assessmentTemplateId &&
+          resolvedAssessmentTemplateId
+        ) {
           await prisma.assessment.update({
             where: { id: actualAssessmentId },
             data: { assessmentTemplateId: resolvedAssessmentTemplateId },
@@ -232,7 +250,9 @@ export async function POST(request: NextRequest) {
 
         // Reuse the existing assessment
         actualAssessmentId = assessmentToResume.id;
-        console.log(`[Conversational] ♻️ Reusing existing assessment ${actualAssessmentId} for resume or prevention of duplicate`);
+        console.log(
+          `[Conversational] ♻️ Reusing existing assessment ${actualAssessmentId} for resume or prevention of duplicate`
+        );
       } else {
         if (!resolvedAssessmentTemplateId) {
           return NextResponse.json(
@@ -288,7 +308,9 @@ export async function POST(request: NextRequest) {
         });
 
         actualAssessmentId = assessment.id;
-        console.log(`[Conversational] ✨ Created new assessment ${actualAssessmentId}`);
+        console.log(
+          `[Conversational] ✨ Created new assessment ${actualAssessmentId}`
+        );
       }
 
       if (!resolvedAssessmentTemplateId) {
@@ -387,15 +409,20 @@ export async function POST(request: NextRequest) {
           totalTokens: 0,
         };
       }
-      session.totalTokenUsage.promptTokens += initialMessage.metadata.tokenUsage.promptTokens;
-      session.totalTokenUsage.completionTokens += initialMessage.metadata.tokenUsage.completionTokens;
-      session.totalTokenUsage.totalTokens += initialMessage.metadata.tokenUsage.totalTokens;
+      session.totalTokenUsage.promptTokens +=
+        initialMessage.metadata.tokenUsage.promptTokens;
+      session.totalTokenUsage.completionTokens +=
+        initialMessage.metadata.tokenUsage.completionTokens;
+      session.totalTokenUsage.totalTokens +=
+        initialMessage.metadata.tokenUsage.totalTokens;
     }
 
     // Store session in database
     await databaseSessionStore.set(session.id, session);
 
-    console.log(`[Conversational] ✅ New session ${session.id} created for assessment ${actualAssessmentId}`);
+    console.log(
+      `[Conversational] ✅ New session ${session.id} created for assessment ${actualAssessmentId}`
+    );
 
     return NextResponse.json({
       sessionId: session.id,

@@ -19,13 +19,19 @@ export async function POST(
 
     const { id: userId } = await params;
     const body = await request.json();
-    const { assessmentCredits, conversationalCredits } = body;
+    const {
+      assessmentCredits,
+      conversationalCredits,
+      conversationalReportCredits,
+    } = body;
 
     if (
       (assessmentCredits !== undefined &&
         typeof assessmentCredits !== "number") ||
       (conversationalCredits !== undefined &&
-        typeof conversationalCredits !== "number")
+        typeof conversationalCredits !== "number") ||
+      (conversationalReportCredits !== undefined &&
+        typeof conversationalReportCredits !== "number")
     ) {
       return NextResponse.json(
         { error: "Invalid credit values" },
@@ -62,6 +68,11 @@ export async function POST(
         increment: conversationalCredits,
       };
     }
+    if (conversationalReportCredits !== undefined) {
+      updateData.conversationalReportsAllowed = {
+        increment: conversationalReportCredits,
+      };
+    }
 
     const updatedLicense = await prisma.userLicense.update({
       where: { id: userLicense.id },
@@ -70,7 +81,7 @@ export async function POST(
 
     console.log(
       `[Admin] ✅ ${user.email} assigned credits to user ${userId}:`,
-      { assessmentCredits, conversationalCredits }
+      { assessmentCredits, conversationalCredits, conversationalReportCredits }
     );
 
     return NextResponse.json({
@@ -82,6 +93,10 @@ export async function POST(
           updatedLicense.conversationalAssessmentsAllowed,
         conversationalAssessmentsUsed:
           updatedLicense.conversationalAssessmentsUsed,
+        conversationalReportsAllowed:
+          updatedLicense.conversationalReportsAllowed,
+        conversationalReportsUsed:
+          updatedLicense.conversationalReportsUsed,
       },
     });
   } catch (error) {
@@ -115,6 +130,8 @@ export async function PUT(
       assessmentsUsed,
       conversationalAssessmentsAllowed,
       conversationalAssessmentsUsed,
+      conversationalReportsAllowed,
+      conversationalReportsUsed,
     } = body;
 
     // Get user's active license
@@ -144,6 +161,10 @@ export async function PUT(
         conversationalAssessmentsAllowed;
     if (conversationalAssessmentsUsed !== undefined)
       updateData.conversationalAssessmentsUsed = conversationalAssessmentsUsed;
+    if (conversationalReportsAllowed !== undefined)
+      updateData.conversationalReportsAllowed = conversationalReportsAllowed;
+    if (conversationalReportsUsed !== undefined)
+      updateData.conversationalReportsUsed = conversationalReportsUsed;
 
     const updatedLicense = await prisma.userLicense.update({
       where: { id: userLicense.id },
@@ -164,6 +185,10 @@ export async function PUT(
           updatedLicense.conversationalAssessmentsAllowed,
         conversationalAssessmentsUsed:
           updatedLicense.conversationalAssessmentsUsed,
+        conversationalReportsAllowed:
+          updatedLicense.conversationalReportsAllowed,
+        conversationalReportsUsed:
+          updatedLicense.conversationalReportsUsed,
       },
     });
   } catch (error) {

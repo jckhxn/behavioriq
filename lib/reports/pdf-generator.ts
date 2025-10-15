@@ -217,7 +217,11 @@ export class PDFReportGenerator {
     assessment.scores.forEach((score, index) => {
       const y = this.currentY + index * rowHeight;
 
-      this.pdf.text(this.formatDomainName(score.domain), this.margin, y);
+      this.pdf.text(
+        this.formatDomainName(score.domain),
+        this.margin,
+        y
+      );
       this.pdf.text(
         `${score.rawScore}/${score.totalPossible}`,
         this.margin + colWidths[0],
@@ -458,7 +462,10 @@ export class PDFReportGenerator {
     return colors[riskLevel as keyof typeof colors] || [107, 114, 128];
   }
 
-  private formatDomainName(domain: string): string {
+  private formatDomainName(domain: string | null | undefined): string {
+    if (!domain) {
+      return "Unknown Domain";
+    }
     return domain
       .replace(/_/g, " ")
       .toLowerCase()

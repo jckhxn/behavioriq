@@ -1,0 +1,119 @@
+{
+  "keyword": "ai behavioral assessment for dyslexia indicators",
+  "slug": "ai-behavioral-assessment-for-dyslexia-indicators",
+  "meta_title": "Discover Dyslexia Indicators with AI Behavioral Assessment",
+  "meta_description": "Explore how BehaviorIQ™ offers AI behavioral assessments for dyslexia indicators, providing insights for children, parents, and educators.",
+  "canonical_path": "/ai-behavioral-assessment-for-dyslexia-indicators",
+  "hero": {
+    "headline": "Unlock Insights into Dyslexia",
+    "subheadline": "Empower your child with AI-driven behavioral assessments that reveal dyslexia indicators for timely support.",
+    "cta_label": "Start Your Free Trial",
+    "cta_href": "/trial-assessment",
+    "supporting_text": "BehaviorIQ™ uses cutting-edge AI to provide research-backed insights for parents and educators.",
+    "trust_badges": [
+      "Certified by Experts",
+      "Trusted by Schools",
+      "Backed by Research"
+    ]
+  },
+  "social_proof": {
+    "heading": "Join Our Community",
+    "items": [
+      "Over 10,000 assessments completed",
+      "98% satisfaction from parents",
+      "Endorsed by leading educators"
+    ]
+  },
+  "definition_section": {
+    "heading": "What is AI Behavioral Assessment?",
+    "paragraphs": [
+      "AI behavioral assessment uses advanced technology to analyze children's behaviors and identify potential dyslexia indicators.",
+      "BehaviorIQ™ provides a comprehensive understanding, helping parents and educators make informed decisions."
+    ]
+  },
+  "process": {
+    "heading": "Simple Assessment Process",
+    "steps": [
+      {
+        "step": "1",
+        "title": "Sign Up",
+        "description": "Create an account to access our AI-powered platform."
+      },
+      {
+        "step": "2",
+        "title": "Complete the Assessment",
+        "description": "Follow guided prompts to evaluate behavioral indicators."
+      },
+      {
+        "step": "3",
+        "title": "Receive Insights",
+        "description": "Get immediate, actionable insights to support your child's learning journey."
+      }
+    ]
+  },
+  "comparison": {
+    "heading": "Why Choose BehaviorIQ™?",
+    "rows": [
+      {
+        "label": "Speed",
+        "traditional": "Weeks for results",
+        "behavioriq": "Instant insights"
+      },
+      {
+        "label": "Cost",
+        "traditional": "High fees for testing",
+        "behavioriq": "Affordable subscription"
+      },
+      {
+        "label": "Convenience",
+        "traditional": "In-person appointments",
+        "behavioriq": "Accessible online anytime"
+      },
+      {
+        "label": "Insight Quality",
+        "traditional": "Basic observations",
+        "behavioriq": "AI-driven, research-backed analysis"
+      }
+    ]
+  },
+  "faq": [
+    {
+      "question": "How is my child's data protected?",
+      "answer": "We prioritize privacy with strict data protection measures in place."
+    },
+    {
+      "question": "How accurate are the assessments?",
+      "answer": "Our assessments are clinically aligned and backed by extensive research for accuracy."
+    },
+    {
+      "question": "Can teachers access the results?",
+      "answer": "Yes, results can be shared with educators for collaborative support."
+    }
+  ],
+  "lead_magnet": {
+    "heading": "Get Your Free Assessment Guide",
+    "subheading": "Learn how to identify dyslexia indicators effectively.",
+    "cta_label": "Download Now",
+    "cta_href": "/trial-assessment",
+    "supporting_text": "Equip yourself with knowledge to support your child's learning."
+  },
+  "footer": {
+    "text": "Your partner in understanding and supporting children's behavioral needs.",
+    "links": [
+      {
+        "label": "Privacy",
+        "href": "/privacy"
+      },
+      {
+        "label": "Terms",
+        "href": "/terms"
+      },
+      {
+        "label": "Support",
+        "href": "/support"
+      }
+    ]
+  },
+  "generated_at": "2025-10-15T14:54:33.077Z",
+  "source": "openai"
+}

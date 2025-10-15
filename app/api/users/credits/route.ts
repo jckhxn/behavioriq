@@ -14,20 +14,16 @@ export async function GET() {
       typeof user.credits === "number"
         ? user.credits
         : user.credits === null
-        ? 0
-        : undefined;
+          ? 0
+          : undefined;
 
     if (creditsValue !== undefined) {
       return NextResponse.json({ credits: creditsValue });
     }
 
     // Fallback to Prisma query if credits not included in Supabase payload
-    const dbUser = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: { credits: true },
-    });
-
-    return NextResponse.json({ credits: dbUser?.credits ?? 0 });
+    // No credits field in User model; always return 0
+    return NextResponse.json({ credits: 0 });
   } catch (error) {
     console.error("Failed to fetch credits:", error);
     return NextResponse.json(

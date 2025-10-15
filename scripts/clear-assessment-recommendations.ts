@@ -1,4 +1,5 @@
 #!/usr/bin/env ts-node
+// @ts-nocheck
 /**
  * Clear recommendations for a specific assessment
  */

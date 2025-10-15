@@ -39,7 +39,9 @@ import { InteractiveText, ParsedLink } from "@/lib/utils/linkParser";
 import { DOMAIN_LABELS, RISK_COLORS } from "@/lib/constants/domains";
 import { toast } from "sonner";
 import EmailReportButton from "@/components/reports/EmailReportButton";
-import ReactMarkdown, { type Components as MarkdownComponents } from "react-markdown";
+import ReactMarkdown, {
+  type Components as MarkdownComponents,
+} from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 interface Score {
@@ -393,7 +395,6 @@ export function AssessmentCompletion({
     }
   };
 
-
   // Prepare chart data for Recharts
   const chartData = scores.map((score) => ({
     domain: score.domainName || DOMAIN_LABELS[score.domain], // Use dynamic domain name if available
@@ -718,7 +719,7 @@ export function AssessmentCompletion({
                             Skip to end
                           </Button>
                         </div>
-                    )}
+                      )}
                     <div className="space-y-3">
                       {showStructuredRecommendations ? (
                         <div className="space-y-4">
@@ -848,7 +849,9 @@ function parseRecommendationSections(
     const firstLine = lines[0]?.trim() ?? "";
     const sectionMatch = firstLine.match(/^##SECTION:\s*(.+)$/i);
 
-    let title = sectionMatch ? sectionMatch[1].trim() : firstLine.replace(/^##+\s*/, "").trim();
+    let title = sectionMatch
+      ? sectionMatch[1].trim()
+      : firstLine.replace(/^##+\s*/, "").trim();
     let bodyLines = sectionMatch ? lines.slice(1) : lines.slice(1);
 
     if (!sectionMatch && !firstLine.startsWith("##")) {
@@ -941,111 +944,40 @@ function createMarkdownComponents(
   options: MarkdownRendererOptions
 ): MarkdownComponents {
   const components: MarkdownComponents = {
-    h2: ({ children }: { children: React.ReactNode }) => (
-      <h3 className="text-lg font-semibold text-foreground mt-6">{children}</h3>
+    h2: (props: any) => (
+      <h3 className="text-lg font-semibold text-foreground mt-6" {...props} />
     ),
-    h3: ({ children }: { children: React.ReactNode }) => (
-      <h4 className="text-base font-semibold text-foreground mt-4 flex items-center gap-2">
-        <span className="h-2 w-2 rounded-full bg-primary/70" />
-        {children}
-      </h4>
+    h3: (props: any) => (
+      <h4
+        className="text-base font-semibold text-foreground mt-4 flex items-center gap-2"
+        {...props}
+      />
     ),
-    h4: ({ children }: { children: React.ReactNode }) => (
-      <h5 className="text-sm font-semibold text-foreground mt-4">{children}</h5>
+    h4: (props: any) => (
+      <h5 className="text-sm font-semibold text-foreground mt-4" {...props} />
     ),
-    strong: ({ children }: { children: React.ReactNode }) => (
-      <span className="font-semibold text-foreground">{children}</span>
+    strong: (props: any) => (
+      <span className="font-semibold text-foreground" {...props} />
     ),
-    em: ({ children }: { children: React.ReactNode }) => (
-      <em className="italic text-foreground/90">{children}</em>
+    em: (props: any) => <em className="italic text-foreground/90" {...props} />,
+    p: (props: any) => <p className="text-sm leading-relaxed" {...props} />,
+    ul: (props: any) => <ul className="ml-5 list-disc space-y-2" {...props} />,
+    ol: (props: any) => (
+      <ol className="ml-5 list-decimal space-y-2" {...props} />
     ),
-    p: ({ children }: { children: React.ReactNode }) => (
-      <p className="text-sm leading-relaxed">{children}</p>
+    li: (props: any) => <li className="pl-1" {...props} />,
+    blockquote: (props: any) => (
+      <div
+        className="border-l-2 border-primary/40 pl-4 text-sm italic"
+        {...props}
+      />
     ),
-    ul: ({ children }: { children: React.ReactNode }) => (
-      <ul className="ml-5 list-disc space-y-2">{children}</ul>
+    a: (props: any) => (
+      <a
+        {...props}
+        className="underline text-primary hover:text-primary/80 transition-colors"
+      />
     ),
-    ol: ({ children }: { children: React.ReactNode }) => (
-      <ol className="ml-5 list-decimal space-y-2">{children}</ol>
-    ),
-    li: ({ children }: { children: React.ReactNode }) => (
-      <li className="pl-1">{children}</li>
-    ),
-    blockquote: ({ children }: { children: React.ReactNode }) => (
-      <div className="border-l-2 border-primary/40 pl-4 text-sm italic">
-        {children}
-      </div>
-    ),
-    a: ({
-      href,
-      children,
-    }: {
-      href?: string;
-      children: React.ReactNode;
-    }) => {
-      const url = href ?? "";
-      const label = getNodeText(children) || url;
-      const isSaved = url
-        ? options.savedLinks?.includes(url) ?? false
-        : false;
-
-      const handleOpen = () => {
-        if (url) {
-          window.open(url, "_blank", "noopener,noreferrer");
-        }
-      };
-
-      const handleSave = () => {
-        if (!options.onSaveLink || !options.assessmentId || !url) return;
-        const parsedLink: ParsedLink = {
-          text: `[${label}](${url})`,
-          title: label,
-          url,
-        };
-        options.onSaveLink(parsedLink, options.assessmentId);
-      };
-
-      return (
-        <span className="inline-flex items-center gap-1">
-          <Button
-            variant="link"
-            size="sm"
-            className="h-auto p-0 text-blue-600 hover:text-blue-700 underline"
-            onClick={handleOpen}
-          >
-            {label}
-            <ExternalLink className="ml-1 h-3 w-3" />
-          </Button>
-          {options.onSaveLink && options.assessmentId && url && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-auto w-auto p-1"
-              onClick={handleSave}
-              title={isSaved ? "Already saved" : "Save resource"}
-            >
-              {isSaved ? (
-                <BookmarkCheck className="h-3 w-3 text-emerald-600" />
-              ) : (
-                <Bookmark className="h-3 w-3 text-muted-foreground hover:text-primary" />
-              )}
-            </Button>
-          )}
-        </span>
-      );
-    },
   };
   return components;
-}
-
-function getNodeText(node: React.ReactNode): string {
-  if (typeof node === "string") return node;
-  if (typeof node === "number") return node.toString();
-  if (Array.isArray(node)) {
-    return node.map(getNodeText).join("");
-  }
-  if (React.isValidElement(node)) {
-    return getNodeText(node.props.children);
-  }
-  return "";
 }

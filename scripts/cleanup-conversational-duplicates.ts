@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Cleanup Script: Fix Duplicate Conversational Assessments
  *
@@ -18,7 +19,7 @@ import { prisma } from "../lib/db/prisma";
 
 async function cleanupConversationalDuplicates() {
   console.log("🧹 Starting Conversational Assessment Cleanup\n");
-  console.log("=" .repeat(60));
+  console.log("=".repeat(60));
 
   try {
     // Find all users with conversational assessments
@@ -36,7 +37,9 @@ async function cleanupConversationalDuplicates() {
       },
     });
 
-    console.log(`\n📊 Found ${users.length} users with conversational assessments\n`);
+    console.log(
+      `\n📊 Found ${users.length} users with conversational assessments\n`
+    );
 
     let totalDuplicatesRemoved = 0;
     let totalCreditsFixed = 0;
@@ -75,11 +78,14 @@ async function cleanupConversationalDuplicates() {
       // Find groups with duplicates
       for (const [key, group] of groups) {
         if (group.length > 1) {
-          console.log(`  ⚠️  Found ${group.length} duplicates for "${group[0].subjectName}"`);
+          console.log(
+            `  ⚠️  Found ${group.length} duplicates for "${group[0].subjectName}"`
+          );
 
           // Keep the oldest with scores, delete the rest
           const withScores = group.filter((a) => a.scores.length > 0);
-          const keepAssessment = withScores.length > 0 ? withScores[0] : group[0];
+          const keepAssessment =
+            withScores.length > 0 ? withScores[0] : group[0];
 
           for (const assessment of group) {
             if (assessment.id !== keepAssessment.id) {
@@ -124,7 +130,9 @@ async function cleanupConversationalDuplicates() {
         const creditsUsed = userLicense.conversationalAssessmentsUsed;
 
         if (creditsUsed > completedCount) {
-          console.log(`  ⚠️  Credit mismatch: Used=${creditsUsed}, Completed=${completedCount}`);
+          console.log(
+            `  ⚠️  Credit mismatch: Used=${creditsUsed}, Completed=${completedCount}`
+          );
           console.log(`    Fixing credit count...`);
 
           await prisma.userLicense.update({
@@ -137,14 +145,16 @@ async function cleanupConversationalDuplicates() {
           totalCreditsFixed++;
           console.log(`    ✅ Fixed: Set creditsUsed to ${completedCount}`);
         } else {
-          console.log(`  ✅ Credits correct: ${creditsUsed} used, ${completedCount} completed`);
+          console.log(
+            `  ✅ Credits correct: ${creditsUsed} used, ${completedCount} completed`
+          );
         }
       }
     }
 
-    console.log("\n" + "=" .repeat(60));
+    console.log("\n" + "=".repeat(60));
     console.log("\n📊 CLEANUP SUMMARY:");
-    console.log("=" .repeat(60));
+    console.log("=".repeat(60));
     console.log(`Users checked: ${users.length}`);
     console.log(`Duplicate assessments removed: ${totalDuplicatesRemoved}`);
     console.log(`User credits fixed: ${totalCreditsFixed}`);

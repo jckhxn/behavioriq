@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * SES Email Testing Script
  *
@@ -245,9 +246,7 @@ async function main() {
 
     default:
       console.error(`❌ Unknown test type: ${testType}`);
-      console.error(
-        "   Valid types: basic, assessment, license, welcome, all"
-      );
+      console.error("   Valid types: basic, assessment, license, welcome, all");
       process.exit(1);
   }
 

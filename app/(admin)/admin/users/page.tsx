@@ -47,9 +47,15 @@ interface UserData {
     conversationalAssessmentsUsed: number;
     creditsRemaining: number;
     conversationalCreditsRemaining: number;
+    conversationalReportsAllowed: number;
+    conversationalReportsUsed: number;
+    conversationalReportCreditsRemaining: number | null;
+    conversationalReportLimit: number | null;
+    hasUnlimitedConversationalReports: boolean;
     license: {
       type: string;
       maxAssessments: number | null;
+      maxConversationalReports: number | null;
     };
   } | null;
   totalDocuments: number;
@@ -67,7 +73,32 @@ export default function AdminUsersPage() {
   const [creditDialogOpen, setCreditDialogOpen] = useState(false);
   const [assessmentCredits, setAssessmentCredits] = useState(0);
   const [conversationalCredits, setConversationalCredits] = useState(0);
+  const [
+    conversationalReportCredits,
+    setConversationalReportCredits,
+  ] = useState(0);
   const [assigning, setAssigning] = useState(false);
+
+  const formatCreditDisplay = (
+    remaining?: number | null,
+    limit?: number | null
+  ) => {
+    const formattedRemaining =
+      remaining === null ? "∞" : Number(remaining ?? 0).toString();
+    const formattedLimit =
+      limit === null ? "∞" : Number(limit ?? 0).toString();
+    return `${formattedRemaining} / ${formattedLimit}`;
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setCreditDialogOpen(open);
+    if (!open) {
+      setSelectedUser(null);
+      setAssessmentCredits(0);
+      setConversationalCredits(0);
+      setConversationalReportCredits(0);
+    }
+  };
 
   useEffect(() => {
     if (userData && userData.role !== "SUPER_ADMIN") {
@@ -109,20 +140,42 @@ export default function AdminUsersPage() {
           body: JSON.stringify({
             assessmentCredits,
             conversationalCredits,
+            conversationalReportCredits,
           }),
         }
       );
 
       if (!response.ok) throw new Error("Failed to assign credits");
 
-      toast.success(
-        `Assigned ${assessmentCredits} assessment credits and ${conversationalCredits} conversational credits to ${selectedUser.email}`
-      );
+      const assignedParts = [
+        assessmentCredits
+          ? `${assessmentCredits} assessment ${
+              Math.abs(assessmentCredits) === 1 ? "credit" : "credits"
+            }`
+          : null,
+        conversationalCredits
+          ? `${conversationalCredits} conversational ${
+              Math.abs(conversationalCredits) === 1 ? "credit" : "credits"
+            }`
+          : null,
+        conversationalReportCredits
+          ? `${conversationalReportCredits} conversational report ${
+              Math.abs(conversationalReportCredits) === 1
+                ? "credit"
+                : "credits"
+            }`
+          : null,
+      ].filter(Boolean);
 
-      setCreditDialogOpen(false);
-      setAssessmentCredits(0);
-      setConversationalCredits(0);
-      setSelectedUser(null);
+      if (assignedParts.length) {
+        toast.success(
+          `Assigned ${assignedParts.join(", ")} to ${selectedUser.email}`
+        );
+      } else {
+        toast.success(`No credits changed for ${selectedUser.email}`);
+      }
+
+      handleDialogOpenChange(false);
       fetchUsers();
     } catch (error) {
       console.error("Error assigning credits:", error);
@@ -222,8 +275,11 @@ export default function AdminUsersPage() {
                       <TableHead>User</TableHead>
                       <TableHead>Role</TableHead>
                       <TableHead>License</TableHead>
-                      <TableHead className="text-right">Assessment Credits</TableHead>
+                      <TableHead className="text-right">
+                        Assessment Credits
+                      </TableHead>
                       <TableHead className="text-right">Conv Credits</TableHead>
+                      <TableHead className="text-right">Conv Reports</TableHead>
                       <TableHead className="text-right">Assessments</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -269,6 +325,18 @@ export default function AdminUsersPage() {
                             "-"
                           )}
                         </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {user.activeLicense ? (
+                            <span>
+                              {formatCreditDisplay(
+                                user.activeLicense.conversationalReportCreditsRemaining,
+                                user.activeLicense.conversationalReportLimit
+                              )}
+                            </span>
+                          ) : (
+                            "-"
+                          )}
+                        </TableCell>
                         <TableCell className="text-right">
                           {user.totalAssessments}
                         </TableCell>
@@ -278,7 +346,7 @@ export default function AdminUsersPage() {
                             variant="outline"
                             onClick={() => {
                               setSelectedUser(user);
-                              setCreditDialogOpen(true);
+                              handleDialogOpenChange(true);
                             }}
                             disabled={!user.activeLicense}
                           >
@@ -297,7 +365,7 @@ export default function AdminUsersPage() {
       </div>
 
       {/* Assign Credits Dialog */}
-      <Dialog open={creditDialogOpen} onOpenChange={setCreditDialogOpen}>
+      <Dialog open={creditDialogOpen} onOpenChange={handleDialogOpenChange}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Assign Credits</DialogTitle>
@@ -332,9 +400,35 @@ export default function AdminUsersPage() {
                 Current: {selectedUser?.activeLicense?.conversationalCreditsRemaining || 0} remaining
               </p>
             </div>
+            <div>
+              <Label htmlFor="conversational-report-credits">
+                Conversational Report Credits
+              </Label>
+              <Input
+                id="conversational-report-credits"
+                type="number"
+                value={conversationalReportCredits}
+                onChange={(e) =>
+                  setConversationalReportCredits(parseInt(e.target.value) || 0)
+                }
+                placeholder="0"
+              />
+              <p className="text-sm text-muted-foreground mt-1">
+                Current:{" "}
+                {selectedUser?.activeLicense
+                  ? formatCreditDisplay(
+                      selectedUser.activeLicense.conversationalReportCreditsRemaining,
+                      selectedUser.activeLicense.conversationalReportLimit
+                    )
+                  : "0 / 0"}
+              </p>
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCreditDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => handleDialogOpenChange(false)}
+            >
               Cancel
             </Button>
             <Button onClick={handleAssignCredits} disabled={assigning}>

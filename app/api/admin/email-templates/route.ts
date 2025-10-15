@@ -14,7 +14,8 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const templates = await prisma.emailTemplate.findMany({
+    const templates = await prisma.template.findMany({
+      where: { type: "email" },
       orderBy: { updatedAt: "desc" },
     });
 
@@ -40,7 +41,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { subject, html, name = "default" } = await req.json();
+    const { subject, html, name = "default", body = "" } = await req.json();
 
     if (!subject || !html) {
       return NextResponse.json(
@@ -49,11 +50,26 @@ export async function POST(req: Request) {
       );
     }
 
-    // Upsert the email template
-    const template = await prisma.emailTemplate.upsert({
+    // Upsert the email template in the Template table
+    const template = await prisma.template.upsert({
       where: { name },
-      update: { subject, html },
-      create: { name, subject, html },
+      update: {
+        type: "email",
+        jsx_source: html,
+        default_props: {
+          subject,
+          body,
+        },
+      },
+      create: {
+        name,
+        type: "email",
+        jsx_source: html,
+        default_props: {
+          subject,
+          body,
+        },
+      },
     });
 
     return NextResponse.json(template);

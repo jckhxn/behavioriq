@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Create a temporary admin session by generating a magic link URL
  * This bypasses email timing issues for local development

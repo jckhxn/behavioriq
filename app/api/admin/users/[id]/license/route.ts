@@ -60,7 +60,10 @@ export async function PUT(
           licenseId: licenseTemplate.id,
           // Optionally preserve existing credit balances or reset to license defaults
           assessmentsAllowed: licenseTemplate.maxAssessments || 0,
-          conversationalAssessmentsAllowed: licenseTemplate.maxConversationalAssessments || 0,
+          conversationalAssessmentsAllowed:
+            licenseTemplate.maxConversationalAssessments || 0,
+          conversationalReportsAllowed:
+            licenseTemplate.maxConversationalReports || 0,
         },
       });
     } else {
@@ -72,8 +75,12 @@ export async function PUT(
           isActive: true,
           assessmentsAllowed: licenseTemplate.maxAssessments || 0,
           assessmentsUsed: 0,
-          conversationalAssessmentsAllowed: licenseTemplate.maxConversationalAssessments || 0,
+          conversationalAssessmentsAllowed:
+            licenseTemplate.maxConversationalAssessments || 0,
           conversationalAssessmentsUsed: 0,
+          conversationalReportsAllowed:
+            licenseTemplate.maxConversationalReports || 0,
+          conversationalReportsUsed: 0,
         },
       });
     }

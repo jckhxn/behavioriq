@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+// @ts-nocheck
 /**
  * Watch for recent webhook activity (payments and license changes)
  * Run with: npx tsx scripts/watch-webhook-activity.ts

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db/prisma";
 import { getChatCompletion } from "./openai";
 import { AssessmentDomain, RiskLevel } from "@prisma/client";
+import { SYSTEM_PROMPTS } from "@/lib/config/ai-config";
 import {
   loadAssessmentConfigs,
   loadAssessmentConfigFromTemplate,
@@ -274,87 +275,98 @@ export class AssessmentAI {
   private async generateAIRecommendations(
     domainScores: DomainScore[]
   ): Promise<string> {
-    const clinicallySignificantDomains = domainScores.filter(
-      (ds) => ds.isClinicallySignificant
-    );
-
-    // Fetch domain-specific resources for clinically significant areas
-    const domainResources: { [key: string]: any } = {};
-    for (const config of this.assessmentConfigs) {
-      if (config.resources) {
-        domainResources[config.name] = config.resources;
-      }
-    }
-
-    // Build resources section for AI prompt
-    const resourcesSection =
-      clinicallySignificantDomains.length > 0
-        ? `
-
-Recommended Resources for Clinically Significant Areas:
-${clinicallySignificantDomains
-  .map((ds) => {
-    const domainConfig = this.assessmentConfigs.find(
-      (c) => c.name === ds.domain
-    );
-    if (domainConfig && domainConfig.resources) {
-      const resources =
-        typeof domainConfig.resources === "string"
-          ? JSON.parse(domainConfig.resources)
-          : domainConfig.resources;
-      if (resources && resources.length > 0) {
-        return `
-${ds.displayName}:
-${resources.map((r: any) => `  - ${r.title || r.name}: ${r.url || r.link || ""}`).join("\n")}`;
-      }
-    }
-    return "";
-  })
-  .filter((s) => s)
-  .join("\n")}`
-        : "";
-
-    const prompt = `Based on the following assessment results, provide professional recommendations and citations:
-
-Assessment Results:
-${domainScores
-  .map(
-    (ds) =>
-      `${ds.displayName}: ${ds.score}/${
-        ds.totalPossible
-      } (${ds.percentage.toFixed(1)}%) - ${
-        ds.isClinicallySignificant
-          ? "Clinically Significant"
-          : "Within Normal Range"
-      }`
-  )
-  .join("\n")}
-
-Clinically Significant Areas: ${
-      clinicallySignificantDomains.map((ds) => ds.displayName).join(", ") ||
-      "None"
-    }
-${resourcesSection}
-
-Please provide:
-1. A brief interpretation of the results
-2. Specific recommendations for each clinically significant area
-3. Reference the provided resources when applicable (include URLs in your recommendations)
-4. General wellness recommendations
-5. Professional referral suggestions if appropriate
-
-IMPORTANT: When mentioning resources, include their URLs so parents can access them directly.
-
-Keep the response professional, empathetic, and actionable.`;
-
     try {
+      if (!domainScores.length || !this.scoringCalculator) {
+        return "Unable to generate recommendations at this time.";
+      }
+
+      const assessmentRecord = await prisma.assessment.findUnique({
+        where: { id: this.assessmentId },
+        select: {
+          subjectName: true,
+          completedAt: true,
+          startedAt: true,
+        },
+      });
+
+      const domainDetails = domainScores.map((score) => {
+        const riskLevelEnum = this.scoringCalculator!.mapScoreToRiskLevel(
+          score
+        );
+        const domainConfig = this.assessmentConfigs.find(
+          (config) => config.name === score.domain
+        );
+        return {
+          domainName: score.displayName,
+          percentage: Math.round((score.percentage || 0) * 10) / 10,
+          riskLevelEnum,
+          riskLevelLabel: this.formatRiskLevel(riskLevelEnum),
+          resources: this.normalizeDomainResources(domainConfig?.resources),
+        };
+      });
+
+      const riskPriority: Record<RiskLevel, number> = {
+        VERY_HIGH: 4,
+        HIGH: 3,
+        MODERATE: 2,
+        LOW: 1,
+      };
+
+      const sortedDomains = [...domainDetails].sort((a, b) => {
+        const riskDiff =
+          (riskPriority[b.riskLevelEnum] || 0) -
+          (riskPriority[a.riskLevelEnum] || 0);
+        if (riskDiff !== 0) {
+          return riskDiff;
+        }
+        return (b.percentage || 0) - (a.percentage || 0);
+      });
+
+      const topDomains = sortedDomains.slice(0, 3).map((domain) => {
+        const domainInput: {
+          domainName: string;
+          percentage: number;
+          riskLevel: string;
+          resources?: { title: string; url?: string }[];
+        } = {
+          domainName: domain.domainName,
+          percentage: domain.percentage ?? 0,
+          riskLevel: domain.riskLevelLabel,
+        };
+
+        if (domain.resources.length > 0) {
+          domainInput.resources = domain.resources;
+        }
+
+        return domainInput;
+      });
+
+      if (!topDomains.length) {
+        return "Unable to generate recommendations at this time.";
+      }
+
+      const overallRisk = this.calculateOverallRiskLabel(domainDetails);
+      const completedDate = assessmentRecord?.completedAt
+        ? new Date(assessmentRecord.completedAt)
+        : new Date(assessmentRecord?.startedAt || Date.now());
+
+      const contextBlock = `CONTEXT:
+Subject: ${assessmentRecord?.subjectName || "Participant"}
+Completed: ${completedDate.toLocaleDateString()}
+Overall Risk: ${overallRisk}
+Total Questions Answered: ${this.questionResponses.length}`;
+
+      const userContent = `${contextBlock}
+
+INPUT DATA:
+${JSON.stringify(topDomains, null, 2)}`;
+
       const response = await getChatCompletion([
         {
           role: "system",
-          content:
-            "You are a licensed clinical psychologist providing assessment interpretations and recommendations. Always cite the specific resources provided with their URLs when making recommendations.",
+          content: SYSTEM_PROMPTS.ASSESSMENT_ANALYSIS,
         },
-        { role: "user", content: prompt },
+        { role: "user", content: userContent },
       ]);
 
       return response || "Unable to generate recommendations at this time.";
@@ -362,6 +374,93 @@ Keep the response professional, empathetic, and actionable.`;
       console.error("Error generating AI recommendations:", error);
       return "Assessment complete. Please consult with a mental health professional for interpretation and next steps.";
     }
+  }
+
+  private calculateOverallRiskLabel(
+    domains: Array<{
+      riskLevelEnum: RiskLevel;
+      riskLevelLabel: string;
+    }>
+  ): string {
+    if (!domains.length) {
+      return this.formatRiskLevel(RiskLevel.LOW);
+    }
+
+    const riskValues: Record<RiskLevel, number> = {
+      LOW: 1,
+      MODERATE: 2,
+      HIGH: 3,
+      VERY_HIGH: 4,
+    };
+
+    const averageRisk =
+      domains.reduce(
+        (sum, domain) => sum + (riskValues[domain.riskLevelEnum] || 0),
+        0
+      ) / domains.length;
+
+    if (averageRisk >= 3.5) return this.formatRiskLevel(RiskLevel.VERY_HIGH);
+    if (averageRisk >= 2.5) return this.formatRiskLevel(RiskLevel.HIGH);
+    if (averageRisk >= 1.5) return this.formatRiskLevel(RiskLevel.MODERATE);
+    return this.formatRiskLevel(RiskLevel.LOW);
+  }
+
+  private formatRiskLevel(risk: RiskLevel): string {
+    return risk
+      .toLowerCase()
+      .split("_")
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
+  }
+
+  private normalizeDomainResources(
+    resources: QuestionSetConfig["resources"]
+  ): { title: string; url?: string }[] {
+    if (!resources) {
+      return [];
+    }
+
+    let parsedResources: unknown = resources;
+
+    if (typeof resources === "string") {
+      try {
+        parsedResources = JSON.parse(resources);
+      } catch (error) {
+        console.warn("Failed to parse domain resources JSON:", error);
+        return [];
+      }
+    }
+
+    if (!Array.isArray(parsedResources)) {
+      return [];
+    }
+
+    return parsedResources
+      .map((resource) => {
+        if (typeof resource === "string") {
+          return { title: resource };
+        }
+
+        if (typeof resource === "object" && resource !== null) {
+          const title =
+            (resource as any).title ||
+            (resource as any).name ||
+            (resource as any).label;
+          const url =
+            (resource as any).url ||
+            (resource as any).link ||
+            (resource as any).href;
+
+          if (!title && !url) {
+            return null;
+          }
+
+          return url ? { title: title || url, url } : { title };
+        }
+
+        return null;
+      })
+      .filter(Boolean) as { title: string; url?: string }[];
   }
 
   private shouldSkipCurrentDomain(): boolean {

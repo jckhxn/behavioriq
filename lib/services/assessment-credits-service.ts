@@ -15,6 +15,9 @@ export interface AssessmentCreditsInfo {
   conversationalCredits?: number;
   conversationalCreditsUsed?: number;
   conversationalCreditsAllowed?: number;
+  conversationalReportCredits?: number | null;
+  conversationalReportCreditsUsed?: number;
+  conversationalReportCreditsAllowed?: number | null;
 }
 
 export class AssessmentCreditsService {
@@ -30,7 +33,12 @@ export class AssessmentCreditsService {
         isActive: true,
       },
       include: {
-        license: true,
+        license: {
+          select: {
+            type: true,
+            maxConversationalReports: true,
+          },
+        },
       },
       orderBy: {
         assignedAt: "desc",
@@ -48,6 +56,9 @@ export class AssessmentCreditsService {
         conversationalCredits: 0,
         conversationalCreditsUsed: 0,
         conversationalCreditsAllowed: 0,
+        conversationalReportCredits: 0,
+        conversationalReportCreditsUsed: 0,
+        conversationalReportCreditsAllowed: 0,
       };
     }
 
@@ -56,8 +67,34 @@ export class AssessmentCreditsService {
     // Calculate conversational credits
     const conversationalCreditsRemaining = Math.max(
       0,
-      userLicense.conversationalAssessmentsAllowed - userLicense.conversationalAssessmentsUsed
+      userLicense.conversationalAssessmentsAllowed -
+        userLicense.conversationalAssessmentsUsed
     );
+
+    const manualConversationalReportAllowance =
+      userLicense.conversationalReportsAllowed ?? 0;
+    const licenseConversationalReportAllowance =
+      userLicense.license.maxConversationalReports;
+    let conversationalReportLimit: number | null;
+    if (manualConversationalReportAllowance > 0) {
+      conversationalReportLimit = manualConversationalReportAllowance;
+    } else if (licenseConversationalReportAllowance === null) {
+      conversationalReportLimit = null;
+    } else if (typeof licenseConversationalReportAllowance === "number") {
+      conversationalReportLimit = licenseConversationalReportAllowance;
+    } else {
+      conversationalReportLimit = 0;
+    }
+    const conversationalReportCreditsUsed =
+      userLicense.conversationalReportsUsed ?? 0;
+    const conversationalReportCreditsRemaining =
+      conversationalReportLimit === null
+        ? null
+        : Math.max(
+            0,
+            (conversationalReportLimit ?? 0) -
+              conversationalReportCreditsUsed
+          );
 
     // PROFESSIONAL and ENTERPRISE have unlimited assessments
     if (licenseType === "PROFESSIONAL" || licenseType === "ENTERPRISE") {
@@ -70,6 +107,9 @@ export class AssessmentCreditsService {
         conversationalCredits: conversationalCreditsRemaining,
         conversationalCreditsUsed: userLicense.conversationalAssessmentsUsed,
         conversationalCreditsAllowed: userLicense.conversationalAssessmentsAllowed,
+        conversationalReportCredits: conversationalReportCreditsRemaining,
+        conversationalReportCreditsUsed: conversationalReportCreditsUsed,
+        conversationalReportCreditsAllowed: conversationalReportLimit,
       };
     }
 
@@ -101,6 +141,9 @@ export class AssessmentCreditsService {
       conversationalCredits: conversationalCreditsRemaining,
       conversationalCreditsUsed: userLicense.conversationalAssessmentsUsed,
       conversationalCreditsAllowed: userLicense.conversationalAssessmentsAllowed,
+      conversationalReportCredits: conversationalReportCreditsRemaining,
+      conversationalReportCreditsUsed: conversationalReportCreditsUsed,
+      conversationalReportCreditsAllowed: conversationalReportLimit,
     };
   }
 
@@ -146,8 +189,9 @@ export class AssessmentCreditsService {
         userId,
         isActive: true,
       },
-      include: {
-        license: true,
+      select: {
+        id: true,
+        licenseId: true,
       },
     });
 

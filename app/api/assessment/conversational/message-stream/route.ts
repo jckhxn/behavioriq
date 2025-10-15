@@ -20,21 +20,34 @@ export async function POST(request: NextRequest) {
     }
 
     // 🛡️ RATE LIMITING: Prevent rapid-fire submissions (min 2 seconds between submissions)
-    const isRateLimited = await databaseSessionStore.isRateLimited(sessionId, 2);
+    const isRateLimited = await databaseSessionStore.isRateLimited(
+      sessionId,
+      2
+    );
     if (isRateLimited) {
-      console.log(`[Conversational] ⚠️ Rate limit exceeded for session ${sessionId}`);
+      console.log(
+        `[Conversational] ⚠️ Rate limit exceeded for session ${sessionId}`
+      );
       return new Response(
-        JSON.stringify({ error: "Please wait a moment before submitting again" }),
+        JSON.stringify({
+          error: "Please wait a moment before submitting again",
+        }),
         { status: 429, headers: { "Content-Type": "application/json" } }
       );
     }
 
     // 🛡️ ABUSE DETECTION: Check submission count
-    const submissionCount = await databaseSessionStore.getSubmissionCount(sessionId);
+    const submissionCount =
+      await databaseSessionStore.getSubmissionCount(sessionId);
     if (submissionCount > 300) {
-      console.log(`[Conversational] ⚠️ Suspicious activity: ${submissionCount} submissions for session ${sessionId}`);
+      console.log(
+        `[Conversational] ⚠️ Suspicious activity: ${submissionCount} submissions for session ${sessionId}`
+      );
       return new Response(
-        JSON.stringify({ error: "Too many submissions. Please contact support if you need assistance." }),
+        JSON.stringify({
+          error:
+            "Too many submissions. Please contact support if you need assistance.",
+        }),
         { status: 429, headers: { "Content-Type": "application/json" } }
       );
     }
@@ -82,7 +95,9 @@ export async function POST(request: NextRequest) {
     );
 
     if (!isNewSubmission) {
-      console.log(`[Conversational] ⚠️ Duplicate submission detected - ignoring`);
+      console.log(
+        `[Conversational] ⚠️ Duplicate submission detected - ignoring`
+      );
       return new Response(
         JSON.stringify({
           error: "Duplicate submission",
@@ -148,18 +163,15 @@ export async function POST(request: NextRequest) {
         : null;
 
     // Generate streaming AI response
-    const streamResult = await ai.generateStreamingResponse(
-      session,
-      message,
-      currentQuestion,
-      {
-        shouldProgress,
-        clarificationNeeded,
-        extractedAnswer: extraction.answer,
-        confidence: extraction.confidence,
-        nextQuestion,
-      }
-    );
+    const streamResult = ai.generateStreamingResponse
+      ? await ai.generateStreamingResponse(session, message, currentQuestion, {
+          shouldProgress,
+          clarificationNeeded,
+          extractedAnswer: extraction.answer,
+          confidence: extraction.confidence,
+          nextQuestion,
+        })
+      : undefined;
 
     // Create a transform stream to capture the full text for saving
     let fullText = "";
@@ -201,15 +213,20 @@ export async function POST(request: NextRequest) {
               totalTokens: 0,
             };
           }
-          session.totalTokenUsage.promptTokens += extraction.tokenUsage.promptTokens;
-          session.totalTokenUsage.completionTokens += extraction.tokenUsage.completionTokens;
-          session.totalTokenUsage.totalTokens += extraction.tokenUsage.totalTokens;
+          session.totalTokenUsage.promptTokens +=
+            extraction.tokenUsage.promptTokens;
+          session.totalTokenUsage.completionTokens +=
+            extraction.tokenUsage.completionTokens;
+          session.totalTokenUsage.totalTokens +=
+            extraction.tokenUsage.totalTokens;
         }
 
         // Save session to database
         await databaseSessionStore.set(sessionId, session);
 
-        console.log(`[Conversational] 💾 Saved message ${messageId} with ${fullText.length} characters`);
+        console.log(
+          `[Conversational] 💾 Saved message ${messageId} with ${fullText.length} characters`
+        );
       },
     });
 
@@ -228,14 +245,15 @@ export async function POST(request: NextRequest) {
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
         "Cache-Control": "no-cache",
-        "Connection": "keep-alive",
+        Connection: "keep-alive",
         "X-Message-Id": messageId,
         "X-Is-Complete": session.isComplete ? "true" : "false",
         "X-Progress-Answered": Object.keys(session.responses).length.toString(),
         "X-Progress-Total": session.questions.length.toString(),
         "X-Should-Progress": shouldProgress ? "true" : "false",
         "X-Clarification-Needed": clarificationNeeded ? "true" : "false",
-        "X-Extracted-Answer": extraction.answer !== null ? extraction.answer.toString() : "null",
+        "X-Extracted-Answer":
+          extraction.answer !== null ? extraction.answer.toString() : "null",
         "X-Confidence": extraction.confidence.toString(),
       },
     });

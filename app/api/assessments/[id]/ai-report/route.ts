@@ -8,7 +8,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { AIReportService } from "@/lib/reports/ai-report-service";
 import { resolveAssessmentId } from "@/lib/utils/assessmentResolver";
-import { areAIReportsEnabled, getMaxAIReportsPerUser } from "@/lib/platform/settings";
+import {
+  areAIReportsEnabled,
+  getMaxAIReportsPerUser,
+} from "@/lib/platform/settings";
 import { prisma } from "@/lib/db/prisma";
 
 export async function POST(
@@ -25,7 +28,10 @@ export async function POST(
     const aiReportsEnabled = await areAIReportsEnabled();
     if (!aiReportsEnabled) {
       return NextResponse.json(
-        { error: "AI report generation is currently disabled by the administrator" },
+        {
+          error:
+            "AI report generation is currently disabled by the administrator",
+        },
         { status: 403 }
       );
     }
@@ -33,7 +39,7 @@ export async function POST(
     // Check user's AI report count against the global limit
     const maxReports = await getMaxAIReportsPerUser();
     const userReportCount = await prisma.aIReport.count({
-      where: { userId: user.id },
+      where: { generatedByUserId: user.id },
     });
 
     if (userReportCount >= maxReports) {
@@ -57,6 +63,84 @@ export async function POST(
         { error: "Assessment not found" },
         { status: 404 }
       );
+    }
+
+    const assessment = await prisma.assessment.findUnique({
+      where: { id: assessmentId },
+      select: {
+        isConversational: true,
+        userId: true,
+      },
+    });
+
+    if (!assessment || assessment.userId !== user.id) {
+      return NextResponse.json(
+        { error: "Assessment not found" },
+        { status: 404 }
+      );
+    }
+
+    let userLicense: {
+      id: string;
+      conversationalReportsAllowed: number;
+      conversationalReportsUsed: number;
+      license: { maxConversationalReports: number | null };
+    } | null = null;
+
+    if (assessment.isConversational) {
+      userLicense = await prisma.userLicense.findFirst({
+        where: {
+          userId: user.id,
+          isActive: true,
+        },
+        select: {
+          id: true,
+          conversationalReportsAllowed: true,
+          conversationalReportsUsed: true,
+          license: {
+            select: {
+              maxConversationalReports: true,
+            },
+          },
+        },
+        orderBy: {
+          assignedAt: "desc",
+        },
+      });
+
+      if (!userLicense) {
+        return NextResponse.json(
+          {
+            error:
+              "No active license found for conversational reports. Please contact support.",
+          },
+          { status: 403 }
+        );
+      }
+
+      const explicitAllowance = userLicense.conversationalReportsAllowed ?? 0;
+      const licenseAllowance = userLicense.license.maxConversationalReports;
+      let reportCap: number | null;
+      if (explicitAllowance > 0) {
+        reportCap = explicitAllowance;
+      } else if (licenseAllowance === null) {
+        reportCap = null;
+      } else {
+        reportCap = licenseAllowance ?? explicitAllowance;
+      }
+      const reportsUsed = userLicense.conversationalReportsUsed ?? 0;
+
+      if (reportCap !== null && reportsUsed >= reportCap) {
+        return NextResponse.json(
+          {
+            error:
+              "You have reached the maximum number of conversational AI reports allowed by your license.",
+            currentCount: reportsUsed,
+            maxAllowed: reportCap,
+          },
+          { status: 403 }
+        );
+      }
     }
 
     // Check if AI report already exists
@@ -91,7 +175,7 @@ export async function POST(
       reportOptions
     );
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       report: {
         id: report.id,
@@ -103,6 +187,26 @@ export async function POST(
       },
       message: "AI Report generated successfully",
     });
+
+    if (assessment.isConversational && userLicense) {
+      try {
+        await prisma.userLicense.update({
+          where: { id: userLicense.id },
+          data: {
+            conversationalReportsUsed: {
+              increment: 1,
+            },
+          },
+        });
+      } catch (incrementError) {
+        console.error(
+          "[AIReport] Failed to increment conversational reports:",
+          incrementError
+        );
+      }
+    }
+
+    return response;
   } catch (error) {
     console.error("Error generating AI report:", error);
     return NextResponse.json(

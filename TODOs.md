@@ -16,19 +16,24 @@ $1 per 10k emails (SES)
 
 ## Bugs Track
 
+- [] Failed to load credits (likely from the migration stuff)
+- [] Regular Report doesn't use ai-config.ts PROMPT
 - [] Cleanup all the damn console.logs
 - [] Assessments are so slow.
+- [] maxConversationalReports is missing DB
 
 ## Features
 
+- [] pSEO has redundant code/folders
+- [] Have pSEO script generate sitemap automatically.
 - [] AI Recommendation read out could be prettier (use custom components?)
 - [] Update UI to reflect pricing changes (IDs already generated in .env)
   - - Refer to PRICING_MATRIX.md
 - [] Verify Convo Assessment Flow (A->Results Page->Generate AI Report?)
-- [x] Add trial taking, full assessment taking as a ChatGPT App ( Refer to this repo as a guide. The API needs to be setup to provide the trial questions and full assessment questions and assessment taking https://chatgpt.com/c/68e861c5-9f8c-8320-9d58-94114bc55ab8)
+- [] Add trial taking, full assessment taking as a ChatGPT App ( Refer to this repo as a guide. The API needs to be setup to provide the trial questions and full assessment questions and assessment taking https://chatgpt.com/c/68e861c5-9f8c-8320-9d58-94114bc55ab8)
 - - chatgpt app example https://vercel.com/templates/next.js/chatgpt-app-with-next-js
 
-- [x] Global max limit for both AI reports and AI convos (This supercedes the amount of credits a user has purchased.)
+- [] Global max limit for both AI reports and AI convos (This supercedes the amount of credits a user has purchased.)
 - [] Districts can configure PDF Branding & Email settings
 - [] Super Admin can set global defaults for PDF Branding Email settings
   - - [PDF Style, https ://v0.app/chat/behavior-assessment-report-hUefj467caB]

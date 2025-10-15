@@ -15,7 +15,10 @@ import {
 } from "@/components/ui/card";
 import { Eye, EyeOff, Mail, Fingerprint, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
-import { createClient } from "@/lib/supabase/client";
+import {
+  SUPABASE_STORAGE_PREFERENCE_KEY,
+  createClient,
+} from "@/lib/supabase/client";
 import { OAuthProviders } from "@/components/auth/OAuthProviders";
 import { startAuthentication } from "@simplewebauthn/browser";
 
@@ -38,16 +41,35 @@ function LoginForm() {
     setIsLoading(true);
 
     try {
+      if (typeof window !== "undefined") {
+        try {
+          // Route Supabase auth storage based on the "Remember Me" selection
+          if (rememberMe) {
+            window.localStorage.setItem(
+              SUPABASE_STORAGE_PREFERENCE_KEY,
+              "local"
+            );
+            window.sessionStorage.removeItem(
+              SUPABASE_STORAGE_PREFERENCE_KEY
+            );
+          } else {
+            window.sessionStorage.setItem(
+              SUPABASE_STORAGE_PREFERENCE_KEY,
+              "session"
+            );
+            window.localStorage.removeItem(
+              SUPABASE_STORAGE_PREFERENCE_KEY
+            );
+          }
+        } catch {
+          // Ignore storage preference errors (e.g., disabled storage)
+        }
+      }
+
       const supabase = createClient();
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
-        options: {
-          // Set session persistence based on "Remember Me" checkbox
-          // true = "local" (persists across browser sessions for 90 days)
-          // false = "session" (cleared when browser closes)
-          persistSession: rememberMe,
-        },
       });
 
       if (error) {

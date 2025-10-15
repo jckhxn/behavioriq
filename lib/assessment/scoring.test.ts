@@ -1,88 +1,154 @@
 /**
- * Test file for binary scoring calculator
+ * Manual smoke tests for the DynamicScoringCalculator.
+ *
+ * These tests are intentionally implemented without a test runner so they can be
+ * executed ad-hoc via `npx tsx lib/assessment/scoring.test.ts`. The goal is to ensure
+ * the scoring logic remains type-safe and easy to reason about as the dynamic assessment
+ * engine evolves.
  */
 
-import { AssessmentDomain, RiskLevel } from '@prisma/client'
-import { BinaryScoringCalculator, QuestionResponse } from './scoring'
+import { AssessmentDomain } from "@prisma/client";
+import {
+  DynamicScoringCalculator,
+  QuestionResponse,
+} from "./scoring-dynamic";
+import { QuestionSetConfig } from "./types";
 
-// Create test instance
-const calculator = new BinaryScoringCalculator()
+const MOCK_CONFIGS: QuestionSetConfig[] = [
+  {
+    domain: AssessmentDomain.ANTISOCIAL,
+    name: "ANTISOCIAL",
+    displayName: "Antisocial Behaviors",
+    description: "Indicators of conduct-related concerns.",
+    order: 1,
+    totalPossibleScore: 3,
+    clinicallySignificantScore: 2,
+    skipConditions: [],
+    prerequisites: [],
+    questions: [
+      {
+        id: "antisocial_q1",
+        text: "Has the child intentionally harmed animals?",
+        order: 1,
+        isGatingQuestion: false,
+        weight: 1,
+      },
+      {
+        id: "antisocial_q2",
+        text: "Has the child been involved in serious rule violations?",
+        order: 2,
+        isGatingQuestion: false,
+        weight: 1,
+      },
+      {
+        id: "antisocial_q3",
+        text: "Has the child shown aggressive behavior toward peers?",
+        order: 3,
+        isGatingQuestion: false,
+        weight: 1,
+      },
+    ],
+    terminationRules: [],
+  },
+  {
+    domain: AssessmentDomain.VIOLENCE,
+    name: "VIOLENCE",
+    displayName: "Violence Risk",
+    description: "Indicators of targeted or escalating violence.",
+    order: 2,
+    totalPossibleScore: 3,
+    clinicallySignificantScore: 2,
+    skipConditions: [
+      {
+        questionId: "violence_q1",
+        skipValue: false,
+        skipToQuestion: "violence_q3",
+      },
+    ],
+    prerequisites: [],
+    questions: [
+      {
+        id: "violence_q1",
+        text: "Has the child made threats toward others?",
+        order: 1,
+        isGatingQuestion: false,
+        weight: 1,
+      },
+      {
+        id: "violence_q2",
+        text: "Has the child had access to weapons?",
+        order: 2,
+        isGatingQuestion: false,
+        weight: 1,
+      },
+      {
+        id: "violence_q3",
+        text: "Has the child created plans to harm someone?",
+        order: 3,
+        isGatingQuestion: true,
+        weight: 1,
+      },
+    ],
+    terminationRules: [],
+  },
+];
 
-// Mock question responses for testing
-const createTestResponse = (
-  questionId: string,
-  response: boolean,
-  domain: AssessmentDomain
-): QuestionResponse => ({
-  questionId,
-  response,
-  domain,
-  timestamp: new Date()
-})
+const calculator = new DynamicScoringCalculator(MOCK_CONFIGS);
 
-// Test 1: Basic domain scoring
-console.log('=== Test 1: Basic Domain Scoring ===')
-const antisocialResponses: QuestionResponse[] = [
-  createTestResponse('antisocial_1', true, AssessmentDomain.ANTISOCIAL),
-  createTestResponse('antisocial_2', false, AssessmentDomain.ANTISOCIAL),
-  createTestResponse('antisocial_3', true, AssessmentDomain.ANTISOCIAL),
-]
+const buildResponses = (
+  answers: Array<{ id: string; value: boolean }>
+): QuestionResponse[] =>
+  answers.map(({ id, value }) => ({
+    questionId: id,
+    response: value,
+    timestamp: new Date(),
+  }));
 
-const antisocialScore = calculator.calculateDomainScore(AssessmentDomain.ANTISOCIAL, antisocialResponses)
-console.log('Antisocial Score:', {
-  rawScore: antisocialScore.rawScore,
-  totalPossible: antisocialScore.totalPossible,
-  percentage: antisocialScore.percentage,
-  riskLevel: antisocialScore.riskLevel,
-  questionsAnswered: antisocialScore.questionsAnswered,
-  wasTerminatedEarly: antisocialScore.wasTerminatedEarly
-})
+console.log("=== TEST 1: Domain scoring ===");
+const antisocialResponses = buildResponses([
+  { id: "antisocial_q1", value: true },
+  { id: "antisocial_q2", value: false },
+  { id: "antisocial_q3", value: true },
+]);
+const antisocialScore = calculator.calculateDomainScore(
+  "ANTISOCIAL",
+  antisocialResponses
+);
+console.log({
+  domain: antisocialScore.displayName,
+  score: antisocialScore.score,
+  total: antisocialScore.totalPossible,
+  percentage: antisocialScore.percentage.toFixed(1),
+  clinicallySignificant: antisocialScore.isClinicallySignificant,
+});
 
-// Test 2: Early termination logic
-console.log('\n=== Test 2: Early Termination Logic ===')
-const terminationTest: QuestionResponse[] = [
-  createTestResponse('antisocial_1', false, AssessmentDomain.ANTISOCIAL),
-  createTestResponse('antisocial_2', false, AssessmentDomain.ANTISOCIAL),
-]
+console.log("\n=== TEST 2: Skip logic ===");
+const violenceResponses = buildResponses([
+  { id: "violence_q1", value: false },
+]);
+const skipResult = calculator.checkEarlyTermination(
+  "VIOLENCE",
+  violenceResponses
+);
+console.log(skipResult);
 
-const terminationCheck = calculator.checkEarlyTermination(AssessmentDomain.ANTISOCIAL, terminationTest)
-console.log('Termination Check:', terminationCheck)
+console.log("\n=== TEST 3: Next question sequencing ===");
+const nextQuestion = calculator.getNextQuestion(
+  0,
+  0,
+  antisocialResponses.slice(0, 1)
+);
+console.log(nextQuestion);
 
-// Test 3: Next question logic
-console.log('\n=== Test 3: Next Question Logic ===')
-const nextQuestion = calculator.getNextQuestion(AssessmentDomain.ANTISOCIAL, antisocialResponses)
-console.log('Next Question:', nextQuestion)
+console.log("\n=== TEST 4: Progress summary ===");
+const mixedResponses = [
+  ...antisocialResponses,
+  ...buildResponses([
+    { id: "violence_q1", value: true },
+    { id: "violence_q2", value: true },
+  ]),
+];
+const progress = calculator.calculateProgress(mixedResponses, 1);
+console.log(progress);
 
-// Test 4: Domain progression
-console.log('\n=== Test 4: Domain Progression ===')
-const completedDomains = new Set([AssessmentDomain.ANTISOCIAL, AssessmentDomain.VIOLENCE])
-const nextDomain = calculator.getNextDomain(completedDomains)
-console.log('Next Domain:', nextDomain)
-
-// Test 5: Overall progress
-console.log('\n=== Test 5: Overall Progress ===')
-const mixedResponses: QuestionResponse[] = [
-  // Antisocial (terminated early)
-  createTestResponse('antisocial_1', false, AssessmentDomain.ANTISOCIAL),
-  createTestResponse('antisocial_2', false, AssessmentDomain.ANTISOCIAL),
-  // Violence (some responses)
-  createTestResponse('violence_1', true, AssessmentDomain.VIOLENCE),
-  createTestResponse('violence_2', true, AssessmentDomain.VIOLENCE),
-  createTestResponse('violence_3', false, AssessmentDomain.VIOLENCE),
-]
-
-const progress = calculator.getProgressSummary(mixedResponses)
-console.log('Progress Summary:', progress)
-
-const isComplete = calculator.isAssessmentComplete(mixedResponses)
-console.log('Is Complete:', isComplete)
-
-// Test 6: Overall scores
-console.log('\n=== Test 6: Overall Scores ===')
-const overallScores = calculator.calculateOverallScores(mixedResponses)
-console.log('Overall Scores:')
-overallScores.forEach(score => {
-  console.log(`${score.domain}: ${score.rawScore}/${score.totalPossible} (${score.percentage}%) - ${score.riskLevel}`)
-})
-
-console.log('\n=== All Tests Completed ===')
+console.log("\n=== TESTS COMPLETE ===");

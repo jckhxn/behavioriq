@@ -25,7 +25,7 @@ export async function sendAssessmentPDFEmail({
     const assessment = await prisma.assessment.findUnique({
       where: { id: assessmentId },
       include: {
-        template: true,
+        assessmentTemplate: true,
         scores: {
           include: {
             domainTemplate: true,
@@ -39,7 +39,8 @@ export async function sendAssessmentPDFEmail({
     }
 
     // Prepare assessment data for PDF generation
-    const templateName = assessment.template?.name || "BehaviorIQ Assessment";
+    const templateName =
+      assessment.assessmentTemplate?.name || "BehaviorIQ Assessment";
 
     const assessmentData = {
       id: assessment.id,
@@ -63,8 +64,8 @@ export async function sendAssessmentPDFEmail({
         riskLevel: score.riskLevel,
       })),
       user: {
-        name: assessment.user?.name || null,
-        email: assessment.user?.email || to,
+        name: userName || null,
+        email: to,
       },
     };
 
@@ -120,7 +121,7 @@ export async function sendAssessmentPDFEmail({
                 </div>
                 <div class="content">
                   <h2>Hi ${userName},</h2>
-                  <p>Your <strong>${assessment.template.name}</strong> assessment report is ready!</p>
+                  <p>Your <strong>${templateName}</strong> assessment report is ready!</p>
                   <p>Your assessment has been completed and the detailed report is attached to this email as a PDF.</p>
                   <p>The report includes:</p>
                   <ul>

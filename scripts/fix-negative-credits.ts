@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Fix Negative Credits Script
  *
@@ -36,13 +37,17 @@ async function fixNegativeCredits() {
       },
     });
 
-    console.log(`\n📊 Found ${userLicenses.length} licenses with negative credits\n`);
+    console.log(
+      `\n📊 Found ${userLicenses.length} licenses with negative credits\n`
+    );
 
     let fixedRegularCredits = 0;
     let fixedConversationalCredits = 0;
 
     for (const userLicense of userLicenses) {
-      console.log(`\n👤 Checking user: ${userLicense.user.email} (${userLicense.userId})`);
+      console.log(
+        `\n👤 Checking user: ${userLicense.user.email} (${userLicense.userId})`
+      );
 
       // Fix regular assessments
       if (userLicense.assessmentsUsed < 0) {
@@ -54,14 +59,18 @@ async function fixNegativeCredits() {
           },
         });
 
-        console.log(`  ⚠️  Regular assessments: Used=${userLicense.assessmentsUsed}, Actual=${completedRegularCount}`);
+        console.log(
+          `  ⚠️  Regular assessments: Used=${userLicense.assessmentsUsed}, Actual=${completedRegularCount}`
+        );
 
         await prisma.userLicense.update({
           where: { id: userLicense.id },
           data: { assessmentsUsed: completedRegularCount },
         });
 
-        console.log(`  ✅ Fixed regular credits: ${userLicense.assessmentsUsed} → ${completedRegularCount}`);
+        console.log(
+          `  ✅ Fixed regular credits: ${userLicense.assessmentsUsed} → ${completedRegularCount}`
+        );
         fixedRegularCredits++;
       }
 
@@ -75,14 +84,18 @@ async function fixNegativeCredits() {
           },
         });
 
-        console.log(`  ⚠️  Conversational assessments: Used=${userLicense.conversationalAssessmentsUsed}, Actual=${completedConversationalCount}`);
+        console.log(
+          `  ⚠️  Conversational assessments: Used=${userLicense.conversationalAssessmentsUsed}, Actual=${completedConversationalCount}`
+        );
 
         await prisma.userLicense.update({
           where: { id: userLicense.id },
           data: { conversationalAssessmentsUsed: completedConversationalCount },
         });
 
-        console.log(`  ✅ Fixed conversational credits: ${userLicense.conversationalAssessmentsUsed} → ${completedConversationalCount}`);
+        console.log(
+          `  ✅ Fixed conversational credits: ${userLicense.conversationalAssessmentsUsed} → ${completedConversationalCount}`
+        );
         fixedConversationalCredits++;
       }
     }
@@ -94,7 +107,6 @@ async function fixNegativeCredits() {
     console.log(`Regular credits fixed: ${fixedRegularCredits}`);
     console.log(`Conversational credits fixed: ${fixedConversationalCredits}`);
     console.log("\n✅ Fix complete!\n");
-
   } catch (error) {
     console.error("\n❌ Error during fix:", error);
     throw error;

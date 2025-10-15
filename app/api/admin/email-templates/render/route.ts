@@ -36,11 +36,26 @@ export async function POST(req: Request) {
     // Wrap with a minimal HTML document for safety
     const html = `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/></head><body>${rendered}</body></html>`;
 
-    // Upsert the rendered HTML into the DB
-    const template = await prisma.emailTemplate.upsert({
+    // Upsert the rendered HTML into the Template table
+    const template = await prisma.template.upsert({
       where: { name },
-      update: { subject: payload.subject, html },
-      create: { name, subject: payload.subject, html },
+      update: {
+        type: "email",
+        jsx_source: html,
+        default_props: {
+          subject: payload.subject,
+          body: payload.body || "",
+        },
+      },
+      create: {
+        name,
+        type: "email",
+        jsx_source: html,
+        default_props: {
+          subject: payload.subject,
+          body: payload.body || "",
+        },
+      },
     });
 
     return NextResponse.json({ ok: true, template });

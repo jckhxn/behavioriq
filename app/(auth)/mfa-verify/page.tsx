@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,25 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Shield, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-export default function MFAVerifyPage() {
+function LoadingState() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-1 flex flex-col items-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
+          <CardTitle className="text-xl font-semibold text-center">
+            Preparing MFA Verification
+          </CardTitle>
+          <CardDescription className="text-center">
+            Please wait while we load your verification options.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    </div>
+  );
+}
+
+function MFAVerifyContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") || "/dashboard";
@@ -27,10 +45,9 @@ export default function MFAVerifyPage() {
   const [error, setError] = useState("");
   const [factorId, setFactorId] = useState<string | null>(null);
 
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
-    // Get the MFA factor that needs verification
     const checkMFAStatus = async () => {
       const {
         data: { user },
@@ -41,12 +58,10 @@ export default function MFAVerifyPage() {
         return;
       }
 
-      // Get the TOTP factor
       const { data: factors } = await supabase.auth.mfa.listFactors();
       const totpFactor = factors?.totp?.find((f) => f.status === "verified");
 
       if (!totpFactor) {
-        // No MFA set up, redirect to dashboard
         router.push(redirectTo);
         return;
       }
@@ -74,13 +89,11 @@ export default function MFAVerifyPage() {
     setError("");
 
     try {
-      // Create a challenge
       const { data: challengeData, error: challengeError } =
         await supabase.auth.mfa.challenge({ factorId });
 
       if (challengeError) throw challengeError;
 
-      // Verify the code
       const { error: verifyError } = await supabase.auth.mfa.verify({
         factorId,
         challengeId: challengeData.id,
@@ -174,5 +187,13 @@ export default function MFAVerifyPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function MFAVerifyPage() {
+  return (
+    <Suspense fallback={<LoadingState />}>
+      <MFAVerifyContent />
+    </Suspense>
   );
 }

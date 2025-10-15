@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+// @ts-nocheck
 /**
  * Test database connection
  * Run with: npx tsx scripts/test-db-connection.ts

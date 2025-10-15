@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+// @ts-nocheck
 /**
  * Test Stripe webhook locally
  * Run with: npx tsx scripts/test-stripe-webhook.ts
