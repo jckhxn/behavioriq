@@ -38,9 +38,16 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
 
   const checkOnboardingStatus = async () => {
     try {
-      const res = await fetch("/api/user/onboarding-status");
+      const res = await fetch("/api/user/onboarding-status", { cache: "no-store" });
       if (res.ok) {
-        const { needsOnboarding } = await res.json();
+        // Guard: ensure JSON and expected shape; avoid throwing on HTML/text
+        let data: any = null;
+        try {
+          data = await res.json();
+        } catch (_) {
+          data = null;
+        }
+        const needsOnboarding = Boolean(data && typeof data.needsOnboarding !== "undefined" ? data.needsOnboarding : false);
         if (needsOnboarding) {
           // Small delay to ensure dashboard is loaded
           setTimeout(() => {

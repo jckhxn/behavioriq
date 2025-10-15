@@ -5,13 +5,11 @@ import { getToken } from "next-auth/jwt";
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  // Always allow API and static assets to pass through middleware without redirects
   if (
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico" ||
-    pathname.startsWith("/api/auth") ||
-    pathname.startsWith("/api/stripe") ||
-    pathname.startsWith("/api/branding") ||
-    pathname.startsWith("/api/platform")
+    pathname.startsWith("/api") // allow all API routes (prevents HTML redirects breaking fetch JSON)
   ) {
     return NextResponse.next();
   }
@@ -81,6 +79,18 @@ export async function middleware(req: NextRequest) {
 
   // Allow access to public pages without authentication
   if (isPublicPage) {
+    const response = NextResponse.next();
+    applyBrandingHeaders(response, branding);
+    return response;
+  }
+
+  // Allow checkout pages regardless of auth (flow handles auth inside pages)
+  const isCheckoutPage =
+    req.nextUrl.pathname.startsWith("/checkout") ||
+    req.nextUrl.pathname.startsWith("/checkout-direct") ||
+    req.nextUrl.pathname.startsWith("/checkout-anonymous") ||
+    req.nextUrl.pathname.startsWith("/trial-checkout");
+  if (isCheckoutPage) {
     const response = NextResponse.next();
     applyBrandingHeaders(response, branding);
     return response;
