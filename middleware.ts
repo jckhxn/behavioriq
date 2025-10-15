@@ -194,10 +194,7 @@ async function resolveCustomDomain(req: NextRequest, hostname: string) {
   } = { branding: null };
 
   // Skip if it's the main domain or localhost
-  if (
-    hostname === "localhost:3000" ||
-    hostname.includes("aidiagnostic.com")
-  ) {
+  if (hostname === "localhost:3000" || hostname.includes("aidiagnostic.com")) {
     return result;
   }
 
@@ -218,8 +215,6 @@ async function resolveCustomDomain(req: NextRequest, hostname: string) {
 
     if (data?.branding) {
       result.branding = data.branding as BrandingResponse;
-    } else if (process.env.NODE_ENV === "production") {
-      result.redirectToMain = "https://aidiagnostic.com";
     }
   } catch (error) {
     console.error("Custom domain resolution error:", error);
