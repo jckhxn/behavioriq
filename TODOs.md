@@ -26,6 +26,7 @@ $1 per 10k emails (SES)
 ## Features
 
 - [] pSEO has redundant code/folders
+- [] SEO/OpenGraph/pSEO/Metadata implementation
 - [] Have pSEO script generate sitemap automatically.
 - [] AI Recommendation read out could be prettier (use custom components?)
 - [] Update UI to reflect pricing changes (IDs already generated in .env)

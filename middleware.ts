@@ -3,6 +3,19 @@ import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
 export async function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+
+  if (
+    pathname.startsWith("/_next") ||
+    pathname === "/favicon.ico" ||
+    pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/stripe") ||
+    pathname.startsWith("/api/branding") ||
+    pathname.startsWith("/api/platform")
+  ) {
+    return NextResponse.next();
+  }
+
   const hostname = req.headers.get("host") || "";
   const { branding, redirectToMain } = await resolveCustomDomain(req, hostname);
 
@@ -116,12 +129,7 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    "/((?!api/(auth|stripe|branding|platform)|_next/static|_next/image|favicon.ico|trial-assessment|trial-results|payment).*)",
-    "/dashboard/:path*",
-    "/assessments/:path*",
-    "/admin/:path*",
-  ],
+  matcher: ["/:path*"],
 };
 
 type BrandingResponse = {
