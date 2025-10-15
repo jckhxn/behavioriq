@@ -16,6 +16,7 @@ $1 per 10k emails (SES)
 
 ## Bugs Track
 
+- [] Fix pSEO generating grade level stuff thats not needed.
 - [] Failed to load credits (likely from the migration stuff)
 - [] Regular Report doesn't use ai-config.ts PROMPT
 - [] Cleanup all the damn console.logs

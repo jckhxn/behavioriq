@@ -1,63 +1,34 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { handleCustomDomain } from "@/lib/branding/domain-middleware";
 import { getToken } from "next-auth/jwt";
-import { isMaintenanceModeEnabled } from "@/lib/platform/settings";
 
 export async function middleware(req: NextRequest) {
-  // Check maintenance mode first (before anything else)
+  const hostname = req.headers.get("host") || "";
+  const { branding, redirectToMain } = await resolveCustomDomain(req, hostname);
+
+  if (redirectToMain) {
+    const redirectResponse = NextResponse.redirect(
+      new URL(redirectToMain, req.url)
+    );
+    applyBrandingHeaders(redirectResponse, branding);
+    return redirectResponse;
+  }
+
   const isMaintenancePage = req.nextUrl.pathname.startsWith("/maintenance");
   const isApiRoute = req.nextUrl.pathname.startsWith("/api");
 
   if (!isMaintenancePage && !isApiRoute) {
-    const maintenanceMode = await isMaintenanceModeEnabled();
+    const maintenanceMode = await fetchMaintenanceMode(req);
     if (maintenanceMode) {
-      return NextResponse.redirect(new URL("/maintenance", req.url));
+      const redirectResponse = NextResponse.redirect(
+        new URL("/maintenance", req.url)
+      );
+      applyBrandingHeaders(redirectResponse, branding);
+      return redirectResponse;
     }
   }
 
-  let response = NextResponse.next({
-    request: {
-      headers: req.headers,
-    },
-  });
-
-  // Create Supabase client
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return req.cookies.get(name)?.value;
-        },
-        set(name: string, value: string, options: any) {
-          req.cookies.set({ name, value, ...options });
-          response = NextResponse.next({ request: { headers: req.headers } });
-          response.cookies.set({ name, value, ...options });
-        },
-        remove(name: string, options: any) {
-          req.cookies.set({ name, value: "", ...options });
-          response = NextResponse.next({ request: { headers: req.headers } });
-          response.cookies.set({ name, value: "", ...options });
-        },
-      },
-    }
-  );
-
-  // Refresh session
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  // Handle custom domain routing first
-  const customDomainResponse = await handleCustomDomain(req);
-  if (customDomainResponse && customDomainResponse !== NextResponse.next()) {
-    return customDomainResponse;
-  }
-
-  const isAuth = !!user;
+  const isAuth = isSupabaseAuthenticated(req);
   const isAuthPage =
     req.nextUrl.pathname.startsWith("/login") ||
     req.nextUrl.pathname.startsWith("/register");
@@ -77,19 +48,29 @@ export async function middleware(req: NextRequest) {
 
   // Allow auto-login to complete even if already authenticated
   if (isAutoLoginPage) {
-    return customDomainResponse || null;
+    const response = NextResponse.next();
+    applyBrandingHeaders(response, branding);
+    return response;
   }
 
   if (isAuthPage) {
     if (isAuth) {
-      return NextResponse.redirect(new URL("/dashboard", req.url));
+      const redirectResponse = NextResponse.redirect(
+        new URL("/dashboard", req.url)
+      );
+      applyBrandingHeaders(redirectResponse, branding);
+      return redirectResponse;
     }
-    return customDomainResponse || null;
+    const response = NextResponse.next();
+    applyBrandingHeaders(response, branding);
+    return response;
   }
 
   // Allow access to public pages without authentication
   if (isPublicPage) {
-    return customDomainResponse || null;
+    const response = NextResponse.next();
+    applyBrandingHeaders(response, branding);
+    return response;
   }
 
   if (!isAuth && !isAuthPage && !isPublicPage) {
@@ -98,9 +79,11 @@ export async function middleware(req: NextRequest) {
       from += req.nextUrl.search;
     }
 
-    return NextResponse.redirect(
+    const redirectResponse = NextResponse.redirect(
       new URL(`/login?from=${encodeURIComponent(from)}`, req.url)
     );
+    applyBrandingHeaders(redirectResponse, branding);
+    return redirectResponse;
   }
 
   // Check admin routes - we'll need to fetch user from database
@@ -110,7 +93,7 @@ export async function middleware(req: NextRequest) {
     // TODO: Consider adding role to user metadata for faster checks
   }
 
-  const token = await getToken({ req: req });
+  const token = await getToken({ req });
 
   // Check if MFA is required but not enabled
   const requireMFA = process.env.REQUIRE_MFA === "true";
@@ -120,19 +103,139 @@ export async function middleware(req: NextRequest) {
   );
 
   if (requireMFA && isProtectedPath && token && !token.mfaEnabled) {
-    return NextResponse.redirect(
+    const redirectResponse = NextResponse.redirect(
       new URL("/settings?tab=security&mfa=required", req.url)
     );
+    applyBrandingHeaders(redirectResponse, branding);
+    return redirectResponse;
   }
 
+  const response = NextResponse.next();
+  applyBrandingHeaders(response, branding);
   return response;
 }
 
 export const config = {
   matcher: [
-    "/((?!api/auth|api/stripe|_next/static|_next/image|favicon.ico|trial-assessment|trial-results|payment).*)",
+    "/((?!api/(auth|stripe|branding|platform)|_next/static|_next/image|favicon.ico|trial-assessment|trial-results|payment).*)",
     "/dashboard/:path*",
     "/assessments/:path*",
     "/admin/:path*",
   ],
 };
+
+type BrandingResponse = {
+  id: string;
+  name: string;
+  logo?: string | null;
+  primaryColor?: string | null;
+  secondaryColor?: string | null;
+  headerTitle?: string | null;
+  footerText?: string | null;
+} | null;
+
+const SUPABASE_AUTH_COOKIE_NAME = getSupabaseAuthCookieName();
+
+function getSupabaseAuthCookieName(): string | null {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!supabaseUrl) return null;
+
+  const match = supabaseUrl.match(/^https:\/\/([a-zA-Z0-9-]+)\.supabase\.co/);
+  if (!match) return null;
+
+  return `sb-${match[1]}-auth-token`;
+}
+
+function isSupabaseAuthenticated(req: NextRequest): boolean {
+  if (!SUPABASE_AUTH_COOKIE_NAME) return false;
+  return req.cookies.has(SUPABASE_AUTH_COOKIE_NAME);
+}
+
+async function fetchMaintenanceMode(req: NextRequest): Promise<boolean> {
+  try {
+    const url = new URL("/api/platform/maintenance", req.nextUrl);
+    const response = await fetch(url.toString(), {
+      headers: { "x-from-middleware": "1" },
+      cache: "no-store",
+    });
+
+    if (!response.ok) return false;
+
+    const data = await response.json();
+    return Boolean(data?.maintenanceMode);
+  } catch (error) {
+    console.error("Maintenance mode fetch error:", error);
+    return false;
+  }
+}
+
+async function resolveCustomDomain(req: NextRequest, hostname: string) {
+  const result: {
+    branding: BrandingResponse;
+    redirectToMain?: string;
+  } = { branding: null };
+
+  // Skip if it's the main domain or localhost
+  if (
+    hostname === "localhost:3000" ||
+    hostname.includes("aidiagnostic.com")
+  ) {
+    return result;
+  }
+
+  try {
+    const url = new URL("/api/branding/domain", req.nextUrl);
+    url.searchParams.set("domain", hostname);
+
+    const response = await fetch(url.toString(), {
+      headers: { "x-from-middleware": "1" },
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return result;
+    }
+
+    const data = await response.json();
+
+    if (data?.branding) {
+      result.branding = data.branding as BrandingResponse;
+    } else if (process.env.NODE_ENV === "production") {
+      result.redirectToMain = "https://aidiagnostic.com";
+    }
+  } catch (error) {
+    console.error("Custom domain resolution error:", error);
+  }
+
+  return result;
+}
+
+function applyBrandingHeaders(
+  response: NextResponse,
+  branding: BrandingResponse
+) {
+  if (!branding) return;
+
+  response.headers.set("x-organization-id", branding.id);
+  response.headers.set("x-organization-name", branding.name);
+
+  if (branding.primaryColor) {
+    response.headers.set("x-brand-primary", branding.primaryColor);
+  }
+
+  if (branding.secondaryColor) {
+    response.headers.set("x-brand-secondary", branding.secondaryColor);
+  }
+
+  if (branding.logo) {
+    response.headers.set("x-brand-logo", branding.logo);
+  }
+
+  if (branding.headerTitle) {
+    response.headers.set("x-brand-header-title", branding.headerTitle);
+  }
+
+  if (branding.footerText) {
+    response.headers.set("x-brand-footer-text", branding.footerText);
+  }
+}
