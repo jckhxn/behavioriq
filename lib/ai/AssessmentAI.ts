@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db/prisma";
 import { getChatCompletion } from "./openai";
-import { AssessmentDomain, RiskLevel, MessageRole } from "@prisma/client";
+import { AssessmentDomain, RiskLevel } from "@prisma/client";
 import {
   loadAssessmentConfigs,
   loadAssessmentConfigFromTemplate,
@@ -12,6 +12,16 @@ import {
   type DomainScore,
 } from "../assessment/scoring";
 import { generateUniqueShortAssessmentId } from "@/lib/utils/shortId";
+
+const isAssessmentDebugEnabled =
+  process.env.NODE_ENV !== "production" &&
+  process.env.ASSESSMENT_DEBUG === "true";
+
+const debugLog = (...args: unknown[]) => {
+  if (isAssessmentDebugEnabled) {
+    console.log(...args);
+  }
+};
 
 export interface AssessmentScores {
   [key: string]: number;
@@ -82,39 +92,52 @@ export class AssessmentAI {
       });
 
       if (assessment && (assessment as any).assessmentTemplateId) {
-        // Cache the template ID for later use
         this.cachedAssessmentTemplateId = (
           assessment as any
         ).assessmentTemplateId;
 
-        // Load configuration from the specific template
-        this.assessmentConfigs = await loadAssessmentConfigFromTemplate(
+        const templateConfig = await loadAssessmentConfigFromTemplate(
           (assessment as any).assessmentTemplateId
         );
 
-        // Build and cache domain name to template ID mapping
-        await this.buildDomainTemplateMapping();
+        if (templateConfig.configs.length === 0) {
+          this.assessmentConfigs = await loadAssessmentConfigs();
+          this.cachedDomainTemplateMapping = {};
+        } else {
+          this.assessmentConfigs = templateConfig.configs;
+          this.cachedDomainTemplateMapping =
+            templateConfig.domainTemplateMap || {};
+        }
       } else {
-        // Fallback to legacy configuration loading
         this.assessmentConfigs = await loadAssessmentConfigs();
+        this.cachedDomainTemplateMapping = {};
       }
 
-      // Create scoring calculator with loaded configs
-      this.scoringCalculator = new ScoringCalculator(this.assessmentConfigs); // Load existing conversation history
-      const messages = await prisma.chatMessage.findMany({
-        where: { assessmentId: this.assessmentId },
-        orderBy: { timestamp: "asc" },
-      });
+      this.scoringCalculator = new ScoringCalculator(this.assessmentConfigs);
 
-      this.conversationHistory = messages.map((msg) => ({
-        role: msg.role,
-        content: msg.content,
-      }));
+      if (!this.isStructuredMode) {
+        const messages = await prisma.chatMessage.findMany({
+          where: { assessmentId: this.assessmentId },
+          orderBy: { timestamp: "asc" },
+        });
+
+        this.conversationHistory = messages.map((msg) => ({
+          role: msg.role,
+          content: msg.content,
+        }));
+      } else {
+        this.conversationHistory = [];
+      }
 
       // Load question responses for structured mode
       const responses = await prisma.questionResponse.findMany({
         where: { assessmentId: this.assessmentId },
         orderBy: { timestamp: "asc" },
+        select: {
+          questionId: true,
+          response: true,
+          timestamp: true,
+        },
       });
 
       this.questionResponses = responses.map((r) => ({
@@ -165,14 +188,14 @@ export class AssessmentAI {
 
       isComplete = nextQuestion === null;
 
-      // Calculate all domain scores
-      const domainScores = this.scoringCalculator!.getAllDomainScores(
-        this.questionResponses
-      );
-
       // Generate AI recommendations if complete
       let aiRecommendations = "";
+      let domainScores: DomainScore[] = [];
       if (isComplete) {
+        domainScores = this.scoringCalculator!.getAllDomainScores(
+          this.questionResponses
+        );
+
         try {
           aiRecommendations =
             await this.generateAIRecommendations(domainScores);
@@ -209,8 +232,10 @@ export class AssessmentAI {
       // Save response to database
       await this.saveQuestionResponse(questionResponse);
 
-      // Update scores in database
-      await this.updateStructuredScores(domainScores);
+      // Update scores only when assessment is complete to minimize DB churn
+      if (isComplete) {
+        await this.updateStructuredScores(domainScores);
+      }
 
       // ✅ FIX: Update progress indices after adding new response
       // This ensures accurate progress tracking, especially after going back
@@ -225,12 +250,14 @@ export class AssessmentAI {
 
       return {
         message,
-        scores: domainScores.map((ds) => ({
-          domain: ds.domain,
-          rawScore: ds.score,
-          riskLevel: this.scoringCalculator!.mapScoreToRiskLevel(ds),
-          confidence: ds.isClinicallySignificant ? 0.9 : 0.7,
-        })),
+        scores: isComplete
+          ? domainScores.map((ds) => ({
+              domain: ds.domain,
+              rawScore: ds.score,
+              riskLevel: this.scoringCalculator!.mapScoreToRiskLevel(ds),
+              confidence: ds.isClinicallySignificant ? 0.9 : 0.7,
+            }))
+          : [],
         nextQuestion: nextQuestion?.text,
         questionId: nextQuestion?.id,
         currentDomain: currentDomain,
@@ -364,33 +391,33 @@ Keep the response professional, empathetic, and actionable.`;
       this.questionResponses.map((r) => r.questionId)
     );
 
-    console.log(`\n🔍 FINDING NEXT QUESTION`);
-    console.log(
+    debugLog(`\n🔍 FINDING NEXT QUESTION`);
+    debugLog(
       `Currently answered: [${Array.from(answeredQuestionIds).join(", ")}]`
     );
 
     // Go through each domain in order
     for (const domain of this.assessmentConfigs) {
-      console.log(`\n📋 Checking domain: ${domain.name}`);
+      debugLog(`\n📋 Checking domain: ${domain.name}`);
 
       // Check if we have any responses for this domain
       const domainHasResponses = domain.questions.some((q) =>
         answeredQuestionIds.has(q.id)
       );
 
-      console.log(`Domain has responses: ${domainHasResponses}`);
+      debugLog(`Domain has responses: ${domainHasResponses}`);
       // console.log(`Domain has prerequisite: ${!!domain.prerequisite}`);
 
       // Only check for skipping if we've started this domain
       if (domainHasResponses) {
         // || domain.prerequisite) {
-        console.log(`⚖️ Evaluating domain for skipping...`);
+        debugLog(`⚖️ Evaluating domain for skipping...`);
         const domainScore = this.scoringCalculator!.calculateDomainScore(
           domain.name,
           this.questionResponses
         );
         if (domainScore.skipped || false) {
-          console.log(
+          debugLog(
             `⏭️ DOMAIN SKIPPED: ${domain.name} - ${
               domainScore.skipReason || "Unknown reason"
             }`
@@ -398,30 +425,30 @@ Keep the response professional, empathetic, and actionable.`;
           continue; // Skip this entire domain
         }
       } else {
-        console.log(
+        debugLog(
           `⏸️ Skipping evaluation (domain not started and no prerequisite)`
         );
       }
 
       // Find the first unanswered question in this domain
-      console.log(`🔎 Looking for unanswered questions in ${domain.name}...`);
+      debugLog(`🔎 Looking for unanswered questions in ${domain.name}...`);
       for (const question of domain.questions) {
         const isAnswered = answeredQuestionIds.has(question.id);
-        console.log(
+        debugLog(
           `  ${question.id}: ${isAnswered ? "✅ answered" : "❓ unanswered"}`
         );
         if (!isAnswered) {
-          console.log(
+          debugLog(
             `➡️ NEXT QUESTION: ${question.id} in domain ${domain.name}`
           );
           return question; // Return the next unanswered question
         }
       }
-      console.log(`✅ All questions in ${domain.name} are completed`);
+      debugLog(`✅ All questions in ${domain.name} are completed`);
     }
 
     // If we get here, all questions are answered
-    console.log(`🎉 ALL QUESTIONS COMPLETED!`);
+    debugLog(`🎉 ALL QUESTIONS COMPLETED!`);
     return null;
   }
 
@@ -547,60 +574,6 @@ Keep the response professional, empathetic, and actionable.`;
       });
     } catch (error) {
       console.error("Error saving question response:", error);
-    }
-  }
-
-  /**
-   * ✅ PERFORMANCE: Build and cache domain template mapping during initialization
-   * This eliminates repeated database queries on every answer submission
-   */
-  private async buildDomainTemplateMapping(): Promise<void> {
-    if (!this.cachedAssessmentTemplateId) {
-      this.cachedDomainTemplateMapping = {};
-      return;
-    }
-
-    try {
-      // Fetch domain templates from assessment template ONCE during init
-      const templateWithDomains = await (
-        prisma as any
-      ).assessmentTemplate.findUnique({
-        where: { id: this.cachedAssessmentTemplateId },
-        include: {
-          domains: {
-            include: {
-              domainTemplate: {
-                select: {
-                  id: true,
-                  name: true,
-                  slug: true,
-                },
-              },
-            },
-            orderBy: {
-              order: "asc",
-            },
-          },
-        },
-      });
-
-      const mapping: Record<string, string> = {};
-
-      if (templateWithDomains?.domains) {
-        templateWithDomains.domains.forEach((domainLink: any) => {
-          const templateName = domainLink.domainTemplate.name;
-          const templateId = domainLink.domainTemplate.id;
-          // Create mapping by name variations for flexibility
-          mapping[templateName] = templateId;
-          mapping[templateName.toUpperCase()] = templateId;
-          mapping[templateName.toLowerCase()] = templateId;
-        });
-      }
-
-      this.cachedDomainTemplateMapping = mapping;
-    } catch (error) {
-      console.error("Error building domain template mapping:", error);
-      this.cachedDomainTemplateMapping = {};
     }
   }
 

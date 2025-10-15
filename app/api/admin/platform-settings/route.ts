@@ -94,17 +94,18 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const {
-      globalTrialAssessmentId,
-      globalRegularAssessmentId,
-      maintenanceMode,
-      registrationEnabled,
-      trialAssessmentsEnabled,
-      aiReportsEnabled,
-      maxAiReportsPerUser,
-      emailSendingEnabled,
-      sesMonthlyBudget,
-    } = body;
+  const {
+    globalTrialAssessmentId,
+    globalRegularAssessmentId,
+    maintenanceMode,
+    registrationEnabled,
+    trialAssessmentsEnabled,
+    aiReportsEnabled,
+    maxAiReportsPerUser,
+    maxConversationalSessionsPerUser,
+    emailSendingEnabled,
+    sesMonthlyBudget,
+  } = body;
 
     // Validate assessment template IDs if provided
     if (globalTrialAssessmentId) {
@@ -148,6 +149,9 @@ export async function PUT(request: NextRequest) {
           aiReportsEnabled: aiReportsEnabled ?? settings.aiReportsEnabled,
           maxAiReportsPerUser:
             maxAiReportsPerUser ?? settings.maxAiReportsPerUser,
+          maxConversationalSessionsPerUser:
+            maxConversationalSessionsPerUser ??
+            settings.maxConversationalSessionsPerUser,
           emailSendingEnabled:
             emailSendingEnabled ?? settings.emailSendingEnabled,
           sesMonthlyBudget: sesMonthlyBudget ?? settings.sesMonthlyBudget,
@@ -172,6 +176,8 @@ export async function PUT(request: NextRequest) {
           trialAssessmentsEnabled: trialAssessmentsEnabled ?? true,
           aiReportsEnabled: aiReportsEnabled ?? true,
           maxAiReportsPerUser: maxAiReportsPerUser ?? 10,
+          maxConversationalSessionsPerUser:
+            maxConversationalSessionsPerUser ?? 10,
           emailSendingEnabled: emailSendingEnabled ?? true,
           sesMonthlyBudget: sesMonthlyBudget ?? 5.0,
           updatedBy: user.id,

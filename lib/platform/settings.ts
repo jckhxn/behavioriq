@@ -13,6 +13,7 @@ export interface PlatformSettings {
   trialAssessmentsEnabled: boolean;
   aiReportsEnabled: boolean;
   maxAiReportsPerUser: number;
+   maxConversationalSessionsPerUser: number;
   globalTrialAssessmentId: string | null;
   globalRegularAssessmentId: string | null;
   createdAt: Date;
@@ -43,6 +44,7 @@ export async function getPlatformSettings(
         trialAssessmentsEnabled: true,
         aiReportsEnabled: true,
         maxAiReportsPerUser: true,
+        maxConversationalSessionsPerUser: true,
         globalTrialAssessmentId: true,
         globalRegularAssessmentId: true,
         createdAt: true,
@@ -101,6 +103,14 @@ export async function areAIReportsEnabled(): Promise<boolean> {
 export async function getMaxAIReportsPerUser(): Promise<number> {
   const settings = await getPlatformSettings();
   return settings?.maxAiReportsPerUser ?? 10;
+}
+
+/**
+ * Get max conversational sessions per user
+ */
+export async function getMaxConversationalSessionsPerUser(): Promise<number> {
+  const settings = await getPlatformSettings();
+  return settings?.maxConversationalSessionsPerUser ?? 10;
 }
 
 /**

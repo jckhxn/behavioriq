@@ -14,6 +14,8 @@ import { MessageCircle, Sparkles, AlertCircle } from "lucide-react";
 interface ConversationalAssessmentWrapperProps {
   onComplete: (responses: Record<string, boolean>) => void;
   assessmentId?: string; // If provided, resume existing assessment
+  assessmentTemplateId?: string | null;
+  subjectName?: string | null;
 }
 
 interface AssessmentTemplate {
@@ -25,6 +27,8 @@ interface AssessmentTemplate {
 export function ConversationalAssessmentWrapper({
   onComplete,
   assessmentId,
+  assessmentTemplateId: providedTemplateId,
+  subjectName: providedSubjectName,
 }: ConversationalAssessmentWrapperProps) {
   // Debug wrapper to track onComplete calls
   const handleComplete = (responses: Record<string, boolean>) => {
@@ -34,8 +38,8 @@ export function ConversationalAssessmentWrapper({
   const { credits, isLoading: creditsLoading } = useAssessmentCredits();
   const [hasConversationalAI, setHasConversationalAI] = useState(false);
   const [assessmentTemplates, setAssessmentTemplates] = useState<AssessmentTemplate[]>([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
-  const [subjectName, setSubjectName] = useState("");
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(providedTemplateId || "");
+  const [subjectName, setSubjectName] = useState(providedSubjectName || "");
   const [isStarted, setIsStarted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -62,6 +66,18 @@ export function ConversationalAssessmentWrapper({
     checkLicense();
   }, []);
 
+  useEffect(() => {
+    if (providedTemplateId) {
+      setSelectedTemplateId(providedTemplateId);
+    }
+  }, [providedTemplateId]);
+
+  useEffect(() => {
+    if (providedSubjectName) {
+      setSubjectName(providedSubjectName);
+    }
+  }, [providedSubjectName]);
+
   // Load available assessment templates if user has credits/license
   useEffect(() => {
     const loadTemplates = async () => {
@@ -75,7 +91,7 @@ export function ConversationalAssessmentWrapper({
           if (response.ok) {
             const templates = await response.json();
             setAssessmentTemplates(templates);
-            if (templates.length > 0) {
+            if (templates.length > 0 && !providedTemplateId) {
               setSelectedTemplateId(templates[0].id);
             }
           }
@@ -124,6 +140,8 @@ export function ConversationalAssessmentWrapper({
         onComplete={handleComplete}
         isTrial={false} // Resuming is always for full assessments
         assessmentId={assessmentId}
+        assessmentTemplateId={providedTemplateId || undefined}
+        subjectName={providedSubjectName || undefined}
       />
     );
   }

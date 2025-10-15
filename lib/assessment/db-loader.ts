@@ -16,6 +16,34 @@ import {
   MultiPartLogicConfig,
 } from "./types";
 
+const DEFAULT_TEMPLATE_CACHE_TTL_MS = 5 * 60 * 1000;
+
+type TemplateCacheEntry = {
+  data: AssessmentTemplateConfig;
+  expiresAt: number;
+};
+
+const globalWithCache = globalThis as typeof globalThis & {
+  __assessmentTemplateCache?: Map<string, TemplateCacheEntry>;
+};
+
+const templateCache =
+  globalWithCache.__assessmentTemplateCache ??
+  new Map<string, TemplateCacheEntry>();
+
+if (!globalWithCache.__assessmentTemplateCache) {
+  globalWithCache.__assessmentTemplateCache = templateCache;
+}
+
+const isTemplateDebugEnabled =
+  process.env.ASSESSMENT_TEMPLATE_DEBUG === "true";
+
+const templateDebugLog = (...args: unknown[]) => {
+  if (isTemplateDebugEnabled) {
+    console.log(...args);
+  }
+};
+
 // Re-export types for external use
 export type {
   QuestionSetConfig,
@@ -25,6 +53,11 @@ export type {
   PrerequisiteConfig,
   MultiPartLogicConfig,
 };
+
+export interface AssessmentTemplateConfig {
+  configs: QuestionSetConfig[];
+  domainTemplateMap: Record<string, string>;
+}
 
 /**
  * Validate domain template structure
@@ -102,205 +135,6 @@ function validateDomainTemplate(
 /**
  * Load assessment configuration from a template (with domains)
  */
-export async function loadAssessmentConfigFromTemplate(
-  templateId: string
-): Promise<QuestionSetConfig[]> {
-  try {
-    if (!templateId || typeof templateId !== "string") {
-      throw new Error("Invalid template ID provided");
-    }
-
-    console.log(`Loading assessment template: ${templateId}`);
-
-    const template = await prisma.assessmentTemplate.findUnique({
-      where: { id: templateId },
-      include: {
-        domains: {
-          include: {
-            domainTemplate: true,
-          },
-          orderBy: { order: "asc" },
-        },
-      },
-    });
-
-    if (!template) {
-      throw new Error(`Assessment template with id ${templateId} not found`);
-    }
-
-    if (!template.domains || template.domains.length === 0) {
-      console.warn(`Assessment template ${templateId} has no domains`);
-      return [];
-    }
-
-    console.log(
-      `Found ${template.domains.length} domains in template ${templateId}`
-    );
-
-    // Convert domain templates to QuestionSetConfig format with validation
-    const validConfigs: QuestionSetConfig[] = [];
-    const errors: string[] = [];
-
-    for (let index = 0; index < template.domains.length; index++) {
-      const domain = template.domains[index];
-
-      try {
-        if (!domain || !domain.domainTemplate) {
-          errors.push(`Domain ${index}: Missing domain or domain template`);
-          continue;
-        }
-
-        const domainTemplate = domain.domainTemplate;
-
-        // Validate domain template structure
-        if (!validateDomainTemplate(domainTemplate, index)) {
-          errors.push(`Domain ${index}: Failed validation checks`);
-          continue;
-        }
-
-        // Safely parse questions array
-        let questions: any[] = [];
-        try {
-          if (Array.isArray(domainTemplate.questions)) {
-            questions = domainTemplate.questions;
-          } else if (typeof domainTemplate.questions === "string") {
-            // Handle case where questions might be stored as JSON string
-            questions = JSON.parse(domainTemplate.questions);
-            if (!Array.isArray(questions)) {
-              throw new Error("Parsed questions is not an array");
-            }
-          } else {
-            throw new Error(
-              "Questions field is not an array or valid JSON string"
-            );
-          }
-        } catch (parseError) {
-          errors.push(
-            `Domain ${index}: Failed to parse questions - ${parseError instanceof Error ? parseError.message : "Unknown error"}`
-          );
-          continue;
-        }
-
-        // Safely parse scoring config
-        let scoringConfig: any = {};
-        try {
-          if (domainTemplate.scoringConfig) {
-            if (typeof domainTemplate.scoringConfig === "object") {
-              scoringConfig = domainTemplate.scoringConfig;
-            } else if (typeof domainTemplate.scoringConfig === "string") {
-              scoringConfig = JSON.parse(domainTemplate.scoringConfig);
-            }
-          }
-        } catch (parseError) {
-          console.warn(
-            `Domain ${index}: Failed to parse scoring config, using defaults - ${parseError instanceof Error ? parseError.message : "Unknown error"}`
-          );
-          scoringConfig = {};
-        }
-
-        // Safely parse resources
-        let resources: any = undefined;
-        try {
-          if (domainTemplate.resources) {
-            if (typeof domainTemplate.resources === "object") {
-              resources = domainTemplate.resources;
-            } else if (typeof domainTemplate.resources === "string") {
-              resources = JSON.parse(domainTemplate.resources);
-            }
-          }
-        } catch (parseError) {
-          console.warn(
-            `Domain ${index}: Failed to parse resources - ${parseError instanceof Error ? parseError.message : "Unknown error"}`
-          );
-        }
-
-        // Create question set config with safe defaults
-        const questionSetConfig: QuestionSetConfig = {
-          name: domainTemplate.name,
-          displayName: domainTemplate.name,
-          description: domainTemplate.description || "",
-          domain: domainTemplate.slug as any, // Use slug directly instead of mapping to enum
-          order: domain.order !== undefined ? domain.order : index,
-          totalPossibleScore:
-            (scoringConfig as any)?.maxScore || questions.length,
-          clinicallySignificantScore:
-            (scoringConfig as any)?.significantScore ||
-            Math.ceil(questions.length * 0.6),
-          resources: resources,
-          questions: questions.map((q: any, qIndex: number) => {
-            try {
-              return {
-                id: q.id || `question_${qIndex}`,
-                text: q.text || `Question ${qIndex + 1}`,
-                weight: typeof q.weight === "number" ? q.weight : 1,
-                order: typeof q.order === "number" ? q.order : qIndex,
-                isGatingQuestion: Boolean(q.isGatingQuestion),
-                skipLogic: q.skipLogic || null,
-                category: q.category || null,
-              };
-            } catch (questionError) {
-              console.warn(
-                `Domain ${index}, Question ${qIndex}: Error processing question, using defaults - ${questionError instanceof Error ? questionError.message : "Unknown error"}`
-              );
-              return {
-                id: `question_${qIndex}`,
-                text: `Question ${qIndex + 1}`,
-                weight: 1,
-                order: qIndex,
-                isGatingQuestion: false,
-                skipLogic: null,
-                category: null,
-              };
-            }
-          }),
-          skipConditions: [],
-          prerequisites: [],
-          multiPartLogic: undefined,
-          terminationRules: [],
-        };
-
-        validConfigs.push(questionSetConfig);
-        console.log(
-          `Successfully processed domain ${index}: ${domainTemplate.name} with ${questions.length} questions`
-        );
-      } catch (domainError) {
-        const errorMessage = `Domain ${index}: Error processing domain - ${domainError instanceof Error ? domainError.message : "Unknown error"}`;
-        errors.push(errorMessage);
-        console.error(errorMessage, domainError);
-      }
-    }
-
-    // Log summary
-    console.log(
-      `Assessment template ${templateId} processing complete: ${validConfigs.length} valid domains, ${errors.length} errors`
-    );
-
-    if (errors.length > 0) {
-      console.warn(
-        `Errors encountered while loading template ${templateId}:`,
-        errors
-      );
-    }
-
-    if (validConfigs.length === 0 && template.domains.length > 0) {
-      throw new Error(
-        `All domains in template ${templateId} failed validation. Check domain template structure and questions.`
-      );
-    }
-
-    return validConfigs;
-  } catch (error) {
-    const errorMessage = `Error loading assessment config from template ${templateId}`;
-    console.error(errorMessage, error);
-
-    // Re-throw with more context
-    if (error instanceof Error) {
-      throw new Error(`${errorMessage}: ${error.message}`);
-    } else {
-      throw new Error(`${errorMessage}: Unknown error occurred`);
-    }
-  }
-}
 
 /**
  * Load all active assessment configurations from the database (legacy)
@@ -539,4 +373,216 @@ export function validateAssessmentConfig(
         typeof q.weight === "number"
     )
   );
+}
+export async function loadAssessmentConfigFromTemplate(
+  templateId: string
+): Promise<AssessmentTemplateConfig> {
+  try {
+    if (!templateId || typeof templateId !== "string") {
+      throw new Error("Invalid template ID provided");
+    }
+
+    const cacheTTL =
+      Number(process.env.ASSESSMENT_TEMPLATE_CACHE_TTL_MS) ||
+      DEFAULT_TEMPLATE_CACHE_TTL_MS;
+    const cacheDisabled =
+      process.env.ASSESSMENT_TEMPLATE_CACHE === "off" || cacheTTL <= 0;
+    const shouldUseCache = !cacheDisabled;
+
+    if (shouldUseCache) {
+      const cached = templateCache.get(templateId);
+      if (cached && cached.expiresAt > Date.now()) {
+        return cached.data;
+      }
+    }
+
+    templateDebugLog(`Loading assessment template: ${templateId}`);
+
+    const template = await prisma.assessmentTemplate.findUnique({
+      where: { id: templateId },
+      include: {
+        domains: {
+          include: {
+            domainTemplate: true,
+          },
+          orderBy: { order: "asc" },
+        },
+      },
+    });
+
+    if (!template) {
+      throw new Error(`Assessment template with id ${templateId} not found`);
+    }
+
+    if (!template.domains || template.domains.length === 0) {
+      console.warn(`Assessment template ${templateId} has no domains`);
+      return { configs: [], domainTemplateMap: {} };
+    }
+
+    templateDebugLog(
+      `Found ${template.domains.length} domains in template ${templateId}`
+    );
+
+    const validConfigs: QuestionSetConfig[] = [];
+    const errors: string[] = [];
+    const domainTemplateMap: Record<string, string> = {};
+
+    for (let index = 0; index < template.domains.length; index++) {
+      const domain = template.domains[index];
+
+      try {
+        if (!domain || !domain.domainTemplate) {
+          errors.push(`Domain ${index}: Missing domain or domain template`);
+          continue;
+        }
+
+        const domainTemplate = domain.domainTemplate;
+
+        if (!validateDomainTemplate(domainTemplate, index)) {
+          errors.push(`Domain ${index}: Failed validation checks`);
+          continue;
+        }
+
+        let questions: any[] = [];
+        try {
+          if (Array.isArray(domainTemplate.questions)) {
+            questions = domainTemplate.questions;
+          } else if (typeof domainTemplate.questions === "string") {
+            questions = JSON.parse(domainTemplate.questions);
+            if (!Array.isArray(questions)) {
+              throw new Error("Parsed questions is not an array");
+            }
+          } else {
+            throw new Error(
+              "Questions field is not an array or valid JSON string"
+            );
+          }
+        } catch (parseError) {
+          errors.push(
+            `Domain ${index}: Failed to parse questions - ${parseError instanceof Error ? parseError.message : "Unknown error"}`
+          );
+          continue;
+        }
+
+        let scoringConfig: any = {};
+        try {
+          if (domainTemplate.scoringConfig) {
+            if (typeof domainTemplate.scoringConfig === "object") {
+              scoringConfig = domainTemplate.scoringConfig;
+            } else if (typeof domainTemplate.scoringConfig === "string") {
+              scoringConfig = JSON.parse(domainTemplate.scoringConfig);
+            }
+          }
+        } catch (parseError) {
+          console.warn(
+            `Domain ${index}: Failed to parse scoring config, using defaults - ${parseError instanceof Error ? parseError.message : "Unknown error"}`
+          );
+          scoringConfig = {};
+        }
+
+        let resources: any = undefined;
+        try {
+          if (domainTemplate.resources) {
+            if (typeof domainTemplate.resources === "object") {
+              resources = domainTemplate.resources;
+            } else if (typeof domainTemplate.resources === "string") {
+              resources = JSON.parse(domainTemplate.resources);
+            }
+          }
+        } catch (parseError) {
+          console.warn(
+            `Domain ${index}: Failed to parse resources - ${parseError instanceof Error ? parseError.message : "Unknown error"}`
+          );
+        }
+
+        const templateName = domainTemplate.name;
+        const templateIdValue = domainTemplate.id;
+        if (templateName && templateIdValue) {
+          domainTemplateMap[templateName] = templateIdValue;
+          domainTemplateMap[templateName.toUpperCase()] = templateIdValue;
+          domainTemplateMap[templateName.toLowerCase()] = templateIdValue;
+        }
+
+        const questionSetConfig: QuestionSetConfig = {
+          name: domainTemplate.name,
+          displayName: domainTemplate.name,
+          description: domainTemplate.description || "",
+          domain: domainTemplate.slug as any,
+          order: domain.order !== undefined ? domain.order : index,
+          totalPossibleScore:
+            (scoringConfig as any)?.maxScore || questions.length,
+          clinicallySignificantScore:
+            (scoringConfig as any)?.significantScore ||
+            Math.ceil(questions.length * 0.6),
+          resources,
+          questions: questions.map((q: any, qIndex: number) => {
+            try {
+              return {
+                id: q.id || `question_${qIndex}`,
+                text: q.text || `Question ${qIndex + 1}`,
+                weight: typeof q.weight === "number" ? q.weight : 1,
+                order: typeof q.order === "number" ? q.order : qIndex,
+                isGatingQuestion: Boolean(q.isGatingQuestion),
+                skipLogic: q.skipLogic || null,
+                category: q.category || null,
+              };
+            } catch (questionError) {
+              console.warn(
+                `Domain ${index}, Question ${qIndex}: Error processing question, using defaults - ${questionError instanceof Error ? questionError.message : "Unknown error"}`
+              );
+              return {
+                id: `question_${qIndex}`,
+                text: `Question ${qIndex + 1}`,
+                weight: 1,
+                order: qIndex,
+                isGatingQuestion: false,
+                skipLogic: null,
+                category: null,
+              };
+            }
+          }),
+          skipConditions: [],
+          prerequisites: [],
+          multiPartLogic: undefined,
+          terminationRules: [],
+        };
+
+        validConfigs.push(questionSetConfig);
+        templateDebugLog(
+          `Processed domain ${index}: ${domainTemplate.name} (${questions.length} questions)`
+        );
+      } catch (domainError) {
+        const errorMessage = `Domain ${index}: Error processing domain - ${domainError instanceof Error ? domainError.message : "Unknown error"}`;
+        errors.push(errorMessage);
+        console.error(errorMessage, domainError);
+      }
+    }
+
+    if (errors.length > 0) {
+      console.warn(
+        `Issues encountered while loading template ${templateId}:`,
+        errors
+      );
+    }
+
+    const result: AssessmentTemplateConfig = {
+      configs: validConfigs,
+      domainTemplateMap,
+    };
+
+    if (shouldUseCache) {
+      templateCache.set(templateId, {
+        data: result,
+        expiresAt: Date.now() + cacheTTL,
+      });
+    }
+
+    return result;
+  } catch (error) {
+    console.error(
+      `Error loading assessment template ${templateId}:`,
+      error instanceof Error ? error.message : error
+    );
+    return { configs: [], domainTemplateMap: {} };
+  }
 }

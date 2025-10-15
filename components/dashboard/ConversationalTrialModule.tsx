@@ -83,6 +83,9 @@ export default function ConversationalTrialModule({
     checkAccess();
   }, []);
 
+  const hasActiveSession = Boolean(assessmentId && !hasCompletedTrial);
+  const isButtonDisabled = hasActiveSession || isChatOpen;
+
   // Enhanced Report Active State - DISABLED FOR NOW
   // if (hasEnhancedReport && assessmentId) {
   //   return (
@@ -356,10 +359,18 @@ export default function ConversationalTrialModule({
                 className="w-full"
                 size="lg"
                 onClick={() => setIsChatOpen(true)}
+                disabled={isButtonDisabled}
               >
                 <MessageCircle className="mr-2 h-4 w-4" />
-                Start Conversational Assessment
+                {hasActiveSession
+                  ? "Conversation In Progress"
+                  : "Start Conversational Assessment"}
               </Button>
+              {hasActiveSession && (
+                <p className="text-xs text-muted-foreground">
+                  Resume the active conversation from the assessment sidebar.
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -410,9 +421,10 @@ export default function ConversationalTrialModule({
               className="w-full"
               size="lg"
               onClick={() => setIsChatOpen(true)}
+              disabled={isButtonDisabled}
             >
               <MessageCircle className="mr-2 h-4 w-4" />
-              Start Free Trial
+              {isChatOpen ? "Chat Active" : "Start Free Trial"}
             </Button>
           </div>
         </CardContent>

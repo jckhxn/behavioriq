@@ -69,7 +69,7 @@ interface Assessment {
   id: string;
   shortId?: string;
   subjectName: string;
-  status: "IN_PROGRESS" | "COMPLETED";
+  status: "IN_PROGRESS" | "COMPLETED" | "ABANDONED";
   startedAt: string;
   completedAt?: string;
   isConversational?: boolean;
@@ -169,7 +169,11 @@ export function AssessmentsView() {
     // Filter by status
     if (filterStatus !== "ALL") {
       filtered = filtered.filter(
-        (assessment) => assessment.status === filterStatus
+        (assessment) =>
+          filterStatus === "IN_PROGRESS"
+            ? assessment.status === "IN_PROGRESS" ||
+              assessment.status === "ABANDONED"
+            : assessment.status === filterStatus
       );
     }
 
@@ -545,7 +549,9 @@ export function AssessmentsView() {
     assessments.filter((a) => a.status === "COMPLETED").length;
 
   const getInProgressCount = () =>
-    assessments.filter((a) => a.status === "IN_PROGRESS").length;
+    assessments.filter(
+      (a) => a.status === "IN_PROGRESS" || a.status === "ABANDONED"
+    ).length;
 
   const getAverageScore = () => {
     const completed = assessments.filter(
@@ -1021,7 +1027,7 @@ export function AssessmentsView() {
                       </div>
 
                       <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                        {assessment.status === "IN_PROGRESS" ? (
+                        {assessment.status !== "COMPLETED" ? (
                           <>
                             <Button
                               size="sm"

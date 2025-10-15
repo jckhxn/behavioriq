@@ -4,10 +4,12 @@ import {
   ConversationalSession,
   Question,
   TokenUsage,
+  AnswerExtraction,
 } from "./types";
 import { openai } from "@ai-sdk/openai";
 import { generateText, streamText } from "ai";
 import { SYSTEM_PROMPTS } from "@/lib/config/ai-config";
+import { classifyBooleanResponse, ZERO_TOKEN_USAGE } from "./responseClassifier";
 
 /**
  * OpenAI-powered conversational AI for assessments
@@ -322,7 +324,17 @@ Rephrase at THIRD-GRADE LEVEL. Use simple words. Keep it about the same topic.`;
   async extractAnswer(
     userMessage: string,
     question: Question
-  ): Promise<{ answer: boolean | null; confidence: number; tokenUsage?: TokenUsage }> {
+  ): Promise<AnswerExtraction> {
+    const trimmed = userMessage?.trim();
+    if (!trimmed) {
+      return { answer: null, confidence: 0, tokenUsage: ZERO_TOKEN_USAGE };
+    }
+
+    const heuristic = classifyBooleanResponse(trimmed);
+    if (heuristic) {
+      return heuristic;
+    }
+
     // Use OpenAI to analyze the user's response and extract yes/no with confidence
     const analysisPrompt = `Analyze this response to extract YES or NO.
 
@@ -401,7 +413,7 @@ CONFIDENCE: [0.0-1.0]`;
       return { answer, confidence, tokenUsage: usage };
     } catch (error) {
       console.error("Error extracting answer:", error);
-      return { answer: null, confidence: 0 };
+      return { answer: null, confidence: 0, tokenUsage: ZERO_TOKEN_USAGE };
     }
   }
 

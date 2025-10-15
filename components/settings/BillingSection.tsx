@@ -18,10 +18,15 @@ import {
   Building2,
   CheckCircle,
   ArrowUpCircle,
+  Users,
   Settings as SettingsIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { formatPrice, PRICING } from "@/lib/config/pricing";
+import {
+  formatPrice,
+  getPricingPlanById,
+  type PricingPlanId,
+} from "@/lib/config/pricing";
 import { toast } from "sonner";
 import { ManageSubscriptionModal } from "./ManageSubscriptionModal";
 
@@ -37,49 +42,64 @@ interface License {
   };
 }
 
+type PlanVisual = {
+  icon: typeof CheckCircle;
+  color: string;
+  bgColor: string;
+};
+
+const planVisualMap = (
+  planId: PricingPlanId | "FREE" | "UNKNOWN"
+): PlanVisual => {
+  switch (planId) {
+    case "BASIC":
+      return {
+        icon: CheckCircle,
+        color: "text-green-500",
+        bgColor: "bg-green-100 dark:bg-green-900/30",
+      };
+    case "PLUS":
+      return {
+        icon: Zap,
+        color: "text-sky-500",
+        bgColor: "bg-sky-100 dark:bg-sky-900/30",
+      };
+    case "FAMILY":
+      return {
+        icon: Users,
+        color: "text-indigo-500",
+        bgColor: "bg-indigo-100 dark:bg-indigo-900/30",
+      };
+    case "PRO":
+      return {
+        icon: Crown,
+        color: "text-purple-500",
+        bgColor: "bg-purple-100 dark:bg-purple-900/30",
+      };
+    case "ENTERPRISE":
+      return {
+        icon: Building2,
+        color: "text-orange-500",
+        bgColor: "bg-orange-100 dark:bg-orange-900/30",
+      };
+    case "FREE":
+      return {
+        icon: ArrowUpCircle,
+        color: "text-blue-500",
+        bgColor: "bg-blue-100 dark:bg-blue-900/30",
+      };
+    default:
+      return {
+        icon: CheckCircle,
+        color: "text-primary",
+        bgColor: "bg-muted/20",
+      };
+  }
+};
+
 export default function BillingSection() {
-  const LICENSE_INFO = {
-    // TRIAL removed - legacy license type no longer used
-    BASIC: {
-      name: "Basic",
-      icon: CheckCircle,
-      color: "text-green-500",
-      bgColor: "bg-green-100 dark:bg-green-900/30",
-      features: [
-        "Single assessment purchase",
-        "Full AI recommendations",
-        `${formatPrice(PRICING.SINGLE_ASSESSMENT)} per assessment`,
-      ],
-    },
-    PROFESSIONAL: {
-      name: "Professional",
-      icon: Crown,
-      color: "text-purple-500",
-      bgColor: "bg-purple-100 dark:bg-purple-900/30",
-      features: [
-        "Unlimited assessments",
-        "3 FREE Conversational AI sessions",
-        // Enhanced report pricing removed
-        // `${formatPrice(PRICING.ENHANCED_REPORT)}/session after`,
-        `${formatPrice(PRICING.MONTHLY_SUBSCRIPTION)}/month or ${formatPrice(PRICING.ANNUAL_SUBSCRIPTION)}/year`,
-      ],
-    },
-    ENTERPRISE: {
-      name: "Enterprise",
-      icon: Building2,
-      color: "text-orange-500",
-      bgColor: "bg-orange-100 dark:bg-orange-900/30",
-      features: [
-        "Unlimited assessments",
-        "Unlimited Conversational AI",
-        "Multi-user support",
-        "District-wide access",
-      ],
-    },
-  };
   const [license, setLicense] = useState<License | null>(null);
   const [loading, setLoading] = useState(true);
-  const [upgrading, setUpgrading] = useState(false);
   const [showManageModal, setShowManageModal] = useState(false);
 
   useEffect(() => {
@@ -101,36 +121,6 @@ export default function BillingSection() {
     }
   };
 
-  const handleUpgrade = async (planType: "MONTHLY" | "ANNUAL" | "BASIC") => {
-    setUpgrading(true);
-    try {
-      const response = await fetch("/api/stripe/checkout", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          planType: planType === "BASIC" ? "oneTime" : "subscription",
-          plan: planType,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.url) {
-        // Redirect to Stripe checkout
-        window.location.href = data.url;
-      } else {
-        throw new Error(data.error || "Failed to create checkout session");
-      }
-    } catch (error) {
-      console.error("Upgrade error:", error);
-      toast.error("Failed to process upgrade. Please try again.");
-    } finally {
-      setUpgrading(false);
-    }
-  };
-
   if (loading) {
     return (
       <Card>
@@ -145,10 +135,111 @@ export default function BillingSection() {
   }
 
   const licenseType = license?.type || "BASIC";
-  const licenseInfo =
-    LICENSE_INFO[licenseType as keyof typeof LICENSE_INFO] ||
-    LICENSE_INFO.BASIC;
-  const Icon = licenseInfo?.icon || Crown;
+  const planTypeMap: Record<string, PricingPlanId> = {
+    BASIC: "BASIC",
+    PLUS: "PLUS",
+    FAMILY: "FAMILY",
+    PRO: "PRO",
+    PROFESSIONAL: "PRO",
+    ENTERPRISE: "ENTERPRISE",
+  };
+
+  const matchedPlanId =
+    planTypeMap[licenseType] ??
+    (licenseType === "FREE" ? "BASIC" : "BASIC");
+  const planDetails = getPricingPlanById(matchedPlanId);
+  const visuals = planVisualMap(
+    licenseType === "FREE" ? "FREE" : matchedPlanId
+  );
+
+  let featureSummary: string[] = [];
+
+  if (licenseType === "FREE") {
+    featureSummary = [
+      "Preview assessment experience",
+      "Basic scoring and recommendations",
+      "Upgrade to unlock full AI reports",
+    ];
+  } else if (planDetails) {
+    const pricingSummary =
+      planDetails.monthlyCents !== null
+        ? `${formatPrice(planDetails.monthlyCents)}/month${
+            planDetails.annualCents !== null
+              ? ` • ${formatPrice(planDetails.annualCents)} billed annually`
+              : ""
+          }`
+        : planDetails.headline;
+
+    featureSummary = [
+      pricingSummary,
+      planDetails.credits,
+      `Conversational AI: ${planDetails.conversationalAI}`,
+      planDetails.pdfExport
+        ? "School-ready PDF exports included"
+        : "Upgrade for PDF exports",
+      planDetails.multiChild
+        ? "Supports multi-child profiles"
+        : "Single child profile",
+      `Support level: ${planDetails.supportLevel}`,
+      ...planDetails.features.slice(0, 2),
+    ];
+  } else {
+    featureSummary = [
+      "Flexible assessment access",
+      "Upgrade for full AI features",
+    ];
+  }
+
+  const planOrder: PricingPlanId[] = [
+    "BASIC",
+    "PLUS",
+    "FAMILY",
+    "PRO",
+    "ENTERPRISE",
+  ];
+  const baseIndex = planOrder.indexOf(matchedPlanId);
+  const upgradePlanIds =
+    licenseType === "FREE"
+      ? planOrder
+      : baseIndex >= 0
+        ? planOrder.slice(baseIndex + 1)
+        : planOrder;
+  const upgradePlans = upgradePlanIds
+    .map((id) => getPricingPlanById(id))
+    .filter(
+      (
+        plan
+      ): plan is NonNullable<ReturnType<typeof getPricingPlanById>> =>
+        Boolean(plan)
+    );
+
+  const canManageSubscription = [
+    "BASIC",
+    "PLUS",
+    "FAMILY",
+    "PRO",
+    "PROFESSIONAL",
+  ].includes(licenseType);
+
+  const manageModalPlan: "MONTHLY" | "ANNUAL" | "LITE" =
+    licenseType === "FREE"
+      ? "LITE"
+      : planDetails?.monthlyCents === null && planDetails?.annualCents !== null
+        ? "ANNUAL"
+        : "MONTHLY";
+
+  const licenseInfo = {
+    name:
+      licenseType === "FREE"
+        ? "Free Trial"
+        : planDetails?.name || licenseType || "Plan",
+    icon: visuals.icon,
+    color: visuals.color,
+    bgColor: visuals.bgColor,
+    features: Array.from(new Set(featureSummary.filter(Boolean))),
+  };
+
+  const Icon = licenseInfo.icon;
 
   return (
     <div className="space-y-4">
@@ -218,7 +309,7 @@ export default function BillingSection() {
           )}
 
           {/* Manage Subscription Button - Show for PROFESSIONAL, BASIC with recurring subscription */}
-          {(licenseType === "PROFESSIONAL" || licenseType === "BASIC") && (
+          {canManageSubscription && (
             <>
               <Separator />
               <Button
@@ -238,130 +329,82 @@ export default function BillingSection() {
       <ManageSubscriptionModal
         open={showManageModal}
         onOpenChange={setShowManageModal}
-        currentPlan={licenseType === "PROFESSIONAL" ? "MONTHLY" : "MONTHLY"} // TODO: Determine actual plan
-        currentPrice={2900} // TODO: Get actual price from license/subscription
+        currentPlan={manageModalPlan}
+        currentPrice={
+          planDetails?.monthlyCents ?? planDetails?.annualCents ?? 0
+        }
         billingPeriodEnd={license?.validUntil ?? undefined}
       />
 
       {/* Upgrade Options */}
-      {licenseType !== "PROFESSIONAL" && licenseType !== "ENTERPRISE" && (
+      {upgradePlans.length > 0 && (
         <Card id="upgrade-plan">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <ArrowUpCircle className="h-5 w-5" />
-              Upgrade Your Plan
+              Explore Upgrade Options
             </CardTitle>
             <CardDescription>
-              Get more assessments and unlock premium features
+              Unlock more assessment credits, conversational AI capacity, and
+              premium support
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Basic Plan Option */}
-            {licenseType === "FREE" || licenseType === "BASIC" ? (
-              <div className="border rounded-lg p-4 hover:border-primary transition-colors">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-semibold">Single Assessment</h4>
-                  <span className="text-2xl font-bold">
-                    {formatPrice(PRICING.SINGLE_ASSESSMENT)}
-                  </span>
-                </div>
-                <ul className="text-sm space-y-1 mb-4 text-muted-foreground">
-                  <li>• One complete assessment</li>
-                  <li>• Full AI recommendations</li>
-                  <li>• School-ready PDF report</li>
-                </ul>
-                <Button
-                  onClick={() => handleUpgrade("BASIC")}
-                  disabled={upgrading}
-                  className="w-full"
-                  variant="outline"
+            <div className="grid gap-4 md:grid-cols-2">
+              {upgradePlans.map((plan) => (
+                <div
+                  key={plan.id}
+                  className="border rounded-lg p-4 hover:border-primary transition-colors"
                 >
-                  Purchase Assessment
-                </Button>
-              </div>
-            ) : null}
-
-            {/* Professional Plan Options */}
-            <div className="border-2 border-primary rounded-lg p-4">
-              <Badge className="mb-2">Most Popular</Badge>
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="font-semibold">Professional Monthly</h4>
-                <div className="text-right">
-                  <span className="text-2xl font-bold">
-                    {formatPrice(PRICING.MONTHLY_SUBSCRIPTION)}
-                  </span>
-                  <span className="text-muted-foreground text-sm">/month</span>
+                  {plan.badge && (
+                    <Badge
+                      variant={plan.badgeVariant ?? "secondary"}
+                      className="mb-2"
+                    >
+                      {plan.badge}
+                    </Badge>
+                  )}
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-semibold">{plan.name}</h4>
+                    <div className="text-right">
+                      {plan.monthlyCents !== null ? (
+                        <>
+                          <span className="text-xl font-bold">
+                            {formatPrice(plan.monthlyCents)}
+                          </span>
+                          <span className="block text-xs text-muted-foreground">
+                            /month
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-lg font-semibold">
+                          {plan.headline}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    {plan.description}
+                  </p>
+                  <ul className="text-sm space-y-1 text-muted-foreground mb-4">
+                    <li>• {plan.credits}</li>
+                    <li>• Conversational AI: {plan.conversationalAI}</li>
+                    <li>• Support: {plan.supportLevel}</li>
+                    {plan.pdfExport && <li>• School-ready PDF exports</li>}
+                    {plan.multiChild && <li>• Multi-child profiles</li>}
+                  </ul>
+                  <Button asChild variant="outline" className="w-full">
+                    <Link href="mailto:sales@aidiagnostic.com">
+                      Request upgrade
+                    </Link>
+                  </Button>
                 </div>
-              </div>
-              <ul className="text-sm space-y-1 mb-4 text-muted-foreground">
-                <li>• Unlimited assessments</li>
-                <li>• 3 FREE Conversational AI sessions</li>
-                {/* Enhanced report pricing removed */}
-                {/* <li>
-                  • {formatPrice(PRICING.ENHANCED_REPORT)}/session after that
-                </li> */}
-                <li>• Priority support</li>
-              </ul>
-              <Button
-                onClick={() => handleUpgrade("MONTHLY")}
-                disabled={upgrading}
-                className="w-full"
-              >
-                {upgrading ? "Processing..." : "Upgrade to Monthly"}
-              </Button>
+              ))}
             </div>
-
-            <div className="border-2 border-green-500 rounded-lg p-4">
-              <Badge className="mb-2 bg-green-500">
-                Best Value - Save $
-                {(PRICING.MONTHLY_SUBSCRIPTION * 12 -
-                  PRICING.ANNUAL_SUBSCRIPTION) /
-                  100}
-                /year
-              </Badge>
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="font-semibold">Professional Annual</h4>
-                <div className="text-right">
-                  <span className="text-2xl font-bold">
-                    {formatPrice(PRICING.ANNUAL_SUBSCRIPTION)}
-                  </span>
-                  <span className="text-muted-foreground text-sm">/year</span>
-                </div>
-              </div>
-              <ul className="text-sm space-y-1 mb-4 text-muted-foreground">
-                <li>• All Monthly features</li>
-                <li>
-                  • Save $
-                  {(PRICING.MONTHLY_SUBSCRIPTION * 12 -
-                    PRICING.ANNUAL_SUBSCRIPTION) /
-                    100}{" "}
-                  per year
-                </li>
-                <li>
-                  • Equivalent to ~$
-                  {(PRICING.ANNUAL_SUBSCRIPTION / 100 / 12).toFixed(2)}/month
-                </li>
-              </ul>
-              <Button
-                onClick={() => handleUpgrade("ANNUAL")}
-                disabled={upgrading}
-                className="w-full bg-green-600 hover:bg-green-700"
-              >
-                {upgrading ? "Processing..." : "Upgrade to Annual"}
-              </Button>
-            </div>
-
-            {/* Enterprise Option */}
-            <div className="border rounded-lg p-4 bg-muted/50">
-              <h4 className="font-semibold mb-2">Enterprise</h4>
-              <p className="text-sm text-muted-foreground mb-4">
-                For districts and organizations requiring unlimited
-                Conversational AI and multi-user support.
-              </p>
-              <Button asChild variant="outline" className="w-full">
-                <Link href="mailto:sales@aidiagnostic.com">Contact Sales</Link>
-              </Button>
-            </div>
+            <p className="text-xs text-muted-foreground">
+              Our team assists with plan upgrades to ensure credits, invoices,
+              and access transfer smoothly.
+            </p>
           </CardContent>
         </Card>
       )}

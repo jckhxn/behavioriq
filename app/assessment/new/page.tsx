@@ -128,7 +128,12 @@ export default function NewAssessmentPage() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && subjectName.trim()) {
+    if (
+      e.key === "Enter" &&
+      subjectName.trim() &&
+      !isCreating &&
+      selectedAssessment
+    ) {
       createAssessment();
     }
   };

@@ -4,10 +4,11 @@ generator client {
 }
 
 datasource db {
-  provider   = "postgresql"
-  url        = env("DATABASE_URL")
-  directUrl  = env("DIRECT_URL")
-  extensions = [vector]
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  directUrl         = env("DIRECT_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+  extensions        = [vector]
 }
 
 model User {
@@ -177,6 +178,7 @@ model Assessment {
   @@index([shortId])
   @@index([assessmentTemplateId])
   @@index([hasEnhancedReport])
+  @@unique([userId, subjectName, status, isConversational], name: "unique_inprogress_conversational_assessment")
   @@map("assessments")
 }
 
@@ -650,6 +652,7 @@ model PlatformSettings {
   // AI Configuration
   aiReportsEnabled      Boolean  @default(true)
   maxAiReportsPerUser   Int      @default(10)
+  maxConversationalSessionsPerUser Int @default(10)
 
   // Email / SES Configuration
   emailSendingEnabled   Boolean  @default(true)  // Manual override to disable all email sending

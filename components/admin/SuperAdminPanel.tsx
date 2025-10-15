@@ -37,6 +37,7 @@ interface PlatformSettings {
   trialAssessmentsEnabled: boolean;
   aiReportsEnabled: boolean;
   maxAiReportsPerUser: number;
+  maxConversationalSessionsPerUser: number;
 }
 
 const SuperAdminPanel: React.FC = () => {
@@ -50,6 +51,7 @@ const SuperAdminPanel: React.FC = () => {
     trialAssessmentsEnabled: true,
     aiReportsEnabled: true,
     maxAiReportsPerUser: 10,
+    maxConversationalSessionsPerUser: 10,
   });
 
   const [stats, setStats] = useState({
@@ -77,6 +79,8 @@ const SuperAdminPanel: React.FC = () => {
               settingsData.data.trialAssessmentsEnabled !== false,
             aiReportsEnabled: settingsData.data.aiReportsEnabled !== false,
             maxAiReportsPerUser: settingsData.data.maxAiReportsPerUser || 10,
+            maxConversationalSessionsPerUser:
+              settingsData.data.maxConversationalSessionsPerUser ?? 10,
           });
         }
       }
@@ -312,6 +316,32 @@ const SuperAdminPanel: React.FC = () => {
               }
               className="h-8 text-xs"
               min="1"
+              max="1000"
+            />
+          </div>
+          <Separator />
+          <div className="grid gap-2">
+            <Label htmlFor="maxConvos" className="text-xs">
+              Max Conversational Sessions per User
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Maximum conversational AI sessions allowed per user.
+            </p>
+            <Input
+              id="maxConvos"
+              type="number"
+              value={platformSettings.maxConversationalSessionsPerUser}
+              onChange={(e) =>
+                setPlatformSettings((prev) => ({
+                  ...prev,
+                  maxConversationalSessionsPerUser: Math.max(
+                    0,
+                    parseInt(e.target.value) || 0
+                  ),
+                }))
+              }
+              className="h-8 text-xs"
+              min="0"
               max="1000"
             />
           </div>

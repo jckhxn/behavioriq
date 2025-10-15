@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { generateAIResponse } from "@/lib/ai/openai";
+import { SYSTEM_PROMPTS } from "@/lib/config/ai-config";
 
 export async function POST(request: NextRequest) {
   try {
@@ -56,46 +57,52 @@ async function generateRecommendations(assessment: any): Promise<string> {
   const assessmentSummary = {
     subjectName: assessment.subjectName,
     completedAt: assessment.completedAt,
-    domains: assessment.scores.map((score: any) => ({
-      domain: score.domain,
-      rawScore: score.rawScore,
-      totalPossible: score.totalPossible,
-      riskLevel: score.riskLevel,
-      confidence: score.confidence,
-      wasTerminatedEarly: score.wasTerminatedEarly,
-    })),
+    domains: assessment.scores.map((score: any) => {
+      const percentage = score.totalPossible
+        ? Math.round((score.rawScore / score.totalPossible) * 1000) / 10
+        : 0;
+
+      return {
+        domain: score.domain,
+        domainLabel: formatDomainName(score.domain),
+        rawScore: score.rawScore,
+        totalPossible: score.totalPossible,
+        percentage,
+        riskLevel: score.riskLevel,
+        confidence: score.confidence,
+        wasTerminatedEarly: score.wasTerminatedEarly,
+      };
+    }),
     totalResponses: assessment.responses.length,
     overallRiskLevel: calculateOverallRisk(assessment.scores),
   };
 
-  const prompt = `
-As a clinical psychology expert, analyze this behavioral assessment and provide comprehensive, actionable recommendations.
+  const riskPriority = {
+    VERY_HIGH: 3,
+    HIGH: 2,
+    MODERATE: 1,
+    LOW: 0,
+  } as Record<string, number>;
 
-Assessment Summary:
-Subject: ${assessmentSummary.subjectName}
-Completed: ${new Date(assessmentSummary.completedAt).toLocaleDateString()}
-Overall Risk Level: ${assessmentSummary.overallRiskLevel}
-Total Questions Answered: ${assessmentSummary.totalResponses}
+  const sortedDomains = [...assessmentSummary.domains].sort((a, b) => {
+    const riskDiff = (riskPriority[b.riskLevel] || 0) - (riskPriority[a.riskLevel] || 0);
+    if (riskDiff !== 0) return riskDiff;
+    return (b.percentage || 0) - (a.percentage || 0);
+  });
 
-Domain Scores:
-${assessmentSummary.domains
-  .map(
-    (domain: any) =>
-      `- ${domain.domain}: ${domain.rawScore}/${domain.totalPossible} (${domain.riskLevel} risk, ${Math.round(domain.confidence * 100)}% confidence)${domain.wasTerminatedEarly ? " [Early termination]" : ""}`
-  )
-  .join("\n")}
+  const topDomainInput = sortedDomains.slice(0, 3).map((domain) => ({
+    domainName: domain.domainLabel,
+    percentage: domain.percentage ?? 0,
+    riskLevel: domain.riskLevel,
+  }));
 
-Please provide:
+  const completedDate = assessmentSummary.completedAt
+    ? new Date(assessmentSummary.completedAt)
+    : new Date(assessment.startedAt);
 
-1. **Immediate Concerns**: Any high-risk areas requiring immediate attention
-2. **Clinical Recommendations**: Specific interventions, therapies, or treatments to consider
-3. **Monitoring Guidelines**: What to watch for and how often to reassess
-4. **Referral Suggestions**: When to refer to specialists (psychiatrists, therapists, etc.)
-5. **Environmental Considerations**: Family, school, or workplace modifications
-6. **Follow-up Timeline**: Recommended schedule for progress monitoring
+  const contextBlock = `CONTEXT:\nSubject: ${assessmentSummary.subjectName || "Participant"}\nCompleted: ${completedDate.toLocaleDateString()}\nOverall Risk: ${assessmentSummary.overallRiskLevel}\nTotal Questions Answered: ${assessmentSummary.totalResponses}`;
 
-Format your response as clear, professional recommendations suitable for clinical documentation. Focus on evidence-based interventions and practical next steps.
-`;
+  const prompt = `${SYSTEM_PROMPTS.ASSESSMENT_ANALYSIS.trim()}\n\n${contextBlock}\n\nINPUT DATA:\n${JSON.stringify(topDomainInput, null, 2)}`;
 
   try {
     const response = await generateAIResponse(prompt, {
@@ -106,34 +113,35 @@ Format your response as clear, professional recommendations suitable for clinica
     return response;
   } catch (error) {
     console.error("Error generating AI recommendations:", error);
-    return `
-RECOMMENDATIONS SUMMARY
+    return `##SECTION: Overview
+The automated recommendation engine is temporarily unavailable. Please review this assessment with a licensed behavioral health professional and focus on the domains with the highest risk scores.
 
-Based on the assessment results showing ${assessmentSummary.overallRiskLevel} overall risk level across ${assessmentSummary.domains.length} domains:
+---
 
-IMMEDIATE CONCERNS:
-${
-  assessmentSummary.domains
-    .filter((d: any) => d.riskLevel === "HIGH" || d.riskLevel === "VERY_HIGH")
-    .map(
-      (d: any) =>
-        `- ${d.domain}: Elevated risk (${d.rawScore}/${d.totalPossible})`
-    )
-    .join("\n") || "- No immediate high-risk concerns identified"
-}
+##SECTION: Priority Areas
+### **Overall Review** *(N/A - Manual Follow-up Required)*
+Consult with a behavioral health professional to interpret domain percentages and determine next steps.
 
-CLINICAL RECOMMENDATIONS:
-- Comprehensive clinical interview with qualified mental health professional
-- Consider structured diagnostic assessment if indicated
-- Develop individualized treatment plan based on specific risk factors
-- Regular progress monitoring and assessment updates
+---
 
-FOLLOW-UP:
-- Reassess within 30-60 days or sooner if symptoms worsen
-- Monitor response to interventions
-- Adjust treatment plan based on progress
+##SECTION: Actions
+### **Overall Plan**
+**Steps:**  \\\n+1. Schedule a consultation with a licensed therapist or psychologist to create a tailored care plan.  \\\n+2. Maintain a daily log tracking mood, triggers, and coping strategies.
 
-Note: These are preliminary recommendations. Professional clinical judgment and comprehensive evaluation are essential for accurate diagnosis and treatment planning.
+**Approach:**  \\\n+Cognitive Behavioral Therapy (CBT) or Acceptance and Commitment Therapy (ACT).
+
+**Tools:**  \\\n+[APA Therapist Locator](https://locator.apa.org)  \\
+[MoodMission](https://moodmission.com)
+
+---
+
+##SECTION: Monitor
+- **Daily:** Document stressors, coping strategies, and any safety concerns.  \\\n+- **Weekly:** Review progress with a clinician or structured reflection worksheet.  \\\n+- **Alert:** Contact 911 or 988 immediately if safety concerns escalate or rapid symptom changes occur.
+
+---
+
+##SECTION: Support
+- **Who:** Licensed therapist, psychologist, or psychiatrist.  \\\n+- **Crisis:** Call 911 for emergencies or 988 for suicide and crisis support.  \\\n+- **Urgency:** Elevated—prioritize professional follow-up based on the highest domain risk.
 `;
   }
 }
@@ -153,4 +161,11 @@ function calculateOverallRisk(scores: any[]): string {
   if (averageRisk >= 2.5) return "HIGH";
   if (averageRisk >= 1.5) return "MODERATE";
   return "LOW";
+}
+
+function formatDomainName(domain: string): string {
+  return domain
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }

@@ -52,6 +52,7 @@ interface PlatformSettings {
   trialAssessmentsEnabled: boolean;
   aiReportsEnabled: boolean;
   maxAiReportsPerUser: number;
+  maxConversationalSessionsPerUser: number;
   emailSendingEnabled: boolean;
   sesMonthlyBudget: number;
   globalTrialAssessment?: {
@@ -94,7 +95,11 @@ export function SuperAdminPlatformSettings() {
       const response = await fetch("/api/admin/platform-settings");
       if (response.ok) {
         const data = await response.json();
-        setSettings(data.settings);
+        setSettings({
+          ...data.settings,
+          maxConversationalSessionsPerUser:
+            data.settings.maxConversationalSessionsPerUser ?? 10,
+        });
         setAvailableAssessments(data.availableAssessments);
       } else {
         toast.error("Failed to load platform settings");
@@ -122,7 +127,11 @@ export function SuperAdminPlatformSettings() {
 
       if (response.ok) {
         const data = await response.json();
-        setSettings(data.settings);
+        setSettings({
+          ...data.settings,
+          maxConversationalSessionsPerUser:
+            data.settings.maxConversationalSessionsPerUser ?? 10,
+        });
         toast.success("Platform settings updated successfully");
       } else {
         const error = await response.json();
@@ -436,6 +445,29 @@ export function SuperAdminPlatformSettings() {
                   <p className="text-sm text-muted-foreground">
                     Maximum number of AI reports a user can generate (to control
                     costs)
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="max-ai-convos">
+                    Max Conversational Sessions Per User
+                  </Label>
+                  <Input
+                    id="max-ai-convos"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={settings.maxConversationalSessionsPerUser}
+                    onChange={(e) =>
+                      updateSetting(
+                        "maxConversationalSessionsPerUser",
+                        Math.max(0, parseInt(e.target.value) || 0)
+                      )
+                    }
+                    className="w-32"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Maximum number of conversational AI sessions a user can run.
+                    Set to 0 to block usage entirely.
                   </p>
                 </div>
               </div>

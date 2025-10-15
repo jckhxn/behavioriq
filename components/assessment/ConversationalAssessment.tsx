@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,10 @@ import { ConversationalMessage } from "@/lib/ai/conversational/types";
 import { MarkdownMessage } from "./MarkdownMessage";
 import { useUserData } from "@/lib/hooks/use-supabase-user";
 import { Badge } from "@/components/ui/badge";
+
+type RawConversationalMessage = Omit<ConversationalMessage, "timestamp"> & {
+  timestamp: string | Date;
+};
 
 interface ConversationalAssessmentProps {
   onComplete: (responses: Record<string, boolean>) => void;
@@ -42,6 +46,7 @@ export function ConversationalAssessment({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { userData } = useUserData();
+  const lastConfigRef = useRef<string | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -51,8 +56,24 @@ export function ConversationalAssessment({
     scrollToBottom();
   }, [messages]);
 
+  const sessionConfigKey = useMemo(
+    () =>
+      JSON.stringify({
+        assessmentId: assessmentId || null,
+        isTrial,
+        assessmentTemplateId: assessmentTemplateId || null,
+        subjectName: subjectName || null,
+      }),
+    [assessmentId, isTrial, assessmentTemplateId, subjectName]
+  );
+
   // Initialize session
   useEffect(() => {
+    if (lastConfigRef.current === sessionConfigKey) {
+      return;
+    }
+    lastConfigRef.current = sessionConfigKey;
+
     async function initializeSession() {
       try {
         setIsLoading(true);
@@ -88,12 +109,47 @@ export function ConversationalAssessment({
 
         const data = await response.json();
         setSessionId(data.sessionId);
-        setMessages([data.message]);
 
-        // If resuming, restore progress
-        if (data.isResumed && data.progress) {
-          setProgress(data.progress);
+        const normalizeMessage = (rawMessage: RawConversationalMessage): ConversationalMessage => ({
+          ...rawMessage,
+          timestamp: rawMessage.timestamp ? new Date(rawMessage.timestamp) : new Date(),
+        });
+
+        if (data.isResumed && Array.isArray(data.transactionalMessages)) {
+          setMessages(data.transactionalMessages.map(normalizeMessage));
+        } else if (data.message) {
+          setMessages([normalizeMessage(data.message)]);
+        } else {
+          setMessages([]);
         }
+
+        if (data.progress) {
+          setProgress({
+            answered: data.progress.answered ?? 0,
+            total: data.progress.total ?? 0,
+          });
+        } else if (Array.isArray(data.transactionalMessages)) {
+          const answeredCount = data.transactionalMessages.filter(
+            (msg: ConversationalMessage) => msg.role === "user"
+          ).length;
+          const total = data.totalQuestions ?? data.transactionalMessages.length ?? 0;
+          setProgress({
+            answered: answeredCount,
+            total,
+          });
+        } else {
+          setProgress({ answered: 0, total: 0 });
+        }
+
+        if (data.tokenUsage?.session) {
+          setTokenUsage({
+            promptTokens: data.tokenUsage.session.promptTokens ?? 0,
+            completionTokens: data.tokenUsage.session.completionTokens ?? 0,
+            totalTokens: data.tokenUsage.session.totalTokens ?? 0,
+          });
+        }
+
+        setIsComplete(Boolean(data.sessionComplete));
       } catch (error) {
         console.error("Error starting session:", error);
         // Show error message in chat
@@ -110,7 +166,7 @@ export function ConversationalAssessment({
     }
 
     initializeSession();
-  }, [assessmentId, isTrial, assessmentTemplateId, subjectName]);
+  }, [sessionConfigKey]);
 
   const sendMessage = async () => {
     if (!currentMessage.trim() || !sessionId || isLoading) return;
@@ -160,8 +216,6 @@ export function ConversationalAssessment({
       setProgress({
         answered: progressAnswered,
         total: progressTotal,
-        currentIndex: progressAnswered,
-        percentage: (progressAnswered / progressTotal) * 100,
       });
 
       // Stream the response text
@@ -198,11 +252,11 @@ export function ConversationalAssessment({
 
       // If assessment is complete, fetch results
       if (isComplete) {
-        const completeResponse = await fetch(
-          "/api/assessment/conversational/complete",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+      const completeResponse = await fetch(
+        "/api/assessment/conversational/complete",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ sessionId }),
           }
         );
@@ -306,7 +360,13 @@ export function ConversationalAssessment({
                 {progress.answered} of {progress.total} questions
               </span>
             </div>
-            <Progress value={(progress.answered / progress.total) * 100} />
+            <Progress
+              value={
+                progress.total > 0
+                  ? (progress.answered / progress.total) * 100
+                  : 0
+              }
+            />
           </div>
         )}
       </CardHeader>

@@ -141,6 +141,8 @@ export default function ConversationalResumePage() {
                   router.push(`/assessment/${assessmentId}/results`);
                 }}
                 assessmentId={assessmentId}
+                assessmentTemplateId={assessment?.assessmentTemplateId}
+                subjectName={assessment?.subjectName}
               />
             </CardContent>
           </Card>

@@ -43,7 +43,7 @@ import {
 interface Assessment {
   id: string;
   subjectName: string;
-  status: "IN_PROGRESS" | "COMPLETED";
+  status: "IN_PROGRESS" | "COMPLETED" | "ABANDONED";
   startedAt: string;
   completedAt?: string;
   scores?: Array<{
@@ -87,7 +87,9 @@ export function UserDashboard() {
   const getCompletedCount = () =>
     assessments.filter((a) => a.status === "COMPLETED").length;
   const getInProgressCount = () =>
-    assessments.filter((a) => a.status === "IN_PROGRESS").length;
+    assessments.filter(
+      (a) => a.status === "IN_PROGRESS" || a.status === "ABANDONED"
+    ).length;
   const getAverageScore = () => {
     const completed = assessments.filter(
       (a) => a.status === "COMPLETED" && a.scores

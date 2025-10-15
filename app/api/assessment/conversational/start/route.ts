@@ -4,6 +4,7 @@ import { ConversationalSession } from "@/lib/ai/conversational/types";
 import { prisma } from "@/lib/db/prisma";
 import { databaseSessionStore } from "@/lib/ai/conversational/DatabaseSessionStore";
 import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
+import { getMaxConversationalSessionsPerUser } from "@/lib/platform/settings";
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,12 +37,83 @@ export async function POST(request: NextRequest) {
             total: existingSession.questions.length,
             currentIndex: existingSession.currentQuestionIndex,
           },
+          transactionalMessages: existingSession.messages,
+          totalQuestions: existingSession.questions.length,
+          sessionComplete: existingSession.isComplete,
         });
       }
     }
 
     let assessmentTemplate: any;
     let actualAssessmentId: string | null = assessmentId || null;
+    let existingAssessment: any = null;
+    let resolvedAssessmentTemplateId =
+      assessmentTemplateId || null;
+    let resolvedSubjectName = subjectName || null;
+
+    if (!isTrial && !assessmentId && user && subjectName) {
+      // Check for existing IN_PROGRESS conversational assessment for this user and subject
+      const existingInProgress = await prisma.assessment.findFirst({
+        where: {
+          userId: user.id,
+          subjectName: subjectName,
+          status: "IN_PROGRESS",
+          isConversational: true,
+        },
+        orderBy: { startedAt: "desc" },
+      });
+
+      if (existingInProgress) {
+        existingAssessment = existingInProgress;
+        actualAssessmentId = existingAssessment.id;
+        resolvedAssessmentTemplateId =
+          resolvedAssessmentTemplateId || existingAssessment.assessmentTemplateId || null;
+        resolvedSubjectName =
+          resolvedSubjectName || existingAssessment.subjectName || null;
+        if (!existingAssessment.assessmentTemplateId && resolvedAssessmentTemplateId) {
+          existingAssessment = await prisma.assessment.update({
+            where: { id: existingAssessment.id },
+            data: { assessmentTemplateId: resolvedAssessmentTemplateId },
+          });
+        }
+        console.log(
+          `[Conversational] ♻️ Found existing IN_PROGRESS assessment ${actualAssessmentId} for user ${user.id} and subject ${subjectName}`
+        );
+      } else {
+        // Reactivate the most recent abandoned conversational assessment instead of creating a duplicate
+        const abandonedAssessment = await prisma.assessment.findFirst({
+          where: {
+            userId: user.id,
+            subjectName: subjectName,
+            status: "ABANDONED",
+            isConversational: true,
+          },
+          orderBy: { startedAt: "desc" },
+        });
+
+        if (abandonedAssessment) {
+          existingAssessment = await prisma.assessment.update({
+            where: { id: abandonedAssessment.id },
+            data: {
+              status: "IN_PROGRESS",
+              startedAt: new Date(),
+              completedAt: null,
+              ...(resolvedAssessmentTemplateId
+                ? { assessmentTemplateId: resolvedAssessmentTemplateId }
+                : {}),
+            },
+          });
+          actualAssessmentId = existingAssessment.id;
+          resolvedAssessmentTemplateId =
+            resolvedAssessmentTemplateId || existingAssessment.assessmentTemplateId || null;
+          resolvedSubjectName =
+            resolvedSubjectName || existingAssessment.subjectName || null;
+          console.log(
+            `[Conversational] 🔁 Reactivated abandoned assessment ${actualAssessmentId} for user ${user.id} and subject ${existingAssessment.subjectName}`
+          );
+        }
+      }
+    }
 
     if (isTrial) {
       // Handle trial assessment (anonymous users)
@@ -89,14 +161,144 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Authentication required" }, { status: 401 });
       }
 
-      if (!assessmentTemplateId) {
+      // Check if we're resuming an existing assessment
+      if (actualAssessmentId) {
+        // Resuming or reusing existing assessment
+        let assessmentToResume = await prisma.assessment.findUnique({
+          where: { id: actualAssessmentId },
+          select: {
+            id: true,
+            userId: true,
+            status: true,
+            isConversational: true,
+            subjectName: true,
+            assessmentTemplateId: true,
+          },
+        });
+
+        if (!assessmentToResume) {
+          return NextResponse.json(
+            { error: "Assessment not found" },
+            { status: 404 }
+          );
+        }
+
+        if (assessmentToResume.userId !== user.id) {
+          return NextResponse.json(
+            { error: "Unauthorized" },
+            { status: 403 }
+          );
+        }
+
+        if (assessmentToResume.status === "ABANDONED") {
+          assessmentToResume = await prisma.assessment.update({
+            where: { id: actualAssessmentId },
+            data: {
+              status: "IN_PROGRESS",
+              startedAt: new Date(),
+              completedAt: null,
+              ...(resolvedAssessmentTemplateId
+                ? { assessmentTemplateId: resolvedAssessmentTemplateId }
+                : {}),
+            },
+            select: {
+              id: true,
+              userId: true,
+              status: true,
+              isConversational: true,
+              subjectName: true,
+              assessmentTemplateId: true,
+            },
+          });
+        }
+
+        resolvedAssessmentTemplateId =
+          resolvedAssessmentTemplateId || assessmentToResume.assessmentTemplateId || null;
+        resolvedSubjectName =
+          resolvedSubjectName || assessmentToResume.subjectName || null;
+        if (!assessmentToResume.assessmentTemplateId && resolvedAssessmentTemplateId) {
+          await prisma.assessment.update({
+            where: { id: actualAssessmentId },
+            data: { assessmentTemplateId: resolvedAssessmentTemplateId },
+          });
+        }
+
+        if (assessmentToResume.status === "COMPLETED") {
+          return NextResponse.json(
+            { error: "Assessment is already completed" },
+            { status: 400 }
+          );
+        }
+
+        // Reuse the existing assessment
+        actualAssessmentId = assessmentToResume.id;
+        console.log(`[Conversational] ♻️ Reusing existing assessment ${actualAssessmentId} for resume or prevention of duplicate`);
+      } else {
+        if (!resolvedAssessmentTemplateId) {
+          return NextResponse.json(
+            { error: "Assessment template ID is required" },
+            { status: 400 }
+          );
+        }
+
+        if (!resolvedSubjectName) {
+          return NextResponse.json(
+            { error: "Subject name is required" },
+            { status: 400 }
+          );
+        }
+
+        const maxConversationalSessions =
+          await getMaxConversationalSessionsPerUser();
+        if (maxConversationalSessions >= 0) {
+          const completedConversationalAssessments =
+            await prisma.assessment.count({
+              where: {
+                userId: user.id,
+                isConversational: true,
+                status: "COMPLETED",
+              },
+            });
+
+          if (completedConversationalAssessments >= maxConversationalSessions) {
+            return NextResponse.json(
+              {
+                error: `You have reached the maximum of ${maxConversationalSessions} conversational assessments. Please contact support to request additional access.`,
+                currentCount: completedConversationalAssessments,
+                maxAllowed: maxConversationalSessions,
+              },
+              { status: 403 }
+            );
+          }
+        }
+
+        // Creating new assessment
+        const assessment = await prisma.assessment.create({
+          data: {
+            userId: user.id,
+            subjectName: resolvedSubjectName,
+            status: "IN_PROGRESS",
+            startedAt: new Date(),
+            isConversational: true,
+            hasEnhancedReport: false,
+            currentDomain: null,
+            currentQuestionOrder: null,
+            assessmentTemplateId: resolvedAssessmentTemplateId,
+          },
+        });
+
+        actualAssessmentId = assessment.id;
+        console.log(`[Conversational] ✨ Created new assessment ${actualAssessmentId}`);
+      }
+
+      if (!resolvedAssessmentTemplateId) {
         return NextResponse.json(
           { error: "Assessment template ID is required" },
           { status: 400 }
         );
       }
 
-      if (!subjectName) {
+      if (!resolvedSubjectName) {
         return NextResponse.json(
           { error: "Subject name is required" },
           { status: 400 }
@@ -105,7 +307,7 @@ export async function POST(request: NextRequest) {
 
       // Get the assessment template
       assessmentTemplate = await prisma.assessmentTemplate.findUnique({
-        where: { id: assessmentTemplateId },
+        where: { id: resolvedAssessmentTemplateId },
         include: {
           domains: {
             include: {
@@ -128,57 +330,6 @@ export async function POST(request: NextRequest) {
           { error: "Assessment template is not active" },
           { status: 403 }
         );
-      }
-
-      // Check if we're resuming an existing assessment
-      if (assessmentId) {
-        // Resuming - verify the assessment exists and belongs to the user
-        const existingAssessment = await prisma.assessment.findUnique({
-          where: { id: assessmentId },
-          select: { id: true, userId: true, status: true, isConversational: true },
-        });
-
-        if (!existingAssessment) {
-          return NextResponse.json(
-            { error: "Assessment not found" },
-            { status: 404 }
-          );
-        }
-
-        if (existingAssessment.userId !== user.id) {
-          return NextResponse.json(
-            { error: "Unauthorized" },
-            { status: 403 }
-          );
-        }
-
-        if (existingAssessment.status === "COMPLETED") {
-          return NextResponse.json(
-            { error: "Assessment is already completed" },
-            { status: 400 }
-          );
-        }
-
-        // Reuse the existing assessment
-        actualAssessmentId = assessmentId;
-        console.log(`[Conversational] ♻️ Reusing existing assessment ${assessmentId} for resume`);
-      } else {
-        // Creating new assessment
-        const assessment = await prisma.assessment.create({
-          data: {
-            userId: user.id,
-            subjectName: subjectName,
-            status: "IN_PROGRESS",
-            startedAt: new Date(),
-            isConversational: true,
-            hasEnhancedReport: false,
-            currentDomain: null,
-            currentQuestionOrder: null,
-          },
-        });
-
-        actualAssessmentId = assessment.id;
-        console.log(`[Conversational] ✨ Created new assessment ${actualAssessmentId}`);
       }
     }
 
@@ -229,6 +380,13 @@ export async function POST(request: NextRequest) {
 
     // Track initial message token usage
     if (initialMessage.metadata?.tokenUsage) {
+      if (!session.totalTokenUsage) {
+        session.totalTokenUsage = {
+          promptTokens: 0,
+          completionTokens: 0,
+          totalTokens: 0,
+        };
+      }
       session.totalTokenUsage.promptTokens += initialMessage.metadata.tokenUsage.promptTokens;
       session.totalTokenUsage.completionTokens += initialMessage.metadata.tokenUsage.completionTokens;
       session.totalTokenUsage.totalTokens += initialMessage.metadata.tokenUsage.totalTokens;
@@ -248,6 +406,13 @@ export async function POST(request: NextRequest) {
         initialMessage: initialMessage.metadata?.tokenUsage,
       },
       isResumed: false,
+      progress: {
+        answered: 0,
+        total: allQuestions.length,
+        currentIndex: 0,
+      },
+      sessionComplete: session.isComplete,
+      totalQuestions: allQuestions.length,
     });
   } catch (error) {
     console.error("Error starting conversational session:", error);

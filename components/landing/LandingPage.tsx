@@ -24,9 +24,19 @@ import {
   Award,
   BarChart3,
 } from "lucide-react";
-import { formatPrice, PRICING } from "@/lib/config/pricing";
+import {
+  ADD_ON_PRICING,
+  PRICING_DISPLAY_PLANS,
+  formatPrice,
+} from "@/lib/config/pricing";
 
 export function LandingPage() {
+  const pricingPlans = PRICING_DISPLAY_PLANS.filter(
+    (plan) => plan.id !== "ENTERPRISE"
+  );
+  const enterprisePlan = PRICING_DISPLAY_PLANS.find(
+    (plan) => plan.id === "ENTERPRISE"
+  );
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-950 dark:via-blue-950 dark:to-indigo-950">
       {/* Navigation */}
@@ -786,7 +796,7 @@ export function LandingPage() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-8 max-w-7xl mx-auto">
             <Card className="hover:shadow-lg transition-shadow">
               <CardHeader>
                 <CardTitle>Free Trial</CardTitle>
@@ -813,170 +823,176 @@ export function LandingPage() {
                 </Button>
               </CardContent>
             </Card>
-
-            <Card className="hover:shadow-lg transition-shadow border-primary">
-              <CardHeader>
-                <Badge className="w-fit mb-2">Most Popular</Badge>
-                <CardTitle>Full AI Report</CardTitle>
-                <CardDescription>
-                  Comprehensive professional-grade analysis
-                </CardDescription>
-                <div className="text-3xl font-bold">
-                  {formatPrice(PRICING.SINGLE_ASSESSMENT)}
-                </div>
-                <div className="text-sm text-muted-foreground">one-time</div>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    30-50 question comprehensive assessment
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    AI-generated professional report
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    Personalized recommendations with sources
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    School-ready PDF format
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    Instant delivery
-                  </li>
-                </ul>
-                <Button asChild className="w-full mt-6">
-                  <Link href="/register">Get Full Report</Link>
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <CardTitle>Monthly Membership</CardTitle>
-                <CardDescription>For ongoing progress tracking</CardDescription>
-                <div className="text-3xl font-bold">
-                  {formatPrice(PRICING.MONTHLY_SUBSCRIPTION)}
-                </div>
-                <div className="text-sm text-muted-foreground">/month</div>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />1 fresh
-                    full report per month
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    Progress tracking graphs over time
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    School-ready updates anytime
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    Parent resource library access
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    Assessment history and trends
-                  </li>
-                </ul>
-                <Button asChild variant="outline" className="w-full mt-6">
-                  <Link href="/register">Start Membership</Link>
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-lg transition-shadow border-green-500">
-              <CardHeader>
-                <Badge className="w-fit mb-2 bg-green-500">Best Value</Badge>
-                <CardTitle>Annual Membership</CardTitle>
-                <CardDescription>
-                  Save $58/year - 2 months free!
-                </CardDescription>
-                <div className="flex items-baseline gap-2">
-                  <div className="text-3xl font-bold">
-                    {formatPrice(PRICING.ANNUAL_SUBSCRIPTION)}
+            {pricingPlans.map((plan) => (
+              <Card
+                key={plan.id}
+                className="hover:shadow-xl transition-shadow border border-transparent hover:border-primary/40"
+              >
+                <CardHeader className="space-y-4">
+                  {plan.badge && (
+                    <Badge
+                      variant={plan.badgeVariant ?? "secondary"}
+                      className="w-fit"
+                    >
+                      {plan.badge}
+                    </Badge>
+                  )}
+                  <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                  <CardDescription>{plan.description}</CardDescription>
+                  <div className="space-y-2">
+                    {plan.monthlyCents !== null ? (
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-end gap-2">
+                          <div className="text-3xl font-bold">
+                            {formatPrice(plan.monthlyCents)}
+                          </div>
+                          <span className="text-sm text-muted-foreground">
+                            /month
+                          </span>
+                        </div>
+                        {plan.annualCents !== null && (
+                          <p className="text-sm text-muted-foreground">
+                            {formatPrice(plan.annualCents)} billed annually{" "}
+                            <span className="block text-xs text-muted-foreground/80">
+                              Average $
+                              {(plan.annualCents / 100 / 12).toFixed(2)} per
+                              month
+                            </span>
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-3xl font-bold">{plan.headline}</div>
+                    )}
                   </div>
-                  <div className="text-sm text-muted-foreground line-through">
-                    {formatPrice(PRICING.MONTHLY_SUBSCRIPTION * 12)}
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    <Badge variant="outline">{plan.credits}</Badge>
+                    <Badge variant="outline">{plan.conversationalAI}</Badge>
+                    <Badge variant="outline">{plan.supportLevel}</Badge>
+                    {plan.pdfExport && (
+                      <Badge variant="outline">PDF Exports</Badge>
+                    )}
+                    {plan.multiChild && (
+                      <Badge variant="outline">Multi-child Profiles</Badge>
+                    )}
                   </div>
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  /year (${(PRICING.ANNUAL_SUBSCRIPTION / 100 / 12).toFixed(2)}
-                  /mo)
-                </div>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    Everything in Monthly
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    <strong>3 FREE Conversational AI sessions</strong>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    Save $58 per year
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    12 months of tracking
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    Priority support
-                  </li>
-                </ul>
-                <Button
-                  asChild
-                  variant="default"
-                  className="w-full mt-6 bg-green-600 hover:bg-green-700"
-                >
-                  <Link href="/register">Get Annual Plan</Link>
-                </Button>
-              </CardContent>
-            </Card>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <ul className="space-y-2 text-sm">
+                    {plan.features.map((feature, index) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <CheckCircle className="h-4 w-4 mt-0.5 text-green-500" />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Button asChild className="w-full">
+                    <Link href="/register">Choose {plan.name}</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
           </div>
+          {enterprisePlan && (
+            <div className="max-w-5xl mx-auto mt-8">
+              <Card className="border-dashed border-2 border-blue-200 dark:border-blue-800 bg-blue-50/70 dark:bg-blue-950/30">
+                <CardHeader className="space-y-4">
+                  <Badge variant="outline" className="w-fit">
+                    Enterprise
+                  </Badge>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                    <CardTitle className="text-2xl">
+                      {enterprisePlan.name}
+                    </CardTitle>
+                    <span className="text-lg font-semibold text-blue-600 dark:text-blue-300">
+                      {enterprisePlan.headline}
+                    </span>
+                  </div>
+                  <CardDescription>{enterprisePlan.description}</CardDescription>
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    <Badge variant="outline">{enterprisePlan.credits}</Badge>
+                    <Badge variant="outline">
+                      {enterprisePlan.conversationalAI}
+                    </Badge>
+                    <Badge variant="outline">{enterprisePlan.supportLevel}</Badge>
+                    <Badge variant="outline">Custom integrations</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <ul className="space-y-2 text-sm">
+                    {enterprisePlan.features.map((feature, index) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <CheckCircle className="h-4 w-4 mt-0.5 text-blue-500" />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Button
+                    asChild
+                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                  >
+                    <Link href="mailto:sales@aidiagnostic.com">
+                      Talk with sales
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
-          {/* Add-on Information */}
-          <div className="mt-16 text-center">
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-2xl p-8 border border-blue-200/50 dark:border-blue-800/50">
-              <div className="flex items-center justify-center gap-3 mb-3">
-                <div className="p-2 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg">
-                  <SparklesIcon className="h-5 w-5 text-white" />
+          <div className="mt-16 grid gap-6 md:grid-cols-2 max-w-5xl mx-auto">
+            <Card className="border-blue-200 dark:border-blue-900/60 bg-blue-50/50 dark:bg-blue-950/20">
+              <CardHeader>
+                <CardTitle className="text-lg">
+                  Extra Assessment Credits
+                </CardTitle>
+                <CardDescription>
+                  Need more than your plan includes? Purchase additional static
+                  assessments whenever you need them.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex items-center justify-between">
+                <div>
+                  <p className="text-3xl font-semibold text-blue-600 dark:text-blue-300">
+                    {formatPrice(ADD_ON_PRICING.ASSESSMENT_CREDIT)}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    per additional credit
+                  </p>
                 </div>
-                <h3 className="text-xl font-semibold">Optional Enhancement</h3>
-              </div>
-              <h4 className="text-2xl font-bold mb-2">
-                Conversational AI Mode
-              </h4>
-              <p className="text-gray-600 dark:text-gray-300 mb-4">
-                Let your child interact directly with AI for richer behavioral
-                insights
-              </p>
-              {/* Enhanced report pricing removed */}
-              {/* <div className="flex items-center justify-center gap-4 text-sm">
-                <span className="text-2xl font-bold text-blue-600">
-                  +{formatPrice(PRICING.ENHANCED_REPORT)}
-                </span>
-                <span className="text-gray-500">per session</span>
                 <Badge
                   variant="secondary"
-                  className="bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
+                  className="bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200"
                 >
                   Add-on
                 </Badge>
-              </div> */}
-            </div>
+              </CardContent>
+            </Card>
+            <Card className="border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/50 dark:bg-indigo-950/20">
+              <CardHeader>
+                <CardTitle className="text-lg">
+                  Conversational AI Sessions
+                </CardTitle>
+                <CardDescription>
+                  Upgrade any plan with interactive child-led conversations and
+                  richer behavioral insights.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex items-center justify-between">
+                <div>
+                  <p className="text-3xl font-semibold text-indigo-600 dark:text-indigo-300">
+                    {formatPrice(ADD_ON_PRICING.CONVERSATIONAL_AI)}
+                  </p>
+                  <p className="text-sm text-muted-foreground">per month add-on</p>
+                </div>
+                <Badge
+                  variant="secondary"
+                  className="bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200"
+                >
+                  Popular
+                </Badge>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>

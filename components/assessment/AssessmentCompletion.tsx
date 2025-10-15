@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,13 +15,15 @@ import {
 } from "@/components/ui/chart";
 import {
   Download,
-  Mail,
   BarChart3,
   Brain,
   CheckCircle,
   FileText,
   Sparkles,
   AlertTriangle,
+  ExternalLink,
+  Bookmark,
+  BookmarkCheck,
 } from "lucide-react";
 import { AssessmentDomain, RiskLevel } from "@prisma/client";
 import {
@@ -37,6 +39,8 @@ import { InteractiveText, ParsedLink } from "@/lib/utils/linkParser";
 import { DOMAIN_LABELS, RISK_COLORS } from "@/lib/constants/domains";
 import { toast } from "sonner";
 import EmailReportButton from "@/components/reports/EmailReportButton";
+import ReactMarkdown, { type Components as MarkdownComponents } from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface Score {
   id: string;
@@ -94,6 +98,20 @@ export function AssessmentCompletion({
       );
     },
   });
+
+  const recommendationsContent =
+    (aiRecommendations && aiRecommendations.trim()) ||
+    (initialRecommendations && initialRecommendations.trim()) ||
+    "";
+  const sanitizedRecommendations = recommendationsContent
+    .replace(/\uFFFD/g, "")
+    .trim();
+
+  const structuredSections = useMemo(
+    () => parseRecommendationSections(sanitizedRecommendations),
+    [sanitizedRecommendations]
+  );
+  const showStructuredRecommendations = structuredSections.length > 0;
 
   useEffect(() => {
     fetchAssessmentData();
@@ -700,18 +718,40 @@ export function AssessmentCompletion({
                             Skip to end
                           </Button>
                         </div>
-                      )}
-                    <div className="text-sm leading-relaxed">
-                      <InteractiveText
-                        content={aiRecommendations}
-                        onSaveLink={saveLinkAsResource}
-                        assessmentId={assessmentId}
-                        savedLinks={savedLinks}
-                      />
+                    )}
+                    <div className="space-y-3">
+                      {showStructuredRecommendations ? (
+                        <div className="space-y-4">
+                          {structuredSections.map((section, index) => (
+                            <RecommendationSectionCard
+                              key={`${section.title}-${index}`}
+                              section={section}
+                              index={index}
+                              onSaveLink={saveLinkAsResource}
+                              assessmentId={assessmentId}
+                              savedLinks={savedLinks}
+                            />
+                          ))}
+                        </div>
+                      ) : sanitizedRecommendations ? (
+                        <div className="prose prose-sm dark:prose-invert max-w-none leading-relaxed">
+                          <InteractiveText
+                            content={sanitizedRecommendations}
+                            onSaveLink={saveLinkAsResource}
+                            assessmentId={assessmentId}
+                            savedLinks={savedLinks}
+                          />
+                        </div>
+                      ) : !isGeneratingRecommendations ? (
+                        <p className="text-sm text-muted-foreground">
+                          Recommendations will appear here once generated.
+                        </p>
+                      ) : null}
                       {isGeneratingRecommendations && (
-                        <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-1">
-                          |
-                        </span>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <div className="inline-block w-2 h-4 bg-primary animate-pulse" />
+                          Generating recommendations…
+                        </div>
                       )}
                     </div>
                   </div>
@@ -781,4 +821,231 @@ export function AssessmentCompletion({
       </Card>
     </div>
   );
+}
+
+interface StructuredRecommendationSection {
+  title: string;
+  body: string;
+}
+
+function parseRecommendationSections(
+  content: string
+): StructuredRecommendationSection[] {
+  if (!content || !content.includes("##SECTION")) {
+    return [];
+  }
+
+  const normalized = content.replace(/\r\n/g, "\n");
+  const rawSections = normalized.split(/\n-{3,}\s*\n?/g);
+
+  const sections: StructuredRecommendationSection[] = [];
+
+  for (const raw of rawSections) {
+    const trimmed = raw.trim();
+    if (!trimmed) continue;
+
+    const lines = trimmed.split("\n");
+    const firstLine = lines[0]?.trim() ?? "";
+    const sectionMatch = firstLine.match(/^##SECTION:\s*(.+)$/i);
+
+    let title = sectionMatch ? sectionMatch[1].trim() : firstLine.replace(/^##+\s*/, "").trim();
+    let bodyLines = sectionMatch ? lines.slice(1) : lines.slice(1);
+
+    if (!sectionMatch && !firstLine.startsWith("##")) {
+      title = "Summary";
+      bodyLines = lines;
+    }
+
+    const body = bodyLines.join("\n").trim();
+
+    if (title || body) {
+      sections.push({ title, body });
+    }
+  }
+
+  return sections;
+}
+
+interface RecommendationSectionCardProps {
+  section: StructuredRecommendationSection;
+  index: number;
+  onSaveLink?: (link: ParsedLink, assessmentId: string) => Promise<void>;
+  assessmentId?: string;
+  savedLinks?: string[];
+}
+
+const sectionAccentPalette = [
+  "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200",
+  "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-200",
+  "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-200",
+  "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200",
+];
+
+const RecommendationSectionCard = ({
+  section,
+  index,
+  onSaveLink,
+  assessmentId,
+  savedLinks = [],
+}: RecommendationSectionCardProps) => {
+  const accent =
+    sectionAccentPalette[index % sectionAccentPalette.length] ??
+    sectionAccentPalette[0];
+
+  return (
+    <div className="rounded-xl border border-border/60 bg-background/80 dark:bg-slate-900/70 p-5 shadow-sm space-y-4">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-3">
+          <span
+            className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold ${accent}`}
+          >
+            {index + 1}
+          </span>
+          <div>
+            <h3 className="text-lg font-semibold text-foreground">
+              {section.title}
+            </h3>
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+              Key Insights
+            </p>
+          </div>
+        </div>
+        <Badge variant="outline" className="w-max text-[10px] tracking-widest">
+          AI-Guided
+        </Badge>
+      </div>
+
+      <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={createMarkdownComponents({
+            onSaveLink,
+            assessmentId,
+            savedLinks,
+          })}
+        >
+          {section.body}
+        </ReactMarkdown>
+      </div>
+    </div>
+  );
+};
+
+interface MarkdownRendererOptions {
+  onSaveLink?: (link: ParsedLink, assessmentId: string) => Promise<void>;
+  assessmentId?: string;
+  savedLinks?: string[];
+}
+
+function createMarkdownComponents(
+  options: MarkdownRendererOptions
+): MarkdownComponents {
+  const components: MarkdownComponents = {
+    h2: ({ children }: { children: React.ReactNode }) => (
+      <h3 className="text-lg font-semibold text-foreground mt-6">{children}</h3>
+    ),
+    h3: ({ children }: { children: React.ReactNode }) => (
+      <h4 className="text-base font-semibold text-foreground mt-4 flex items-center gap-2">
+        <span className="h-2 w-2 rounded-full bg-primary/70" />
+        {children}
+      </h4>
+    ),
+    h4: ({ children }: { children: React.ReactNode }) => (
+      <h5 className="text-sm font-semibold text-foreground mt-4">{children}</h5>
+    ),
+    strong: ({ children }: { children: React.ReactNode }) => (
+      <span className="font-semibold text-foreground">{children}</span>
+    ),
+    em: ({ children }: { children: React.ReactNode }) => (
+      <em className="italic text-foreground/90">{children}</em>
+    ),
+    p: ({ children }: { children: React.ReactNode }) => (
+      <p className="text-sm leading-relaxed">{children}</p>
+    ),
+    ul: ({ children }: { children: React.ReactNode }) => (
+      <ul className="ml-5 list-disc space-y-2">{children}</ul>
+    ),
+    ol: ({ children }: { children: React.ReactNode }) => (
+      <ol className="ml-5 list-decimal space-y-2">{children}</ol>
+    ),
+    li: ({ children }: { children: React.ReactNode }) => (
+      <li className="pl-1">{children}</li>
+    ),
+    blockquote: ({ children }: { children: React.ReactNode }) => (
+      <div className="border-l-2 border-primary/40 pl-4 text-sm italic">
+        {children}
+      </div>
+    ),
+    a: ({
+      href,
+      children,
+    }: {
+      href?: string;
+      children: React.ReactNode;
+    }) => {
+      const url = href ?? "";
+      const label = getNodeText(children) || url;
+      const isSaved = url
+        ? options.savedLinks?.includes(url) ?? false
+        : false;
+
+      const handleOpen = () => {
+        if (url) {
+          window.open(url, "_blank", "noopener,noreferrer");
+        }
+      };
+
+      const handleSave = () => {
+        if (!options.onSaveLink || !options.assessmentId || !url) return;
+        const parsedLink: ParsedLink = {
+          text: `[${label}](${url})`,
+          title: label,
+          url,
+        };
+        options.onSaveLink(parsedLink, options.assessmentId);
+      };
+
+      return (
+        <span className="inline-flex items-center gap-1">
+          <Button
+            variant="link"
+            size="sm"
+            className="h-auto p-0 text-blue-600 hover:text-blue-700 underline"
+            onClick={handleOpen}
+          >
+            {label}
+            <ExternalLink className="ml-1 h-3 w-3" />
+          </Button>
+          {options.onSaveLink && options.assessmentId && url && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-auto w-auto p-1"
+              onClick={handleSave}
+              title={isSaved ? "Already saved" : "Save resource"}
+            >
+              {isSaved ? (
+                <BookmarkCheck className="h-3 w-3 text-emerald-600" />
+              ) : (
+                <Bookmark className="h-3 w-3 text-muted-foreground hover:text-primary" />
+              )}
+            </Button>
+          )}
+        </span>
+      );
+    },
+  };
+  return components;
+}
+
+function getNodeText(node: React.ReactNode): string {
+  if (typeof node === "string") return node;
+  if (typeof node === "number") return node.toString();
+  if (Array.isArray(node)) {
+    return node.map(getNodeText).join("");
+  }
+  if (React.isValidElement(node)) {
+    return getNodeText(node.props.children);
+  }
+  return "";
 }

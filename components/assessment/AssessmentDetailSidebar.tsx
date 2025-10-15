@@ -20,10 +20,11 @@ import Link from "next/link";
 interface Assessment {
   id: string;
   subjectName: string;
-  status: "IN_PROGRESS" | "COMPLETED";
+  status: "IN_PROGRESS" | "COMPLETED" | "ABANDONED";
   startedAt: string;
   completedAt?: string;
   isConversational?: boolean;
+  assessmentTemplateId?: string | null;
   scores?: Array<{
     domain: string;
     rawScore: number;
@@ -287,6 +288,10 @@ export function AssessmentDetailSidebar({
                   }}
                   isTrial={false}
                   assessmentId={assessmentId}
+                  assessmentTemplateId={
+                    assessment.assessmentTemplateId || undefined
+                  }
+                  subjectName={assessment.subjectName}
                 />
               </div>
             )

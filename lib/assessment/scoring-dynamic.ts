@@ -8,6 +8,15 @@
 import { AssessmentDomain, RiskLevel } from "@prisma/client";
 import { QuestionSetConfig } from "./types";
 
+const isScoringDebugEnabled =
+  process.env.ASSESSMENT_SCORING_DEBUG === "true";
+
+const scoringDebugLog = (...args: unknown[]) => {
+  if (isScoringDebugEnabled) {
+    console.log(...args);
+  }
+};
+
 export interface QuestionResponse {
   questionId: string;
   response: boolean;
@@ -54,8 +63,8 @@ export class DynamicScoringCalculator {
       throw new Error(`Domain ${domainName} not found`);
     }
 
-    console.log(`\n=== CALCULATING DOMAIN SCORE: ${domainName} ===`);
-    console.log(`Domain config:`, {
+    scoringDebugLog(`\n=== CALCULATING DOMAIN SCORE: ${domainName} ===`);
+    scoringDebugLog(`Domain config:`, {
       totalPossible: domainConfig.totalPossibleScore,
       clinicalThreshold: domainConfig.clinicallySignificantScore,
       hasPrerequisites: domainConfig.prerequisites.length > 0,
@@ -65,13 +74,13 @@ export class DynamicScoringCalculator {
     // Check prerequisites (e.g., age check for ASPD)
     if (domainConfig.prerequisites.length > 0) {
       for (const prerequisite of domainConfig.prerequisites) {
-        console.log(
+        scoringDebugLog(
           `Checking prerequisite: ${prerequisite.questionId} must be ${prerequisite.requiredValue}`
         );
         const prereqResponse = responses.find(
           (r) => r.questionId === prerequisite.questionId
         );
-        console.log(
+        scoringDebugLog(
           `Prerequisite response:`,
           prereqResponse
             ? `${prereqResponse.questionId} = ${prereqResponse.response}`
@@ -82,7 +91,7 @@ export class DynamicScoringCalculator {
           !prereqResponse ||
           prereqResponse.response !== prerequisite.requiredValue
         ) {
-          console.log(`❌ DOMAIN SKIPPED: Prerequisite not met`);
+          scoringDebugLog(`❌ DOMAIN SKIPPED: Prerequisite not met`);
           return {
             domain: domainName,
             displayName: domainConfig.displayName,
@@ -97,7 +106,7 @@ export class DynamicScoringCalculator {
           };
         }
       }
-      console.log(`✅ Prerequisites met, continuing with domain`);
+      scoringDebugLog(`✅ Prerequisites met, continuing with domain`);
     }
 
     // Handle multi-part logic (ASPD)
@@ -110,7 +119,7 @@ export class DynamicScoringCalculator {
       domainConfig.questions.some((q) => q.id === r.questionId)
     );
 
-    console.log(
+    scoringDebugLog(
       `Domain responses (${domainResponses.length} answered):`,
       domainResponses.map((r) => `${r.questionId}=${r.response ? "YES" : "NO"}`)
     );
@@ -126,7 +135,7 @@ export class DynamicScoringCalculator {
     const isClinicallySignificant =
       score >= domainConfig.clinicallySignificantScore;
 
-    console.log(`Scoring results:`, {
+    scoringDebugLog(`Scoring results:`, {
       yesAnswers: yesCount,
       noAnswers: noCount,
       totalAnswered: domainResponses.length,
@@ -173,7 +182,7 @@ export class DynamicScoringCalculator {
     );
     const part1Met = part1Score >= multiPartLogic.part1Threshold;
 
-    console.log(
+    scoringDebugLog(
       `Part 1 (Childhood CD): ${part1Score}/${multiPartLogic.part1Questions.length} (threshold: ${multiPartLogic.part1Threshold})`
     );
 
@@ -187,7 +196,7 @@ export class DynamicScoringCalculator {
     );
     const part2Met = part2Score >= multiPartLogic.part2Threshold;
 
-    console.log(
+    scoringDebugLog(
       `Part 2 (Adult): ${part2Score}/${multiPartLogic.part2Questions.length} (threshold: ${multiPartLogic.part2Threshold})`
     );
 
@@ -199,7 +208,7 @@ export class DynamicScoringCalculator {
     // Clinical significance: Both parts must meet threshold
     const isClinicallySignificant = part1Met && part2Met;
 
-    console.log(`Multi-part scoring:`, {
+    scoringDebugLog(`Multi-part scoring:`, {
       part1Score,
       part1Met,
       part2Score,

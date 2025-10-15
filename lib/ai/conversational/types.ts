@@ -28,6 +28,7 @@ export interface ConversationalSession {
 export interface AnswerExtraction {
   answer: boolean | null;
   confidence: number;
+  tokenUsage?: TokenUsage;
 }
 
 export interface ResponseContext {
