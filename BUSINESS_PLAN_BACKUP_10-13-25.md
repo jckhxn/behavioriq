@@ -1820,7 +1820,7 @@ const normalized = sisStudents.map(s => ({
 id: s.id,
 firstName: s.first_name,
 lastName: s.last_name,
-grade: s.grade_level,
+
 }));
 // upsert into your DB
 Store sync metadata (when last sync happened, how many records, errors).

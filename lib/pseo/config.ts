@@ -29,7 +29,7 @@ export const pseoConfig: PSEOConfig = {
           properties: {
             name: "{{name}} Assessment",
             description: "{{description}}",
-            educationalLevel: "{{grade}}",
+            // educationalLevel: "{{grade}}", // removed grade level logic
             assesses: "{{name}}",
             provider: {
               "@type": "Organization",
@@ -68,52 +68,6 @@ export const pseoConfig: PSEOConfig = {
         },
       },
     },
-    {
-      id: "grade-level-assessments",
-      template: "grade-assessment",
-      path: "/assessments/grade-[grade]",
-      dataKey: "gradeLevels",
-      enabled: true,
-      priority: 0.6,
-      changefreq: "monthly",
-      seo: {
-        titleTemplate: "Grade {{grade}} Assessment - AI Diagnostic Tool",
-        descriptionTemplate:
-          "Comprehensive grade {{grade}} assessment covering multiple subjects. Get AI-powered insights into academic strengths and areas for improvement.",
-        keywordsTemplate:
-          "grade {{grade}} assessment, {{grade}} grade evaluation, elementary assessment, middle school assessment, high school assessment",
-        openGraph: {
-          titleTemplate: "Grade {{grade}} Assessment - Free AI Diagnostic",
-          descriptionTemplate:
-            "Assess grade {{grade}} academic skills across multiple subjects with personalized AI recommendations.",
-          type: "website",
-          siteName: "AI Diagnostic",
-        },
-      },
-    },
-    {
-      id: "skill-areas",
-      template: "skill-area",
-      path: "/skills/[skillArea]",
-      dataKey: "skillAreas",
-      enabled: true,
-      priority: 0.5,
-      changefreq: "monthly",
-      seo: {
-        titleTemplate: "{{name}} Skills Assessment - AI Diagnostic",
-        descriptionTemplate:
-          "Evaluate your {{name}} skills with our comprehensive assessment. Get detailed analytics and personalized improvement recommendations.",
-        keywordsTemplate:
-          "{{name}} skills, {{name}} assessment, skill evaluation, professional development, AI diagnostic",
-        openGraph: {
-          titleTemplate: "{{name}} Skills Assessment",
-          descriptionTemplate:
-            "Assess your {{name}} capabilities and get AI-powered development recommendations.",
-          type: "website",
-          siteName: "AI Diagnostic",
-        },
-      },
-    },
   ],
   dataSource: {
     type: "hybrid",
@@ -127,7 +81,7 @@ export const pseoConfig: PSEOConfig = {
             id: true,
             name: true,
             description: true,
-            grade: true,
+            // grade: true, // removed grade level logic
             subject: true,
             category: true,
             isActive: true,
@@ -153,20 +107,6 @@ export const pseoConfig: PSEOConfig = {
         type: "json",
         config: {
           path: "./data/subjects.json",
-        },
-      },
-      {
-        key: "gradeLevels",
-        type: "json",
-        config: {
-          path: "./data/grade-levels.json",
-        },
-      },
-      {
-        key: "skillAreas",
-        type: "json",
-        config: {
-          path: "./data/skill-areas.json",
         },
       },
     ],
@@ -196,7 +136,7 @@ export const pseoConfig: PSEOConfig = {
   },
 };
 
-// Static data for subjects, grade levels, and skill areas
+// Static data for subjects and skill areas (grade levels removed)
 export const staticData = {
   subjects: [
     {
@@ -242,102 +182,6 @@ export const staticData = {
       subjectId: "technology",
       description:
         "Digital literacy, computer skills, and technology integration",
-    },
-  ],
-  gradeLevels: [
-    {
-      grade: "K",
-      name: "Kindergarten",
-      description: "Foundation skills for early learners",
-    },
-    {
-      grade: "1",
-      name: "First Grade",
-      description: "Basic academic skills development",
-    },
-    {
-      grade: "2",
-      name: "Second Grade",
-      description: "Building fundamental learning skills",
-    },
-    {
-      grade: "3",
-      name: "Third Grade",
-      description: "Developing core academic competencies",
-    },
-    {
-      grade: "4",
-      name: "Fourth Grade",
-      description: "Strengthening foundational knowledge",
-    },
-    {
-      grade: "5",
-      name: "Fifth Grade",
-      description: "Elementary school completion skills",
-    },
-    {
-      grade: "6",
-      name: "Sixth Grade",
-      description: "Middle school transition skills",
-    },
-    {
-      grade: "7",
-      name: "Seventh Grade",
-      description: "Middle school core competencies",
-    },
-    {
-      grade: "8",
-      name: "Eighth Grade",
-      description: "High school preparation skills",
-    },
-    {
-      grade: "9",
-      name: "Ninth Grade",
-      description: "Freshman year foundational skills",
-    },
-    {
-      grade: "10",
-      name: "Tenth Grade",
-      description: "Sophomore year academic development",
-    },
-    {
-      grade: "11",
-      name: "Eleventh Grade",
-      description: "Junior year advanced skills",
-    },
-    {
-      grade: "12",
-      name: "Twelfth Grade",
-      description: "Senior year college/career readiness",
-    },
-  ],
-  skillAreas: [
-    {
-      id: "critical-thinking",
-      name: "Critical Thinking",
-      description:
-        "Analytical reasoning, problem-solving, and logical evaluation skills",
-    },
-    {
-      id: "communication",
-      name: "Communication",
-      description: "Verbal, written, and digital communication effectiveness",
-    },
-    {
-      id: "collaboration",
-      name: "Collaboration",
-      description: "Teamwork, cooperation, and group project management",
-    },
-    {
-      id: "creativity",
-      name: "Creativity",
-      description:
-        "Innovation, artistic expression, and creative problem-solving",
-    },
-    {
-      id: "digital-literacy",
-      name: "Digital Literacy",
-      description: "Technology proficiency and digital citizenship skills",
     },
   ],
 };

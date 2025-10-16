@@ -5,6 +5,8 @@ import { prisma } from "@/lib/db/prisma";
 import { databaseSessionStore } from "@/lib/ai/conversational/DatabaseSessionStore";
 import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { getMaxConversationalSessionsPerUser } from "@/lib/platform/settings";
+import { sessionStore } from "@/lib/ai/conversational/SessionStore";
+import { getMockConversationalTrial } from "@/lib/assessment/mock-conversational-trial";
 
 export async function POST(request: NextRequest) {
   try {
@@ -129,6 +131,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (isTrial) {
+      let useMockTrial = false;
       // Handle trial assessment (anonymous users)
       const platformSettings = await prisma.platformSettings.findFirst({
         include: {
@@ -145,27 +148,27 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // Check if trial assessments are enabled
-      if (platformSettings && !platformSettings.trialAssessmentsEnabled) {
-        return NextResponse.json(
-          { error: "Trial assessments are currently disabled" },
-          { status: 403 }
+      const trialAssessmentsEnabled =
+        platformSettings?.trialAssessmentsEnabled ?? true;
+      const trialTemplate = platformSettings?.globalTrialAssessment;
+
+      if (
+        !trialAssessmentsEnabled ||
+        !trialTemplate ||
+        trialTemplate.isActive === false
+      ) {
+        console.warn(
+          "[Conversational] No active trial assessment configured – using mock template"
         );
+        assessmentTemplate = getMockConversationalTrial();
+        useMockTrial = true;
+      } else {
+        assessmentTemplate = trialTemplate;
       }
 
-      if (!platformSettings?.globalTrialAssessment) {
-        return NextResponse.json(
-          { error: "No trial assessment is currently configured" },
-          { status: 404 }
-        );
-      }
-
-      assessmentTemplate = platformSettings.globalTrialAssessment;
-
-      if (!assessmentTemplate.isActive) {
-        return NextResponse.json(
-          { error: "Trial assessment is currently inactive" },
-          { status: 403 }
+      if (useMockTrial) {
+        console.log(
+          "[Conversational] Mock conversational trial template loaded for anonymous user"
         );
       }
     } else {
@@ -417,8 +420,12 @@ export async function POST(request: NextRequest) {
         initialMessage.metadata.tokenUsage.totalTokens;
     }
 
-    // Store session in database
-    await databaseSessionStore.set(session.id, session);
+    // Persist session (database for paid assessments, in-memory for trial)
+    if (session.isTrial) {
+      sessionStore.set(session.id, session);
+    } else {
+      await databaseSessionStore.set(session.id, session);
+    }
 
     console.log(
       `[Conversational] ✅ New session ${session.id} created for assessment ${actualAssessmentId}`

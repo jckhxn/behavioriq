@@ -1,37 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ConversationalAIFactory } from "@/lib/ai/conversational/ConversationalAIFactory";
-import { ConversationalSession } from "@/lib/ai/conversational/types";
 import { databaseSessionStore } from "@/lib/ai/conversational/DatabaseSessionStore";
+import { sessionStore } from "@/lib/ai/conversational/SessionStore";
 
 export async function POST(request: NextRequest) {
   try {
     const { sessionId, message } = await request.json();
 
     // Get session from database
-    const session = await databaseSessionStore.get(sessionId);
+    let session = await databaseSessionStore.get(sessionId);
+    if (!session) {
+      session = sessionStore.get(sessionId);
+    }
     if (!session) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
-    // 🛡️ RATE LIMITING: Prevent rapid-fire submissions (min 2 seconds between submissions)
-    const isRateLimited = await databaseSessionStore.isRateLimited(sessionId, 2);
-    if (isRateLimited) {
-      console.log(`[Conversational] ⚠️ Rate limit exceeded for session ${sessionId}`);
-      return NextResponse.json(
-        { error: "Please wait a moment before submitting again" },
-        { status: 429 }
-      );
-    }
+    const isTrialSession = session.isTrial;
 
-    // 🛡️ ABUSE DETECTION: Check submission count
-    const submissionCount = await databaseSessionStore.getSubmissionCount(sessionId);
-    if (submissionCount > 300) {
-      // 300 submissions should be enough for 94 questions even with clarifications
-      console.log(`[Conversational] ⚠️ Suspicious activity: ${submissionCount} submissions for session ${sessionId}`);
-      return NextResponse.json(
-        { error: "Too many submissions. Please contact support if you need assistance." },
-        { status: 429 }
-      );
+    // 🛡️ RATE LIMITING: Prevent rapid-fire submissions (min 2 seconds between submissions)
+    if (!isTrialSession) {
+      const isRateLimited = await databaseSessionStore.isRateLimited(sessionId, 2);
+      if (isRateLimited) {
+        console.log(`[Conversational] ⚠️ Rate limit exceeded for session ${sessionId}`);
+        return NextResponse.json(
+          { error: "Please wait a moment before submitting again" },
+          { status: 429 }
+        );
+      }
+
+      // 🛡️ ABUSE DETECTION: Check submission count
+      const submissionCount = await databaseSessionStore.getSubmissionCount(sessionId);
+      if (submissionCount > 300) {
+        // 300 submissions should be enough for 94 questions even with clarifications
+        console.log(`[Conversational] ⚠️ Suspicious activity: ${submissionCount} submissions for session ${sessionId}`);
+        return NextResponse.json(
+          { error: "Too many submissions. Please contact support if you need assistance." },
+          { status: 429 }
+        );
+      }
     }
 
     const currentQuestion = session.questions[session.currentQuestionIndex];
@@ -66,18 +73,20 @@ export async function POST(request: NextRequest) {
 
     // 🛡️ IDEMPOTENCY: Try to record this submission
     // If this exact submission already exists, recordSubmission returns false
-    const isNewSubmission = await databaseSessionStore.recordSubmission(
-      sessionId,
-      currentQuestion.id,
-      session.currentQuestionIndex,
-      message,
-      extraction.answer,
-      extraction.confidence,
-      false, // Will update this below if answer is recorded
-      extraction.tokenUsage
-    );
+    const isNewSubmission = isTrialSession
+      ? true
+      : await databaseSessionStore.recordSubmission(
+          sessionId,
+          currentQuestion.id,
+          session.currentQuestionIndex,
+          message,
+          extraction.answer,
+          extraction.confidence,
+          false, // Will update this below if answer is recorded
+          extraction.tokenUsage
+        );
 
-    if (!isNewSubmission) {
+    if (!isTrialSession && !isNewSubmission) {
       console.log(`[Conversational] ⚠️ Duplicate submission detected - ignoring`);
       // Return the current state without making any changes
       return NextResponse.json({
@@ -203,13 +212,17 @@ export async function POST(request: NextRequest) {
           totalTokens: 0,
         };
       }
-        session.totalTokenUsage.promptTokens += extraction.tokenUsage.promptTokens;
+      session.totalTokenUsage.promptTokens += extraction.tokenUsage.promptTokens;
       session.totalTokenUsage.completionTokens += extraction.tokenUsage.completionTokens;
       session.totalTokenUsage.totalTokens += extraction.tokenUsage.totalTokens;
     }
 
     // Save session to database
-    await databaseSessionStore.set(sessionId, session);
+    if (isTrialSession) {
+      sessionStore.set(sessionId, session);
+    } else {
+      await databaseSessionStore.set(sessionId, session);
+    }
 
     return NextResponse.json({
       message: aiMessage,

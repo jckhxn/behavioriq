@@ -1,12 +1,20 @@
+import { HeroSection } from "../../components/pseo/HeroSection";
+import { SocialProofSection } from "../../components/pseo/SocialProofSection";
+import { ContentSection } from "../../components/pseo/ContentSection";
+import { WalkthroughSection } from "../../components/pseo/WalkthroughSection";
+import { ComparisonSection } from "../../components/pseo/ComparisonSection";
+import { LeadMagnetSection } from "../../components/pseo/LeadMagnetSection";
+import { FAQSection } from "../../components/pseo/FAQSection";
+import { FinalCTASection } from "../../components/pseo/FinalCTASection";
+import { Footer } from "../../components/pseo/Footer";
 import fs from "fs";
 import path from "path";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://aidiagnostic.com").replace(
-  /\/$/,
-  ""
-);
+const SITE_URL = (
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://aidiagnostic.com"
+).replace(/\/$/, "");
 
 interface HeroContent {
   headline?: string;
@@ -170,9 +178,21 @@ const DEFAULT_PROCESS_STEPS: NormalizedProcessStep[] = [
 
 const DEFAULT_COMPARISON_ROWS: NormalizedComparisonRow[] = [
   { label: "Wait Time", traditional: "6–12 weeks", behavioriq: "Hours" },
-  { label: "Cost", traditional: "$1,500–$3,000", behavioriq: "Free snapshot, $97 full report" },
-  { label: "Convenience", traditional: "In-office visits", behavioriq: "Online, anytime" },
-  { label: "Insights", traditional: "Static report", behavioriq: "Dynamic AI recommendations" },
+  {
+    label: "Cost",
+    traditional: "$1,500–$3,000",
+    behavioriq: "Free snapshot, $97 full report",
+  },
+  {
+    label: "Convenience",
+    traditional: "In-office visits",
+    behavioriq: "Online, anytime",
+  },
+  {
+    label: "Insights",
+    traditional: "Static report",
+    behavioriq: "Dynamic AI recommendations",
+  },
 ];
 
 const DEFAULT_FAQ: NormalizedFAQItem[] = [
@@ -287,7 +307,8 @@ function normalizePage(page: GeneratedPage): NormalizedPageContent {
     ctaHref: heroSource.cta_href ?? "/trial-assessment",
     supportingText: heroSource.supporting_text ?? DEFAULT_SUPPORTING_TEXT,
     trustBadges:
-      Array.isArray(heroSource.trust_badges) && heroSource.trust_badges.length > 0
+      Array.isArray(heroSource.trust_badges) &&
+      heroSource.trust_badges.length > 0
         ? heroSource.trust_badges
         : DEFAULT_TRUST_BADGES,
   };
@@ -303,7 +324,8 @@ function normalizePage(page: GeneratedPage): NormalizedPageContent {
 
   const definitionSource = page.definition_section ?? {};
   let definitionParagraphs =
-    Array.isArray(definitionSource.paragraphs) && definitionSource.paragraphs.length
+    Array.isArray(definitionSource.paragraphs) &&
+    definitionSource.paragraphs.length
       ? definitionSource.paragraphs.filter(Boolean)
       : [];
   if (!definitionParagraphs.length && page.content) {
@@ -322,7 +344,9 @@ function normalizePage(page: GeneratedPage): NormalizedPageContent {
   };
 
   const processSource = page.process ?? {};
-  const providedSteps = Array.isArray(processSource.steps) ? processSource.steps : [];
+  const providedSteps = Array.isArray(processSource.steps)
+    ? processSource.steps
+    : [];
   const processSteps = DEFAULT_PROCESS_STEPS.map((fallbackStep, index) => {
     const candidate = providedSteps[index];
     return {
@@ -349,7 +373,11 @@ function normalizePage(page: GeneratedPage): NormalizedPageContent {
     if (comparisonRows.length >= 4) {
       return;
     }
-    if (!comparisonRows.some((row) => row.label.toLowerCase() === fallbackRow.label.toLowerCase())) {
+    if (
+      !comparisonRows.some(
+        (row) => row.label.toLowerCase() === fallbackRow.label.toLowerCase()
+      )
+    ) {
       comparisonRows.push(fallbackRow);
     }
   });
@@ -357,7 +385,9 @@ function normalizePage(page: GeneratedPage): NormalizedPageContent {
   const faqItems: NormalizedFAQItem[] =
     Array.isArray(page.faq) && page.faq.length
       ? page.faq
-          .filter((faq): faq is FAQItem => Boolean(faq?.question && faq?.answer))
+          .filter((faq): faq is FAQItem =>
+            Boolean(faq?.question && faq?.answer)
+          )
           .map((faq) => ({
             question: faq.question!,
             answer: faq.answer!,
@@ -370,7 +400,8 @@ function normalizePage(page: GeneratedPage): NormalizedPageContent {
     subheading: leadSource.subheading ?? DEFAULT_LEAD_MAGNET.subheading,
     ctaLabel: leadSource.cta_label ?? DEFAULT_LEAD_MAGNET.ctaLabel,
     ctaHref: leadSource.cta_href ?? DEFAULT_LEAD_MAGNET.ctaHref,
-    supportingText: leadSource.supporting_text ?? DEFAULT_LEAD_MAGNET.supportingText,
+    supportingText:
+      leadSource.supporting_text ?? DEFAULT_LEAD_MAGNET.supportingText,
   };
 
   const footerSource = page.footer ?? {};
@@ -391,7 +422,9 @@ function normalizePage(page: GeneratedPage): NormalizedPageContent {
       steps: processSteps,
     },
     comparison: {
-      heading: comparisonSource.heading ?? "Traditional Evaluations vs. AI-Powered Clarity",
+      heading:
+        comparisonSource.heading ??
+        "Traditional Evaluations vs. AI-Powered Clarity",
       rows: comparisonRows.slice(0, 4),
     },
     faq: faqItems.slice(0, 6),
@@ -483,220 +516,23 @@ export async function generateMetadata({
   };
 }
 
-export default async function Page({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  const { slug } = await params;
-  const page = readGeneratedPage(slug);
-
+export default function Page({ params }: { params: { slug: string } }) {
+  const page = readGeneratedPage(params.slug);
   if (!page) {
     notFound();
   }
-
   const normalized = normalizePage(page);
-  const faqSchema =
-    normalized.faq.length > 0 ? JSON.stringify(buildFaqSchema(normalized.faq)) : null;
-
-  const allPages = listGeneratedPages();
-  const relatedPages = allPages
-    .filter((entry) => entry.slug !== slug)
-    .slice(0, 6);
-
   return (
-    <main className="bg-white text-gray-800">
-      {faqSchema && (
-        <script
-          type="application/ld+json"
-          suppressHydrationWarning
-          dangerouslySetInnerHTML={{ __html: faqSchema }}
-        />
-      )}
-
-      {/* Hero Section */}
-      <section className="px-6 py-20 text-center max-w-4xl mx-auto">
-        <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-          {normalized.hero.headline}
-        </h1>
-        <p className="text-lg md:text-xl mb-8 text-gray-700">
-          {normalized.hero.subheadline}
-        </p>
-        <div className="flex flex-wrap justify-center gap-4">
-          <a
-            href={normalized.hero.ctaHref}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-xl font-semibold shadow-md transition-all"
-          >
-            {normalized.hero.ctaLabel}
-          </a>
-          <a
-            href="/conversational-trial"
-            className="border border-blue-200 text-blue-700 hover:bg-blue-50 px-8 py-4 rounded-xl font-semibold shadow-md transition-all"
-          >
-            Try the chat-guided demo
-          </a>
-        </div>
-        <p className="text-sm mt-3 text-gray-500">{normalized.hero.supportingText}</p>
-        <div className="mt-6 flex flex-wrap justify-center gap-3 text-sm text-gray-500">
-          {normalized.hero.trustBadges.map((badge) => (
-            <span
-              key={badge}
-              className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-4 py-2 shadow-sm"
-            >
-              <span className="inline-block h-2 w-2 rounded-full bg-blue-500" />
-              {badge}
-            </span>
-          ))}
-        </div>
-      </section>
-
-      {/* Social Proof */}
-      <section className="bg-gray-50 py-16 text-center">
-        <h2 className="text-2xl font-semibold mb-6 text-gray-900">
-          {normalized.socialProof.heading}
-        </h2>
-        <div className="flex flex-wrap justify-center gap-8 text-gray-500">
-          {normalized.socialProof.items.map((item) => (
-            <span key={item} className="uppercase tracking-wide text-sm">
-              {item}
-            </span>
-          ))}
-        </div>
-      </section>
-
-      {/* Keyword Content */}
-      <section className="px-6 py-16 max-w-3xl mx-auto">
-        <h2 className="text-2xl font-bold mb-4 text-gray-900">
-          {normalized.definition.heading}
-        </h2>
-        {normalized.definition.paragraphs.map((paragraph, index) => (
-          <p key={index} className="text-lg leading-relaxed text-gray-700 mb-4">
-            {paragraph}
-          </p>
-        ))}
-      </section>
-
-      {/* 3-Step Process */}
-      <section className="bg-blue-50 py-20">
-        <div className="max-w-5xl mx-auto text-center">
-          <h2 className="text-3xl font-bold mb-10 text-gray-900">
-            {normalized.process.heading}
-          </h2>
-          <div className="grid md:grid-cols-3 gap-10">
-            {normalized.process.steps.map((card) => (
-              <div
-                key={card.step}
-                className="bg-white shadow-lg p-8 rounded-2xl hover:shadow-xl transition-all"
-              >
-                <h3 className="text-4xl font-bold text-blue-600 mb-4">{card.step}</h3>
-                <h4 className="text-xl font-semibold mb-2 text-gray-900">{card.title}</h4>
-                <p className="text-gray-600">{card.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Comparison Section */}
-      <section className="px-6 py-20 max-w-5xl mx-auto">
-        <h2 className="text-3xl font-bold text-center mb-10 text-gray-900">
-          {normalized.comparison.heading}
-        </h2>
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-left text-gray-700">
-            <thead>
-              <tr>
-                <th className="border-b p-4"></th>
-                <th className="border-b p-4 font-bold text-gray-900">Traditional</th>
-                <th className="border-b p-4 font-bold text-blue-700">BehaviorIQ™</th>
-              </tr>
-            </thead>
-            <tbody>
-              {normalized.comparison.rows.map((row) => (
-                <tr key={row.label}>
-                  <td className="p-4 font-medium text-gray-900">{row.label}</td>
-                  <td className="p-4">{row.traditional}</td>
-                  <td className="p-4 text-blue-700 font-semibold">{row.behavioriq}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="text-center mt-10">
-          <a
-            href={normalized.hero.ctaHref}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-xl font-semibold shadow-md transition-all"
-          >
-            {normalized.hero.ctaLabel}
-          </a>
-        </div>
-      </section>
-
-      {/* FAQ */}
-      {normalized.faq.length > 0 && (
-        <section className="bg-white px-6 py-20 max-w-5xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-10 text-gray-900">
-            Frequently Asked Questions
-          </h2>
-          <div className="grid gap-6 md:grid-cols-2">
-            {normalized.faq.map((item) => (
-              <div key={item.question} className="bg-gray-50 rounded-2xl p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">{item.question}</h3>
-                <p className="text-gray-700 text-sm leading-relaxed">{item.answer}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Lead Magnet */}
-      <section className="bg-blue-600 text-white py-20 text-center">
-        <h2 className="text-3xl font-bold mb-4">{normalized.leadMagnet.heading}</h2>
-        <p className="text-lg mb-8 max-w-2xl mx-auto">{normalized.leadMagnet.subheading}</p>
-        <a
-          href={normalized.leadMagnet.ctaHref}
-          className="bg-white text-blue-700 px-10 py-4 font-semibold rounded-xl shadow-lg hover:bg-gray-100 transition-all"
-        >
-          {normalized.leadMagnet.ctaLabel}
-        </a>
-        <p className="text-sm mt-4 text-blue-100 max-w-xl mx-auto">
-          {normalized.leadMagnet.supportingText}
-        </p>
-      </section>
-
-      {/* Related Topics */}
-      {relatedPages.length > 0 && (
-        <section className="px-6 py-16 max-w-5xl mx-auto">
-          <h2 className="text-2xl font-semibold text-gray-900 text-center mb-6">
-            Explore more BehaviorIQ™ topics
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {relatedPages.map((entry) => (
-              <a
-                key={entry.slug}
-                href={`/${entry.slug}`}
-                className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm hover:shadow-md transition"
-              >
-                <div className="text-sm uppercase tracking-wide text-blue-600 mb-2">BehaviorIQ™</div>
-                <div className="text-lg font-semibold text-gray-900">{entry.keyword}</div>
-              </a>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-gray-400 text-center py-10 text-sm">
-        <p className="max-w-3xl mx-auto px-6">{normalized.footer.text}</p>
-        <div className="mt-2 flex justify-center gap-4 text-blue-400">
-          {normalized.footer.links.map((link) => (
-            <a key={link.href} href={link.href}>
-              {link.label}
-            </a>
-          ))}
-        </div>
-      </footer>
+    <main className="min-h-screen">
+      <HeroSection {...normalized.hero} />
+      <SocialProofSection {...normalized.socialProof} />
+      <ContentSection {...normalized.definition} />
+      <WalkthroughSection {...normalized.process} />
+      <ComparisonSection {...normalized.comparison} />
+      <LeadMagnetSection {...normalized.leadMagnet} />
+      <FAQSection faqs={normalized.faq} />
+      <FinalCTASection />
+      <Footer {...normalized.footer} />
     </main>
   );
 }
-

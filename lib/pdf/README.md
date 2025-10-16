@@ -59,7 +59,7 @@ These can be added to the assessment model or user settings:
   logoUrl?: string;           // Organization logo
   organizationName?: string;  // School/district name
   schoolName?: string;        // Specific school
-  grade?: string;            // Student grade level
+  // grade?: string;            // removed grade level logic
 }
 ```
 
@@ -206,11 +206,13 @@ This ensures PDFs are always generated, even if Puppeteer has issues.
 ## Performance
 
 ### Tailwind PDF
+
 - **Generation Time**: ~2-5 seconds
 - **Memory Usage**: ~150MB per generation
 - **File Size**: ~50-200KB (depends on content)
 
 ### Legacy PDF
+
 - **Generation Time**: ~500ms
 - **Memory Usage**: ~20MB per generation
 - **File Size**: ~30-80KB
@@ -248,6 +250,7 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 ### Alternative: Serverless-Friendly
 
 For serverless without Puppeteer, use:
+
 - **Vercel PDF API** (paid)
 - **@react-pdf/renderer** (no browser needed)
 - **pdf-lib** (legacy generator - already implemented)

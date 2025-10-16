@@ -9,7 +9,10 @@ import {
 import { openai } from "@ai-sdk/openai";
 import { generateText, streamText } from "ai";
 import { SYSTEM_PROMPTS } from "@/lib/config/ai-config";
-import { classifyBooleanResponse, ZERO_TOKEN_USAGE } from "./responseClassifier";
+import {
+  classifyBooleanResponse,
+  ZERO_TOKEN_USAGE,
+} from "./responseClassifier";
 
 /**
  * OpenAI-powered conversational AI for assessments
@@ -37,7 +40,9 @@ export class OpenAIConversationalAI implements ConversationalAIProvider {
       };
 
       return {
-        text: text || "I'm having trouble responding right now. Could you try again?",
+        text:
+          text ||
+          "I'm having trouble responding right now. Could you try again?",
         usage: tokenUsage,
       };
     } catch (error) {
@@ -59,28 +64,32 @@ export class OpenAIConversationalAI implements ConversationalAIProvider {
     }
   ): Promise<ConversationalMessage> {
     // 🔍 DEBUG: Log the exact question we should be asking
-    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('🎯 [AI DEBUG] ASSESSMENT QUESTION');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log("🎯 [AI DEBUG] ASSESSMENT QUESTION");
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
     if (context?.shouldProgress && context?.nextQuestion) {
-      console.log('📝 ACTUAL ASSESSMENT QUESTION (from template):');
+      console.log("📝 ACTUAL ASSESSMENT QUESTION (from template):");
       console.log(`   "${context.nextQuestion.text}"`);
       console.log(`   Domain: ${(context.nextQuestion as any).domainSlug}`);
       console.log(`   Question ID: ${context.nextQuestion.id}`);
     } else {
-      console.log('📝 ACTUAL ASSESSMENT QUESTION (from template):');
+      console.log("📝 ACTUAL ASSESSMENT QUESTION (from template):");
       console.log(`   "${currentQuestion.text}"`);
       console.log(`   Domain: ${(currentQuestion as any).domainSlug}`);
       console.log(`   Question ID: ${currentQuestion.id}`);
     }
 
-    console.log('\n📊 Context:', {
-      action: context?.shouldProgress ? 'Moving to next question' : context?.clarificationNeeded ? 'Asking for clarification' : 'Asking current question',
+    console.log("\n📊 Context:", {
+      action: context?.shouldProgress
+        ? "Moving to next question"
+        : context?.clarificationNeeded
+          ? "Asking for clarification"
+          : "Asking current question",
       extractedAnswer: context?.extractedAnswer,
       confidence: context?.confidence,
     });
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
     // ⚡ OPTIMIZATION: No conversation history needed
     // Each question is independent and we provide all context in the system messages
@@ -101,7 +110,7 @@ export class OpenAIConversationalAI implements ConversationalAIProvider {
 ASK FOR YES/NO CLARIFICATION about this assessment question:
 ORIGINAL QUESTION: "${currentQuestion.text}"
 
-Rephrase at THIRD-GRADE LEVEL. Use simple words. Keep it about the same topic.
+Use simple words. Keep it about the same topic.
 Format: [Short acknowledgment]. [Simple yes/no question]
 
 Example: "I hear you. 😊 So is that a yes or a no?"`;
@@ -112,8 +121,8 @@ NOW ASK THE NEXT ASSESSMENT QUESTION:
 ORIGINAL QUESTION: "${context.nextQuestion.text}"
 DOMAIN: ${(context.nextQuestion as any).domainSlug}
 
-Rephrase at THIRD-GRADE LEVEL: simple words, short sentences (under 12 words).
-Keep the same meaning but make it easy for an 8-10 year old to understand.
+Use simple words, short sentences (under 12 words).
+Keep the same meaning but make it easy to understand.
 
 Format: [Short acknowledgment]. [Simple question]
 
@@ -133,8 +142,7 @@ ASK THIS ASSESSMENT QUESTION:
 ORIGINAL QUESTION: "${currentQuestion.text}"
 DOMAIN: ${(currentQuestion as any).domainSlug}
 
-Rephrase at THIRD-GRADE LEVEL: simple words a 3rd grader knows.
-Keep it friendly and short. Max 10-12 words per sentence.
+Use simple words. Keep it friendly and short. Max 10-12 words per sentence.
 
 Format: [Short, warm greeting]. [Simple question]
 
@@ -145,7 +153,7 @@ Example: "Hi! 😊 I'm going to ask you some questions. [Ask about this topic us
 ORIGINAL QUESTION: "${currentQuestion.text}"
 DOMAIN: ${(currentQuestion as any).domainSlug}
 
-Rephrase at THIRD-GRADE LEVEL. Use simple words. Keep it about the same topic.`;
+Use simple words. Keep it about the same topic.`;
     }
 
     const messages = [
@@ -166,12 +174,12 @@ Rephrase at THIRD-GRADE LEVEL. Use simple words. Keep it about the same topic.`;
       const { text: aiContent, usage } = await this.callOpenAI(messages, 0.7);
 
       // 🔍 DEBUG: Log what the AI actually generated
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('💬 [AI DEBUG] AI GENERATED RESPONSE (what child sees):');
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.log("💬 [AI DEBUG] AI GENERATED RESPONSE (what child sees):");
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
       console.log(`   "${aiContent}"`);
-      console.log('\n📊 Token Usage:', usage);
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+      console.log("\n📊 Token Usage:", usage);
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
       return {
         id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -215,28 +223,32 @@ Rephrase at THIRD-GRADE LEVEL. Use simple words. Keep it about the same topic.`;
     }
   ) {
     // 🔍 DEBUG: Log the exact question we should be asking
-    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('🎯 [AI DEBUG] ASSESSMENT QUESTION (STREAMING)');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log("🎯 [AI DEBUG] ASSESSMENT QUESTION (STREAMING)");
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
     if (context?.shouldProgress && context?.nextQuestion) {
-      console.log('📝 ACTUAL ASSESSMENT QUESTION (from template):');
+      console.log("📝 ACTUAL ASSESSMENT QUESTION (from template):");
       console.log(`   "${context.nextQuestion.text}"`);
       console.log(`   Domain: ${(context.nextQuestion as any).domainSlug}`);
       console.log(`   Question ID: ${context.nextQuestion.id}`);
     } else {
-      console.log('📝 ACTUAL ASSESSMENT QUESTION (from template):');
+      console.log("📝 ACTUAL ASSESSMENT QUESTION (from template):");
       console.log(`   "${currentQuestion.text}"`);
       console.log(`   Domain: ${(currentQuestion as any).domainSlug}`);
       console.log(`   Question ID: ${currentQuestion.id}`);
     }
 
-    console.log('\n📊 Context:', {
-      action: context?.shouldProgress ? 'Moving to next question' : context?.clarificationNeeded ? 'Asking for clarification' : 'Asking current question',
+    console.log("\n📊 Context:", {
+      action: context?.shouldProgress
+        ? "Moving to next question"
+        : context?.clarificationNeeded
+          ? "Asking for clarification"
+          : "Asking current question",
       extractedAnswer: context?.extractedAnswer,
       confidence: context?.confidence,
     });
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
     // Add system prompt for conversational assessment
     const systemMessage = {
@@ -370,7 +382,8 @@ CONFIDENCE: [0.0-1.0]`;
         [
           {
             role: "system",
-            content: "Analyze child responses to behavioral questions. Extract YES/NO with confidence.",
+            content:
+              "Analyze child responses to behavioral questions. Extract YES/NO with confidence.",
           },
           {
             role: "user",
@@ -381,9 +394,9 @@ CONFIDENCE: [0.0-1.0]`;
       );
 
       // 🔍 DEBUG: Log the raw extraction response
-      console.log('🔍 [EXTRACTION DEBUG] Raw AI Response:');
+      console.log("🔍 [EXTRACTION DEBUG] Raw AI Response:");
       console.log(response);
-      console.log('');
+      console.log("");
 
       // Parse the structured response
       const lines = response.trim().split("\n");
@@ -407,8 +420,11 @@ CONFIDENCE: [0.0-1.0]`;
       }
 
       // 🔍 DEBUG: Log parsed result
-      console.log('🔍 [EXTRACTION DEBUG] Parsed Result:', { answer, confidence });
-      console.log('');
+      console.log("🔍 [EXTRACTION DEBUG] Parsed Result:", {
+        answer,
+        confidence,
+      });
+      console.log("");
 
       return { answer, confidence, tokenUsage: usage };
     } catch (error) {

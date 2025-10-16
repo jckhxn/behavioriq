@@ -51,7 +51,8 @@ export async function generateTailwindPDF(
     take: 1,
   });
 
-  const aiRecommendations = recommendations[0]?.content ||
+  const aiRecommendations =
+    recommendations[0]?.content ||
     "No AI recommendations available. Please generate recommendations first.";
 
   // Parse recommendations into array
@@ -74,7 +75,7 @@ export async function generateTailwindPDF(
     assessmentDate: formatDate(assessment.completedAt || assessment.startedAt),
     evaluator: assessment.user.name || assessment.user.email,
     schoolName: "N/A", // Can be added to assessment model later
-    grade: "N/A", // Can be added to assessment model later
+    // grade: "N/A", // removed grade level logic
     domainScores,
     recommendations: recommendationsList,
     summary,
@@ -149,7 +150,7 @@ function generateHTML(data: {
   assessmentDate: string;
   evaluator: string;
   schoolName: string;
-  grade: string;
+  // grade: string; // removed grade level logic (no DomainScore grade property present)
   domainScores: DomainScore[];
   recommendations: string[];
   summary: string;
@@ -210,13 +211,17 @@ function generateHTML(data: {
           <p class="text-muted-foreground text-lg">Early Assessment Tool</p>
         </div>
         <div class="flex flex-col items-end gap-3">
-          ${data.logoUrl ? `
+          ${
+            data.logoUrl
+              ? `
             <img
               src="${data.logoUrl}"
               alt="Organization Logo"
               class="h-16 w-auto object-contain"
             />
-          ` : ''}
+          `
+              : ""
+          }
           <div class="text-right">
             <div class="text-sm text-muted-foreground mb-1">Report Date</div>
             <div class="font-mono text-sm">${data.assessmentDate}</div>
@@ -230,10 +235,7 @@ function generateHTML(data: {
           <div class="text-xs uppercase tracking-wider text-muted-foreground mb-1">Student Name</div>
           <div class="font-medium text-lg">${data.studentName}</div>
         </div>
-        <div>
-          <div class="text-xs uppercase tracking-wider text-muted-foreground mb-1">Grade Level</div>
-          <div class="font-medium text-lg">${data.grade}</div>
-        </div>
+        <!-- Grade Level removed -->
         <div>
           <div class="text-xs uppercase tracking-wider text-muted-foreground mb-1">School</div>
           <div class="font-medium text-lg">${data.schoolName}</div>
@@ -249,27 +251,37 @@ function generateHTML(data: {
     <section class="mb-12">
       <h2 class="text-2xl font-bold mb-6 tracking-tight text-primary">Domain Scores</h2>
       <div class="space-y-6">
-        ${data.domainScores.map((domain) => {
-          const percentage = (domain.score / domain.maxScore) * 100;
-          const scoreLevel =
-            percentage >= 85 ? "Excellent" :
-            percentage >= 70 ? "Good" :
-            percentage >= 55 ? "Fair" :
-            "Needs Support";
+        ${data.domainScores
+          .map((domain) => {
+            const percentage = (domain.score / domain.maxScore) * 100;
+            const scoreLevel =
+              percentage >= 85
+                ? "Excellent"
+                : percentage >= 70
+                  ? "Good"
+                  : percentage >= 55
+                    ? "Fair"
+                    : "Needs Support";
 
-          const scoreColor =
-            percentage >= 85 ? "text-success" :
-            percentage >= 70 ? "text-info" :
-            percentage >= 55 ? "text-warning" :
-            "text-destructive";
+            const scoreColor =
+              percentage >= 85
+                ? "text-success"
+                : percentage >= 70
+                  ? "text-info"
+                  : percentage >= 55
+                    ? "text-warning"
+                    : "text-destructive";
 
-          const barColor =
-            percentage >= 85 ? "bg-success" :
-            percentage >= 70 ? "bg-info" :
-            percentage >= 55 ? "bg-warning" :
-            "bg-destructive";
+            const barColor =
+              percentage >= 85
+                ? "bg-success"
+                : percentage >= 70
+                  ? "bg-info"
+                  : percentage >= 55
+                    ? "bg-warning"
+                    : "bg-destructive";
 
-          return `
+            return `
             <div class="p-6 border border-gray-200 rounded-lg border-l-4 border-l-primary">
               <div class="flex items-start justify-between mb-4">
                 <div class="flex-1">
@@ -297,7 +309,8 @@ function generateHTML(data: {
               </div>
             </div>
           `;
-        }).join('')}
+          })
+          .join("")}
       </div>
     </section>
 
@@ -314,14 +327,18 @@ function generateHTML(data: {
       <h2 class="text-2xl font-bold mb-4 tracking-tight text-primary">Suggested Next Steps</h2>
       <div class="p-6 border border-gray-200 rounded-lg border-l-4 border-l-secondary">
         <ol class="space-y-4">
-          ${data.recommendations.map((recommendation, index) => `
+          ${data.recommendations
+            .map(
+              (recommendation, index) => `
             <li class="flex gap-4">
               <span class="font-mono font-bold text-primary bg-primary/10 px-2 py-1 rounded flex-shrink-0 h-fit">
                 ${String(index + 1).padStart(2, "0")}
               </span>
               <span class="text-base leading-relaxed">${recommendation}</span>
             </li>
-          `).join('')}
+          `
+            )
+            .join("")}
         </ol>
       </div>
     </section>
@@ -388,8 +405,7 @@ function generateSummary(
   let summaryText = `This behavioral screening assessed ${totalDomains} developmental domains for ${assessment.subjectName}. `;
 
   if (averagePercentage >= 75) {
-    summaryText +=
-      "Overall performance is strong across most assessed areas. ";
+    summaryText += "Overall performance is strong across most assessed areas. ";
   } else if (averagePercentage >= 60) {
     summaryText +=
       "Overall performance shows a mix of strengths and areas needing support. ";
@@ -424,15 +440,16 @@ function formatDate(dateString: string): string {
  */
 function parseRecommendations(aiText: string): string[] {
   // Try to extract numbered or bulleted lists
-  const lines = aiText.split('\n').filter(line => line.trim());
+  const lines = aiText.split("\n").filter((line) => line.trim());
 
   const recommendations: string[] = [];
 
   for (const line of lines) {
     // Match patterns like "1.", "•", "-", "*" at start of line
-    const cleaned = line.trim()
-      .replace(/^[\d]+\.\s*/, '')  // Remove "1. "
-      .replace(/^[•\-\*]\s*/, '')  // Remove "• ", "- ", "* "
+    const cleaned = line
+      .trim()
+      .replace(/^[\d]+\.\s*/, "") // Remove "1. "
+      .replace(/^[•\-\*]\s*/, "") // Remove "• ", "- ", "* "
       .trim();
 
     // Only add substantial lines (more than 20 chars)

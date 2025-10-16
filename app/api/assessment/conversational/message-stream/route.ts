@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { ConversationalAIFactory } from "@/lib/ai/conversational/ConversationalAIFactory";
 import { databaseSessionStore } from "@/lib/ai/conversational/DatabaseSessionStore";
+import { sessionStore } from "@/lib/ai/conversational/SessionStore";
 
 /**
  * Streaming endpoint for conversational assessment messages
@@ -10,8 +11,11 @@ export async function POST(request: NextRequest) {
   try {
     const { sessionId, message } = await request.json();
 
-    // Get session from database
-    const session = await databaseSessionStore.get(sessionId);
+    // Get session from database, fall back to in-memory for trial users
+    let session = await databaseSessionStore.get(sessionId);
+    if (!session) {
+      session = sessionStore.get(sessionId);
+    }
     if (!session) {
       return new Response(JSON.stringify({ error: "Session not found" }), {
         status: 404,
@@ -19,37 +23,41 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 🛡️ RATE LIMITING: Prevent rapid-fire submissions (min 2 seconds between submissions)
-    const isRateLimited = await databaseSessionStore.isRateLimited(
-      sessionId,
-      2
-    );
-    if (isRateLimited) {
-      console.log(
-        `[Conversational] ⚠️ Rate limit exceeded for session ${sessionId}`
-      );
-      return new Response(
-        JSON.stringify({
-          error: "Please wait a moment before submitting again",
-        }),
-        { status: 429, headers: { "Content-Type": "application/json" } }
-      );
-    }
+    const isTrialSession = session.isTrial;
 
-    // 🛡️ ABUSE DETECTION: Check submission count
-    const submissionCount =
-      await databaseSessionStore.getSubmissionCount(sessionId);
-    if (submissionCount > 300) {
-      console.log(
-        `[Conversational] ⚠️ Suspicious activity: ${submissionCount} submissions for session ${sessionId}`
+    // 🛡️ RATE LIMITING: Prevent rapid-fire submissions (min 2 seconds between submissions)
+    if (!isTrialSession) {
+      const isRateLimited = await databaseSessionStore.isRateLimited(
+        sessionId,
+        2
       );
-      return new Response(
-        JSON.stringify({
-          error:
-            "Too many submissions. Please contact support if you need assistance.",
-        }),
-        { status: 429, headers: { "Content-Type": "application/json" } }
-      );
+      if (isRateLimited) {
+        console.log(
+          `[Conversational] ⚠️ Rate limit exceeded for session ${sessionId}`
+        );
+        return new Response(
+          JSON.stringify({
+            error: "Please wait a moment before submitting again",
+          }),
+          { status: 429, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      // 🛡️ ABUSE DETECTION: Check submission count
+      const submissionCount =
+        await databaseSessionStore.getSubmissionCount(sessionId);
+      if (submissionCount > 300) {
+        console.log(
+          `[Conversational] ⚠️ Suspicious activity: ${submissionCount} submissions for session ${sessionId}`
+        );
+        return new Response(
+          JSON.stringify({
+            error:
+              "Too many submissions. Please contact support if you need assistance.",
+          }),
+          { status: 429, headers: { "Content-Type": "application/json" } }
+        );
+      }
     }
 
     const currentQuestion = session.questions[session.currentQuestionIndex];
@@ -82,19 +90,41 @@ export async function POST(request: NextRequest) {
       `[Conversational] Extracted: ${extraction.answer} (confidence: ${extraction.confidence})`
     );
 
-    // 🛡️ IDEMPOTENCY: Try to record this submission
-    const isNewSubmission = await databaseSessionStore.recordSubmission(
-      sessionId,
-      currentQuestion.id,
-      session.currentQuestionIndex,
-      message,
-      extraction.answer,
-      extraction.confidence,
-      false,
-      extraction.tokenUsage
-    );
+    const applyTokenUsage = (usage?: {
+      promptTokens: number;
+      completionTokens: number;
+      totalTokens: number;
+    }) => {
+      if (!usage) {
+        return;
+      }
+      if (!session.totalTokenUsage) {
+        session.totalTokenUsage = {
+          promptTokens: 0,
+          completionTokens: 0,
+          totalTokens: 0,
+        };
+      }
+      session.totalTokenUsage.promptTokens += usage.promptTokens;
+      session.totalTokenUsage.completionTokens += usage.completionTokens;
+      session.totalTokenUsage.totalTokens += usage.totalTokens;
+    };
 
-    if (!isNewSubmission) {
+    // 🛡️ IDEMPOTENCY: Try to record this submission
+    const isNewSubmission = isTrialSession
+      ? true
+      : await databaseSessionStore.recordSubmission(
+          sessionId,
+          currentQuestion.id,
+          session.currentQuestionIndex,
+          message,
+          extraction.answer,
+          extraction.confidence,
+          false,
+          extraction.tokenUsage
+        );
+
+    if (!isTrialSession && !isNewSubmission) {
       console.log(
         `[Conversational] ⚠️ Duplicate submission detected - ignoring`
       );
@@ -150,6 +180,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Track token usage from extraction immediately
+    applyTokenUsage(extraction.tokenUsage);
+
     // Check if assessment is complete
     if (session.currentQuestionIndex >= session.questions.length) {
       session.isComplete = true;
@@ -172,6 +205,55 @@ export async function POST(request: NextRequest) {
           nextQuestion,
         })
       : undefined;
+
+    const shouldStream =
+      !isTrialSession && !!streamResult && !!streamResult.toTextStreamResponse;
+
+    if (!shouldStream) {
+      // Fall back to non-streaming response (used for trial/mock sessions)
+      const aiMessage = await ai.generateResponse(
+        session,
+        message,
+        currentQuestion,
+        {
+          shouldProgress,
+          clarificationNeeded,
+          extractedAnswer: extraction.answer,
+          confidence: extraction.confidence,
+          nextQuestion,
+        }
+      );
+
+      session.messages.push(aiMessage);
+      applyTokenUsage(aiMessage.metadata?.tokenUsage);
+
+      if (isTrialSession) {
+        sessionStore.set(sessionId, session);
+      } else {
+        await databaseSessionStore.set(sessionId, session);
+      }
+
+      console.log(
+        `[Conversational] 💾 Saved non-streaming message ${aiMessage.id} with ${aiMessage.content.length} characters`
+      );
+
+      return new Response(aiMessage.content, {
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+          "X-Message-Id": aiMessage.id,
+          "X-Is-Complete": session.isComplete ? "true" : "false",
+          "X-Progress-Answered": Object.keys(session.responses).length.toString(),
+          "X-Progress-Total": session.questions.length.toString(),
+          "X-Should-Progress": shouldProgress ? "true" : "false",
+          "X-Clarification-Needed": clarificationNeeded ? "true" : "false",
+          "X-Extracted-Answer":
+            extraction.answer !== null ? extraction.answer.toString() : "null",
+          "X-Confidence": extraction.confidence.toString(),
+        },
+      });
+    }
 
     // Create a transform stream to capture the full text for saving
     let fullText = "";
@@ -203,26 +285,14 @@ export async function POST(request: NextRequest) {
         };
 
         session.messages.push(aiMessage);
-
-        // Track token usage from extraction
-        if (extraction.tokenUsage) {
-          if (!session.totalTokenUsage) {
-            session.totalTokenUsage = {
-              promptTokens: 0,
-              completionTokens: 0,
-              totalTokens: 0,
-            };
-          }
-          session.totalTokenUsage.promptTokens +=
-            extraction.tokenUsage.promptTokens;
-          session.totalTokenUsage.completionTokens +=
-            extraction.tokenUsage.completionTokens;
-          session.totalTokenUsage.totalTokens +=
-            extraction.tokenUsage.totalTokens;
-        }
+        applyTokenUsage(aiMessage.metadata?.tokenUsage);
 
         // Save session to database
-        await databaseSessionStore.set(sessionId, session);
+        if (isTrialSession) {
+          sessionStore.set(sessionId, session);
+        } else {
+          await databaseSessionStore.set(sessionId, session);
+        }
 
         console.log(
           `[Conversational] 💾 Saved message ${messageId} with ${fullText.length} characters`

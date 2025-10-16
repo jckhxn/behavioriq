@@ -4,6 +4,8 @@ import { getToken } from "next-auth/jwt";
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  const authSecret =
+    process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || undefined;
 
   // Always allow API and static assets to pass through middleware without redirects
   if (
@@ -48,14 +50,33 @@ export async function middleware(req: NextRequest) {
   const isAutoLoginPage = req.nextUrl.pathname.startsWith("/auth/auto-login");
 
   // Public pages that don't require authentication
+  const protectedPrefixes = [
+    "dashboard",
+    "admin",
+    "login",
+    "register",
+    "api",
+    "checkout",
+    "payment",
+    "trial-assessment",
+    "trial-results",
+    "share",
+    "auth",
+  ];
+  const isPseoPage =
+    /^\/[a-zA-Z0-9-]+$/.test(req.nextUrl.pathname) &&
+    !protectedPrefixes.some((prefix) =>
+      req.nextUrl.pathname.startsWith(`/${prefix}`)
+    );
   const isPublicPage =
     req.nextUrl.pathname === "/" ||
     req.nextUrl.pathname.startsWith("/trial-assessment") ||
     req.nextUrl.pathname.startsWith("/trial-results") ||
     req.nextUrl.pathname.startsWith("/payment") ||
     req.nextUrl.pathname.startsWith("/payment-success") ||
-    req.nextUrl.pathname.startsWith("/share") || // Allow shared assessments
-    req.nextUrl.pathname.startsWith("/auth/"); // Allow all auth flow pages
+    req.nextUrl.pathname.startsWith("/share") ||
+    req.nextUrl.pathname.startsWith("/auth/") ||
+    isPseoPage;
 
   // Allow auto-login to complete even if already authenticated
   if (isAutoLoginPage) {
@@ -67,7 +88,7 @@ export async function middleware(req: NextRequest) {
   if (isAuthPage) {
     if (isAuth) {
       const redirectResponse = NextResponse.redirect(
-        new URL("/dashboard", req.url)
+        new URL("/", req.url)
       );
       applyBrandingHeaders(redirectResponse, branding);
       return redirectResponse;
@@ -116,21 +137,29 @@ export async function middleware(req: NextRequest) {
     // TODO: Consider adding role to user metadata for faster checks
   }
 
-  const token = await getToken({ req });
-
-  // Check if MFA is required but not enabled
-  const requireMFA = process.env.REQUIRE_MFA === "true";
   const protectedPaths = ["/dashboard", "/assessments", "/admin"];
   const isProtectedPath = protectedPaths.some((path) =>
     req.nextUrl.pathname.startsWith(path)
   );
 
-  if (requireMFA && isProtectedPath && token && !token.mfaEnabled) {
-    const redirectResponse = NextResponse.redirect(
-      new URL("/settings?tab=security&mfa=required", req.url)
-    );
-    applyBrandingHeaders(redirectResponse, branding);
-    return redirectResponse;
+  let token;
+  if (isProtectedPath) {
+    if (authSecret) {
+      token = await getToken({ req, secret: authSecret });
+    } else {
+      console.warn(
+        "[middleware] NEXTAUTH_SECRET/AUTH_SECRET not set; skipping JWT validation in middleware"
+      );
+    }
+    // Check if MFA is required but not enabled
+    const requireMFA = process.env.REQUIRE_MFA === "true";
+    if (requireMFA && token && !token.mfaEnabled) {
+      const redirectResponse = NextResponse.redirect(
+        new URL("/settings?tab=security&mfa=required", req.url)
+      );
+      applyBrandingHeaders(redirectResponse, branding);
+      return redirectResponse;
+    }
   }
 
   const response = NextResponse.next();

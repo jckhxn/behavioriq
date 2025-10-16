@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ConversationalSession } from "@/lib/ai/conversational/types";
 import { databaseSessionStore } from "@/lib/ai/conversational/DatabaseSessionStore";
+import { sessionStore } from "@/lib/ai/conversational/SessionStore";
 import { ConversationalAIFactory } from "@/lib/ai/conversational/ConversationalAIFactory";
 import { AssessmentDomain, RiskLevel } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
@@ -9,7 +10,10 @@ export async function POST(request: NextRequest) {
   try {
     const { sessionId } = await request.json();
 
-    const session = await databaseSessionStore.get(sessionId);
+    let session = await databaseSessionStore.get(sessionId);
+    if (!session) {
+      session = sessionStore.get(sessionId);
+    }
     if (!session) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
@@ -119,7 +123,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Clean up session from database
-    await databaseSessionStore.delete(sessionId);
+    if (session.isTrial) {
+      sessionStore.delete(sessionId);
+    } else {
+      await databaseSessionStore.delete(sessionId);
+    }
 
     return NextResponse.json({
       responses,

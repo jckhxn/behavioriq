@@ -17,11 +17,8 @@ $1 per 10k emails (SES)
 ## Bugs Track
 
 - [] Fix pSEO generating grade level stuff thats not needed.
-- [] Failed to load credits (likely from the migration stuff)
-- [] Regular Report doesn't use ai-config.ts PROMPT
 - [] Cleanup all the damn console.logs
-- [] Assessments are so slow.
-- [] maxConversationalReports is missing DB
+- [] Clean .env mess
 
 ## Features
 
@@ -34,6 +31,7 @@ $1 per 10k emails (SES)
 - [] Verify Convo Assessment Flow (A->Results Page->Generate AI Report?)
 - [] Add trial taking, full assessment taking as a ChatGPT App ( Refer to this repo as a guide. The API needs to be setup to provide the trial questions and full assessment questions and assessment taking https://chatgpt.com/c/68e861c5-9f8c-8320-9d58-94114bc55ab8)
 - - chatgpt app example https://vercel.com/templates/next.js/chatgpt-app-with-next-js
+- - Vercel guide https://vercel.com/blog/running-next-js-inside-chatgpt-a-deep-dive-into-native-app-integration
 
 - [] Global max limit for both AI reports and AI convos (This supercedes the amount of credits a user has purchased.)
 - [] Districts can configure PDF Branding & Email settings
