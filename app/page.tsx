@@ -1,4 +1,5 @@
 "use client";
+import LandingPagePricing from "../components/landing/LandingPagePricing";
 
 import { useState, useEffect, Suspense } from "react";
 import { useUserData, useSignOut } from "@/lib/hooks/use-supabase-user";
@@ -31,7 +32,7 @@ import {
 } from "@/components/ui/sidebar";
 import { ScoringSidebar } from "@/components/scoring/ScoringSidebar";
 import { LandingPage } from "@/components/landing/LandingPage";
-import { AssessmentsView } from "@/components/assessment/AssessmentsView";
+import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { CompactRecommendationsWithModal } from "@/components/recommendations/CompactRecommendationsWithModal";
 import { ThemeToggle } from "@/components/theme-toggle";
 import SettingsPane from "@/components/settings/SettingsPane";
@@ -135,7 +136,12 @@ function HomeContent() {
   }
 
   if (!userData) {
-    return <LandingPage />;
+    return (
+      <>
+        <LandingPage />
+        <LandingPagePricing />
+      </>
+    );
   }
 
   return (
@@ -241,7 +247,7 @@ function HomeContent() {
                   className="flex-1 overflow-hidden mt-0"
                 >
                   <div id="assessments-list">
-                    <AssessmentsView />
+                    <DashboardShell />
                   </div>
                 </TabsContent>
 
@@ -380,6 +386,7 @@ export default function Home() {
         }
       >
         <HomeContent />
+        <LandingPagePricing />
       </Suspense>
     </OnboardingProvider>
   );

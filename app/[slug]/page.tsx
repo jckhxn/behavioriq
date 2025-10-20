@@ -12,9 +12,7 @@ import path from "path";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-const SITE_URL = (
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://aidiagnostic.com"
-).replace(/\/$/, "");
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "");
 
 interface HeroContent {
   headline?: string;

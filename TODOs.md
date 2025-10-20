@@ -4,8 +4,6 @@
 **MVP Launch Target**: 2 weeks
 **Status**: 95% Ready for Launch ✨
 
-# # Additional stuff in /PRICING_MATRIX.MD
-
 # # Costs
 
 2.5 cents per regular assessment report.
@@ -16,18 +14,26 @@ $1 per 10k emails (SES)
 
 ## Bugs Track
 
+- [] Fix Maintenance mode logic.
 - [] Fix pSEO generating grade level stuff thats not needed.
 - [] Cleanup all the damn console.logs
 - [] Clean .env mess
+- [] Make sure updated license logic works
+  
 
 ## Features
 
+- [] Assessment In Memory (Progress for prev/next question flow in memory -> Send domain scores to AI/DB calls at end for resume? Speeds up assessment progress by question progression looking instant.)
+- [] Don't allow users to upgrade their account if they are already on the account type.
+- [] Update Billing in Profile to reflect actual account status.
+- [] Users purchasing/upgrade on dashboard should redirect to dash.
+- [] Make sure each account feature set is implemented
+- - i.e Multi-child profiles for Family lol
+- [] Redesign look of trial assessment, email capture, etc
 - [] pSEO has redundant code/folders
 - [] SEO/OpenGraph/pSEO/Metadata implementation
 - [] Have pSEO script generate sitemap automatically.
 - [] AI Recommendation read out could be prettier (use custom components?)
-- [] Update UI to reflect pricing changes (IDs already generated in .env)
-  - - Refer to PRICING_MATRIX.md
 - [] Verify Convo Assessment Flow (A->Results Page->Generate AI Report?)
 - [] Add trial taking, full assessment taking as a ChatGPT App ( Refer to this repo as a guide. The API needs to be setup to provide the trial questions and full assessment questions and assessment taking https://chatgpt.com/c/68e861c5-9f8c-8320-9d58-94114bc55ab8)
 - - chatgpt app example https://vercel.com/templates/next.js/chatgpt-app-with-next-js
@@ -92,8 +98,8 @@ $1 per 10k emails (SES)
 ### Testing & Quality Assurance
 
 - [ ] **Test Critical User Flows** (3-4 hours)
-  - [ ] Sign up & login (password, OAuth, MFA)
-  - [ ] Trial assessment flow (not logged in)
+  - [x ] Sign up & login (password, OAuth, MFA)
+  - [x] Trial assessment flow (not logged in)
   - [ ] Full assessment flow (logged in)
   - [ ] Payment flows (all subscription types)
   - [ ] Enhanced report purchase
@@ -287,3 +293,114 @@ See [MVP_LAUNCH_GUIDE.md](MVP_LAUNCH_GUIDE.md) for complete checklist.
 **Current Status: Ready to Launch!** 🚀
 
 Your codebase is 95% ready. Complete Priority 1 & 2 items (4-5 days of work), test thoroughly, and ship it. Build Priority 3 features based on actual user demand, not assumptions.
+
+# Dashboard Upgrade & Plan Change Implementation
+
+- [ ] Implement Dashboard Upgrade UI
+  - Build the dashboard upgrade page as described: current plan card, upgrade grid, proration modal, mobile layout, badges, accessibility, and tracking. Use provided JSX/Tailwind scaffold and follow all copy/microcopy notes.
+- [ ] Implement API routes for plan changes
+  - Create API endpoints (e.g., /api/billing/change-plan) to handle Stripe subscription updates, proration, top-up logic, and credit model updates. Integrate with Stripe and update user DB records accordingly.
+  - Wire shared plan config (`SUBSCRIPTION_PLANS`) into webhook handlers so Stripe events keep Prisma licenses and credit caps in sync (core ↔ family, monthly ↔ annual).
+  - Instrument GA4 events (`upgrade_view`, `upgrade_click`, `upgrade_confirm`, `add_report_click`) across dashboard flows and verify dataLayer payloads match pricing config.
+- [ ] Add account features and credit logic
+  - Core Plan (Monthly Membership)
+    - 2 full assessment credits per month (any mix of parent or child assessments)
+    - Credit rollover (up to 6 total credits)
+    - Credits expire if not used within 12 months
+    - Next credit earning date is calculated based on last credit grant and plan cycle
+    - Expose API endpoints and UI logic for:
+      - Checking current credit balance
+      - Using and adding credits
+      - Calculating and displaying rollover cap
+      - Calculating and displaying next credit earning date
+      - Expiring credits after 12 months
+    - Conversational AI sessions ($9 each)
+    - Full dashboard access
+    - Progress tracking graphs
+    - Parent resource library
+    - School-ready PDF reports
+    - Priority email support
+    - Member discount on additional assessments ($77 per credit)
+    - Enhanced Reports at member rate ($9 each)
+  - Family Plan (Monthly Membership)
+    - 5 full assessment credits per month (any mix of parent or child)
+    - Credit rollover (up to 15 total credits)
+    - Credits expire if not used within 12 months
+    - Next credit earning date is calculated based on last credit grant and plan cycle
+    - Expose API endpoints and UI logic for:
+      - Checking current credit balance
+      - Using and adding credits
+      - Calculating and displaying rollover cap
+      - Calculating and displaying next credit earning date
+      - Expiring credits after 12 months
+    - Unlimited Conversational AI sessions
+    - Multi-child profile management
+    - Full dashboard with advanced features
+    - Progress tracking for all children
+    - Parent resource library (premium access)
+    - All Enhanced Reports included FREE
+    - Priority support with live chat
+    - Early access to new features
+    - Member discount on additional assessments ($77 per credit)
+  - Annual Core Plan
+    - Everything in monthly Core Plan
+    - 24 assessment credits per year (2 per month)
+    - Same rollover rules (max 6 credits at any time)
+    - Credits expire if not used within 12 months
+    - Next credit earning date is calculated based on last credit grant and plan cycle
+    - Expose API endpoints and UI logic for:
+      - Checking current credit balance
+      - Using and adding credits
+      - Calculating and displaying rollover cap
+      - Calculating and displaying next credit earning date
+      - Expiring credits after 12 months
+    - Conversational AI: $9 per session
+    - 3 Enhanced Reports included (additional ones at $9 member rate)
+  - Annual Family Plan
+    - Everything in monthly Family Plan
+    - 60 assessment credits per year (5 per month)
+    - Same rollover rules (max 15 credits at any time)
+    - Credits expire if not used within 12 months
+    - Next credit earning date is calculated based on last credit grant and plan cycle
+    - Expose API endpoints and UI logic for:
+      - Checking current credit balance
+      - Using and adding credits
+      - Calculating and displaying rollover cap
+      - Calculating and displaying next credit earning date
+      - Expiring credits after 12 months
+    - Unlimited Conversational AI sessions
+    - Multi-child profiles and advanced dashboard
+    - All additional Enhanced Reports at member rate ($9)
+  - Parent Pilot Program (District Downsell Strategy)
+    - Zero cost to districts
+    - Districts distribute flyers/links to parents
+    - Districts receive quarterly aggregate usage reports (anonymous)
+    - You receive free distribution channel and direct parent leads
+  - District Pilot Program
+    - Unlimited AI assessments district-wide during pilot period
+    - Full parent and child assessment capabilities
+    - Admin dashboard with basic analytics
+    - Staff onboarding training session
+    - FERPA/HIPAA compliance toolkit
+    - Parent communication templates
+    - Email support with priority response
+    - Performance Guarantee: "If we don't cut your behavior assessment backlog by 50% in 90 days, the pilot is free."
+  - Annual District License (Standard, Professional, Enterprise Tiers)
+    - Core Features (All Tiers):
+      - Unlimited assessments
+      - Parent and child assessment modes
+      - Enhanced Reports
+      - District dashboard
+      - SIS/PowerSchool integration
+      - Staff training
+      - Compliance support
+      - Parent communication toolkit
+      - Behavioral trend analytics
+      - Export capabilities
+    - Standard License: Districts with 5,000-15,000 students, basic SIS integration, quarterly compliance updates, email support.
+    - Professional License: Districts with 15,000-30,000 students, full SIS/PowerSchool integration, advanced analytics, multi-school admin hierarchy, monthly professional development, priority phone and email support.
+    - Enterprise License: Districts with 30,000+ students, dedicated account manager, custom API integrations, white-label options, quarterly board-ready ROI reports, on-site training, custom feature development consideration.
+- [ ] Update GA4 event tracking
+  - Ensure all upgrade, add report, and confirmation CTAs fire GA4 events with correct params (plan, billing, credits, rollover_cap, etc.).
+- [ ] QA: Test upgrade flows and UI
+  - Test monthly/annual toggles, mobile layout, proration, top-up toggle, credit limits, and event tracking. Validate accessibility and ARIA labels.

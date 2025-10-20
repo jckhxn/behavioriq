@@ -26,6 +26,7 @@ model User {
   onboardingCompleted Boolean      @default(false)
   onboardingStep      Int          @default(0)
   onboardingSkipped   Boolean      @default(false)
+  stripeCustomerId    String?      @unique
   assessments     Assessment[]
   chatSessions    ChatSession[]
   documents       Document[]
@@ -33,6 +34,8 @@ model User {
   shareLinks      ShareableLink[]  @relation("ShareLinksCreated")
   usageMetrics    UsageMetrics[]
   licenses        UserLicense[]
+  upsellState     UserUpsellState?
+  telemetryEvents TelemetryEvent[]
   payments        Payment[]
   organization    Organization?    @relation(fields: [organizationId], references: [id])
   parentUser      User?            @relation("UserSubAccounts", fields: [parentUserId], references: [id])
@@ -760,6 +763,41 @@ model NotificationPreferences {
   @@map("notification_preferences")
 }
 
+model UserUpsellState {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  ribbonSnoozedUntil DateTime?
+  ribbonSnoozedAt    DateTime?
+  ribbonSnoozeSource String?  // e.g. "header_ribbon"
+  anonymousModeDefault Boolean @default(false)
+  pausedUntil        DateTime?
+  pausedAt           DateTime?
+  pauseCount12m      Int      @default(0)
+  pauseHistory       Json?
+  pendingAction      Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_upsell_state")
+}
+
+model TelemetryEvent {
+  id        String   @id @default(cuid())
+  userId    String?
+  event     String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([event])
+  @@map("telemetry_events")
+}
+
 enum Role {
   USER
   ADMIN
@@ -801,10 +839,94 @@ enum AssessmentDomain {
 }
 
 enum LicenseType {
-  TRIAL         // Trial period - temporary access
-  BASIC         // Pay-per-assessment - created on $97 purchase or subscription cancellation
-  PROFESSIONAL  // Monthly/Annual subscription with unlimited assessments
-  ENTERPRISE    // District license with unlimited assessments
+  TRIAL                // Legacy trial period (deprecated)
+  FREE_TRIAL           // Lead-gen assessment with limited questions
+  FREE                 // View-only access after cancellation
+  BASIC                // Pay-per-assessment - $97 single purchase
+  MONTHLY_LITE         // Lite monthly subscription
+  CORE                 // Monthly Core subscription
+  ANNUAL_CORE          // Annual Core subscription
+  DISCOUNTED_CORE      // Discounted Core promotion
+  FAMILY               // Monthly Family subscription
+  ANNUAL_FAMILY        // Annual Family subscription
+  DISCOUNTED_FAMILY    // Discounted Family promotion
+  PARENT_PILOT         // District parent pilot distribution
+  DISTRICT_PILOT       // Paid pilot program
+  DISTRICT_STANDARD    // Annual district license (standard tier)
+  DISTRICT_PROFESSIONAL// Annual district license (professional tier)
+  DISTRICT_ENTERPRISE  // Annual district license (enterprise tier)
+  PROFESSIONAL         // Legacy professional unlimited subscription
+  ENTERPRISE           // Legacy enterprise unlimited subscription
+}
+
+model SnapshotSession {
+  id         String          @id @default(cuid())
+  anonymous  Boolean         @default(false)
+  consented  Boolean         @default(false)
+  region     String?
+  utm        Json?
+  createdAt  DateTime        @default(now())
+  trials     AssessmentTrial[]
+  leads      Lead[]
+  orders     SnapshotOrder[]
+
+  @@map("snapshot_sessions")
+}
+
+model Lead {
+  id               String          @id @default(cuid())
+  email            String
+  consentMarketing Boolean         @default(false)
+  createdAt        DateTime        @default(now())
+  sessionId        String
+  session          SnapshotSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  orders           SnapshotOrder[]
+
+  @@index([sessionId])
+  @@map("snapshot_leads")
+}
+
+model AssessmentTrial {
+  id             String          @id @default(cuid())
+  sessionId      String
+  childFirstName String?
+  ageBand        String
+  region         String?
+  responses      Json?
+  scoreSnapshot  Json?
+  createdAt      DateTime        @default(now())
+  session        SnapshotSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@map("snapshot_trials")
+}
+
+model SnapshotOrder {
+  id                   String           @id @default(cuid())
+  leadId               String?
+  sessionId            String?
+  amount               Int
+  status               String          @default("pending")
+  stripePaymentIntent  String
+  createdAt            DateTime        @default(now())
+  lead                 Lead?           @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  session              SnapshotSession?@relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  fullAssessment       AssessmentFull?
+
+  @@index([leadId])
+  @@index([sessionId])
+  @@map("snapshot_orders")
+}
+
+model AssessmentFull {
+  id         String         @id @default(cuid())
+  orderId    String         @unique
+  reportJson Json
+  pdfUrl     String?
+  createdAt  DateTime       @default(now())
+  order      SnapshotOrder  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("snapshot_full_reports")
 }
 
 enum LicenseStatus {

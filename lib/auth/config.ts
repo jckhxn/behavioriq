@@ -51,3 +51,6 @@ export const authOptions: NextAuthConfig = {
   },
   secret: process.env.NEXTAUTH_SECRET,
 };
+
+// App router session helper for NextAuth v5
+export const { auth } = NextAuth(authOptions);

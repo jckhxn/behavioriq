@@ -152,6 +152,22 @@ export class LicensingService {
           conversationalAISessions: 0,
         };
 
+      case "FREE_TRIAL":
+        return {
+          maxAssessments: 0,
+          maxPDFReports: 0,
+          maxConversationalReports: 0,
+          maxUsers: 1,
+          aiRecommendations: false,
+          advancedReports: false,
+          apiAccess: false,
+          bulkUpload: false,
+          customBranding: false,
+          prioritySupport: false,
+          conversationalAI: false,
+          conversationalAISessions: 0,
+        };
+
       case "BASIC":
         return {
           maxAssessments: 50,
@@ -166,6 +182,71 @@ export class LicensingService {
           prioritySupport: false,
           conversationalAI: false,
           conversationalAISessions: 0,
+        };
+
+      case "FREE":
+        return {
+          maxAssessments: 0,
+          maxPDFReports: 0,
+          maxConversationalReports: 0,
+          maxUsers: 1,
+          aiRecommendations: false,
+          advancedReports: false,
+          apiAccess: false,
+          bulkUpload: false,
+          customBranding: false,
+          prioritySupport: false,
+          conversationalAI: false,
+          conversationalAISessions: 0,
+        };
+
+      case "CORE":
+        return {
+          maxAssessments: 6,
+          maxPDFReports: 25,
+          maxConversationalReports: 0,
+          maxUsers: 1,
+          aiRecommendations: true,
+          advancedReports: true,
+          apiAccess: false,
+          bulkUpload: false,
+          customBranding: false,
+          prioritySupport: true,
+          conversationalAI: false,
+          conversationalAISessions: 0,
+        };
+
+      case "ANNUAL_CORE":
+        return {
+          maxAssessments: 6,
+          maxPDFReports: 25,
+          maxConversationalReports: 3,
+          maxUsers: 1,
+          aiRecommendations: true,
+          advancedReports: true,
+          apiAccess: false,
+          bulkUpload: false,
+          customBranding: false,
+          prioritySupport: true,
+          conversationalAI: false,
+          conversationalAISessions: 0,
+        };
+
+      case "FAMILY":
+      case "ANNUAL_FAMILY":
+        return {
+          maxAssessments: 15,
+          maxPDFReports: 100,
+          maxConversationalReports: undefined,
+          maxUsers: 5,
+          aiRecommendations: true,
+          advancedReports: true,
+          apiAccess: false,
+          bulkUpload: false,
+          customBranding: false,
+          prioritySupport: true,
+          conversationalAI: true,
+          conversationalAISessions: undefined,
         };
 
       case "PROFESSIONAL":
@@ -198,6 +279,86 @@ export class LicensingService {
           prioritySupport: true,
           conversationalAI: true,
           conversationalAISessions: undefined, // Unlimited
+        };
+
+      case "PARENT_PILOT":
+        return {
+          maxAssessments: undefined,
+          maxPDFReports: undefined,
+          maxConversationalReports: undefined,
+          maxUsers: undefined,
+          aiRecommendations: true,
+          advancedReports: true,
+          apiAccess: false,
+          bulkUpload: false,
+          customBranding: false,
+          prioritySupport: false,
+          conversationalAI: true,
+          conversationalAISessions: undefined,
+        };
+
+      case "DISTRICT_PILOT":
+        return {
+          maxAssessments: undefined,
+          maxPDFReports: undefined,
+          maxConversationalReports: undefined,
+          maxUsers: undefined,
+          aiRecommendations: true,
+          advancedReports: true,
+          apiAccess: false,
+          bulkUpload: false,
+          customBranding: false,
+          prioritySupport: true,
+          conversationalAI: true,
+          conversationalAISessions: undefined,
+        };
+
+      case "DISTRICT_STANDARD":
+        return {
+          maxAssessments: undefined,
+          maxPDFReports: undefined,
+          maxConversationalReports: undefined,
+          maxUsers: undefined,
+          aiRecommendations: true,
+          advancedReports: true,
+          apiAccess: true,
+          bulkUpload: true,
+          customBranding: false,
+          prioritySupport: true,
+          conversationalAI: true,
+          conversationalAISessions: undefined,
+        };
+
+      case "DISTRICT_PROFESSIONAL":
+        return {
+          maxAssessments: undefined,
+          maxPDFReports: undefined,
+          maxConversationalReports: undefined,
+          maxUsers: undefined,
+          aiRecommendations: true,
+          advancedReports: true,
+          apiAccess: true,
+          bulkUpload: true,
+          customBranding: false,
+          prioritySupport: true,
+          conversationalAI: true,
+          conversationalAISessions: undefined,
+        };
+
+      case "DISTRICT_ENTERPRISE":
+        return {
+          maxAssessments: undefined,
+          maxPDFReports: undefined,
+          maxConversationalReports: undefined,
+          maxUsers: undefined,
+          aiRecommendations: true,
+          advancedReports: true,
+          apiAccess: true,
+          bulkUpload: true,
+          customBranding: true,
+          prioritySupport: true,
+          conversationalAI: true,
+          conversationalAISessions: undefined,
         };
 
       default:

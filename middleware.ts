@@ -29,17 +29,15 @@ export async function middleware(req: NextRequest) {
 
   const isMaintenancePage = req.nextUrl.pathname.startsWith("/maintenance");
   const isApiRoute = req.nextUrl.pathname.startsWith("/api");
+  const isAuthRoute =
+    req.nextUrl.pathname.startsWith("/login") ||
+    req.nextUrl.pathname.startsWith("/register") ||
+    req.nextUrl.pathname.startsWith("/auth");
 
-  if (!isMaintenancePage && !isApiRoute) {
-    const maintenanceMode = await fetchMaintenanceMode(req);
-    if (maintenanceMode) {
-      const redirectResponse = NextResponse.redirect(
-        new URL("/maintenance", req.url)
-      );
-      applyBrandingHeaders(redirectResponse, branding);
-      return redirectResponse;
-    }
-  }
+  // ...existing code...
+
+  // Move maintenance mode check after all relevant variable declarations
+  // (place this after isPublicPage, isCheckoutPage, isAutoLoginPage are defined)
 
   const isAuth = isSupabaseAuthenticated(req);
   const isAuthPage =
@@ -78,44 +76,34 @@ export async function middleware(req: NextRequest) {
     req.nextUrl.pathname.startsWith("/auth/") ||
     isPseoPage;
 
-  // Allow auto-login to complete even if already authenticated
-  if (isAutoLoginPage) {
-    const response = NextResponse.next();
-    applyBrandingHeaders(response, branding);
-    return response;
-  }
-
-  if (isAuthPage) {
-    if (isAuth) {
-      const redirectResponse = NextResponse.redirect(
-        new URL("/", req.url)
-      );
-      applyBrandingHeaders(redirectResponse, branding);
-      return redirectResponse;
-    }
-    const response = NextResponse.next();
-    applyBrandingHeaders(response, branding);
-    return response;
-  }
-
-  // Allow access to public pages without authentication
-  if (isPublicPage) {
-    const response = NextResponse.next();
-    applyBrandingHeaders(response, branding);
-    return response;
-  }
-
-  // Allow checkout pages regardless of auth (flow handles auth inside pages)
+  // Declare isCheckoutPage before isAllowedDuringMaintenance
   const isCheckoutPage =
     req.nextUrl.pathname.startsWith("/checkout") ||
     req.nextUrl.pathname.startsWith("/checkout-direct") ||
     req.nextUrl.pathname.startsWith("/checkout-anonymous") ||
     req.nextUrl.pathname.startsWith("/trial-checkout");
-  if (isCheckoutPage) {
-    const response = NextResponse.next();
-    applyBrandingHeaders(response, branding);
-    return response;
+
+  // Maintenance mode check (after all relevant variable declarations)
+  const isAllowedDuringMaintenance =
+    isMaintenancePage ||
+    isApiRoute ||
+    isAuthRoute ||
+    isPublicPage ||
+    isCheckoutPage ||
+    isAutoLoginPage;
+
+  if (!isAllowedDuringMaintenance) {
+    const maintenanceMode = await fetchMaintenanceMode(req);
+    if (maintenanceMode) {
+      const redirectResponse = NextResponse.redirect(
+        new URL("/maintenance", req.url)
+      );
+      applyBrandingHeaders(redirectResponse, branding);
+      return redirectResponse;
+    }
   }
+
+  // ...existing code...
 
   if (!isAuth && !isAuthPage && !isPublicPage) {
     let from = req.nextUrl.pathname;

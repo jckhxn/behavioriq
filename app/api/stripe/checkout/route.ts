@@ -13,13 +13,17 @@ export async function POST(request: NextRequest) {
     const {
       planType,
       plan,
+      planId,
       childName,
       isSubscription,
+      topUp = false,
       fromPaymentSuccess = false,
       fromDashboard = false,
     } = body;
 
-    if (!planType || !plan) {
+    const planKey = (plan ?? planId)?.toString();
+
+    if (!planType || !planKey) {
       return NextResponse.json(
         { error: "Plan type and plan are required" },
         { status: 400 }
@@ -36,23 +40,24 @@ export async function POST(request: NextRequest) {
     let planDetails: any;
 
     if (isSubscriptionCheckout) {
-      planDetails = SUBSCRIPTION_PLANS[plan as keyof typeof SUBSCRIPTION_PLANS];
+      planDetails =
+        SUBSCRIPTION_PLANS[planKey as keyof typeof SUBSCRIPTION_PLANS];
       priceId = planDetails?.priceId;
     } else {
-      planDetails = PRICING_PLANS[plan as keyof typeof PRICING_PLANS];
+      planDetails = PRICING_PLANS[planKey as keyof typeof PRICING_PLANS];
       priceId = planDetails?.priceId;
     }
 
     if (!priceId) {
       console.error("Missing price ID for plan:", {
-        plan,
+        plan: planKey,
         planDetails,
         isSubscriptionCheckout,
         planType,
       });
       return NextResponse.json(
         {
-          error: `Price ID not configured for plan ${plan}. Please check Stripe environment variables.`,
+          error: `Price ID not configured for plan ${planKey}. Please check Stripe environment variables.`,
         },
         { status: 400 }
       );
@@ -84,14 +89,15 @@ export async function POST(request: NextRequest) {
       metadata: {
         userId: user.id,
         planType,
-        plan,
+        plan: planKey,
         childName: childName || "",
         isSubscription: isSubscriptionCheckout.toString(),
+        topUp: topUp ? "true" : "false",
       },
       // Apply discount coupon ONLY for subscription upgrades from payment success page (post-checkout upsell)
       // Do NOT apply discount for upgrades from dashboard/settings
       ...(isSubscriptionCheckout &&
-        plan === "MONTHLY" &&
+        planKey === "CORE_MONTHLY" &&
         fromPaymentSuccess &&
         process.env.STRIPE_FIRST_3_MONTHS_50_COUPON && {
           discounts: [
@@ -106,7 +112,8 @@ export async function POST(request: NextRequest) {
           metadata: {
             userId: user.id,
             planType,
-            plan,
+            plan: planKey,
+            topUp: topUp ? "true" : "false",
           },
         },
       }),
@@ -116,8 +123,9 @@ export async function POST(request: NextRequest) {
           metadata: {
             userId: user.id,
             planType,
-            plan,
+            plan: planKey,
             childName: childName || "",
+            topUp: topUp ? "true" : "false",
           },
         },
       }),

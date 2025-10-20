@@ -1,5 +1,14 @@
 import Stripe from "stripe";
 import { BUSINESS_CONFIG } from "@/lib/config/business-config";
+import {
+  PRICING,
+  PRICING_DISPLAY_PLANS,
+  SUBSCRIPTION_PLANS as DASHBOARD_SUBSCRIPTION_PLANS,
+} from "@/lib/config/pricing";
+import {
+  getSingleAssessmentPriceId,
+  getStripePriceIdForPlan,
+} from "@/lib/config/stripe-price-ids";
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error("STRIPE_SECRET_KEY is required");
@@ -10,12 +19,33 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   typescript: true,
 });
 
+const singleAssessmentPlan = PRICING_DISPLAY_PLANS.find(
+  (plan) => plan.id === "SINGLE"
+) ?? {
+  name: "Single Assessment",
+  description: "One comprehensive assessment with AI-powered insights.",
+  credits: "1 assessment credit",
+};
+
 export const PRICING_PLANS = {
+  SINGLE: {
+    name: singleAssessmentPlan.name,
+    description: singleAssessmentPlan.description,
+    price: PRICING.SINGLE_ASSESSMENT,
+    priceId: getSingleAssessmentPriceId(),
+    features: [
+      singleAssessmentPlan.credits,
+      "Professional-grade PDF download",
+      "Personalized recommendations",
+      "Resource library access",
+    ],
+    maxAssessments: 1,
+  },
   BASIC: {
     name: BUSINESS_CONFIG.PRICING.CORE_OFFER.name,
     description: BUSINESS_CONFIG.PRICING.CORE_OFFER.description,
     price: BUSINESS_CONFIG.PRICING.CORE_OFFER.amount,
-    priceId: process.env.STRIPE_BASIC_PRICE_ID,
+    priceId: getSingleAssessmentPriceId(),
     features: BUSINESS_CONFIG.FEATURES.CORE_OFFER,
     maxAssessments: 1,
   },
@@ -94,6 +124,38 @@ export const SUBSCRIPTION_PLANS = {
       "Assessment history",
       "Save $58/year compared to monthly",
     ],
+  },
+  CORE_MONTHLY: {
+    name: DASHBOARD_SUBSCRIPTION_PLANS.CORE_MONTHLY.label,
+    description: DASHBOARD_SUBSCRIPTION_PLANS.CORE_MONTHLY.creditRolloverNote,
+    price: DASHBOARD_SUBSCRIPTION_PLANS.CORE_MONTHLY.priceCents,
+    priceId: getStripePriceIdForPlan("CORE_MONTHLY"),
+    interval: DASHBOARD_SUBSCRIPTION_PLANS.CORE_MONTHLY.billingInterval,
+    features: DASHBOARD_SUBSCRIPTION_PLANS.CORE_MONTHLY.features,
+  },
+  CORE_ANNUAL: {
+    name: DASHBOARD_SUBSCRIPTION_PLANS.CORE_ANNUAL.label,
+    description: DASHBOARD_SUBSCRIPTION_PLANS.CORE_ANNUAL.creditRolloverNote,
+    price: DASHBOARD_SUBSCRIPTION_PLANS.CORE_ANNUAL.priceCents,
+    priceId: getStripePriceIdForPlan("CORE_ANNUAL"),
+    interval: DASHBOARD_SUBSCRIPTION_PLANS.CORE_ANNUAL.billingInterval,
+    features: DASHBOARD_SUBSCRIPTION_PLANS.CORE_ANNUAL.features,
+  },
+  FAMILY_MONTHLY: {
+    name: DASHBOARD_SUBSCRIPTION_PLANS.FAMILY_MONTHLY.label,
+    description: DASHBOARD_SUBSCRIPTION_PLANS.FAMILY_MONTHLY.creditRolloverNote,
+    price: DASHBOARD_SUBSCRIPTION_PLANS.FAMILY_MONTHLY.priceCents,
+    priceId: getStripePriceIdForPlan("FAMILY_MONTHLY"),
+    interval: DASHBOARD_SUBSCRIPTION_PLANS.FAMILY_MONTHLY.billingInterval,
+    features: DASHBOARD_SUBSCRIPTION_PLANS.FAMILY_MONTHLY.features,
+  },
+  FAMILY_ANNUAL: {
+    name: DASHBOARD_SUBSCRIPTION_PLANS.FAMILY_ANNUAL.label,
+    description: DASHBOARD_SUBSCRIPTION_PLANS.FAMILY_ANNUAL.creditRolloverNote,
+    price: DASHBOARD_SUBSCRIPTION_PLANS.FAMILY_ANNUAL.priceCents,
+    priceId: getStripePriceIdForPlan("FAMILY_ANNUAL"),
+    interval: DASHBOARD_SUBSCRIPTION_PLANS.FAMILY_ANNUAL.billingInterval,
+    features: DASHBOARD_SUBSCRIPTION_PLANS.FAMILY_ANNUAL.features,
   },
 } as const;
 

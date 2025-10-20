@@ -12,7 +12,22 @@ export async function GET(request: NextRequest) {
     }
 
     console.log(`Credits API: Fetching credits for user ${user.id}`);
+
+    // Main credit info
     const credits = await assessmentCreditsService.checkUserCredits(user.id);
+
+    // Rollover cap logic
+    const rolloverCap = await assessmentCreditsService.getRolloverCap(user.id);
+
+    // Next credit earning date
+    const nextCreditDate = await assessmentCreditsService.getNextCreditDate(
+      user.id
+    );
+
+    // Expired credits info
+    const expiredCredits = await assessmentCreditsService.getExpiredCredits(
+      user.id
+    );
 
     console.log(
       `Credits API: Successfully fetched credits for user ${user.id}`,
@@ -23,15 +38,17 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    return NextResponse.json(credits);
+    return NextResponse.json({
+      ...credits,
+      rolloverCap,
+      nextCreditDate,
+      expiredCredits,
+    });
   } catch (error) {
     console.error("Error fetching user credits:", error);
-
-    // Provide more specific error messages
     const errorMessage =
       error instanceof Error ? error.message : "Failed to fetch credits";
     const isConfigError = errorMessage.includes("configuration");
-
     return NextResponse.json(
       {
         error: isConfigError

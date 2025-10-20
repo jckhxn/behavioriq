@@ -6,9 +6,10 @@ import bcrypt from "bcryptjs";
 
 export async function POST(request: NextRequest) {
   try {
-    const { userData, plan, childName } = await request.json();
+    const { userData, plan, planId, childName } = await request.json();
+    const planKey = (plan ?? planId)?.toString();
 
-    if (!userData || !plan) {
+    if (!userData || !planKey) {
       return NextResponse.json(
         { error: "User data and plan are required" },
         { status: 400 }
@@ -41,10 +42,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Get plan details
-    const planDetails = PRICING_PLANS[plan as keyof typeof PRICING_PLANS];
+    const planDetails =
+      PRICING_PLANS[planKey as keyof typeof PRICING_PLANS];
     if (!planDetails || !planDetails.priceId) {
       return NextResponse.json(
-        { error: `Price ID not configured for plan ${plan}` },
+        { error: `Price ID not configured for plan ${planKey}` },
         { status: 400 }
       );
     }
@@ -67,7 +69,7 @@ export async function POST(request: NextRequest) {
       cancel_url: `${request.nextUrl.origin}/trial-checkout${childName ? `?childName=${encodeURIComponent(childName)}` : ""}`,
       metadata: {
         planType: "oneTime",
-        plan: plan,
+        plan: planKey,
         childName: childName || "",
         // Store user registration data to create account after payment
         userEmail: email,

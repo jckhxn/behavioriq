@@ -1,6 +1,9 @@
 import { prismaService as prisma } from "@/lib/db/prisma-service";
 import type { Stripe } from "stripe";
-import type { Prisma, LicenseType } from "@prisma/client";
+import type { LicenseType } from "@prisma/client";
+import { type SubscriptionPlanDefinition } from "@/lib/config/pricing";
+import { getPlanForStripePrice } from "@/lib/config/stripe-price-ids";
+import { applySubscriptionPlanToUser } from "@/lib/services/subscription-plan-updater";
 
 // Import stripe client - we'll need to create this
 let stripe: Stripe | null = null;
@@ -29,31 +32,39 @@ export class SubscriptionService {
       return;
     }
 
-    const subscription =
-      await getStripe().subscriptions.retrieve(subscriptionId);
+    const subscription = await getStripe().subscriptions.retrieve(
+      subscriptionId,
+      { expand: ["items"] }
+    );
     const userId = subscription.metadata?.userId;
 
     if (!userId) {
       throw new Error(`No userId in subscription metadata: ${subscriptionId}`);
     }
 
-    return prisma.$transaction(async (tx) => {
-      // Find user
-      const user = await tx.user.findUniqueOrThrow({
-        where: { id: userId },
-      });
+    const priceId = subscription.items.data[0]?.price?.id;
+    const planDefinition: SubscriptionPlanDefinition | undefined = priceId
+      ? getPlanForStripePrice(priceId)
+      : undefined;
 
+    if (!planDefinition) {
+      console.warn(
+        `[SubscriptionService] Unknown plan for price ${priceId} – skipping license sync`
+      );
+    }
+
+    return prisma.$transaction(async (tx) => {
       // Create payment record
       await tx.payment.create({
         data: {
-          userId: user.id,
+          userId,
           stripePaymentIntentId: (invoice as any).payment_intent as string,
           stripeCustomerId: invoice.customer as string,
           amount: invoice.amount_paid,
           currency: invoice.currency || "usd",
           status: "SUCCEEDED",
-          planType: "monthly",
-          plan: "Monthly Subscription",
+          planType: planDefinition?.id ?? "subscription",
+          plan: planDefinition?.label ?? "Subscription Renewal",
           metadata: {
             invoiceId: invoice.id,
             subscriptionId: subscription.id,
@@ -62,47 +73,11 @@ export class SubscriptionService {
         },
       });
 
-      // Update or create Professional license
-      const existingLicense = await tx.userLicense.findFirst({
-        where: { userId },
-        include: { license: true },
-      });
-
-      if (existingLicense) {
-        // Update existing license
-        return tx.license.update({
-          where: { id: existingLicense.license.id },
-          data: {
-            status: "ACTIVE",
-            type: "PROFESSIONAL",
-            maxAssessments: null, // Unlimited
-          },
+      if (planDefinition) {
+        await applySubscriptionPlanToUser(tx, userId, planDefinition, {
+          topUp: false,
         });
       }
-
-      // Create new Professional license
-      const licenseKey = `LIC-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      const newLicense = await tx.license.create({
-        data: {
-          licenseKey,
-          type: "PROFESSIONAL",
-          status: "ACTIVE",
-          maxAssessments: null, // Unlimited
-          maxUsers: 1,
-          validUntil: null, // Subscription-based
-        },
-      });
-
-      await tx.userLicense.create({
-        data: {
-          userId,
-          licenseId: newLicense.id,
-          isActive: true,
-        },
-      });
-
-      console.log(`[SubscriptionService] ✅ Professional license activated`);
-      return newLicense;
     });
   }
 
@@ -127,14 +102,27 @@ export class SubscriptionService {
         include: { license: true },
       });
 
-      // Cancel all PROFESSIONAL licenses
+      const cancellableTypes: LicenseType[] = [
+        "CORE",
+        "ANNUAL_CORE",
+        "FAMILY",
+        "ANNUAL_FAMILY",
+        "PROFESSIONAL",
+        "ENTERPRISE",
+        "DISTRICT_STANDARD",
+        "DISTRICT_PROFESSIONAL",
+        "DISTRICT_ENTERPRISE",
+      ];
+
       for (const userLicense of userLicenses) {
-        if (userLicense.license.type === "PROFESSIONAL") {
+        if (cancellableTypes.includes(userLicense.license.type)) {
           await tx.license.update({
             where: { id: userLicense.license.id },
-            data: {
-              status: "CANCELLED",
-            },
+            data: { status: "CANCELLED" },
+          });
+          await tx.userLicense.update({
+            where: { id: userLicense.id },
+            data: { isActive: false, assessmentsAllowed: userLicense.assessmentsUsed },
           });
           console.log(
             `[SubscriptionService] Cancelled license: ${userLicense.license.id}`
@@ -142,22 +130,43 @@ export class SubscriptionService {
         }
       }
 
-      // Create a FREE license for view-only access
-      const freeLicense = await tx.license.create({
-        data: {
-          licenseKey: `FREE_${userId}_${Date.now()}`,
-          type: "FREE" as LicenseType,
-          status: "ACTIVE",
-        },
-      });
+      const existingFree = userLicenses.find(
+        (license) => license.license.type === "FREE"
+      );
 
-      // Assign FREE license to user
-      await tx.userLicense.create({
-        data: {
-          userId,
-          licenseId: freeLicense.id,
-        },
-      });
+      if (existingFree) {
+        await tx.license.update({
+          where: { id: existingFree.license.id },
+          data: { status: "ACTIVE" },
+        });
+        await tx.userLicense.update({
+          where: { id: existingFree.id },
+          data: {
+            isActive: true,
+            assessmentsAllowed: 0,
+            conversationalAssessmentsAllowed: 0,
+          },
+        });
+      } else {
+        const freeLicense = await tx.license.create({
+          data: {
+            licenseKey: `FREE_${userId}_${Date.now()}`,
+            type: "FREE" as LicenseType,
+            status: "ACTIVE",
+          },
+        });
+
+        await tx.userLicense.create({
+          data: {
+            userId,
+            licenseId: freeLicense.id,
+            assessmentsAllowed: 0,
+            assessmentsUsed: 0,
+            conversationalAssessmentsAllowed: 0,
+            conversationalAssessmentsUsed: 0,
+          },
+        });
+      }
 
       console.log(
         `[SubscriptionService] ✅ Subscription cancelled, downgraded to FREE license for user: ${userId}`
@@ -177,17 +186,42 @@ export class SubscriptionService {
       throw new Error(`No userId in subscription metadata: ${subscription.id}`);
     }
 
+    const priceId = subscription.items.data[0]?.price?.id;
+    const planDefinition = priceId
+      ? getPlanForStripePrice(priceId)
+      : undefined;
+
+    if (planDefinition) {
+      await prisma.$transaction((tx) =>
+        applySubscriptionPlanToUser(tx, userId, planDefinition, {
+          topUp: false,
+        })
+      );
+    }
+
     // Determine new status
     const newStatus = this.mapSubscriptionStatus(subscription.status);
 
-    // Update all Professional licenses
+    // Update all active subscription licenses for the user
     const userLicenses = await prisma.userLicense.findMany({
       where: { userId },
       include: { license: true },
     });
 
+    const managedTypes: LicenseType[] = [
+      "CORE",
+      "ANNUAL_CORE",
+      "FAMILY",
+      "ANNUAL_FAMILY",
+      "PROFESSIONAL",
+      "ENTERPRISE",
+      "DISTRICT_STANDARD",
+      "DISTRICT_PROFESSIONAL",
+      "DISTRICT_ENTERPRISE",
+    ];
+
     for (const userLicense of userLicenses) {
-      if (userLicense.license.type === "PROFESSIONAL") {
+      if (managedTypes.includes(userLicense.license.type)) {
         await prisma.license.update({
           where: { id: userLicense.license.id },
           data: { status: newStatus },

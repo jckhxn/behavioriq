@@ -186,7 +186,13 @@ export function CreditsDisplay() {
               >
                 <Sparkles className="mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Upgrade to </span>
-                Professional
+                {credits.licenseType === "CORE" ||
+                credits.licenseType === "ANNUAL_CORE"
+                  ? "Family"
+                  : credits.licenseType === "FAMILY" ||
+                      credits.licenseType === "ANNUAL_FAMILY"
+                    ? "Enterprise"
+                    : "Core"}
               </Button>
             </div>
 

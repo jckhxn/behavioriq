@@ -1,10 +1,5 @@
-/**
- * Assessment Credits Service
- * Handles checking and managing assessment allowances for BASIC users
- */
-
 import { prisma } from "@/lib/db/prisma";
-
+import { LicenseType } from "@prisma/client";
 export interface AssessmentCreditsInfo {
   hasCredits: boolean;
   creditsRemaining: number;
@@ -20,7 +15,58 @@ export interface AssessmentCreditsInfo {
   conversationalReportCreditsAllowed?: number | null;
 }
 
-export class AssessmentCreditsService {
+class AssessmentCreditsService {
+  /**
+   * Get the rollover cap for the user's current plan
+   */
+  async getRolloverCap(userId: string): Promise<number | null> {
+    const userLicense = await prisma.userLicense.findFirst({
+      where: { userId, isActive: true },
+      include: { license: { select: { type: true } } },
+    });
+    if (!userLicense) return null;
+    const type = userLicense.license.type;
+    if (type === LicenseType.FAMILY || type === LicenseType.ANNUAL_FAMILY)
+      return 15;
+    if (type === LicenseType.CORE || type === LicenseType.ANNUAL_CORE)
+      return 6;
+    if (type === LicenseType.BASIC) return 6;
+    if (type === LicenseType.FREE_TRIAL) return 0;
+    if (type === LicenseType.PARENT_PILOT || type === LicenseType.DISTRICT_PILOT)
+      return null;
+    if (
+      type === LicenseType.DISTRICT_STANDARD ||
+      type === LicenseType.DISTRICT_PROFESSIONAL ||
+      type === LicenseType.DISTRICT_ENTERPRISE ||
+      type === LicenseType.PROFESSIONAL ||
+      type === LicenseType.ENTERPRISE
+    )
+      return null;
+    if (type === LicenseType.FREE) return 0;
+    return null;
+  }
+
+  /**
+   * Get the next credit earning date for the user
+   */
+  async getNextCreditDate(userId: string): Promise<string | null> {
+    // This is a placeholder. In production, calculate based on plan cycle and last grant.
+    // For demo, return 1 month from now.
+    const now = new Date();
+    now.setMonth(now.getMonth() + 1);
+    return now.toISOString();
+  }
+
+  /**
+   * Get expired credits for the user (credits older than 12 months)
+   */
+  async getExpiredCredits(userId: string): Promise<number> {
+    // Placeholder: In production, track credit grant dates and count expired ones.
+    // For now, always return 0 (no expired credits).
+    return 0;
+  }
+
+  // ...existing service methods (checkUserCredits, useCredit, etc.)...
   /**
    * Check if a user has available assessment credits
    * Returns credit info for display
@@ -92,8 +138,7 @@ export class AssessmentCreditsService {
         ? null
         : Math.max(
             0,
-            (conversationalReportLimit ?? 0) -
-              conversationalReportCreditsUsed
+            (conversationalReportLimit ?? 0) - conversationalReportCreditsUsed
           );
 
     // PROFESSIONAL and ENTERPRISE have unlimited assessments
@@ -106,7 +151,8 @@ export class AssessmentCreditsService {
         licenseType,
         conversationalCredits: conversationalCreditsRemaining,
         conversationalCreditsUsed: userLicense.conversationalAssessmentsUsed,
-        conversationalCreditsAllowed: userLicense.conversationalAssessmentsAllowed,
+        conversationalCreditsAllowed:
+          userLicense.conversationalAssessmentsAllowed,
         conversationalReportCredits: conversationalReportCreditsRemaining,
         conversationalReportCreditsUsed: conversationalReportCreditsUsed,
         conversationalReportCreditsAllowed: conversationalReportLimit,
@@ -140,7 +186,8 @@ export class AssessmentCreditsService {
       licenseType,
       conversationalCredits: conversationalCreditsRemaining,
       conversationalCreditsUsed: userLicense.conversationalAssessmentsUsed,
-      conversationalCreditsAllowed: userLicense.conversationalAssessmentsAllowed,
+      conversationalCreditsAllowed:
+        userLicense.conversationalAssessmentsAllowed,
       conversationalReportCredits: conversationalReportCreditsRemaining,
       conversationalReportCreditsUsed: conversationalReportCreditsUsed,
       conversationalReportCreditsAllowed: conversationalReportLimit,
@@ -161,7 +208,12 @@ export class AssessmentCreditsService {
     // Don't increment for unlimited users
     if (
       credits.licenseType === "PROFESSIONAL" ||
-      credits.licenseType === "ENTERPRISE"
+      credits.licenseType === "ENTERPRISE" ||
+      credits.licenseType === "DISTRICT_STANDARD" ||
+      credits.licenseType === "DISTRICT_PROFESSIONAL" ||
+      credits.licenseType === "DISTRICT_ENTERPRISE" ||
+      credits.licenseType === "PARENT_PILOT" ||
+      credits.licenseType === "DISTRICT_PILOT"
     ) {
       return;
     }
@@ -236,7 +288,12 @@ export class AssessmentCreditsService {
 
     if (
       credits.licenseType === "PROFESSIONAL" ||
-      credits.licenseType === "ENTERPRISE"
+      credits.licenseType === "ENTERPRISE" ||
+      credits.licenseType === "DISTRICT_STANDARD" ||
+      credits.licenseType === "DISTRICT_PROFESSIONAL" ||
+      credits.licenseType === "DISTRICT_ENTERPRISE" ||
+      credits.licenseType === "PARENT_PILOT" ||
+      credits.licenseType === "DISTRICT_PILOT"
     ) {
       return {
         text: "Unlimited Assessments",
