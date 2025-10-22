@@ -1,16 +1,20 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Send, Loader2 } from "lucide-react";
 import { useUser } from "@/lib/hooks/use-supabase-user";
-import { AssessmentDomain } from "@prisma/client";
 import { ASSESSMENT_CONFIG } from "@/lib/config/ai-config";
 import { QuestionPresenter } from "@/components/assessment/QuestionPresenter";
 import { AssessmentCompletion } from "@/components/assessment/AssessmentCompletion";
+import type { QuestionSetConfig } from "@/lib/assessment/db-loader";
+import {
+  createScoringCalculator,
+  type QuestionResponse as StructuredQuestionResponse,
+} from "@/lib/assessment/scoring";
 
 interface Message {
   id: string;
@@ -23,18 +27,6 @@ interface AssessmentChatProps {
   assessmentId: string;
 }
 
-interface StructuredAssessmentState {
-  currentQuestion?: string;
-  questionId?: string;
-  currentDomain?: AssessmentDomain;
-  progress?: {
-    totalQuestions: number;
-    answeredQuestions: number;
-    completedDomains: number;
-    overallProgress: number;
-  };
-}
-
 export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
   const { user } = useUser();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -44,70 +36,269 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
   const [assessmentStatus, setAssessmentStatus] = useState<
     "IN_PROGRESS" | "COMPLETED"
   >("IN_PROGRESS");
-  const [structuredState, setStructuredState] =
-    useState<StructuredAssessmentState>({});
-  const [questionHistory, setQuestionHistory] = useState<
-    StructuredAssessmentState[]
-  >([]);
   const [subjectName, setSubjectName] = useState<string>("");
   const [aiRecommendations, setAiRecommendations] = useState<string>("");
-  const [hasAnsweredQuestions, setHasAnsweredQuestions] =
-    useState<boolean>(false);
+  const [assessmentConfigs, setAssessmentConfigs] = useState<
+    QuestionSetConfig[]
+  >([]);
+  const [questionResponses, setQuestionResponses] = useState<
+    StructuredQuestionResponse[]
+  >([]);
+  const [pendingSaves, setPendingSaves] = useState(0);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const pendingQuestionIdsRef = useRef<Set<string>>(new Set());
+  const [isAnswerSaving, setIsAnswerSaving] = useState(false);
+  const [resolvedAssessmentId, setResolvedAssessmentId] = useState<string | null>(null);
 
   const isStructuredMode = ASSESSMENT_CONFIG.CURRENT_MODE === "structured";
+  const scoringCalculator = useMemo(() => {
+    if (assessmentConfigs.length === 0) {
+      return null;
+    }
+    return createScoringCalculator(assessmentConfigs);
+  }, [assessmentConfigs]);
 
-  // Load existing messages and send initial greeting
-  useEffect(() => {
-    const loadMessages = async () => {
-      try {
-        // Get assessment data first
-        const assessmentResponse = await fetch(
-          `/api/assessments/${assessmentId}`
-        );
-        if (assessmentResponse.ok) {
-          const assessmentData = await assessmentResponse.json();
-          setSubjectName(assessmentData.subjectName || "");
-          setAssessmentStatus(assessmentData.status);
-        }
+  const determineNextQuestion = useCallback(
+    (responses: StructuredQuestionResponse[]) => {
+      if (assessmentConfigs.length === 0) {
+        return null;
+      }
 
-        // Get messages
-        const response = await fetch(
-          `/api/assessments/${assessmentId}/messages`
+      const answeredIds = new Set(responses.map((response) => response.questionId));
+
+      for (const domain of assessmentConfigs) {
+        const domainHasResponses = domain.questions.some((question) =>
+          answeredIds.has(question.id)
         );
-        if (response.ok) {
-          const data = await response.json();
-          setMessages(
-            data.messages.map((msg: any) => ({
-              ...msg,
-              timestamp: new Date(msg.timestamp),
-            }))
+
+        if (domainHasResponses && scoringCalculator) {
+          const domainScore = scoringCalculator.calculateDomainScore(
+            domain.name,
+            responses
           );
 
-          // Override with latest status from messages endpoint
-          setAssessmentStatus(data.status);
-
-          if (data.status !== "COMPLETED") {
-            if (data.messages.length === 0) {
-              // No messages - send initial greeting
-              await sendInitialGreeting();
-            } else if (isStructuredMode) {
-              // Resuming assessment - get current question state
-              await resumeAssessment();
-            }
+          if (domainScore.skipped) {
+            continue;
           }
         }
-      } catch (error) {
-        console.error("Error loading messages:", error);
-      } finally {
-        setIsInitialized(true);
-      }
-    };
 
-    if (assessmentId) {
-      loadMessages();
+        for (const question of domain.questions) {
+          if (!answeredIds.has(question.id)) {
+            return {
+              questionId: question.id,
+              text: question.text,
+              domain: domain.name,
+            };
+          }
+        }
+      }
+
+      return null;
+    },
+    [assessmentConfigs, scoringCalculator]
+  );
+
+  const computeProgress = useCallback(
+    (
+      responses: StructuredQuestionResponse[]
+    ): {
+      totalQuestions: number;
+      answeredQuestions: number;
+      completedDomains: number;
+      overallProgress: number;
+    } => {
+      if (assessmentConfigs.length === 0) {
+        return {
+          totalQuestions: 0,
+          answeredQuestions: responses.length,
+          completedDomains: 0,
+          overallProgress: 0,
+        };
+      }
+
+      const totalQuestions = assessmentConfigs.reduce(
+        (sum, domain) => sum + domain.questions.length,
+        0
+      );
+      const answeredQuestions = responses.length;
+      const answeredIds = new Set(responses.map((response) => response.questionId));
+
+      let completedDomains = 0;
+
+      for (const domain of assessmentConfigs) {
+        const domainHasResponses = domain.questions.some((question) =>
+          answeredIds.has(question.id)
+        );
+
+        if (domainHasResponses && scoringCalculator) {
+          const domainScore = scoringCalculator.calculateDomainScore(
+            domain.name,
+            responses
+          );
+
+          if (domainScore.skipped) {
+            completedDomains += 1;
+            continue;
+          }
+        }
+
+        const allAnswered = domain.questions.every((question) =>
+          answeredIds.has(question.id)
+        );
+
+        if (allAnswered) {
+          completedDomains += 1;
+        } else {
+          break;
+        }
+      }
+
+      return {
+        totalQuestions,
+        answeredQuestions,
+        completedDomains,
+        overallProgress:
+          totalQuestions === 0
+            ? 0
+            : (answeredQuestions / totalQuestions) * 100,
+      };
+    },
+    [assessmentConfigs, scoringCalculator]
+  );
+
+  const progressSummary = useMemo(
+    () => computeProgress(questionResponses),
+    [computeProgress, questionResponses]
+  );
+  const activeQuestion = useMemo(
+    () => determineNextQuestion(questionResponses),
+    [determineNextQuestion, questionResponses]
+  );
+  const canGoBack =
+    questionResponses.length > 0 && pendingSaves === 0 && assessmentStatus !== "COMPLETED";
+  const isLocallyComplete =
+    assessmentConfigs.length > 0 &&
+    !activeQuestion &&
+    questionResponses.length > 0;
+
+  useEffect(() => {
+    if (!isStructuredMode) {
+      return;
+    }
+
+    if (isLocallyComplete && pendingSaves === 0) {
+      setAssessmentStatus("COMPLETED");
+    } else if ((activeQuestion || pendingSaves > 0) && assessmentStatus === "COMPLETED") {
+      setAssessmentStatus("IN_PROGRESS");
+    }
+  }, [
+    activeQuestion,
+    assessmentStatus,
+    isLocallyComplete,
+    isStructuredMode,
+    pendingSaves,
+  ]);
+
+  const initializeStructuredMode = useCallback(async () => {
+    if (!assessmentId) return;
+
+    setIsInitialized(false);
+    setSyncError(null);
+
+    try {
+      const response = await fetch(
+        `/api/assessments/${assessmentId}/structured-state`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to load structured assessment state");
+      }
+
+      const data = await response.json();
+
+      setSubjectName(data.subjectName || "");
+      if (data.status) {
+        setAssessmentStatus(data.status);
+      }
+
+      setAssessmentConfigs(data.questionSets || []);
+      setResolvedAssessmentId(data.assessmentId || assessmentId);
+
+      const deduped = new Map<string, StructuredQuestionResponse>();
+      for (const entry of data.questionResponses || []) {
+        deduped.delete(entry.questionId);
+        deduped.set(entry.questionId, {
+          questionId: entry.questionId,
+          response: entry.response,
+          timestamp: entry.timestamp ? new Date(entry.timestamp) : undefined,
+        });
+      }
+
+      setQuestionResponses(Array.from(deduped.values()));
+    } catch (error) {
+      console.error("Error loading structured assessment:", error);
+      setSyncError(
+        "We couldn't load the assessment. Please refresh the page to try again."
+      );
+    } finally {
+      setIsInitialized(true);
     }
   }, [assessmentId]);
+
+  const initializeConversationalMode = useCallback(async () => {
+    if (!assessmentId) return;
+
+    setIsInitialized(false);
+
+    try {
+      const assessmentResponse = await fetch(
+        `/api/assessments/${assessmentId}`
+      );
+      if (assessmentResponse.ok) {
+        const assessmentData = await assessmentResponse.json();
+        setSubjectName(assessmentData.subjectName || "");
+        setAssessmentStatus(assessmentData.status);
+      }
+
+      const response = await fetch(
+        `/api/assessments/${assessmentId}/messages`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setMessages(
+          data.messages.map((msg: any) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp),
+          }))
+        );
+        setAssessmentStatus(data.status);
+
+        if (data.status !== "COMPLETED" && data.messages.length === 0) {
+          await sendInitialGreeting();
+        }
+      }
+    } catch (error) {
+      console.error("Error loading assessment messages:", error);
+    } finally {
+      setIsInitialized(true);
+    }
+  }, [assessmentId]);
+
+  useEffect(() => {
+    if (!assessmentId) return;
+
+    if (isStructuredMode) {
+      void initializeStructuredMode();
+    } else {
+      void initializeConversationalMode();
+    }
+  }, [
+    assessmentId,
+    isStructuredMode,
+    initializeStructuredMode,
+    initializeConversationalMode,
+  ]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -118,25 +309,25 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
 
   const sendInitialGreeting = async () => {
     try {
+      const payload: Record<string, unknown> = {
+        message: "start_assessment",
+      };
+
+      if (resolvedAssessmentId) {
+        payload.assessmentId = resolvedAssessmentId;
+      }
+
       const response = await fetch(`/api/assessments/${assessmentId}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: "start_assessment",
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
         const data = await response.json();
 
-        if (isStructuredMode) {
-          // Handle structured mode initialization
-          setStructuredState({
-            currentQuestion: data.nextQuestion,
-            questionId: data.questionId,
-            currentDomain: data.currentDomain,
-            progress: data.progress,
-          });
+        if (data.resolvedAssessmentId) {
+          setResolvedAssessmentId(data.resolvedAssessmentId);
         }
 
         setMessages((prev) => [
@@ -151,38 +342,6 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
       }
     } catch (error) {
       console.error("Error sending initial greeting:", error);
-    }
-  };
-
-  const resumeAssessment = async () => {
-    try {
-      const response = await fetch(`/api/assessments/${assessmentId}/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: "resume_assessment",
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-
-        if (data.nextQuestion) {
-          setStructuredState({
-            currentQuestion: data.nextQuestion,
-            questionId: data.questionId,
-            currentDomain: data.currentDomain,
-            progress: data.progress,
-          });
-
-          // Check if there are answered questions to enable back button
-          if (data.progress && data.progress.answeredQuestions > 0) {
-            setHasAnsweredQuestions(true);
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Error resuming assessment:", error);
     }
   };
 
@@ -203,12 +362,18 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
     setIsLoading(true);
 
     try {
+      const payload: Record<string, unknown> = {
+        message: input,
+      };
+
+      if (resolvedAssessmentId) {
+        payload.assessmentId = resolvedAssessmentId;
+      }
+
       const response = await fetch(`/api/assessments/${assessmentId}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: input,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
@@ -225,6 +390,9 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
 
         if (data.isComplete) {
           setAssessmentStatus("COMPLETED");
+        }
+        if (data.resolvedAssessmentId) {
+          setResolvedAssessmentId(data.resolvedAssessmentId);
         }
       } else {
         // Handle error
@@ -250,122 +418,161 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
     }
   };
 
-  const handleBack = async () => {
-    // If we have session history, use it
-    if (questionHistory.length > 0) {
-      // Get the previous state
-      const previousState = questionHistory[questionHistory.length - 1];
+  const persistStructuredAnswer = useCallback(
+    async (responseRecord: StructuredQuestionResponse) => {
+      setPendingSaves((prev) => prev + 1);
+      setSyncError(null);
 
-      // Remove the last two messages (user answer and AI response)
-      setMessages((prev) => prev.slice(0, -2));
-
-      // Restore the previous question state
-      setStructuredState(previousState);
-
-      // Remove the last history item
-      setQuestionHistory((prev) => prev.slice(0, -1));
-    } else {
-      // No session history - request previous question from API
       try {
-        setIsLoading(true);
-        const response = await fetch(`/api/assessments/${assessmentId}/chat`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            message: "previous_question",
-          }),
-        });
+        const payload: Record<string, unknown> = {
+          questionId: responseRecord.questionId,
+          response: responseRecord.response,
+        };
 
-        if (response.ok) {
-          const data = await response.json();
-
-          if (data.previousQuestion) {
-            // Remove the last two messages (user answer and AI response)
-            setMessages((prev) => prev.slice(0, -2));
-
-            // Load the previous question
-            setStructuredState({
-              currentQuestion: data.previousQuestion,
-              questionId: data.questionId,
-              currentDomain: data.currentDomain,
-              progress: data.progress,
-            });
-          }
+        if (resolvedAssessmentId) {
+          payload.assessmentId = resolvedAssessmentId;
         }
-      } catch (error) {
-        console.error("Error going back:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-  };
 
-  const handleStructuredAnswer = async (
-    questionId: string,
-    response: boolean
-  ) => {
-    setIsLoading(true);
+        const apiResponse = await fetch(
+          `/api/assessments/${assessmentId}/chat`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          }
+        );
 
-    try {
-      const apiResponse = await fetch(`/api/assessments/${assessmentId}/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          questionId,
-          response,
-        }),
-      });
+        if (!apiResponse.ok) {
+          throw new Error("Failed to sync structured response");
+        }
 
-      if (apiResponse.ok) {
         const data = await apiResponse.json();
 
-        // Add conversation messages
-        const userMessage: Message = {
-          id: Date.now().toString(),
-          role: "user",
-          content: response ? "Yes" : "No",
-          timestamp: new Date(),
-        };
+        if (data.aiRecommendations) {
+          setAiRecommendations(data.aiRecommendations);
+        }
 
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content: data.message,
-          timestamp: new Date(),
-        };
-
-        setMessages((prev) => [...prev, userMessage, assistantMessage]);
-
-        // Update structured state
         if (data.isComplete) {
           setAssessmentStatus("COMPLETED");
-          setStructuredState({});
-          setQuestionHistory([]);
-          setHasAnsweredQuestions(false);
-        } else {
-          // Save current state to history before moving to next question
-          setQuestionHistory((prev) => [...prev, structuredState]);
-
-          // Track that we have answered questions
-          setHasAnsweredQuestions(true);
-
-          setStructuredState({
-            currentQuestion: data.nextQuestion,
-            questionId: data.questionId,
-            currentDomain: data.currentDomain,
-            progress: data.progress,
-          });
         }
-      } else {
-        throw new Error("Failed to submit response");
+        if (data.resolvedAssessmentId) {
+          setResolvedAssessmentId(data.resolvedAssessmentId);
+        }
+      } catch (error) {
+        console.error("Error syncing structured response:", error);
+        setQuestionResponses((prev) =>
+          prev.filter((entry) => entry.questionId !== responseRecord.questionId)
+        );
+        setSyncError(
+          "We couldn't sync that answer. Check your connection and try again."
+        );
+      } finally {
+        pendingQuestionIdsRef.current.delete(responseRecord.questionId);
+        setPendingSaves((prev) => Math.max(prev - 1, 0));
+      }
+    },
+    [assessmentId, resolvedAssessmentId]
+  );
+
+  const handleStructuredAnswer = useCallback(
+    async (questionId: string, response: boolean) => {
+      if (
+        !activeQuestion ||
+        activeQuestion.questionId !== questionId ||
+        isAnswerSaving
+      ) {
+        return;
+      }
+
+      if (pendingQuestionIdsRef.current.has(questionId)) {
+        return;
+      }
+
+      const responseRecord: StructuredQuestionResponse = {
+        questionId,
+        response,
+        timestamp: new Date(),
+      };
+
+      pendingQuestionIdsRef.current.add(questionId);
+
+      let added = false;
+      setQuestionResponses((prev) => {
+        if (prev.some((entry) => entry.questionId === questionId)) {
+          return prev;
+        }
+        added = true;
+        return [...prev, responseRecord];
+      });
+
+      if (!added) {
+        pendingQuestionIdsRef.current.delete(questionId);
+        return;
+      }
+
+      setAssessmentStatus("IN_PROGRESS");
+      setSyncError(null);
+
+      setIsAnswerSaving(true);
+      try {
+        await persistStructuredAnswer(responseRecord);
+      } finally {
+        setIsAnswerSaving(false);
+      }
+    },
+    [activeQuestion, isAnswerSaving, persistStructuredAnswer]
+  );
+
+  const handleBack = useCallback(async () => {
+    if (questionResponses.length === 0 || pendingSaves > 0) {
+      return;
+    }
+
+    const previousResponses = questionResponses;
+    const updatedResponses = previousResponses.slice(0, -1);
+
+    setQuestionResponses(updatedResponses);
+    setAssessmentStatus("IN_PROGRESS");
+    setSyncError(null);
+    setPendingSaves((prev) => prev + 1);
+
+    try {
+      const payload: Record<string, unknown> = {
+        message: "previous_question",
+      };
+
+      if (resolvedAssessmentId) {
+        payload.assessmentId = resolvedAssessmentId;
+      }
+
+      const response = await fetch(`/api/assessments/${assessmentId}/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to revert structured answer");
+      }
+
+      try {
+        const data = await response.json();
+        if (data?.resolvedAssessmentId) {
+          setResolvedAssessmentId(data.resolvedAssessmentId);
+        }
+      } catch (parseError) {
+        // Ignore JSON parse errors for empty bodies
       }
     } catch (error) {
-      console.error("Error submitting structured answer:", error);
-      // Could add error state handling here
+      console.error("Error reverting answer:", error);
+      setQuestionResponses(previousResponses);
+      setSyncError(
+        "We couldn't revert that answer. Please check your connection and try again."
+      );
     } finally {
-      setIsLoading(false);
+      setPendingSaves((prev) => Math.max(prev - 1, 0));
     }
-  };
+  }, [assessmentId, pendingSaves, questionResponses, resolvedAssessmentId]);
 
   if (!isInitialized) {
     return (
@@ -378,43 +585,50 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
 
   if (isStructuredMode) {
     // Structured Assessment Mode
-    if (assessmentStatus === "COMPLETED") {
+    if (assessmentStatus === "COMPLETED" && !activeQuestion) {
       return (
         <AssessmentCompletion
           assessmentId={assessmentId}
           subjectName={subjectName}
+          aiRecommendations={aiRecommendations}
         />
       );
     }
 
-    if (
-      structuredState.currentQuestion &&
-      structuredState.questionId &&
-      structuredState.currentDomain &&
-      structuredState.progress
-    ) {
+    if (activeQuestion && assessmentConfigs.length > 0) {
       return (
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b">
             <h2 className="text-lg font-semibold">Behavioral Assessment</h2>
-            <Badge variant="default">In Progress</Badge>
+            <div className="flex items-center gap-3">
+              <Badge variant="default">In Progress</Badge>
+              {pendingSaves > 0 && (
+                <span className="flex items-center text-xs text-muted-foreground">
+                  <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                  Syncing...
+                </span>
+              )}
+            </div>
           </div>
+
+          {syncError && (
+            <div className="px-4 py-2 text-sm text-destructive">
+              {syncError}
+            </div>
+          )}
 
           <div className="flex-1 p-4 overflow-auto">
             <QuestionPresenter
-              questionId={structuredState.questionId}
-              questionText={structuredState.currentQuestion}
-              currentDomain={structuredState.currentDomain}
-              progress={structuredState.progress}
-              isLoading={isLoading}
+              questionId={activeQuestion.questionId}
+              questionText={activeQuestion.text}
+              currentDomain={activeQuestion.domain}
+              progress={progressSummary}
+              isLoading={isAnswerSaving || pendingSaves > 0}
               onAnswer={handleStructuredAnswer}
               onBack={handleBack}
-              canGoBack={
-                questionHistory.length > 0 ||
-                hasAnsweredQuestions ||
-                (structuredState.progress?.answeredQuestions ?? 0) > 0
-              }
+              canGoBack={canGoBack}
+              assessmentConfigs={assessmentConfigs}
             />
           </div>
         </div>
@@ -422,6 +636,22 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
     }
 
     // Loading state for structured mode
+    if (syncError) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full space-y-3 px-4 text-center">
+          <Loader2 className="h-6 w-6 text-destructive" />
+          <p className="text-sm text-destructive">{syncError}</p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void initializeStructuredMode()}
+          >
+            Try again
+          </Button>
+        </div>
+      );
+    }
+
     return (
       <div className="flex items-center justify-center h-full">
         <div className="flex items-center space-x-2">
@@ -438,6 +668,7 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
       <AssessmentCompletion
         assessmentId={assessmentId}
         subjectName={subjectName}
+        aiRecommendations={aiRecommendations}
       />
     );
   }

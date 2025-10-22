@@ -1,6 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+interface ChildProfile {
+  id: string;
+  name: string;
+}
 import { useUser } from "@/lib/hooks/use-supabase-user";
 import {
   Card,
@@ -58,7 +62,6 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import Link from "next/link";
-import { AssessmentDomain } from "@prisma/client";
 import { AssessmentDetailSidebar } from "./AssessmentDetailSidebar";
 import { toast } from "sonner";
 import ConversationalTrialModule from "@/components/dashboard/ConversationalTrialModule";
@@ -82,9 +85,31 @@ interface Assessment {
     timestamp?: string;
     domainDisplayName?: string;
   }>;
+  childProfile?: {
+    id: string;
+    name: string;
+  };
+  childprofileid?: string;
 }
 
 export function AssessmentsView() {
+  const [childProfiles, setChildProfiles] = useState<ChildProfile[]>([]);
+  const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
+  // Fetch child profiles for filter tabs
+  useEffect(() => {
+    const fetchChildren = async () => {
+      try {
+        const res = await fetch("/api/children");
+        if (res.ok) {
+          const data = await res.json();
+          setChildProfiles(data);
+        }
+      } catch (err) {
+        // ignore
+      }
+    };
+    fetchChildren();
+  }, []);
   const { user } = useUser();
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [filteredAssessments, setFilteredAssessments] = useState<Assessment[]>(
@@ -159,6 +184,15 @@ export function AssessmentsView() {
   useEffect(() => {
     let filtered = assessments;
 
+    // Filter by child profile
+    if (selectedChildId && selectedChildId !== "all") {
+      filtered = filtered.filter(
+        (assessment) =>
+          assessment.childProfile?.id === selectedChildId ||
+          assessment.childprofileid === selectedChildId
+      );
+    }
+
     // Filter by search term
     if (searchTerm) {
       filtered = filtered.filter((assessment) =>
@@ -168,17 +202,16 @@ export function AssessmentsView() {
 
     // Filter by status
     if (filterStatus !== "ALL") {
-      filtered = filtered.filter(
-        (assessment) =>
-          filterStatus === "IN_PROGRESS"
-            ? assessment.status === "IN_PROGRESS" ||
-              assessment.status === "ABANDONED"
-            : assessment.status === filterStatus
+      filtered = filtered.filter((assessment) =>
+        filterStatus === "IN_PROGRESS"
+          ? assessment.status === "IN_PROGRESS" ||
+            assessment.status === "ABANDONED"
+          : assessment.status === filterStatus
       );
     }
 
     setFilteredAssessments(filtered);
-  }, [assessments, searchTerm, filterStatus]);
+  }, [assessments, searchTerm, filterStatus, selectedChildId]);
 
   const fetchAssessments = async () => {
     try {
@@ -585,6 +618,18 @@ export function AssessmentsView() {
     );
   }
 
+  // Filter child profiles to only those with assessments
+  const childIdsWithAssessments = Array.from(
+    new Set(
+      assessments
+        .map((a) => a.childProfile?.id || a.childprofileid)
+        .filter(Boolean)
+    )
+  );
+  const filteredChildProfiles = childProfiles.filter((child) =>
+    childIdsWithAssessments.includes(child.id)
+  );
+
   return (
     <div className="h-full flex overflow-hidden">
       {/* Main Content */}
@@ -785,6 +830,34 @@ export function AssessmentsView() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex flex-col md:flex-row gap-4">
+                {/* Child filter tabs */}
+                {filteredChildProfiles.length > 0 && (
+                  <div className="flex gap-2 mb-2">
+                    <Button
+                      size="sm"
+                      variant={
+                        selectedChildId === null || selectedChildId === "all"
+                          ? "default"
+                          : "outline"
+                      }
+                      onClick={() => setSelectedChildId("all")}
+                    >
+                      All Children
+                    </Button>
+                    {filteredChildProfiles.map((child) => (
+                      <Button
+                        key={child.id}
+                        size="sm"
+                        variant={
+                          selectedChildId === child.id ? "default" : "outline"
+                        }
+                        onClick={() => setSelectedChildId(child.id)}
+                      >
+                        {child.name || "Unnamed"}
+                      </Button>
+                    ))}
+                  </div>
+                )}
                 <div className="flex-1">
                   <div className="relative">
                     <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -1039,10 +1112,14 @@ export function AssessmentsView() {
                             >
                               <Play className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
                               <span className="hidden sm:inline">
-                                {assessment.isConversational ? "Resume Chat" : "Continue"}
+                                {assessment.isConversational
+                                  ? "Resume Chat"
+                                  : "Continue"}
                               </span>
                               <span className="sm:hidden">
-                                {assessment.isConversational ? "Resume" : "Continue"}
+                                {assessment.isConversational
+                                  ? "Resume"
+                                  : "Continue"}
                               </span>
                             </Button>
                             <DropdownMenu>

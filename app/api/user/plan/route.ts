@@ -13,7 +13,9 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const summary = await getUserPlanSummary(user.id);
+    const summary = await getUserPlanSummary(user.id, {
+      stripeCustomerId: user.stripeCustomerId ?? null,
+    });
     return NextResponse.json(summary);
   } catch (error) {
     console.error("[user/plan] GET error", error);

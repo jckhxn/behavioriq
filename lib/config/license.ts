@@ -15,7 +15,7 @@ export const LICENSE_CONFIG = {
     maxUsers: 1,
     validityDays: 30,
     features: [
-      "10 parent-only screening questions",
+      "x parent-only screening questions",
       "Instant snapshot summary",
       "Limited dashboard preview",
       "Upgrade CTA to unlock full assessment",
@@ -36,10 +36,7 @@ export const LICENSE_CONFIG = {
     maxAssessments: 0, // View-only, increments with each $97 purchase
     maxUsers: 1,
     validityDays: null, // Permanent access
-    features: [
-      "Full assessment dashboard access",
-      "School-ready PDF download",
-    ],
+    features: ["Full assessment dashboard access", "School-ready PDF download"],
     canPurchase: true, // Can purchase additional assessments or upgrade
   },
   MONTHLY_LITE: {
@@ -147,21 +144,6 @@ export const LICENSE_CONFIG = {
     canPurchase: false, // Enterprise - contact sales
     conversationalAISessions: null, // Unlimited for districts
   },
-  PARENT_PILOT: {
-    type: "PARENT_PILOT" as const,
-    maxAssessments: null,
-    maxUsers: null,
-    validityDays: 90,
-    features: [
-      "Unlimited assessments during pilot",
-      "Parent and child assessment modes",
-      "Quarterly aggregate usage reports",
-      "Basic district dashboard",
-      "Parent communication toolkit",
-    ] as const,
-    canPurchase: false,
-    conversationalAISessions: null,
-  },
   DISTRICT_PILOT: {
     type: "DISTRICT_PILOT" as const,
     maxAssessments: null,
@@ -252,7 +234,10 @@ export const LICENSE_CONFIG = {
     creditsPerInterval: coreMonthlyPlan.creditsPerInterval,
     creditIntervalMonths: coreMonthlyPlan.creditIntervalMonths,
     rolloverCap: coreMonthlyPlan.rolloverCap,
-    features: [...coreMonthlyPlan.features, "Founders pricing applied"] as const,
+    features: [
+      ...coreMonthlyPlan.features,
+      "Founders pricing applied",
+    ] as const,
     canPurchase: true,
     conversationalAISessions: 0,
   },
@@ -264,7 +249,10 @@ export const LICENSE_CONFIG = {
     creditsPerInterval: familyMonthlyPlan.creditsPerInterval,
     creditIntervalMonths: familyMonthlyPlan.creditIntervalMonths,
     rolloverCap: familyMonthlyPlan.rolloverCap,
-    features: [...familyMonthlyPlan.features, "Founders pricing applied"] as const,
+    features: [
+      ...familyMonthlyPlan.features,
+      "Founders pricing applied",
+    ] as const,
     canPurchase: true,
     conversationalAISessions: null,
   },

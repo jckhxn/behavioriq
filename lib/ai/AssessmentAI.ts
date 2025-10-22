@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
 import { getChatCompletion } from "./openai";
-import { AssessmentDomain, RiskLevel } from "@prisma/client";
 import { SYSTEM_PROMPTS } from "@/lib/config/ai-config";
 import {
   loadAssessmentConfigs,
@@ -31,7 +30,7 @@ export interface AssessmentScores {
 export interface ScoreUpdate {
   domain: string;
   rawScore: number;
-  riskLevel: RiskLevel;
+  riskLevel: string; // was RiskLevel
   confidence: number;
 }
 
@@ -54,11 +53,67 @@ export interface AssessmentResponse {
 export interface StructuredQuestionResponse {
   questionId: string;
   response: boolean;
+  timestamp?: Date;
 }
 
 export interface ConversationMessage {
   role: string;
   content: string;
+}
+
+export interface StructuredSessionSnapshot {
+  questionResponses: QuestionResponse[];
+  questionSets: QuestionSetConfig[];
+  nextQuestion: {
+    questionId: string;
+    text: string;
+    domain: string;
+  } | null;
+  progress: {
+    totalQuestions: number;
+    answeredQuestions: number;
+    completedDomains: number;
+    overallProgress: number;
+  };
+}
+
+const DEFAULT_SETUP_CACHE_TTL_MS =
+  Number(process.env.ASSESSMENT_TEMPLATE_CACHE_TTL_MS) || 5 * 60 * 1000;
+const SETUP_CACHE_DISABLED =
+  process.env.ASSESSMENT_TEMPLATE_CACHE === "off" ||
+  DEFAULT_SETUP_CACHE_TTL_MS <= 0;
+
+type AssessmentSetupCacheEntry = {
+  configs: QuestionSetConfig[];
+  domainTemplateMap: Record<string, string>;
+  calculator: ScoringCalculator;
+  expiresAt: number;
+};
+
+type AssessmentResponseCacheEntry = {
+  responses: QuestionResponse[];
+  updatedAt: number;
+};
+
+const globalAssessmentCaches = globalThis as typeof globalThis & {
+  __assessmentSetupCache?: Map<string, AssessmentSetupCacheEntry>;
+  __assessmentResponseCache?: Map<string, AssessmentResponseCacheEntry>;
+};
+
+const assessmentSetupCache =
+  globalAssessmentCaches.__assessmentSetupCache ??
+  new Map<string, AssessmentSetupCacheEntry>();
+
+if (!globalAssessmentCaches.__assessmentSetupCache) {
+  globalAssessmentCaches.__assessmentSetupCache = assessmentSetupCache;
+}
+
+const assessmentResponseCache =
+  globalAssessmentCaches.__assessmentResponseCache ??
+  new Map<string, AssessmentResponseCacheEntry>();
+
+if (!globalAssessmentCaches.__assessmentResponseCache) {
+  globalAssessmentCaches.__assessmentResponseCache = assessmentResponseCache;
 }
 
 export class AssessmentAI {
@@ -84,6 +139,117 @@ export class AssessmentAI {
     this.isStructuredMode = true; // Always use structured mode per user story
   }
 
+  private static async getAssessmentSetup(templateId: string | null): Promise<{
+    configs: QuestionSetConfig[];
+    domainTemplateMap: Record<string, string>;
+    calculator: ScoringCalculator;
+  }> {
+    const cacheKey = templateId ?? "__default";
+    const shouldUseCache = !SETUP_CACHE_DISABLED;
+
+    if (shouldUseCache) {
+      const cachedEntry = assessmentSetupCache.get(cacheKey);
+      if (cachedEntry && cachedEntry.expiresAt > Date.now()) {
+        return cachedEntry;
+      }
+    }
+
+    let configs: QuestionSetConfig[] = [];
+    let domainTemplateMap: Record<string, string> = {};
+
+    if (templateId) {
+      const templateConfig = await loadAssessmentConfigFromTemplate(templateId);
+      configs = templateConfig.configs;
+      domainTemplateMap = templateConfig.domainTemplateMap || {};
+    }
+
+    if (!configs.length) {
+      configs = await loadAssessmentConfigs();
+      domainTemplateMap = {};
+    }
+
+    const calculator = new ScoringCalculator(configs);
+    const entry: AssessmentSetupCacheEntry = {
+      configs,
+      domainTemplateMap,
+      calculator,
+      expiresAt: Date.now() + DEFAULT_SETUP_CACHE_TTL_MS,
+    };
+
+    if (shouldUseCache) {
+      assessmentSetupCache.set(cacheKey, entry);
+    }
+
+    return entry;
+  }
+
+  private getCachedQuestionResponses(): QuestionResponse[] | null {
+    const cached = assessmentResponseCache.get(this.assessmentId);
+    if (!cached) {
+      return null;
+    }
+
+    return cached.responses.map((response) => ({
+      questionId: response.questionId,
+      response: response.response,
+      timestamp: response.timestamp ? new Date(response.timestamp) : undefined,
+    }));
+  }
+
+  private writeQuestionResponseCache(responses: QuestionResponse[]): void {
+    assessmentResponseCache.set(this.assessmentId, {
+      responses: responses.map((response) => ({
+        questionId: response.questionId,
+        response: response.response,
+        timestamp: response.timestamp
+          ? new Date(response.timestamp)
+          : undefined,
+      })),
+      updatedAt: Date.now(),
+    });
+  }
+
+  private clearQuestionResponseCache(): void {
+    assessmentResponseCache.delete(this.assessmentId);
+  }
+
+  private async hydrateQuestionResponses(): Promise<void> {
+    const cachedResponses = this.getCachedQuestionResponses();
+    if (cachedResponses) {
+      this.questionResponses = cachedResponses;
+      return;
+    }
+
+    const responses = await prisma.questionResponse.findMany({
+      where: { assessmentId: this.assessmentId },
+      orderBy: { timestamp: "asc" },
+      select: {
+        questionId: true,
+        response: true,
+        timestamp: true,
+      },
+    });
+
+    const deduped = new Map<string, StructuredQuestionResponse>();
+    const sortedResponses = responses.sort(
+      (a: any, b: any) =>
+        new Date(a.timestamp ?? new Date()).getTime() -
+        new Date(b.timestamp ?? new Date()).getTime()
+    );
+
+    for (const r of sortedResponses) {
+      deduped.delete(r.questionId);
+      deduped.set(r.questionId, {
+        questionId: r.questionId,
+        response: r.response,
+        timestamp: r.timestamp ?? undefined,
+      });
+    }
+
+    this.questionResponses = Array.from(deduped.values());
+    this.writeQuestionResponseCache(this.questionResponses);
+  }
+
   async initialize(): Promise<void> {
     try {
       // Get the assessment to find its template
@@ -92,29 +258,17 @@ export class AssessmentAI {
         select: { assessmentTemplateId: true },
       });
 
-      if (assessment && (assessment as any).assessmentTemplateId) {
-        this.cachedAssessmentTemplateId = (
-          assessment as any
-        ).assessmentTemplateId;
+      this.cachedAssessmentTemplateId = assessment
+        ? ((assessment as any).assessmentTemplateId as string | null)
+        : null;
 
-        const templateConfig = await loadAssessmentConfigFromTemplate(
-          (assessment as any).assessmentTemplateId
-        );
+      const setup = await AssessmentAI.getAssessmentSetup(
+        this.cachedAssessmentTemplateId
+      );
 
-        if (templateConfig.configs.length === 0) {
-          this.assessmentConfigs = await loadAssessmentConfigs();
-          this.cachedDomainTemplateMapping = {};
-        } else {
-          this.assessmentConfigs = templateConfig.configs;
-          this.cachedDomainTemplateMapping =
-            templateConfig.domainTemplateMap || {};
-        }
-      } else {
-        this.assessmentConfigs = await loadAssessmentConfigs();
-        this.cachedDomainTemplateMapping = {};
-      }
-
-      this.scoringCalculator = new ScoringCalculator(this.assessmentConfigs);
+      this.assessmentConfigs = setup.configs;
+      this.cachedDomainTemplateMapping = setup.domainTemplateMap;
+      this.scoringCalculator = setup.calculator;
 
       if (!this.isStructuredMode) {
         const messages = await prisma.chatMessage.findMany({
@@ -122,7 +276,7 @@ export class AssessmentAI {
           orderBy: { timestamp: "asc" },
         });
 
-        this.conversationHistory = messages.map((msg) => ({
+        this.conversationHistory = messages.map((msg: any) => ({
           role: msg.role,
           content: msg.content,
         }));
@@ -130,22 +284,7 @@ export class AssessmentAI {
         this.conversationHistory = [];
       }
 
-      // Load question responses for structured mode
-      const responses = await prisma.questionResponse.findMany({
-        where: { assessmentId: this.assessmentId },
-        orderBy: { timestamp: "asc" },
-        select: {
-          questionId: true,
-          response: true,
-          timestamp: true,
-        },
-      });
-
-      this.questionResponses = responses.map((r) => ({
-        questionId: r.questionId,
-        response: r.response,
-        timestamp: r.timestamp,
-      }));
+      await this.hydrateQuestionResponses();
 
       // Calculate current progress
       this.updateCurrentProgress();
@@ -159,7 +298,11 @@ export class AssessmentAI {
     questionResponse: StructuredQuestionResponse
   ): Promise<AssessmentResponse> {
     try {
-      // Store the response
+      // Ensure we only keep the latest response for each question
+      this.questionResponses = this.questionResponses.filter(
+        (existing) => existing.questionId !== questionResponse.questionId
+      );
+
       this.questionResponses.push({
         questionId: questionResponse.questionId,
         response: questionResponse.response,
@@ -190,21 +333,15 @@ export class AssessmentAI {
       isComplete = nextQuestion === null;
 
       // Generate AI recommendations if complete
-      let aiRecommendations = "";
       let domainScores: DomainScore[] = [];
+      let completionMeta: {
+        userId: string | null;
+        subjectName: string | null;
+      } | null = null;
       if (isComplete) {
         domainScores = this.scoringCalculator!.getAllDomainScores(
           this.questionResponses
         );
-
-        try {
-          aiRecommendations =
-            await this.generateAIRecommendations(domainScores);
-        } catch (error) {
-          console.error("Error generating AI recommendations:", error);
-          aiRecommendations =
-            "AI recommendations could not be generated at this time.";
-        }
 
         // Update assessment status to COMPLETED
         const assessment = await prisma.assessment.update({
@@ -213,18 +350,30 @@ export class AssessmentAI {
             status: "COMPLETED",
             completedAt: new Date(),
           },
-          select: { userId: true, isConversational: true },
+          select: { userId: true, isConversational: true, subjectName: true },
         });
+
+        completionMeta = {
+          userId: assessment.userId,
+          subjectName: assessment.subjectName,
+        };
 
         // ✅ CHARGE CREDIT ON COMPLETION (not on start)
         // Only charge for regular assessments (conversational handled separately)
         if (assessment.userId && !assessment.isConversational) {
-          const { assessmentCreditsService } = await import("@/lib/services/assessment-credits-service");
+          const { assessmentCreditsService } = await import(
+            "@/lib/services/assessment-credits-service"
+          );
           try {
             await assessmentCreditsService.useCredit(assessment.userId);
-            console.log(`[Assessment] ✅ Charged 1 credit for completed assessment ${this.assessmentId}`);
+            console.log(
+              `[Assessment] ✅ Charged 1 credit for completed assessment ${this.assessmentId}`
+            );
           } catch (error) {
-            console.error(`[Assessment] ⚠️ Failed to charge credit for assessment ${this.assessmentId}:`, error);
+            console.error(
+              `[Assessment] ⚠️ Failed to charge credit for assessment ${this.assessmentId}:`,
+              error
+            );
             // Don't fail the completion if credit charge fails
           }
         }
@@ -236,6 +385,14 @@ export class AssessmentAI {
       // Update scores only when assessment is complete to minimize DB churn
       if (isComplete) {
         await this.updateStructuredScores(domainScores);
+
+        if (completionMeta?.userId) {
+          void this.generateAndPersistRecommendations(
+            domainScores,
+            completionMeta.userId,
+            completionMeta.subjectName || undefined
+          );
+        }
       }
 
       // ✅ FIX: Update progress indices after adding new response
@@ -246,7 +403,7 @@ export class AssessmentAI {
         questionResponse.response,
         nextQuestion,
         isComplete,
-        aiRecommendations
+        undefined
       );
 
       return {
@@ -264,7 +421,7 @@ export class AssessmentAI {
         currentDomain: currentDomain,
         isComplete,
         progress: this.calculateProgress(),
-        aiRecommendations: isComplete ? aiRecommendations : undefined,
+        aiRecommendations: undefined,
       };
     } catch (error) {
       console.error("Error processing structured response:", error);
@@ -290,9 +447,8 @@ export class AssessmentAI {
       });
 
       const domainDetails = domainScores.map((score) => {
-        const riskLevelEnum = this.scoringCalculator!.mapScoreToRiskLevel(
-          score
-        );
+        const riskLevelEnum =
+          this.scoringCalculator!.mapScoreToRiskLevel(score);
         const domainConfig = this.assessmentConfigs.find(
           (config) => config.name === score.domain
         );
@@ -305,14 +461,14 @@ export class AssessmentAI {
         };
       });
 
-      const riskPriority: Record<RiskLevel, number> = {
-        VERY_HIGH: 4,
-        HIGH: 3,
-        MODERATE: 2,
+      const riskPriority: Record<string, number> = {
         LOW: 1,
+        MODERATE: 2,
+        HIGH: 3,
+        VERY_HIGH: 4,
       };
 
-      const sortedDomains = [...domainDetails].sort((a, b) => {
+      const sortedDomains = [...domainDetails].sort((a: any, b: any) => {
         const riskDiff =
           (riskPriority[b.riskLevelEnum] || 0) -
           (riskPriority[a.riskLevelEnum] || 0);
@@ -378,15 +534,15 @@ ${JSON.stringify(topDomains, null, 2)}`;
 
   private calculateOverallRiskLabel(
     domains: Array<{
-      riskLevelEnum: RiskLevel;
+      riskLevelEnum: string; // was RiskLevel
       riskLevelLabel: string;
     }>
   ): string {
     if (!domains.length) {
-      return this.formatRiskLevel(RiskLevel.LOW);
+      return this.formatRiskLevel("LOW");
     }
 
-    const riskValues: Record<RiskLevel, number> = {
+    const riskValues: Record<string, number> = {
       LOW: 1,
       MODERATE: 2,
       HIGH: 3,
@@ -399,17 +555,18 @@ ${JSON.stringify(topDomains, null, 2)}`;
         0
       ) / domains.length;
 
-    if (averageRisk >= 3.5) return this.formatRiskLevel(RiskLevel.VERY_HIGH);
-    if (averageRisk >= 2.5) return this.formatRiskLevel(RiskLevel.HIGH);
-    if (averageRisk >= 1.5) return this.formatRiskLevel(RiskLevel.MODERATE);
-    return this.formatRiskLevel(RiskLevel.LOW);
+    if (averageRisk >= 3.5) return this.formatRiskLevel("VERY_HIGH");
+    if (averageRisk >= 2.5) return this.formatRiskLevel("HIGH");
+    if (averageRisk >= 1.5) return this.formatRiskLevel("MODERATE");
+    return this.formatRiskLevel("LOW");
   }
 
-  private formatRiskLevel(risk: RiskLevel): string {
+  private formatRiskLevel(risk: string): string {
+    // was RiskLevel
     return risk
       .toLowerCase()
       .split("_")
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .map((part: any) => part.charAt(0).toUpperCase() + part.slice(1))
       .join(" ");
   }
 
@@ -537,9 +694,7 @@ ${JSON.stringify(topDomains, null, 2)}`;
           `  ${question.id}: ${isAnswered ? "✅ answered" : "❓ unanswered"}`
         );
         if (!isAnswered) {
-          debugLog(
-            `➡️ NEXT QUESTION: ${question.id} in domain ${domain.name}`
-          );
+          debugLog(`➡️ NEXT QUESTION: ${question.id} in domain ${domain.name}`);
           return question; // Return the next unanswered question
         }
       }
@@ -663,47 +818,60 @@ ${JSON.stringify(topDomains, null, 2)}`;
     questionResponse: StructuredQuestionResponse
   ) {
     try {
-      await prisma.questionResponse.create({
-        data: {
+      await prisma.questionResponse.upsert({
+        where: {
+          assessmentId_questionId: {
+            assessmentId: this.assessmentId,
+            questionId: questionResponse.questionId,
+          },
+        },
+        update: {
+          response: questionResponse.response,
+          timestamp: new Date(),
+        },
+        create: {
           assessmentId: this.assessmentId,
           questionId: questionResponse.questionId,
           response: questionResponse.response,
           timestamp: new Date(),
         },
       });
+      this.writeQuestionResponseCache(this.questionResponses);
     } catch (error) {
       console.error("Error saving question response:", error);
+      // Invalidate cache if persistence failed to avoid serving stale data
+      this.clearQuestionResponseCache();
     }
   }
 
-  private mapDomainToEnum(domainName: string): AssessmentDomain {
+  private mapDomainToEnum(domainName: string): string {
+    // was AssessmentDomain
     // Map domain names (from templates or hardcoded) to Prisma enum values
     // This is a temporary solution - ideally Score table should store template ID instead of enum
     const normalizedName = domainName.toUpperCase().replace(/[^A-Z]/g, "");
 
-    const domainMapping: Record<string, AssessmentDomain> = {
+    const domainMapping: Record<string, string> = {
       // Hardcoded domain names
-      SUICIDALITY: AssessmentDomain.EMOTIONAL,
-      SELFHARM: AssessmentDomain.VIOLENCE,
-      ANTISOCIAL: AssessmentDomain.ANTISOCIAL,
+      SUICIDALITY: "EMOTIONAL",
+      SELFHARM: "VIOLENCE",
+      ANTISOCIAL: "ANTISOCIAL",
 
       // Template-based domain names (try to map intelligently)
-      ATTENTION: AssessmentDomain.ATTENTION,
-      VIOLENCE: AssessmentDomain.VIOLENCE,
-      EMOTIONAL: AssessmentDomain.EMOTIONAL,
-      CONDUCT: AssessmentDomain.CONDUCT,
+      ATTENTION: "ATTENTION",
+      VIOLENCE: "VIOLENCE",
+      EMOTIONAL: "EMOTIONAL",
 
       // Common variations
-      ANXIETY: AssessmentDomain.EMOTIONAL,
-      DEPRESSION: AssessmentDomain.EMOTIONAL,
-      MOOD: AssessmentDomain.EMOTIONAL,
-      ADHD: AssessmentDomain.ATTENTION,
-      FOCUS: AssessmentDomain.ATTENTION,
-      HYPERACTIVITY: AssessmentDomain.ATTENTION,
-      AGGRESSION: AssessmentDomain.VIOLENCE,
-      BEHAVIORAL: AssessmentDomain.CONDUCT,
-      OPPOSITIONAL: AssessmentDomain.CONDUCT,
-      ODD: AssessmentDomain.CONDUCT,
+      ANXIETY: "EMOTIONAL",
+      DEPRESSION: "EMOTIONAL",
+      MOOD: "EMOTIONAL",
+      ADHD: "ATTENTION",
+      FOCUS: "ATTENTION",
+      HYPERACTIVITY: "ATTENTION",
+      AGGRESSION: "VIOLENCE",
+      BEHAVIORAL: "CONDUCT",
+      OPPOSITIONAL: "CONDUCT",
+      ODD: "CONDUCT",
     };
 
     // Try exact match first
@@ -722,7 +890,7 @@ ${JSON.stringify(topDomains, null, 2)}`;
     console.warn(
       `No mapping found for domain "${domainName}", defaulting to ANTISOCIAL`
     );
-    return AssessmentDomain.ANTISOCIAL;
+    return "ANTISOCIAL";
   }
 
   /**
@@ -773,6 +941,62 @@ ${JSON.stringify(topDomains, null, 2)}`;
       });
     } catch (error) {
       console.error("Error updating scores:", error);
+    }
+  }
+
+  private async generateAndPersistRecommendations(
+    domainScores: DomainScore[],
+    userId: string,
+    subjectName?: string
+  ) {
+    if (!domainScores.length) {
+      return;
+    }
+
+    try {
+      const recommendations =
+        await this.generateAIRecommendations(domainScores);
+
+      if (!recommendations || !recommendations.trim()) {
+        return;
+      }
+
+      const existingRecommendation = await prisma.recommendation.findFirst({
+        where: {
+          assessmentId: this.assessmentId,
+          userId,
+          category: "AI Generated",
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      const title =
+        subjectName && subjectName.trim().length > 0
+          ? `Assessment Recommendations for ${subjectName}`
+          : "Assessment Recommendations";
+
+      if (existingRecommendation) {
+        await prisma.recommendation.update({
+          where: { id: existingRecommendation.id },
+          data: {
+            content: recommendations,
+            title,
+          },
+        });
+      } else {
+        await prisma.recommendation.create({
+          data: {
+            assessmentId: this.assessmentId,
+            userId,
+            title,
+            content: recommendations,
+            category: "AI Generated",
+            priority: 3,
+          },
+        });
+      }
+    } catch (error) {
+      console.error("Error generating and saving AI recommendations:", error);
     }
   }
 
@@ -872,8 +1096,14 @@ ${JSON.stringify(topDomains, null, 2)}`;
       // ✅ FIX: Update current progress indices after removing response
       // This ensures the progress counter stays accurate
       this.updateCurrentProgress();
+      this.writeQuestionResponseCache(this.questionResponses);
     } catch (error) {
       console.error("Error removing last response:", error);
+      // Restore local state if persistence failed
+      this.questionResponses.push(lastResponse);
+      this.writeQuestionResponseCache(this.questionResponses);
+      this.updateCurrentProgress();
+      return null;
     }
 
     // Return the question that was just removed (the one to show again)
@@ -895,10 +1125,36 @@ ${JSON.stringify(topDomains, null, 2)}`;
     };
   }
 
+  getStructuredSessionSnapshot(): StructuredSessionSnapshot {
+    // Ensure progress indices are up to date before generating snapshot
+    this.updateCurrentProgress();
+
+    const nextQuestion = this.getNextQuestionImproved();
+    const progress = this.calculateProgress();
+
+    return {
+      questionResponses: this.questionResponses.map((response) => ({
+        questionId: response.questionId,
+        response: response.response,
+        timestamp: response.timestamp,
+      })),
+      questionSets: this.assessmentConfigs,
+      nextQuestion: nextQuestion
+        ? {
+            questionId: nextQuestion.id,
+            text: nextQuestion.text,
+            domain: this.getCurrentDomainFromQuestionId(nextQuestion.id),
+          }
+        : null,
+      progress,
+    };
+  }
+
   static async createNewAssessment(
     userId: string,
     subjectName: string,
-    assessmentTemplateId?: string
+    assessmentTemplateId?: string,
+    childProfileId?: string
   ): Promise<{ id: string; shortId: string }> {
     try {
       // Helper function to check if shortId exists
@@ -919,9 +1175,10 @@ ${JSON.stringify(topDomains, null, 2)}`;
           subjectName,
           shortId,
           status: "IN_PROGRESS",
-          currentDomain: AssessmentDomain.ANTISOCIAL, // Use valid enum value
+          currentDomain: "ANTISOCIAL", // Use string literal for enum value
           ...(assessmentTemplateId && { assessmentTemplateId }), // Associate with the template if provided
-        } as any, // Type assertion to handle the assessmentTemplateId field
+          ...(childProfileId && { childprofileid: childProfileId }), // Associate with child profile if provided
+        } as any,
       });
 
       return { id: assessment.id, shortId };

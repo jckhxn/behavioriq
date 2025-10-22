@@ -26,7 +26,8 @@ export type EmailType =
   | "LICENSE_RENEWED"
   | "PDF_REPORT"
   | "SYSTEM"
-  | "GENERIC";
+  | "GENERIC"
+  | "MARKETING";
 
 export type EmailStatus = "SENT" | "FAILED" | "BOUNCED" | "COMPLAINED";
 
@@ -74,7 +75,8 @@ export class EmailRateLimiter {
         );
         return {
           allowed: false,
-          reason: "Too many emails sent in the last hour. Please try again later.",
+          reason:
+            "Too many emails sent in the last hour. Please try again later.",
           retryAfter: 3600,
         };
       }
@@ -127,7 +129,8 @@ export class EmailRateLimiter {
         return {
           allowed: false,
           reason: `This email was recently sent. Please wait ${this.LIMITS.DUPLICATE_COOLDOWN_MINUTES - minutesSince} more minute(s).`,
-          retryAfter: (this.LIMITS.DUPLICATE_COOLDOWN_MINUTES - minutesSince) * 60,
+          retryAfter:
+            (this.LIMITS.DUPLICATE_COOLDOWN_MINUTES - minutesSince) * 60,
         };
       }
 

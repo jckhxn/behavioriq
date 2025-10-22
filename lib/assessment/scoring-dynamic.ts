@@ -119,28 +119,38 @@ export class DynamicScoringCalculator {
       domainConfig.questions.some((q) => q.id === r.questionId)
     );
 
+    const deduped = new Map<string, QuestionResponse>();
+    for (const response of domainResponses) {
+      deduped.set(response.questionId, response);
+    }
+    const uniqueResponses = Array.from(deduped.values());
+
     scoringDebugLog(
-      `Domain responses (${domainResponses.length} answered):`,
-      domainResponses.map((r) => `${r.questionId}=${r.response ? "YES" : "NO"}`)
+      `Domain responses (${uniqueResponses.length} answered):`,
+      uniqueResponses.map((r) => `${r.questionId}=${r.response ? "YES" : "NO"}`)
     );
 
-    const score = domainResponses.reduce(
+    const totalPossible = domainConfig.totalPossibleScore || 0;
+    const rawScore = uniqueResponses.reduce(
       (sum, response) => sum + (response.response ? 1 : 0),
       0
     );
+    const clampedScore = Math.min(rawScore, totalPossible || rawScore);
 
-    const yesCount = score;
-    const noCount = domainResponses.length - score;
-    const percentage = (score / domainConfig.totalPossibleScore) * 100;
+    const yesCount = clampedScore;
+    const noCount = uniqueResponses.length - clampedScore;
+    const percentage =
+      totalPossible > 0 ? (clampedScore / totalPossible) * 100 : 0;
     const isClinicallySignificant =
-      score >= domainConfig.clinicallySignificantScore;
+      clampedScore >= domainConfig.clinicallySignificantScore;
 
     scoringDebugLog(`Scoring results:`, {
       yesAnswers: yesCount,
       noAnswers: noCount,
-      totalAnswered: domainResponses.length,
-      rawScore: score,
-      totalPossible: domainConfig.totalPossibleScore,
+      totalAnswered: uniqueResponses.length,
+      rawScore,
+      clampedScore,
+      totalPossible,
       percentage: percentage.toFixed(1) + "%",
       clinicalThreshold: domainConfig.clinicallySignificantScore,
       isClinicallySignificant,
@@ -150,13 +160,13 @@ export class DynamicScoringCalculator {
     return {
       domain: domainName,
       displayName: domainConfig.displayName,
-      score,
-      totalPossible: domainConfig.totalPossibleScore,
+      score: clampedScore,
+      totalPossible,
       clinicallySignificantScore: domainConfig.clinicallySignificantScore,
       isClinicallySignificant,
       skipped: false,
       percentage,
-      questionsAnswered: domainResponses.length,
+      questionsAnswered: Math.min(uniqueResponses.length, totalPossible),
     };
   }
 
@@ -173,9 +183,17 @@ export class DynamicScoringCalculator {
     }
 
     // Part 1: Childhood Conduct Disorder symptoms (before age 15)
-    const part1Responses = responses.filter((r) =>
-      multiPartLogic.part1Questions.includes(r.questionId)
-    );
+    const part1Seen = new Set<string>();
+    const part1Responses = responses.filter((r) => {
+      if (!multiPartLogic.part1Questions.includes(r.questionId)) {
+        return false;
+      }
+      if (part1Seen.has(r.questionId)) {
+        return false;
+      }
+      part1Seen.add(r.questionId);
+      return true;
+    });
     const part1Score = part1Responses.reduce(
       (sum, r) => sum + (r.response ? 1 : 0),
       0
@@ -187,9 +205,17 @@ export class DynamicScoringCalculator {
     );
 
     // Part 2: Adult antisocial behavior (18+)
-    const part2Responses = responses.filter((r) =>
-      multiPartLogic.part2Questions.includes(r.questionId)
-    );
+    const part2Seen = new Set<string>();
+    const part2Responses = responses.filter((r) => {
+      if (!multiPartLogic.part2Questions.includes(r.questionId)) {
+        return false;
+      }
+      if (part2Seen.has(r.questionId)) {
+        return false;
+      }
+      part2Seen.add(r.questionId);
+      return true;
+    });
     const part2Score = part2Responses.reduce(
       (sum, r) => sum + (r.response ? 1 : 0),
       0
@@ -203,7 +229,9 @@ export class DynamicScoringCalculator {
     // Total score
     const totalScore = part1Score + part2Score;
     const totalAnswered = part1Responses.length + part2Responses.length;
-    const percentage = (totalScore / domainConfig.totalPossibleScore) * 100;
+    const totalPossible = domainConfig.totalPossibleScore || 0;
+    const clampedTotalScore = Math.min(totalScore, totalPossible || totalScore);
+    const percentage = totalPossible > 0 ? (clampedTotalScore / totalPossible) * 100 : 0;
 
     // Clinical significance: Both parts must meet threshold
     const isClinicallySignificant = part1Met && part2Met;
@@ -214,6 +242,7 @@ export class DynamicScoringCalculator {
       part2Score,
       part2Met,
       totalScore,
+      clampedTotalScore,
       isClinicallySignificant,
       percentage: percentage.toFixed(1) + "%",
     });
@@ -221,13 +250,13 @@ export class DynamicScoringCalculator {
     return {
       domain: domainConfig.name,
       displayName: domainConfig.displayName,
-      score: totalScore,
-      totalPossible: domainConfig.totalPossibleScore,
+      score: clampedTotalScore,
+      totalPossible,
       clinicallySignificantScore: domainConfig.clinicallySignificantScore,
       isClinicallySignificant,
       skipped: false,
       percentage,
-      questionsAnswered: totalAnswered,
+      questionsAnswered: Math.min(totalAnswered, totalPossible),
     };
   }
 

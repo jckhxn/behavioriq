@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Sparkles, Users, Zap } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { CheckCircle2, Sparkles, Users, X, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -14,6 +14,8 @@ import {
 import type { PricingResponse, UserPlanResponse } from "@/types/plan";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { trackTelemetry } from "@/lib/utils/telemetry";
+
+const DISMISS_STORAGE_KEY = "upgradePanel.dismissed";
 
 type PlanTarget = "core" | "family";
 type PlanTerm = "monthly" | "annual";
@@ -145,7 +147,12 @@ function useCountdown(deadline: string | null) {
   return value;
 }
 
-function DesktopPanel({ plan, pricing, onStartCheckout }: UpgradePanelProps) {
+function DesktopPanel({
+  plan,
+  pricing,
+  onStartCheckout,
+  onDismiss,
+}: UpgradePanelProps & { onDismiss: () => void }) {
   const countdown = useCountdown(pricing.countdownEndsAt);
   const recommended = useMemo<PlanTarget>(() => {
     if (plan.childrenCount > 1 || plan.reportsLast30d >= 3) {
@@ -184,7 +191,15 @@ function DesktopPanel({ plan, pricing, onStartCheckout }: UpgradePanelProps) {
   }, [plan.plan, plan.remainingCredits, plan.childrenCount]);
 
   return (
-    <div className="sticky top-24 w-full max-w-sm space-y-6 rounded-3xl border border-[#223043] bg-[#141a21] p-6 text-slate-100 shadow-2xl">
+    <div className="sticky top-24 w-full max-w-sm space-y-6 rounded-3xl border border-[#223043] bg-[#141a21] p-6 text-slate-100 shadow-2xl relative">
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="absolute right-4 top-4 rounded-full p-2 text-slate-400 transition hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[#141a21]"
+        aria-label="Dismiss upgrade suggestions"
+      >
+        <X className="h-4 w-4" />
+      </button>
       <div className="space-y-3">
         <div className="inline-flex items-center gap-2 rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary">
           <Sparkles className="h-4 w-4" />
@@ -296,7 +311,12 @@ function DesktopPanel({ plan, pricing, onStartCheckout }: UpgradePanelProps) {
   );
 }
 
-function MobileDrawer({ plan, pricing, onStartCheckout }: UpgradePanelProps) {
+function MobileDrawer({
+  plan,
+  pricing,
+  onStartCheckout,
+  onDismiss,
+}: UpgradePanelProps & { onDismiss: () => void }) {
   const countdown = useCountdown(pricing.countdownEndsAt);
   const [open, setOpen] = useState(false);
 
@@ -327,6 +347,11 @@ function MobileDrawer({ plan, pricing, onStartCheckout }: UpgradePanelProps) {
     setOpen(false);
   };
 
+  const handleDismiss = () => {
+    setOpen(false);
+    onDismiss();
+  };
+
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
@@ -338,11 +363,22 @@ function MobileDrawer({ plan, pricing, onStartCheckout }: UpgradePanelProps) {
           <Users className="h-5 w-5" />
         </button>
       </SheetTrigger>
-      <SheetContent side="bottom" className="max-h-[85vh] rounded-t-3xl border-[#223043] bg-[#0f141b] text-slate-100">
-        <SheetHeader className="pt-6">
-        <SheetTitle className="text-lg font-semibold text-white">
-          Unlock monthly credits & rollover protection
-        </SheetTitle>
+      <SheetContent
+        side="bottom"
+        className="relative max-h-[85vh] rounded-t-3xl border-[#223043] bg-[#0f141b] text-slate-100"
+      >
+        <button
+          type="button"
+          onClick={handleDismiss}
+          className="absolute right-4 top-4 rounded-full p-2 text-slate-400 transition hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[#0f141b]"
+          aria-label="Dismiss upgrade suggestions"
+        >
+          <X className="h-5 w-5" />
+        </button>
+        <SheetHeader className="pt-6 pr-10">
+          <SheetTitle className="text-lg font-semibold text-white">
+            Unlock monthly credits & rollover protection
+          </SheetTitle>
         </SheetHeader>
         <div className="grid gap-4 px-4 pb-24 pt-2">
           <PlanCard
@@ -408,15 +444,52 @@ function MobileDrawer({ plan, pricing, onStartCheckout }: UpgradePanelProps) {
 }
 
 export function UpgradePanel(props: UpgradePanelProps) {
+  const [isDismissed, setIsDismissed] = useState<boolean | null>(null);
   const isDesktop = useMediaQuery("(min-width: 1024px)");
 
-  if (isDesktop === null) {
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    try {
+      const stored = window.localStorage.getItem(DISMISS_STORAGE_KEY);
+      if (!stored) {
+        setIsDismissed(false);
+        return;
+      }
+      const parsed = JSON.parse(stored) as { plan?: string } | null;
+      if (parsed?.plan === props.plan.plan) {
+        setIsDismissed(true);
+      } else {
+        setIsDismissed(false);
+      }
+    } catch {
+      setIsDismissed(false);
+    }
+  }, [props.plan.plan]);
+
+  const handleDismiss = useCallback(() => {
+    setIsDismissed(true);
+    if (typeof window !== "undefined") {
+      const payload = JSON.stringify({
+        plan: props.plan.plan,
+        dismissedAt: new Date().toISOString(),
+      });
+      window.localStorage.setItem(DISMISS_STORAGE_KEY, payload);
+    }
+  }, [props.plan.plan]);
+
+  if (isDesktop === null || isDismissed === null) {
+    return null;
+  }
+
+  if (isDismissed) {
     return null;
   }
 
   if (isDesktop) {
-    return <DesktopPanel {...props} />;
+    return <DesktopPanel {...props} onDismiss={handleDismiss} />;
   }
 
-  return <MobileDrawer {...props} />;
+  return <MobileDrawer {...props} onDismiss={handleDismiss} />;
 }

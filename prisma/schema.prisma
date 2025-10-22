@@ -1,3 +1,73 @@
+model BannedDevice {
+  deviceId String @id
+  reason   String?
+  createdAt DateTime @default(now())
+}
+
+model BannedUser {
+  userId   String @id
+  reason   String?
+  createdAt DateTime @default(now())
+}
+
+model BannedEmail {
+  email    String @id
+  reason   String?
+  createdAt DateTime @default(now())
+}
+model AffiliateReferrer {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  refCode       String   @unique
+  status        String   @default("active") // 'active' | 'suspended'
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id])
+  commissions   AffiliateCommission[] @relation("ReferrerCommissions")
+  payouts       AffiliatePayout[] @relation("ReferrerPayouts")
+}
+
+model AffiliateClick {
+  id         String   @id @default(cuid())
+  refCode    String
+  sessionId  String
+  ip         String?
+  ua         String?
+  createdAt  DateTime @default(now())
+}
+
+model AffiliateAttribution {
+  id              String   @id @default(cuid())
+  refCode         String
+  prospectUserId  String
+  clickId         String
+  model           String   @default("last_non_direct")
+  expiresAt       DateTime
+  createdAt       DateTime @default(now())
+}
+
+model AffiliateCommission {
+  id              String   @id @default(cuid())
+  refCode         String
+  referrerId      String
+  referredUserId  String
+  event           String   // 'paid_report' | 'core_sub' | 'family_sub' | 'annual_sub'
+  amountCents     Int
+  status          String   @default("pending") // 'pending' | 'payable' | 'paid' | 'void'
+  holdUntil       DateTime?
+  orderId         String?
+  createdAt       DateTime @default(now())
+  referrer        AffiliateReferrer @relation("ReferrerCommissions", fields: [referrerId], references: [id])
+}
+
+model AffiliatePayout {
+  id              String   @id @default(cuid())
+  referrerId      String
+  amountCents     Int
+  provider        String   @default("stripe_connect")
+  transferId      String?
+  createdAt       DateTime @default(now())
+  referrer        AffiliateReferrer @relation("ReferrerPayouts", fields: [referrerId], references: [id])
+}
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["postgresqlExtensions"]
@@ -8,51 +78,54 @@ datasource db {
   url               = env("DATABASE_URL")
   directUrl         = env("DIRECT_URL")
   shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
-  extensions        = [vector]
+  extensions        = [uuid_ossp(map: "uuid-ossp", schema: "extensions"), vector]
 }
 
 model User {
-  id              String           @id @default(cuid())
-  email           String           @unique
-  name            String?
-  password        String
-  role            Role             @default(USER)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  isActive        Boolean          @default(true)
-  lastLoginAt     DateTime?
-  organizationId  String?
-  parentUserId    String?          // For sub-accounts, references the district admin who created them
-  onboardingCompleted Boolean      @default(false)
-  onboardingStep      Int          @default(0)
-  onboardingSkipped   Boolean      @default(false)
-  stripeCustomerId    String?      @unique
-  assessments     Assessment[]
-  chatSessions    ChatSession[]
-  documents       Document[]
-  recommendations Recommendation[]
-  shareLinks      ShareableLink[]  @relation("ShareLinksCreated")
-  usageMetrics    UsageMetrics[]
-  licenses        UserLicense[]
-  upsellState     UserUpsellState?
-  telemetryEvents TelemetryEvent[]
-  payments        Payment[]
-  organization    Organization?    @relation(fields: [organizationId], references: [id])
-  parentUser      User?            @relation("UserSubAccounts", fields: [parentUserId], references: [id])
-  subAccounts     User[]           @relation("UserSubAccounts")
-  managedSubAccounts SubAccount[]  @relation("ManagedBy")
-  subAccountProfile SubAccount?    @relation("SubAccountUser")
-  generatedAIReports AIReport[]
-  createdAssessmentTemplates AssessmentTemplate[] @relation("AssessmentTemplatesCreated")
-  createdDomainTemplates DomainTemplate[] @relation("DomainTemplatesCreated")
-  createdAssessmentVersions AssessmentTemplateVersion[] @relation("AssessmentVersionsCreated")
-  createdDomainVersions DomainTemplateVersion[] @relation("DomainVersionsCreated")
-  loginTokens     LoginToken[]
-  createdResources ResourceLibrary[] @relation("ResourceLibraryCreator")
-  passkeys        Passkey[]
-  conversationalSessions ConversationalSession[]
-  emailLogs       EmailLog[]
-  notificationPreferences NotificationPreferences?
+  id                                               String                      @id @default(cuid())
+  email                                            String                      @unique
+  name                                             String?
+  password                                         String
+  role                                             Role                        @default(USER)
+  createdAt                                        DateTime                    @default(now())
+  updatedAt                                        DateTime                    @updatedAt
+  isActive                                         Boolean                     @default(true)
+  lastLoginAt                                      DateTime?
+  organizationId                                   String?
+  parentUserId                                     String?
+  onboardingCompleted                              Boolean                     @default(false)
+  onboardingStep                                   Int                         @default(0)
+  onboardingSkipped                                Boolean                     @default(false)
+  stripeCustomerId                                 String?                     @unique @db.VarChar
+  generatedAIReports                               AIReport[]
+  createdAssessmentVersions                        AssessmentTemplateVersion[] @relation("AssessmentVersionsCreated")
+  createdAssessmentTemplates                       AssessmentTemplate[]        @relation("AssessmentTemplatesCreated")
+  assessments                                      Assessment[]
+  chatSessions                                     ChatSession[]
+  childProfiles                                    ChildProfile[]
+  conversationalSessions                           ConversationalSession[]
+  documents                                        Document[]
+  createdDomainVersions                            DomainTemplateVersion[]     @relation("DomainVersionsCreated")
+  createdDomainTemplates                           DomainTemplate[]            @relation("DomainTemplatesCreated")
+  emailLogs                                        EmailLog[]
+  loginTokens                                      LoginToken[]
+  notificationPreferences                          NotificationPreferences?
+  passkeys                                         Passkey[]
+  payments                                         Payment[]
+  recommendations                                  Recommendation[]
+  createdResources                                 ResourceLibrary[]           @relation("ResourceLibraryCreator")
+  shareLinks                                       ShareableLink[]             @relation("ShareLinksCreated")
+  managedSubAccounts                               SubAccount[]                @relation("ManagedBy")
+  subAccountProfile                                SubAccount?                 @relation("SubAccountUser")
+  telemetry_events_telemetry_events_user_idTousers TelemetryEvent[]            @relation("telemetry_events_user_idTousers")
+  telemetryEvents                                  TelemetryEvent[]
+  usageMetrics                                     UsageMetrics[]
+  licenses                                         UserLicense[]
+  upsellState                                      UserUpsellState?
+  organization                                     Organization?               @relation(fields: [organizationId], references: [id])
+  parentUser                                       User?                       @relation("UserSubAccounts", fields: [parentUserId], references: [id])
+  subAccounts                                      User[]                      @relation("UserSubAccounts")
+  affiliateReferrer                                AffiliateReferrer?
 
   @@index([organizationId])
   @@index([parentUserId])
@@ -60,17 +133,16 @@ model User {
 }
 
 model Passkey {
-  id                String   @id @default(cuid())
-  userId            String
-  name              String   // User-friendly name (e.g., "iPhone 13", "MacBook Pro")
-  credentialId      String   @unique // Base64URL encoded credential ID
-  publicKey         String   // Base64URL encoded public key
-  counter           BigInt   // Signature counter for replay protection
-  transports        String[] // Supported transports (e.g., ["usb", "nfc", "ble", "internal"])
-  createdAt         DateTime @default(now())
-  lastUsed          DateTime @default(now())
-  
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String   @id @default(cuid())
+  userId       String
+  name         String
+  credentialId String   @unique
+  publicKey    String
+  counter      BigInt
+  transports   String[]
+  createdAt    DateTime @default(now())
+  lastUsed     DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([credentialId])
@@ -78,11 +150,11 @@ model Passkey {
 }
 
 model PasskeyChallenge {
-  id          String   @id @default(cuid())
-  userId      String
-  challenge   String   @unique // Base64URL encoded challenge
-  expiresAt   DateTime
-  createdAt   DateTime @default(now())
+  id        String   @id @default(cuid())
+  userId    String
+  challenge String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 
   @@index([userId])
   @@index([challenge])
@@ -91,22 +163,21 @@ model PasskeyChallenge {
 }
 
 model SubAccount {
-  id                String         @id @default(cuid())
-  userId            String         @unique
-  managedByUserId   String         // District admin who manages this sub-account
-  organizationId    String
-  displayName       String         // Custom name for this sub-account
-  description       String?        // Description of the sub-account purpose
-  maxAssessments    Int?           // Limit on assessments for this sub-account
-  maxUsers          Int            @default(1) // Number of users this sub-account can have
-  settings          Json?          // Custom settings for the sub-account
-  isActive          Boolean        @default(true)
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
-  
-  user              User           @relation("SubAccountUser", fields: [userId], references: [id], onDelete: Cascade)
-  managedBy         User           @relation("ManagedBy", fields: [managedByUserId], references: [id], onDelete: Cascade)
-  organization      Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id              String       @id @default(cuid())
+  userId          String       @unique
+  managedByUserId String
+  organizationId  String
+  displayName     String
+  description     String?
+  maxAssessments  Int?
+  maxUsers        Int          @default(1)
+  settings        Json?
+  isActive        Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  managedBy       User         @relation("ManagedBy", fields: [managedByUserId], references: [id], onDelete: Cascade)
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user            User         @relation("SubAccountUser", fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([managedByUserId])
   @@index([organizationId])
@@ -151,57 +222,57 @@ model DocumentChunk {
 }
 
 model Assessment {
-  id                      String             @id @default(cuid())
-  userId                  String
-  subjectName             String
-  status                  AssessmentStatus   @default(IN_PROGRESS)
-  startedAt               DateTime           @default(now())
-  completedAt             DateTime?
-  currentDomain           AssessmentDomain?  // Keep for backward compatibility during migration
-  currentQuestionOrder    Int?
-  shortId                 String?            @unique
-  assessmentTemplateId    String?            // Reference to the template this assessment was created from
-  isConversational        Boolean            @default(false) // Whether this is a conversational trial
-  hasEnhancedReport       Boolean            @default(false) // Whether user purchased enhanced report
-  enhancedReportPurchasedAt DateTime?       // When enhanced report was purchased
-  childResponses          Json?              // Store child's conversational responses
-  enhancedAnalysis        Json?              // Store AI-generated enhanced analysis
-  user                    User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  assessmentTemplate      AssessmentTemplate? @relation("AssessmentFromTemplate", fields: [assessmentTemplateId], references: [id])
-  messages                ChatMessage[]
-  responses               QuestionResponse[]
-  recommendations         Recommendation[]
-  scores                  Score[]
-  shareableLinks          ShareableLink[]
-  aiReport                AIReport?
-  conversationalSession   ConversationalSession? // Conversational AI session data
+  id                        String                 @id @default(cuid())
+  userId                    String
+  subjectName               String
+  status                    AssessmentStatus       @default(IN_PROGRESS)
+  startedAt                 DateTime               @default(now())
+  completedAt               DateTime?
+  currentDomain             AssessmentDomain?
+  currentQuestionOrder      Int?
+  shortId                   String?                @unique
+  assessmentTemplateId      String?
+  isConversational          Boolean                @default(false)
+  hasEnhancedReport         Boolean                @default(false)
+  enhancedReportPurchasedAt DateTime?
+  childResponses            Json?
+  enhancedAnalysis          Json?
+  childprofileid            String?
+  aiReport                  AIReport?
+  assessmentTemplate        AssessmentTemplate?    @relation("AssessmentFromTemplate", fields: [assessmentTemplateId], references: [id])
+  user                      User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  childProfile              ChildProfile?          @relation(fields: [childprofileid], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_assessment_childprofile")
+  messages                  ChatMessage[]
+  conversationalSession     ConversationalSession?
+  responses                 QuestionResponse[]
+  recommendations           Recommendation[]
+  scores                    Score[]
+  shareableLinks            ShareableLink[]
 
   @@index([userId])
   @@index([status])
   @@index([shortId])
   @@index([assessmentTemplateId])
   @@index([hasEnhancedReport])
-  @@unique([userId, subjectName, status, isConversational], name: "unique_inprogress_conversational_assessment")
   @@map("assessments")
 }
 
 model AIReport {
-  id                    String        @id @default(cuid())
-  assessmentId          String        @unique
-  content               String        // AI-generated recommendations content
-  summary               String?       // Executive summary
-  riskLevel             RiskLevel     // Overall risk level
-  generatedAt           DateTime      @default(now())
-  generatedByUserId     String
-  reportOptions         Json          // Stored report options used for generation
-  pdfPath               String?       // Path to stored PDF file if generated
-  pdfSize               Int?          // Size of PDF in bytes
-  emailsSent            Int           @default(0) // Track how many times emailed
-  lastAccessedAt        DateTime?     // Track when report was last viewed
-  isArchived            Boolean       @default(false)
-  
-  assessment            Assessment    @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
-  generatedBy           User          @relation(fields: [generatedByUserId], references: [id])
+  id                String     @id @default(cuid())
+  assessmentId      String     @unique
+  content           String
+  summary           String?
+  riskLevel         RiskLevel
+  generatedAt       DateTime   @default(now())
+  generatedByUserId String
+  reportOptions     Json
+  pdfPath           String?
+  pdfSize           Int?
+  emailsSent        Int        @default(0)
+  lastAccessedAt    DateTime?
+  isArchived        Boolean    @default(false)
+  assessment        Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  generatedBy       User       @relation(fields: [generatedByUserId], references: [id])
 
   @@index([assessmentId])
   @@index([generatedByUserId])
@@ -209,28 +280,23 @@ model AIReport {
   @@map("ai_reports")
 }
 
-// Assessment Templates - Admin-created assessment configurations
 model AssessmentTemplate {
-  id                    String                        @id @default(cuid())
-  name                  String                        // Assessment display name
-  slug                  String                        @unique // URL-friendly identifier
-  description           String?                       // Assessment description
-  instructions          String?                       // Instructions for taking the assessment
-  isActive              Boolean                       @default(true) // Whether users can see/take this assessment
-  version               Int                           @default(1) // Version number
-  createdById           String                        // Admin who created this template
-  createdAt             DateTime                      @default(now())
-  updatedAt             DateTime                      @updatedAt
-  
-  // Relationships
-  createdBy             User                          @relation("AssessmentTemplatesCreated", fields: [createdById], references: [id])
-  domains               AssessmentTemplateDomain[]    // Many-to-many with domains
-  assessments           Assessment[]                  @relation("AssessmentFromTemplate") // User assessments taken from this template
-  versions              AssessmentTemplateVersion[]   // Version history
-  
-  // Global platform settings relations
-  globalTrialSettings   PlatformSettings[]            @relation("GlobalTrialAssessment")
-  globalRegularSettings PlatformSettings[]            @relation("GlobalRegularAssessment")
+  id                    String                      @id @default(cuid())
+  name                  String
+  slug                  String                      @unique
+  description           String?
+  instructions          String?
+  isActive              Boolean                     @default(true)
+  version               Int                         @default(1)
+  createdById           String
+  createdAt             DateTime                    @default(now())
+  updatedAt             DateTime                    @updatedAt
+  domains               AssessmentTemplateDomain[]
+  versions              AssessmentTemplateVersion[]
+  createdBy             User                        @relation("AssessmentTemplatesCreated", fields: [createdById], references: [id])
+  assessments           Assessment[]                @relation("AssessmentFromTemplate")
+  globalRegularSettings PlatformSettings[]          @relation("GlobalRegularAssessment")
+  globalTrialSettings   PlatformSettings[]          @relation("GlobalTrialAssessment")
 
   @@index([createdById])
   @@index([isActive])
@@ -238,42 +304,36 @@ model AssessmentTemplate {
   @@map("assessment_templates")
 }
 
-// Domain Templates - Reusable domain configurations
 model DomainTemplate {
-  id                    String                        @id @default(cuid())
-  name                  String                        // Domain display name (e.g., "Attention", "Violence Risk")
-  slug                  String                        @unique // URL-friendly identifier
-  description           String?                       // Domain description
-  questions             Json                          // Array of question objects with scoring rules
-  resources             Json?                         // Recommended resources and citations for this domain
-  scoringConfig         Json                          // Scoring configuration (thresholds, risk levels, etc.)
-  version               Int                           @default(1) // Version number
-  createdById           String                        // Admin who created this domain
-  createdAt             DateTime                      @default(now())
-  updatedAt             DateTime                      @updatedAt
-  
-  // Relationships  
-  createdBy             User                          @relation("DomainTemplatesCreated", fields: [createdById], references: [id])
-  assessmentTemplates   AssessmentTemplateDomain[]    // Many-to-many with assessment templates
-  versions              DomainTemplateVersion[]       // Version history
-  scores                Score[]                       // Scores that reference this domain template
+  id                  String                     @id @default(cuid())
+  name                String
+  slug                String                     @unique
+  description         String?
+  questions           Json
+  resources           Json?
+  scoringConfig       Json
+  version             Int                        @default(1)
+  createdById         String
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
+  assessmentTemplates AssessmentTemplateDomain[]
+  versions            DomainTemplateVersion[]
+  createdBy           User                       @relation("DomainTemplatesCreated", fields: [createdById], references: [id])
+  scores              Score[]
 
   @@index([createdById])
   @@index([slug])
   @@map("domain_templates")
 }
 
-// Junction table for Assessment Templates <-> Domain Templates (many-to-many)
 model AssessmentTemplateDomain {
-  id                    String              @id @default(cuid())
-  assessmentTemplateId  String
-  domainTemplateId      String
-  order                 Int                 // Order in which domains appear in the assessment
-  isRequired            Boolean             @default(true) // Whether this domain is required for the assessment
-  
-  // Relationships
-  assessmentTemplate    AssessmentTemplate  @relation(fields: [assessmentTemplateId], references: [id], onDelete: Cascade)
-  domainTemplate        DomainTemplate      @relation(fields: [domainTemplateId], references: [id], onDelete: Cascade)
+  id                   String             @id @default(cuid())
+  assessmentTemplateId String
+  domainTemplateId     String
+  order                Int
+  isRequired           Boolean            @default(true)
+  assessmentTemplate   AssessmentTemplate @relation(fields: [assessmentTemplateId], references: [id], onDelete: Cascade)
+  domainTemplate       DomainTemplate     @relation(fields: [domainTemplateId], references: [id], onDelete: Cascade)
 
   @@unique([assessmentTemplateId, domainTemplateId])
   @@index([assessmentTemplateId])
@@ -281,48 +341,42 @@ model AssessmentTemplateDomain {
   @@map("assessment_template_domains")
 }
 
-// Assessment Template Version History
 model AssessmentTemplateVersion {
-  id                    String                        @id @default(cuid())
-  assessmentTemplateId  String                        // Reference to current template
-  version               Int                           // Version number
-  name                  String                        // Name at this version
-  slug                  String                        // Slug at this version
-  description           String?                       // Description at this version
-  instructions          String?                       // Instructions at this version
-  isActive              Boolean                       // Active status at this version
-  domainSnapshot        Json                          // Snapshot of domain configuration at this version
-  changeDescription     String?                       // Description of what changed
-  createdById           String                        // Who made this version
-  createdAt             DateTime                      @default(now())
-  
-  // Relationships
-  assessmentTemplate    AssessmentTemplate            @relation(fields: [assessmentTemplateId], references: [id], onDelete: Cascade)
-  createdBy             User                          @relation("AssessmentVersionsCreated", fields: [createdById], references: [id])
+  id                   String             @id @default(cuid())
+  assessmentTemplateId String
+  version              Int
+  name                 String
+  slug                 String
+  description          String?
+  instructions         String?
+  isActive             Boolean
+  domainSnapshot       Json
+  changeDescription    String?
+  createdById          String
+  createdAt            DateTime           @default(now())
+  assessmentTemplate   AssessmentTemplate @relation(fields: [assessmentTemplateId], references: [id], onDelete: Cascade)
+  createdBy            User               @relation("AssessmentVersionsCreated", fields: [createdById], references: [id])
 
   @@unique([assessmentTemplateId, version])
   @@index([assessmentTemplateId])
   @@map("assessment_template_versions")
 }
 
-// Domain Template Version History
 model DomainTemplateVersion {
-  id                    String                        @id @default(cuid())
-  domainTemplateId      String                        // Reference to current template
-  version               Int                           // Version number
-  name                  String                        // Name at this version
-  slug                  String                        // Slug at this version
-  description           String?                       // Description at this version
-  questions             Json                          // Questions at this version
-  resources             Json?                         // Resources at this version
-  scoringConfig         Json?                         // Scoring config at this version
-  changeDescription     String?                       // Description of what changed
-  createdById           String                        // Who made this version
-  createdAt             DateTime                      @default(now())
-  
-  // Relationships
-  domainTemplate        DomainTemplate                @relation(fields: [domainTemplateId], references: [id], onDelete: Cascade)
-  createdBy             User                          @relation("DomainVersionsCreated", fields: [createdById], references: [id])
+  id                String         @id @default(cuid())
+  domainTemplateId  String
+  version           Int
+  name              String
+  slug              String
+  description       String?
+  questions         Json
+  resources         Json?
+  scoringConfig     Json?
+  changeDescription String?
+  createdById       String
+  createdAt         DateTime       @default(now())
+  createdBy         User           @relation("DomainVersionsCreated", fields: [createdById], references: [id])
+  domainTemplate    DomainTemplate @relation(fields: [domainTemplateId], references: [id], onDelete: Cascade)
 
   @@unique([domainTemplateId, version])
   @@index([domainTemplateId])
@@ -385,9 +439,9 @@ model ChatMessage {
 model Score {
   id                 String            @id @default(cuid())
   assessmentId       String
-  domain             AssessmentDomain? // Made optional for backward compatibility
-  domainTemplateId   String?           // New: Reference to domain template
-  domainName         String?           // Denormalized domain name for performance
+  domain             AssessmentDomain?
+  domainTemplateId   String?
+  domainName         String?
   rawScore           Float
   riskLevel          RiskLevel
   confidence         Float
@@ -396,7 +450,7 @@ model Score {
   totalPossible      Int
   wasTerminatedEarly Boolean           @default(false)
   assessment         Assessment        @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
-  domainTemplate     DomainTemplate?   @relation(fields: [domainTemplateId], references: [id], onDelete: SetNull)
+  domainTemplate     DomainTemplate?   @relation(fields: [domainTemplateId], references: [id])
 
   @@index([assessmentId])
   @@index([domainTemplateId])
@@ -428,8 +482,8 @@ model ResourceLibrary {
   title       String
   description String?
   url         String
-  category    String   // e.g., "Mental Health", "Parenting", "Education", "Support Services"
-  tags        String[] // Searchable tags for filtering
+  category    String
+  tags        String[]
   isActive    Boolean  @default(true)
   createdBy   String
   createdAt   DateTime @default(now())
@@ -510,22 +564,22 @@ model QuestionResponse {
 }
 
 model License {
-  id             String        @id @default(cuid())
-  licenseKey     String        @unique
-  type           LicenseType   @default(TRIAL)
-  status         LicenseStatus @default(ACTIVE)
-  maxUsers       Int           @default(1)
-  maxAssessments Int?
+  id                           String        @id @default(cuid())
+  licenseKey                   String        @unique
+  type                         LicenseType
+  status                       LicenseStatus @default(ACTIVE)
+  maxUsers                     Int           @default(1)
+  maxAssessments               Int?
+  features                     Json?
+  validFrom                    DateTime      @default(now())
+  validUntil                   DateTime?
+  createdAt                    DateTime      @default(now())
+  updatedAt                    DateTime      @updatedAt
+  organizationId               String?
+  maxConversationalReports     Int?
   maxConversationalAssessments Int?
-  maxConversationalReports Int?
-  features       Json?
-  validFrom      DateTime      @default(now())
-  validUntil     DateTime?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  organizationId String?
-  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  users          UserLicense[]
+  organization                 Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  users                        UserLicense[]
 
   @@index([licenseKey])
   @@index([status])
@@ -533,49 +587,45 @@ model License {
 }
 
 model Organization {
-  id            String         @id @default(cuid())
-  name          String
-  email         String?
-  phone         String?
-  address       String?
-  billingEmail  String?
-  taxId         String?
-  industry      String?
-  employeeCount String?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  
-  // Custom branding/white-label fields
-  customDomain  String?        @unique // e.g., "client.aidiagnostic.com" or "assessments.clientcompany.com"
-  logo          String?        // URL or path to custom logo
-  primaryColor  String?        // Hex color code for primary branding
-  secondaryColor String?       // Hex color code for secondary branding
-  headerTitle   String?        // Custom title shown in app header
-  footerText    String?        // Custom footer text
-  
-  licenses      License[]
-  subscriptions Subscription[]
-  users         User[]
-  subAccounts   SubAccount[]
+  id             String         @id @default(cuid())
+  name           String
+  email          String?
+  phone          String?
+  address        String?
+  billingEmail   String?
+  taxId          String?
+  industry       String?
+  employeeCount  String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  customDomain   String?        @unique
+  logo           String?
+  primaryColor   String?
+  secondaryColor String?
+  headerTitle    String?
+  footerText     String?
+  licenses       License[]
+  subAccounts    SubAccount[]
+  subscriptions  Subscription[]
+  users          User[]
 
   @@map("organizations")
 }
 
 model UserLicense {
-  id                              String   @id @default(cuid())
-  userId                          String
-  licenseId                       String
-  assignedAt                      DateTime @default(now())
-  assignedBy                      String?
-  isActive                        Boolean  @default(true)
-  assessmentsAllowed              Int      @default(0)  // Number of regular assessments this license allows (incremented on purchase)
-  assessmentsUsed                 Int      @default(0)  // Number of regular assessments actually used
-  conversationalAssessmentsAllowed Int     @default(0)  // Number of conversational assessments allowed ($9 addon)
-  conversationalAssessmentsUsed   Int      @default(0)  // Number of conversational assessments actually used
-  conversationalReportsAllowed    Int      @default(0)
-  conversationalReportsUsed       Int      @default(0)
-  license                         License  @relation(fields: [licenseId], references: [id], onDelete: Cascade)
-  user                            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                           String    @id @default(cuid())
+  userId                       String
+  licenseId                    String
+  assignedAt                   DateTime  @default(now())
+  assignedBy                   String?
+  isActive                     Boolean   @default(true)
+  assessmentsAllowed           Int       @default(0)
+  assessmentsUsed              Int       @default(0)
+  conversationalReportsAllowed Int       @default(0)
+  conversationalReportsUsed    Int       @default(0)
+  lastCreditsRefreshedAt       DateTime? @db.Timestamptz(6)
+  license                      License   @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  user                         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, licenseId])
   @@index([userId])
@@ -613,12 +663,12 @@ model Payment {
   userId                String
   stripePaymentIntentId String   @unique
   stripeCustomerId      String?
-  amount                Int      // Amount in cents
+  amount                Int
   currency              String   @default("usd")
-  status                String   // SUCCEEDED, FAILED, etc.
-  planType              String?  // Type of plan purchased
-  plan                  String?  // Specific plan name
-  childName             String?  // Child name for assessment
+  status                String
+  planType              String?
+  plan                  String?
+  childName             String?
   metadata              Json?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
@@ -645,79 +695,61 @@ model UsageMetrics {
 }
 
 model PlatformSettings {
-  id                    String   @id @default(cuid())
-
-  // Global Assessment Configuration
-  globalTrialAssessmentId     String?  // Assessment template for trial users
-  globalRegularAssessmentId   String?  // Assessment template for regular users
-
-  // Platform-wide settings
-  maintenanceMode       Boolean  @default(false)
-  registrationEnabled   Boolean  @default(true)
-  trialAssessmentsEnabled Boolean @default(true)
-
-  // AI Configuration
-  aiReportsEnabled      Boolean  @default(true)
-  maxAiReportsPerUser   Int      @default(10)
-  maxConversationalSessionsPerUser Int @default(10)
-
-  // Email / SES Configuration
-  emailSendingEnabled   Boolean  @default(true)  // Manual override to disable all email sending
-  sesMonthlyBudget      Decimal  @default(5.00)  // Monthly budget limit in USD
-
-  // Timestamps
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-  updatedBy            String   // User ID who made the change
-
-  // Relations
-  globalTrialAssessment   AssessmentTemplate? @relation("GlobalTrialAssessment", fields: [globalTrialAssessmentId], references: [id])
-  globalRegularAssessment AssessmentTemplate? @relation("GlobalRegularAssessment", fields: [globalRegularAssessmentId], references: [id])
+  id                               String              @id @default(cuid())
+  globalTrialAssessmentId          String?
+  globalRegularAssessmentId        String?
+  maintenanceMode                  Boolean             @default(false)
+  registrationEnabled              Boolean             @default(true)
+  trialAssessmentsEnabled          Boolean             @default(true)
+  aiReportsEnabled                 Boolean             @default(true)
+  maxAiReportsPerUser              Int                 @default(10)
+  createdAt                        DateTime            @default(now())
+  updatedAt                        DateTime            @updatedAt
+  updatedBy                        String
+  emailSendingEnabled              Boolean             @default(true)
+  sesMonthlyBudget                 Decimal             @default(5.00)
+  maxConversationalSessionsPerUser Int                 @default(10)
+  globalRegularAssessment          AssessmentTemplate? @relation("GlobalRegularAssessment", fields: [globalRegularAssessmentId], references: [id])
+  globalTrialAssessment            AssessmentTemplate? @relation("GlobalTrialAssessment", fields: [globalTrialAssessmentId], references: [id])
 
   @@map("platform_settings")
 }
 
-// SES Email Usage Tracking - Individual email sends
 model SESUsage {
-  id              String   @id @default(cuid())
-  emailsSent      Int      @default(1)       // Number of emails in this batch
-  estimatedCost   Decimal  @db.Decimal(10, 6) // Cost in USD (e.g., 0.0001 per email)
-  recipient       String?                     // Optional: track recipient for audit
-  emailType       String?                     // Optional: type of email (e.g., "PDF Report", "Welcome")
-  sentAt          DateTime @default(now())
+  id            String   @id @default(cuid())
+  emailsSent    Int      @default(1)
+  estimatedCost Decimal  @db.Decimal(10, 6)
+  recipient     String?
+  emailType     String?
+  sentAt        DateTime @default(now())
 
   @@index([sentAt])
   @@map("ses_usage")
 }
 
-// SES Monthly Totals - Aggregated monthly cost tracking
 model SESMonthlyTotal {
   id              String   @id @default(cuid())
-  month           DateTime @db.Date           // First day of the month (e.g., 2025-01-01)
-  totalEmailsSent Int      @default(0)        // Total emails sent this month
-  totalCost       Decimal  @default(0) @db.Decimal(10, 6) // Total cost in USD
+  month           DateTime @unique @db.Date
+  totalEmailsSent Int      @default(0)
+  totalCost       Decimal  @default(0) @db.Decimal(10, 6)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  @@unique([month])
   @@index([month])
   @@map("ses_monthly_totals")
 }
 
-// Email Log - Detailed tracking for rate limiting and abuse prevention
 model EmailLog {
   id             String   @id @default(cuid())
-  userId         String?  // Null for system emails
-  user           User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
+  userId         String?
   recipientEmail String
-  emailType      String   // "WELCOME", "PASSWORD_RESET", "ASSESSMENT_REPORT", "LICENSE_NOTIFICATION", etc.
+  emailType      String
   subject        String
-  status         String   // "SENT", "FAILED", "BOUNCED", "COMPLAINED"
-  messageId      String?  // SES message ID
+  status         String
+  messageId      String?
   errorMessage   String?
-
   sentAt         DateTime @default(now())
+  user           User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, sentAt])
   @@index([recipientEmail, sentAt])
@@ -727,83 +759,232 @@ model EmailLog {
   @@map("email_logs")
 }
 
-// Notification Preferences - User email notification settings
 model NotificationPreferences {
-  id                    String   @id @default(cuid())
-  userId                String   @unique
-  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // Assessment notifications
-  assessmentComplete    Boolean  @default(true)   // When assessment is completed
-  assessmentShared      Boolean  @default(true)   // When someone shares an assessment with them
-
-  // License notifications
-  licenseExpiring       Boolean  @default(true)   // License expiration warnings
-  licenseRenewed        Boolean  @default(true)   // License renewal confirmations
-
-  // Recommendation notifications
-  newRecommendation     Boolean  @default(true)   // New AI recommendations available
-
-  // Summary notifications
-  weeklySummary         Boolean  @default(false)  // Weekly assessment summary (opt-in)
-  monthlySummary        Boolean  @default(false)  // Monthly usage summary (opt-in)
-
-  // Account notifications
-  accountUpdate         Boolean  @default(true)   // Important account changes
-  securityAlert         Boolean  @default(true)   // Security-related notifications (always on by default)
-  productUpdates        Boolean  @default(false)  // New features and updates (opt-in)
-
-  // Marketing (opt-in only)
-  marketingEmails       Boolean  @default(false)  // Promotional emails
-
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  assessmentComplete Boolean  @default(true)
+  assessmentShared   Boolean  @default(true)
+  licenseExpiring    Boolean  @default(true)
+  licenseRenewed     Boolean  @default(true)
+  newRecommendation  Boolean  @default(true)
+  weeklySummary      Boolean  @default(false)
+  monthlySummary     Boolean  @default(false)
+  accountUpdate      Boolean  @default(true)
+  securityAlert      Boolean  @default(true)
+  productUpdates     Boolean  @default(false)
+  marketingEmails    Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("notification_preferences")
 }
 
 model UserUpsellState {
-  id                 String   @id @default(cuid())
-  userId             String   @unique
-  ribbonSnoozedUntil DateTime?
-  ribbonSnoozedAt    DateTime?
-  ribbonSnoozeSource String?  // e.g. "header_ribbon"
-  anonymousModeDefault Boolean @default(false)
-  pausedUntil        DateTime?
-  pausedAt           DateTime?
-  pauseCount12m      Int      @default(0)
-  pauseHistory       Json?
-  pendingAction      Json?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id                   String    @id @default(dbgenerated("gen_random_uuid()"))
+  userId               String    @unique(map: "user_upsell_state_user_id_key")
+  ribbonSnoozedUntil   DateTime?
+  ribbonSnoozedAt      DateTime?
+  ribbonSnoozeSource   String?
+  anonymousModeDefault Boolean   @default(false)
+  pausedUntil          DateTime?
+  pausedAt             DateTime?
+  pauseCount12m        Int       @default(0)
+  pauseHistory         Json?
+  pendingAction        Json?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @default(now()) @updatedAt
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "user_upsell_state_user_id_fkey")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
+  @@index([userId], map: "user_upsell_state_user_id_idx")
   @@map("user_upsell_state")
 }
 
 model TelemetryEvent {
-  id        String   @id @default(cuid())
-  userId    String?
-  event     String
-  metadata  Json?
-  createdAt DateTime @default(now())
+  id                                    String   @id @default(dbgenerated("gen_random_uuid()"))
+  user_id                               String?
+  event                                 String
+  metadata                              Json?
+  createdAt                             DateTime @default(now())
+  userId                                String?
+  users_telemetry_events_user_idTousers User?    @relation("telemetry_events_user_idTousers", fields: [user_id], references: [id], onUpdate: NoAction)
+  user                                  User?    @relation(fields: [userId], references: [id], onUpdate: NoAction, map: "telemetry_events_userid_fkey")
 
-  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  @@index([event])
+  @@index([user_id])
+  @@index([userId], map: "telemetry_events_userid_idx")
+  @@map("telemetry_events")
+}
+
+model SnapshotSession {
+  id        String            @id @default(cuid())
+  anonymous Boolean           @default(false)
+  consented Boolean           @default(false)
+  region    String?
+  utm       Json?
+  createdAt DateTime          @default(now()) @db.Timestamptz(6)
+  leads     Lead[]
+  orders    SnapshotOrder[]
+  trials    AssessmentTrial[]
+
+  @@map("snapshot_sessions")
+}
+
+model Lead {
+  id               String          @id @default(cuid())
+  email            String
+  consentMarketing Boolean         @default(false)
+  createdAt        DateTime        @default(now()) @db.Timestamptz(6)
+  sessionId        String
+  session          SnapshotSession @relation(fields: [sessionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  orders           SnapshotOrder[]
+
+  @@unique([sessionId, email], map: "snapshot_leads_session_email_idx")
+  @@map("snapshot_leads")
+}
+
+model AssessmentTrial {
+  id             String          @id @default(cuid())
+  sessionId      String
+  childFirstName String?
+  ageBand        String?
+  gradeBand      String?
+  region         String?
+  responses      Json?
+  scoreSnapshot  Json?
+  createdAt      DateTime        @default(now()) @db.Timestamptz(6)
+  session        SnapshotSession @relation(fields: [sessionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([sessionId], map: "snapshot_trials_session_idx")
+  @@map("snapshot_trials")
+}
+
+model SnapshotOrder {
+  id                  String           @id @default(cuid())
+  leadId              String?
+  sessionId           String?
+  amount              Int
+  status              String           @default("pending")
+  stripePaymentIntent String
+  createdAt           DateTime         @default(now()) @db.Timestamptz(6)
+  fullAssessment      AssessmentFull?
+  lead                Lead?            @relation(fields: [leadId], references: [id], onUpdate: NoAction)
+  session             SnapshotSession? @relation(fields: [sessionId], references: [id], onUpdate: NoAction)
+
+  @@index([leadId], map: "snapshot_orders_lead_idx")
+  @@index([sessionId], map: "snapshot_orders_session_idx")
+  @@map("snapshot_orders")
+}
+
+model AssessmentFull {
+  id         String        @id @default(cuid())
+  orderId    String        @unique
+  reportJson Json
+  pdfUrl     String?
+  createdAt  DateTime      @default(now()) @db.Timestamptz(6)
+  order      SnapshotOrder @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("snapshot_full_reports")
+}
+
+model LoginToken {
+  id        String    @id @default(cuid())
+  userId    String
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("login_tokens")
+}
+
+model ConversationalSession {
+  id                    String                     @id @default(cuid())
+  assessmentId          String                     @unique
+  userId                String?
+  currentQuestionIndex  Int                        @default(0)
+  responses             Json
+  messages              Json
+  isComplete            Boolean                    @default(false)
+  isTrial               Boolean                    @default(false)
+  questions             Json
+  totalTokenUsage       Json?
+  clarificationAttempts Int                        @default(0)
+  lastSubmittedAt       DateTime?
+  submissionCount       Int                        @default(0)
+  createdAt             DateTime                   @default(now())
+  updatedAt             DateTime                   @updatedAt
+  assessment            Assessment                 @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  user                  User?                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  submissions           ConversationalSubmission[]
 
   @@index([userId])
-  @@index([event])
-  @@map("telemetry_events")
+  @@index([assessmentId])
+  @@index([updatedAt])
+  @@index([isComplete])
+  @@map("conversational_sessions")
+}
+
+model ConversationalSubmission {
+  id              String                @id @default(cuid())
+  sessionId       String
+  questionId      String
+  questionIndex   Int
+  userResponse    String
+  extractedAnswer Boolean?
+  confidence      Float
+  wasRecorded     Boolean               @default(false)
+  tokenUsage      Json?
+  submittedAt     DateTime              @default(now())
+  session         ConversationalSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, questionId, userResponse])
+  @@index([sessionId])
+  @@index([questionId])
+  @@index([submittedAt])
+  @@map("conversational_submissions")
+}
+
+model EmailTemplate {
+  id        String   @id
+  name      String   @unique
+  subject   String
+  html      String
+  updatedAt DateTime
+}
+
+model PDFStyle {
+  id        String   @id
+  name      String   @unique
+  css       String
+  updatedAt DateTime
+}
+
+model ChildProfile {
+  id          String       @id @default(dbgenerated("gen_random_uuid()"))
+  userid      String
+  name        String?
+  birthdate   DateTime?    @db.Timestamp(6)
+  gradeband   String?
+  createdat   DateTime?    @default(now()) @db.Timestamp(6)
+  updatedat   DateTime?    @default(now()) @db.Timestamp(6)
+  assessments Assessment[]
+  users       User         @relation(fields: [userid], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_childprofile_user")
+
+  @@map("child_profiles")
 }
 
 enum Role {
   USER
   ADMIN
-  DISTRICT_ADMIN  // Can manage sub-accounts within their organization
-  SUB_ACCOUNT     // Sub-account user under a district
-  SUPER_ADMIN     // Platform super admin with global access
+  DISTRICT_ADMIN
+  SUB_ACCOUNT
+  SUPER_ADMIN
 }
 
 enum AssessmentStatus {
@@ -839,94 +1020,23 @@ enum AssessmentDomain {
 }
 
 enum LicenseType {
-  TRIAL                // Legacy trial period (deprecated)
-  FREE_TRIAL           // Lead-gen assessment with limited questions
-  FREE                 // View-only access after cancellation
-  BASIC                // Pay-per-assessment - $97 single purchase
-  MONTHLY_LITE         // Lite monthly subscription
-  CORE                 // Monthly Core subscription
-  ANNUAL_CORE          // Annual Core subscription
-  DISCOUNTED_CORE      // Discounted Core promotion
-  FAMILY               // Monthly Family subscription
-  ANNUAL_FAMILY        // Annual Family subscription
-  DISCOUNTED_FAMILY    // Discounted Family promotion
-  PARENT_PILOT         // District parent pilot distribution
-  DISTRICT_PILOT       // Paid pilot program
-  DISTRICT_STANDARD    // Annual district license (standard tier)
-  DISTRICT_PROFESSIONAL// Annual district license (professional tier)
-  DISTRICT_ENTERPRISE  // Annual district license (enterprise tier)
-  PROFESSIONAL         // Legacy professional unlimited subscription
-  ENTERPRISE           // Legacy enterprise unlimited subscription
-}
-
-model SnapshotSession {
-  id         String          @id @default(cuid())
-  anonymous  Boolean         @default(false)
-  consented  Boolean         @default(false)
-  region     String?
-  utm        Json?
-  createdAt  DateTime        @default(now())
-  trials     AssessmentTrial[]
-  leads      Lead[]
-  orders     SnapshotOrder[]
-
-  @@map("snapshot_sessions")
-}
-
-model Lead {
-  id               String          @id @default(cuid())
-  email            String
-  consentMarketing Boolean         @default(false)
-  createdAt        DateTime        @default(now())
-  sessionId        String
-  session          SnapshotSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  orders           SnapshotOrder[]
-
-  @@index([sessionId])
-  @@map("snapshot_leads")
-}
-
-model AssessmentTrial {
-  id             String          @id @default(cuid())
-  sessionId      String
-  childFirstName String?
-  ageBand        String
-  region         String?
-  responses      Json?
-  scoreSnapshot  Json?
-  createdAt      DateTime        @default(now())
-  session        SnapshotSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-
-  @@index([sessionId])
-  @@map("snapshot_trials")
-}
-
-model SnapshotOrder {
-  id                   String           @id @default(cuid())
-  leadId               String?
-  sessionId            String?
-  amount               Int
-  status               String          @default("pending")
-  stripePaymentIntent  String
-  createdAt            DateTime        @default(now())
-  lead                 Lead?           @relation(fields: [leadId], references: [id], onDelete: SetNull)
-  session              SnapshotSession?@relation(fields: [sessionId], references: [id], onDelete: SetNull)
-  fullAssessment       AssessmentFull?
-
-  @@index([leadId])
-  @@index([sessionId])
-  @@map("snapshot_orders")
-}
-
-model AssessmentFull {
-  id         String         @id @default(cuid())
-  orderId    String         @unique
-  reportJson Json
-  pdfUrl     String?
-  createdAt  DateTime       @default(now())
-  order      SnapshotOrder  @relation(fields: [orderId], references: [id], onDelete: Cascade)
-
-  @@map("snapshot_full_reports")
+  TRIAL
+  FREE_TRIAL
+  FREE
+  BASIC
+  MONTHLY_LITE
+  CORE
+  ANNUAL_CORE
+  DISCOUNTED_CORE
+  FAMILY
+  ANNUAL_FAMILY
+  DISCOUNTED_FAMILY
+  DISTRICT_PILOT
+  DISTRICT_STANDARD
+  DISTRICT_PROFESSIONAL
+  DISTRICT_ENTERPRISE
+  PROFESSIONAL
+  ENTERPRISE
 }
 
 enum LicenseStatus {
@@ -960,86 +1070,4 @@ enum ShareLinkPrivacy {
   PUBLIC
   PRIVATE
   PASSWORD_PROTECTED
-}
-
-model LoginToken {
-  id        String   @id @default(cuid())
-  userId    String
-  token     String   @unique
-  expiresAt DateTime
-  usedAt    DateTime?
-  createdAt DateTime @default(now())
-
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([token])
-  @@index([userId])
-  @@index([expiresAt])
-  @@map("login_tokens")
-}
-
-// Conversational Assessment Session - Persistent storage with API abuse safeguards
-model ConversationalSession {
-  id                     String    @id @default(cuid())
-  assessmentId           String    @unique // Each assessment can have one conversational session
-  userId                 String?
-  currentQuestionIndex   Int       @default(0)
-  responses              Json      // Record<string, boolean> - questionId -> answer
-  messages               Json      // ConversationalMessage[] - Full message history
-  isComplete             Boolean   @default(false)
-  isTrial                Boolean   @default(false)
-  questions              Json      // Question[] - Cached questions for this session
-  totalTokenUsage        Json?     // TokenUsage object with prompt/completion/total
-  clarificationAttempts  Int       @default(0)
-  lastSubmittedAt        DateTime? // Last time user submitted a response (for rate limiting)
-  submissionCount        Int       @default(0) // Total number of submissions (for monitoring abuse)
-  createdAt              DateTime  @default(now())
-  updatedAt              DateTime  @updatedAt
-
-  assessment             Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
-  user                   User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  submissions            ConversationalSubmission[]
-
-  @@index([userId])
-  @@index([assessmentId])
-  @@index([updatedAt])
-  @@index([isComplete])
-  @@map("conversational_sessions")
-}
-
-// Track each question submission for idempotency and audit trail
-model ConversationalSubmission {
-  id                String                @id @default(cuid())
-  sessionId         String
-  questionId        String
-  questionIndex     Int
-  userResponse      String                // The actual text user submitted
-  extractedAnswer   Boolean?              // true/false/null (null = unclear)
-  confidence        Float
-  wasRecorded       Boolean               @default(false) // Whether this answer was recorded in session.responses
-  tokenUsage        Json?                 // TokenUsage for this submission
-  submittedAt       DateTime              @default(now())
-
-  session           ConversationalSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-
-  // Idempotency: Prevent exact duplicate submissions
-  @@unique([sessionId, questionId, userResponse])
-  @@index([sessionId])
-  @@index([questionId])
-  @@index([submittedAt])
-  @@map("conversational_submissions")
-}
-
-// Editable email templates for Super Admin
-
-// Generic template for email/PDF with JSX and props
-model Template {
-  id           String   @id @default(cuid())
-  name         String   @unique
-  type         String   // 'email' or 'pdf'
-  jsx_source   String   // JSX source code
-  default_props Json    // Example props for preview
-  updatedAt    DateTime @updatedAt
-
-  @@map("templates")
 }

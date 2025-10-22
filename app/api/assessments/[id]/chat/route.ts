@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
+import { getCurrentUser } from "@/lib/supabase/auth-helpers";
 import { prisma } from "@/lib/db/prisma";
 import { AssessmentAI } from "@/lib/ai/AssessmentAI";
 import { ASSESSMENT_CONFIG } from "@/lib/config/ai-config";
@@ -20,15 +20,35 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await getCurrentUserWithRole();
-    if (!user) {
+    const user = await getCurrentUser();
+    if (!user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const identifier = (await params).id;
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch (error) {
+      console.error("Invalid assessment chat payload:", error);
+      return NextResponse.json(
+        { error: "Invalid request body" },
+        { status: 400 }
+      );
+    }
 
-    // Resolve shortId to UUID if needed
-    const assessmentId = await resolveAssessmentId(identifier, user.id);
+    const payload = (body ?? {}) as Record<string, unknown>;
+    const message =
+      typeof payload.message === "string" ? payload.message : null;
+    const providedAssessmentId =
+      typeof payload.assessmentId === "string" ? payload.assessmentId : null;
+
+    const identifier = (await params).id;
+    let assessmentId = providedAssessmentId;
+
+    if (!assessmentId) {
+      assessmentId = await resolveAssessmentId(identifier, user.id);
+    }
+
     if (!assessmentId) {
       return NextResponse.json(
         { error: "Assessment not found" },
@@ -36,11 +56,16 @@ export async function POST(
       );
     }
 
-    // Verify assessment belongs to user
     const assessment = await prisma.assessment.findFirst({
       where: {
         id: assessmentId,
         userId: user.id,
+      },
+      select: {
+        id: true,
+        status: true,
+        isConversational: true,
+        assessmentTemplateId: true,
       },
     });
 
@@ -58,19 +83,14 @@ export async function POST(
       );
     }
 
-    const body = await request.json();
-
     // Initialize AssessmentAI
-    const assessmentAI = new AssessmentAI(assessmentId);
+    const assessmentAI = new AssessmentAI(assessment.id);
     await assessmentAI.initialize();
 
-    // Check assessment mode
     const isStructuredMode = ASSESSMENT_CONFIG.CURRENT_MODE === "structured";
 
     if (isStructuredMode) {
-      // Handle structured assessment
-      if (body.message === "start_assessment") {
-        // Get the first question
+      if (message === "start_assessment") {
         const initialQuestion =
           await assessmentAI.getInitialStructuredQuestion();
 
@@ -81,7 +101,6 @@ export async function POST(
           );
         }
 
-        // Get actual progress calculation instead of hardcoded zeros
         const progress = await assessmentAI.getCurrentProgress();
 
         return NextResponse.json({
@@ -93,11 +112,11 @@ export async function POST(
           scores: [],
           isComplete: false,
           progress,
+          resolvedAssessmentId: assessment.id,
         });
       }
 
-      if (body.message === "resume_assessment") {
-        // Resume from where user left off
+      if (message === "resume_assessment") {
         const nextQuestion = await assessmentAI.getNextQuestion();
 
         if (!nextQuestion) {
@@ -117,11 +136,11 @@ export async function POST(
           scores: [],
           isComplete: false,
           progress,
+          resolvedAssessmentId: assessment.id,
         });
       }
 
-      if (body.message === "previous_question") {
-        // Go back to previous question
+      if (message === "previous_question") {
         const previousQuestion = await assessmentAI.getPreviousQuestion();
 
         if (!previousQuestion) {
@@ -139,11 +158,12 @@ export async function POST(
           questionId: previousQuestion.questionId,
           currentDomain: previousQuestion.domain,
           progress,
+          resolvedAssessmentId: assessment.id,
         });
       }
 
-      // Validate structured response
-      const structuredValidation = structuredResponseSchema.safeParse(body);
+      const structuredValidation =
+        structuredResponseSchema.safeParse(payload);
       if (!structuredValidation.success) {
         return NextResponse.json(
           { error: structuredValidation.error.errors[0].message },
@@ -151,18 +171,19 @@ export async function POST(
         );
       }
 
-      // Process structured response (only mode supported)
       const response = await assessmentAI.processStructuredResponse(
         structuredValidation.data
       );
-      return NextResponse.json(response);
-    } else {
-      // Only structured mode is supported
-      return NextResponse.json(
-        { error: "Only structured assessment mode is supported" },
-        { status: 400 }
-      );
+      return NextResponse.json({
+        ...response,
+        resolvedAssessmentId: assessment.id,
+      });
     }
+
+    return NextResponse.json(
+      { error: "Only structured assessment mode is supported" },
+      { status: 400 }
+    );
   } catch (error) {
     console.error("Assessment chat error:", error);
     return NextResponse.json(

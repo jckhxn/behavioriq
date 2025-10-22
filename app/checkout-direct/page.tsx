@@ -21,16 +21,30 @@ function CheckoutDirectContent() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [childName, setChildName] = useState("");
   const [plan, setPlan] = useState("BASIC");
+  const [refCode, setRefCode] = useState<string | null>(null);
+  const [discountValid, setDiscountValid] = useState(false);
 
   useEffect(() => {
     const childNameParam = searchParams.get("childName");
     const planParam = searchParams.get("plan");
+    const refParam = searchParams.get("ref");
 
     if (childNameParam) {
       setChildName(decodeURIComponent(childNameParam));
     }
     if (planParam) {
       setPlan(planParam);
+    }
+    if (refParam) {
+      setRefCode(refParam);
+      // Validate referral code
+      fetch("/api/affiliate/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refCode: refParam }),
+      })
+        .then((res) => res.json())
+        .then((data) => setDiscountValid(data.valid));
     }
   }, [searchParams]);
 
@@ -60,7 +74,9 @@ function CheckoutDirectContent() {
         plan: plan,
         childName: childName,
         isSubscription: false,
-        fromDashboard: true, // User is authenticated, redirect back to dashboard after payment
+        fromDashboard: true,
+        refCode: discountValid && refCode ? refCode : undefined,
+        discount: discountValid ? 2000 : 0, // $20 off if valid
       };
 
       console.log("Sending checkout request:", requestBody);
@@ -156,7 +172,27 @@ function CheckoutDirectContent() {
                 <p className="text-sm font-medium mb-2">Your Order:</p>
                 <p className="text-lg font-bold">
                   Full AI Assessment Report - $97
+                  {discountValid && (
+                    <span className="ml-2 text-green-600 font-semibold">
+                      $20 off with referral
+                    </span>
+                  )}
                 </p>
+                {discountValid && (
+                  <div className="mb-2">
+                    <span className="inline-block px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">
+                      Referral Discount Applied
+                    </span>
+                  </div>
+                )}
+                {discountValid && (
+                  <div className="text-xs text-muted-foreground mt-2">
+                    <span className="font-semibold">FTC Disclosure:</span> You
+                    are receiving a discount through a referral link. The
+                    referring user may earn a commission if you complete your
+                    purchase.
+                  </div>
+                )}
                 {childName && (
                   <p className="text-sm text-muted-foreground">
                     For: {childName}

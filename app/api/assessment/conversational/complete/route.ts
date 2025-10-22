@@ -3,8 +3,32 @@ import { ConversationalSession } from "@/lib/ai/conversational/types";
 import { databaseSessionStore } from "@/lib/ai/conversational/DatabaseSessionStore";
 import { sessionStore } from "@/lib/ai/conversational/SessionStore";
 import { ConversationalAIFactory } from "@/lib/ai/conversational/ConversationalAIFactory";
-import { AssessmentDomain, RiskLevel } from "@prisma/client";
+import { RiskLevel } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
+
+type DomainAggregation = {
+  slug: string;
+  domainName: string;
+  domainTemplateId: string | null;
+  yesWeight: number;
+  answeredWeight: number;
+  totalWeight: number;
+  questionsAnswered: number;
+  totalQuestions: number;
+};
+
+type DomainScoreRecord = {
+  slug: string;
+  domainName: string;
+  domainTemplateId: string | null;
+  rawScore: number;
+  answeredWeight: number;
+  totalWeight: number;
+  questionsAnswered: number;
+  totalQuestions: number;
+  percentage: number;
+  riskLevel: RiskLevel;
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,7 +49,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Convert responses to the format expected by the scoring system
+    // Convert responses to the format expected by downstream systems
     const responses = Object.entries(session.responses).map(
       ([questionId, answer]) => ({
         questionId,
@@ -33,29 +57,121 @@ export async function POST(request: NextRequest) {
       })
     );
 
-    // Calculate scores by domain (same logic as regular trial assessment)
-    const scoresByDomain: Record<string, { score: number; total: number }> = {};
+    // Aggregate scoring data per domain
+    const domainAggregations = new Map<string, DomainAggregation>();
 
     session.questions.forEach((question) => {
       const domainSlug = question.domainSlug || "unknown";
+
+      if (!domainAggregations.has(domainSlug)) {
+        domainAggregations.set(domainSlug, {
+          slug: domainSlug,
+          domainName: question.domain || domainSlug,
+          domainTemplateId: (question as any).domainTemplateId || null,
+          yesWeight: 0,
+          answeredWeight: 0,
+          totalWeight: 0,
+          questionsAnswered: 0,
+          totalQuestions: 0,
+        });
+      }
+
+      const aggregate = domainAggregations.get(domainSlug)!;
+      const weight = normalizeWeight(question.weight);
       const response = session.responses[question.id];
 
-      if (!scoresByDomain[domainSlug]) {
-        scoresByDomain[domainSlug] = { score: 0, total: 0 };
-      }
+      aggregate.totalWeight += weight;
+      aggregate.totalQuestions += 1;
 
       if (response !== undefined) {
-        const weight = question.weight || 1;
-        scoresByDomain[domainSlug].score += response ? weight : 0;
-        scoresByDomain[domainSlug].total += weight;
+        aggregate.answeredWeight += weight;
+        aggregate.questionsAnswered += 1;
+        if (response) {
+          aggregate.yesWeight += weight;
+        }
+      }
+
+      if (!aggregate.domainName && question.domain) {
+        aggregate.domainName = question.domain;
+      }
+
+      if (!aggregate.domainTemplateId && (question as any).domainTemplateId) {
+        aggregate.domainTemplateId = (question as any).domainTemplateId;
       }
     });
 
-    // Convert to percentage scores for summary
-    const scores: Record<string, number> = {};
-    Object.entries(scoresByDomain).forEach(([domain, data]) => {
-      scores[domain] = data.total > 0 ? (data.score / data.total) * 100 : 0;
+    // Resolve domain templates for richer metadata and scoring config
+    const domainSlugs = Array.from(domainAggregations.keys()).filter(
+      (slug) => slug !== "unknown"
+    );
+    const domainTemplates = domainSlugs.length
+      ? await prisma.domainTemplate.findMany({
+          where: { slug: { in: domainSlugs } },
+          select: {
+            id: true,
+            slug: true,
+            name: true,
+            scoringConfig: true,
+          },
+        })
+      : [];
+    const domainTemplateMap = new Map(
+      domainTemplates.map((template) => [template.slug, template])
+    );
+
+    domainAggregations.forEach((aggregate) => {
+      const template = domainTemplateMap.get(aggregate.slug);
+      if (template) {
+        aggregate.domainName = template.name || aggregate.domainName;
+        aggregate.domainTemplateId = template.id;
+      }
     });
+
+    const slugPercentages: Record<string, number> = {};
+    const aiScores: Record<string, number> = {};
+    const domainScoreRecords: Record<string, DomainScoreRecord> = {};
+
+    domainAggregations.forEach((aggregate) => {
+      const template = domainTemplateMap.get(aggregate.slug);
+      const rawScore = roundTo(aggregate.yesWeight, 4);
+      const denominator =
+        aggregate.answeredWeight > 0
+          ? aggregate.answeredWeight
+          : aggregate.totalWeight;
+      const percentage =
+        denominator > 0 ? (rawScore / denominator) * 100 : 0;
+      const normalizedPercentage = roundTo(percentage, 2);
+      const domainName =
+        aggregate.domainName || template?.name || aggregate.slug;
+
+      const riskLevel = determineRiskLevel(
+        rawScore,
+        normalizedPercentage,
+        template
+      );
+
+      const record: DomainScoreRecord = {
+        slug: aggregate.slug,
+        domainName,
+        domainTemplateId: template?.id ?? aggregate.domainTemplateId ?? null,
+        rawScore,
+        answeredWeight: roundTo(aggregate.answeredWeight, 4),
+        totalWeight: roundTo(aggregate.totalWeight, 4),
+        questionsAnswered: aggregate.questionsAnswered,
+        totalQuestions: aggregate.totalQuestions,
+        percentage: normalizedPercentage,
+        riskLevel,
+      };
+
+      domainScoreRecords[aggregate.slug] = record;
+      slugPercentages[aggregate.slug] = normalizedPercentage;
+      aiScores[domainName] = normalizedPercentage;
+    });
+
+    const scores = slugPercentages;
+    const scoresByDomainResponse = buildScoresByDomainResponse(
+      domainScoreRecords
+    );
 
     // Generate kid-friendly summary using CONVERSATIONAL_ANALYSIS prompt
     const aiProvider = ConversationalAIFactory.create(session.isTrial || false);
@@ -63,7 +179,9 @@ export async function POST(request: NextRequest) {
 
     try {
       if (aiProvider.generateSummary) {
-        summary = await aiProvider.generateSummary(session, scores);
+        const summaryScores =
+          Object.keys(aiScores).length > 0 ? aiScores : scores;
+        summary = await aiProvider.generateSummary(session, summaryScores);
       }
     } catch (error) {
       console.error("Error generating summary:", error);
@@ -87,7 +205,7 @@ export async function POST(request: NextRequest) {
         // Save results to EXISTING assessment (created in start route)
         savedAssessmentId = await saveConversationalAssessmentResults(
           session,
-          scoresByDomain,
+          domainScoreRecords,
           responses
         );
         console.log(
@@ -132,7 +250,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       responses,
       scores,
-      scoresByDomain,
+      scoresByDomain: scoresByDomainResponse,
       summary, // Kid-friendly markdown-formatted results
       totalQuestions: session.questions.length,
       answeredQuestions: Object.keys(session.responses).length,
@@ -154,9 +272,9 @@ export async function POST(request: NextRequest) {
  * This function ONLY updates it with completion data.
  */
 async function saveConversationalAssessmentResults(
-  session: any,
-  scoresByDomain: Record<string, { score: number; total: number }>,
-  responses: any[]
+  session: ConversationalSession,
+  domainScores: Record<string, DomainScoreRecord>,
+  responses: Array<{ questionId: string; response: boolean }>
 ): Promise<string> {
   // For full conversational assessments, assessmentId MUST exist (created in start route)
   if (!session.assessmentId) {
@@ -177,7 +295,7 @@ async function saveConversationalAssessmentResults(
   });
 
   // Save the domain scores
-  await saveScoresToDatabase(session.assessmentId, scoresByDomain, session.questions);
+  await saveScoresToDatabase(session.assessmentId, domainScores);
 
   return session.assessmentId;
 }
@@ -188,56 +306,35 @@ async function saveConversationalAssessmentResults(
  */
 async function saveScoresToDatabase(
   assessmentId: string,
-  scoresByDomain: Record<string, { score: number; total: number }>,
-  questions: any[]
+  domainScores: Record<string, DomainScoreRecord>
 ) {
-  // Map risk levels based on percentage scores
-  const mapScoreToRiskLevel = (percentage: number): RiskLevel => {
-    if (percentage >= 75) return "VERY_HIGH";
-    if (percentage >= 50) return "HIGH";
-    if (percentage >= 25) return "MODERATE";
-    return "LOW";
-  };
-
-  // Find domain templates for each domain slug
-  const domainSlugs = Object.keys(scoresByDomain);
-  const domainTemplates = await prisma.domainTemplate.findMany({
-    where: {
-      slug: { in: domainSlugs },
-    },
-  });
-
-  const domainTemplateMap = new Map(domainTemplates.map((dt) => [dt.slug, dt]));
-
-  // Prepare score records
+  const domainScoreValues = Object.values(domainScores);
   const baseTimestamp = new Date();
-  const scoreRecords = Object.entries(scoresByDomain).map(
-    ([domainSlug, data], index) => {
-      const domainTemplate = domainTemplateMap.get(domainSlug);
-      const percentage = data.total > 0 ? (data.score / data.total) * 100 : 0;
-      const riskLevel = mapScoreToRiskLevel(percentage);
+  const scoreRecords = domainScoreValues.map((domainScore, index) => {
+    const totalPossible = Math.max(
+      1,
+      Math.round(
+        domainScore.answeredWeight > 0
+          ? domainScore.answeredWeight
+          : domainScore.totalWeight || domainScore.totalQuestions || 1
+      )
+    );
 
-      // Count questions answered for this domain
-      const domainQuestions = questions.filter(
-        (q) => q.domainSlug === domainSlug
-      );
-      const questionsAnswered = domainQuestions.length;
-
-      return {
-        assessmentId,
-        domainTemplateId: domainTemplate?.id || null,
-        domainName: domainTemplate?.name || domainSlug,
-        domain: null, // Don't use legacy enum for conversational assessments
-        rawScore: data.score,
-        totalPossible: data.total,
-        questionsAnswered,
-        riskLevel,
-        confidence: percentage >= 50 ? 0.9 : 0.7, // Higher confidence for significant scores
-        wasTerminatedEarly: false,
-        timestamp: new Date(baseTimestamp.getTime() + index), // Unique timestamps
-      };
-    }
-  );
+    return {
+      assessmentId,
+      domainTemplateId: domainScore.domainTemplateId,
+      domainName: domainScore.domainName,
+      domain: null,
+      rawScore: roundTo(domainScore.rawScore, 4),
+      totalPossible,
+      questionsAnswered: domainScore.questionsAnswered,
+      riskLevel: domainScore.riskLevel,
+      confidence: computeConfidence(domainScore),
+      wasTerminatedEarly:
+        domainScore.questionsAnswered < domainScore.totalQuestions,
+      timestamp: new Date(baseTimestamp.getTime() + index),
+    };
+  });
 
   // Delete existing scores for this assessment (in case of re-completion)
   await prisma.score.deleteMany({
@@ -245,7 +342,216 @@ async function saveScoresToDatabase(
   });
 
   // Create new score records
-  await prisma.score.createMany({
-    data: scoreRecords,
-  });
+  if (scoreRecords.length > 0) {
+    await prisma.score.createMany({
+      data: scoreRecords,
+    });
+  }
+}
+
+const DEFAULT_RISK_THRESHOLDS = {
+  VERY_HIGH: 75,
+  HIGH: 50,
+  MODERATE: 25,
+} as const;
+
+function normalizeWeight(value: unknown): number {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : 1;
+}
+
+function roundTo(value: number, decimals = 2): number {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+  const factor = Math.pow(10, decimals);
+  return Math.round(value * factor) / factor;
+}
+
+function defaultRiskLevel(percentage: number): RiskLevel {
+  if (percentage >= DEFAULT_RISK_THRESHOLDS.VERY_HIGH) {
+    return "VERY_HIGH";
+  }
+  if (percentage >= DEFAULT_RISK_THRESHOLDS.HIGH) {
+    return "HIGH";
+  }
+  if (percentage >= DEFAULT_RISK_THRESHOLDS.MODERATE) {
+    return "MODERATE";
+  }
+  return "LOW";
+}
+
+function determineRiskLevel(
+  rawScore: number,
+  percentage: number,
+  template?: { scoringConfig?: any }
+): RiskLevel {
+  const config = template?.scoringConfig as any;
+  const parseValue = (value: unknown): number | null => {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : null;
+  };
+
+  if (config && typeof config === "object") {
+    const thresholdsSource =
+      config.riskThresholds || config.thresholds || undefined;
+    if (thresholdsSource && typeof thresholdsSource === "object") {
+      const thresholds = Object.entries(thresholdsSource).reduce<
+        Record<string, number>
+      >((acc, [key, value]) => {
+        const numeric = parseValue(value);
+        if (numeric !== null) {
+          acc[key.toLowerCase()] = numeric;
+        }
+        return acc;
+      }, {});
+
+      if (
+        thresholds["very_high"] !== undefined &&
+        rawScore >= thresholds["very_high"]
+      ) {
+        return "VERY_HIGH";
+      }
+      if (
+        thresholds["veryhigh"] !== undefined &&
+        rawScore >= thresholds["veryhigh"]
+      ) {
+        return "VERY_HIGH";
+      }
+      if (thresholds["severe"] !== undefined && rawScore >= thresholds["severe"]) {
+        return "VERY_HIGH";
+      }
+      if (thresholds["high"] !== undefined && rawScore >= thresholds["high"]) {
+        return "HIGH";
+      }
+      if (
+        thresholds["elevated"] !== undefined &&
+        rawScore >= thresholds["elevated"]
+      ) {
+        return "HIGH";
+      }
+      if (
+        thresholds["moderate"] !== undefined &&
+        rawScore >= thresholds["moderate"]
+      ) {
+        return "MODERATE";
+      }
+      if (
+        thresholds["watch"] !== undefined &&
+        rawScore >= thresholds["watch"]
+      ) {
+        return "MODERATE";
+      }
+    }
+
+    if (Array.isArray(config.riskLevels)) {
+      const sortedLevels = (config.riskLevels as any[])
+        .map((item) => ({
+          level:
+            typeof item.level === "string" ? item.level.toUpperCase() : "",
+          minPercentage: parseValue(item.minPercentage ?? item.threshold),
+          minScore: parseValue(item.minScore),
+        }))
+        .filter(
+          (item) =>
+            item.level &&
+            (item.minPercentage !== null || item.minScore !== null)
+        )
+        .sort((a, b) => {
+          const aValue =
+            (a.minPercentage ?? a.minScore ?? 0) as number;
+          const bValue =
+            (b.minPercentage ?? b.minScore ?? 0) as number;
+          return bValue - aValue;
+        });
+
+      for (const item of sortedLevels) {
+        const meetsPercentage =
+          item.minPercentage !== null &&
+          percentage >= (item.minPercentage as number);
+        const meetsScore =
+          item.minScore !== null &&
+          rawScore >= (item.minScore as number);
+        if (meetsPercentage || meetsScore) {
+          if (item.level === "VERY_HIGH") return "VERY_HIGH";
+          if (item.level === "HIGH") return "HIGH";
+          if (item.level === "MODERATE") return "MODERATE";
+          if (item.level === "LOW") return "LOW";
+        }
+      }
+    }
+
+    if (
+      typeof config.significantScore === "number" &&
+      Number.isFinite(config.significantScore)
+    ) {
+      const significantScore = Number(config.significantScore);
+      if (rawScore >= significantScore) {
+        return "HIGH";
+      }
+      const moderateThreshold =
+        typeof config.moderateScore === "number" &&
+        Number.isFinite(config.moderateScore)
+          ? Number(config.moderateScore)
+          : Math.max(Math.ceil(significantScore * 0.6), 1);
+      if (rawScore >= moderateThreshold) {
+        return "MODERATE";
+      }
+    }
+
+    if (
+      typeof config.maxScore === "number" &&
+      Number.isFinite(config.maxScore) &&
+      config.maxScore > 0
+    ) {
+      const ratio = (rawScore / config.maxScore) * 100;
+      return defaultRiskLevel(ratio);
+    }
+  }
+
+  return defaultRiskLevel(percentage);
+}
+
+function computeConfidence(domainScore: DomainScoreRecord): number {
+  if (domainScore.questionsAnswered === 0) {
+    return 0.6;
+  }
+
+  const coverage =
+    domainScore.totalQuestions > 0
+      ? domainScore.questionsAnswered / domainScore.totalQuestions
+      : 1;
+
+  let base = 0.7;
+  if (domainScore.percentage >= DEFAULT_RISK_THRESHOLDS.VERY_HIGH) {
+    base = 0.9;
+  } else if (domainScore.percentage >= DEFAULT_RISK_THRESHOLDS.HIGH) {
+    base = 0.85;
+  } else if (domainScore.percentage >= DEFAULT_RISK_THRESHOLDS.MODERATE) {
+    base = 0.8;
+  }
+
+  const confidence = base + coverage * 0.05;
+  return roundTo(Math.min(0.95, Math.max(0.6, confidence)), 2);
+}
+
+function buildScoresByDomainResponse(
+  domainScores: Record<string, DomainScoreRecord>
+) {
+  return Object.fromEntries(
+    Object.entries(domainScores).map(([slug, record]) => [
+      slug,
+      {
+        score: record.rawScore,
+        total: record.answeredWeight,
+        totalPossible: record.totalWeight,
+        questionsAnswered: record.questionsAnswered,
+        totalQuestions: record.totalQuestions,
+        percentage: record.percentage,
+        riskLevel: record.riskLevel,
+        domainName: record.domainName,
+        domainTemplateId: record.domainTemplateId,
+      },
+    ])
+  );
 }

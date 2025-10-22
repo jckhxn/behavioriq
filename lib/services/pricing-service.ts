@@ -11,7 +11,8 @@ export interface PricingResponse {
     | "familyMonthly"
     | "familyAnnual"
     | "enhancedMember"
-    | "enhancedNonMember",
+    | "enhancedNonMember"
+    | "memberCredit",
     {
       amount: number;
       currency: "USD";

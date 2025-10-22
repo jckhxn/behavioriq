@@ -148,12 +148,26 @@ async function streamRecommendations(assessment: any, userId: string) {
   const scores = assessment.scores;
 
   // Prepare score summary for AI with domain names and resources
+  if (!scores.length) {
+    return NextResponse.json(
+      { error: "No domain scores available yet" },
+      { status: 409 }
+    );
+  }
+
   const scoreSummary = scores.map((score: any) => ({
     domain: score.domain, // Keep enum for backwards compatibility
-    domainName: score.domainName || score.domainTemplate?.name || score.domain, // Human-readable name
+    domainName:
+      score.domainName ||
+      score.domainTemplate?.name ||
+      score.domain ||
+      "Behavior",
     rawScore: score.rawScore,
     totalPossible: score.totalPossible,
-    percentage: ((score.rawScore / score.totalPossible) * 100).toFixed(1),
+    percentage:
+      score.totalPossible > 0
+        ? ((score.rawScore / score.totalPossible) * 100).toFixed(1)
+        : "0.0",
     riskLevel: score.riskLevel,
     confidence: score.confidence,
     questionsAnswered: score.questionsAnswered,

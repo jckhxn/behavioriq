@@ -1,15 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { CheckCircle, XCircle, Loader2, ArrowLeft } from "lucide-react";
-import {
-  loadAssessmentConfigsClient,
-  QuestionSetConfig,
-} from "@/lib/assessment/db-loader";
+import { QuestionSetConfig } from "@/lib/assessment/db-loader";
 
 interface QuestionPresenterProps {
   questionId: string;
@@ -25,6 +22,7 @@ interface QuestionPresenterProps {
   onAnswer: (questionId: string, response: boolean) => Promise<void>;
   onBack?: () => void;
   canGoBack?: boolean;
+  assessmentConfigs: QuestionSetConfig[];
 }
 
 export function QuestionPresenter({
@@ -36,30 +34,15 @@ export function QuestionPresenter({
   onAnswer,
   onBack,
   canGoBack = false,
+  assessmentConfigs,
 }: QuestionPresenterProps) {
   const [selectedAnswer, setSelectedAnswer] = useState<boolean | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [assessmentConfigs, setAssessmentConfigs] = useState<
-    QuestionSetConfig[]
-  >([]);
 
   // Reset selected answer when question changes
   useEffect(() => {
     setSelectedAnswer(null);
   }, [questionId]);
-
-  // Load assessment configurations
-  useEffect(() => {
-    const loadConfigs = async () => {
-      try {
-        const configs = await loadAssessmentConfigsClient();
-        setAssessmentConfigs(configs);
-      } catch (error) {
-        console.error("Error loading assessment configurations:", error);
-      }
-    };
-    loadConfigs();
-  }, []);
 
   const handleAnswerClick = useCallback(
     async (response: boolean) => {
@@ -131,16 +114,23 @@ export function QuestionPresenter({
   }, [handleAnswerClick, canGoBack, onBack, isLoading, isSubmitting]);
 
   // Find domain configuration from our assessment configs
-  const domainConfig = assessmentConfigs.find(
-    (domain) => domain.name === currentDomain
-  ) || {
-    domain: currentDomain as any,
-    name: currentDomain,
-    description: "",
-    order: 0,
-    questions: [],
-    terminationRules: [],
-  };
+  const domainConfig = useMemo(() => {
+    return (
+      assessmentConfigs.find((domain) => domain.name === currentDomain) || {
+        domain: currentDomain as any,
+        name: currentDomain,
+        displayName: currentDomain,
+        description: "",
+        order: 0,
+        totalPossibleScore: 0,
+        clinicallySignificantScore: 0,
+        questions: [],
+        terminationRules: [],
+        skipConditions: [],
+        prerequisites: [],
+      }
+    );
+  }, [assessmentConfigs, currentDomain]);
 
   const progressPercentage = Math.round(progress.overallProgress);
 

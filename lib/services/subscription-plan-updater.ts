@@ -71,7 +71,7 @@ export async function applySubscriptionPlanToUser(
       data: {
         isActive: true,
         assessmentsAllowed: allowance,
-        conversationalAssessmentsAllowed: conversationalAllowance,
+        lastCreditsRefreshedAt: new Date(),
         conversationalReportsAllowed:
           enhancedReportLimit ?? userLicense.conversationalReportsAllowed,
       },
@@ -120,8 +120,7 @@ export async function applySubscriptionPlanToUser(
         ? Math.max(plan.rolloverCap, 0)
         : plan.creditsPerInterval,
       assessmentsUsed: 0,
-      conversationalAssessmentsAllowed: conversationalAllowance,
-      conversationalAssessmentsUsed: 0,
+      lastCreditsRefreshedAt: new Date(),
       conversationalReportsAllowed: enhancedReportLimit ?? 0,
       conversationalReportsUsed: 0,
     },

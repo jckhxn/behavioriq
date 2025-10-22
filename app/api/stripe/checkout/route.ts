@@ -19,6 +19,8 @@ export async function POST(request: NextRequest) {
       topUp = false,
       fromPaymentSuccess = false,
       fromDashboard = false,
+      isUpgrade = false,
+      upgradeFrom = null,
     } = body;
 
     const planKey = (plan ?? planId)?.toString();
@@ -93,6 +95,8 @@ export async function POST(request: NextRequest) {
         childName: childName || "",
         isSubscription: isSubscriptionCheckout.toString(),
         topUp: topUp ? "true" : "false",
+        isUpgrade: isUpgrade ? "true" : "false",
+        upgradeFrom: upgradeFrom || "",
       },
       // Apply discount coupon ONLY for subscription upgrades from payment success page (post-checkout upsell)
       // Do NOT apply discount for upgrades from dashboard/settings
@@ -114,6 +118,8 @@ export async function POST(request: NextRequest) {
             planType,
             plan: planKey,
             topUp: topUp ? "true" : "false",
+            isUpgrade: isUpgrade ? "true" : "false",
+            upgradeFrom: upgradeFrom || "",
           },
         },
       }),
@@ -126,6 +132,8 @@ export async function POST(request: NextRequest) {
             plan: planKey,
             childName: childName || "",
             topUp: topUp ? "true" : "false",
+            isUpgrade: isUpgrade ? "true" : "false",
+            upgradeFrom: upgradeFrom || "",
           },
         },
       }),

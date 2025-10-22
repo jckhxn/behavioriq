@@ -9,6 +9,7 @@ import { z } from "zod";
 const createAssessmentSchema = z.object({
   subjectName: z.string().min(1, "Subject name is required"),
   assessmentTemplateId: z.string().optional(), // Optional, will use active template if not provided
+  childProfileId: z.string().min(1).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -28,7 +29,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { subjectName, assessmentTemplateId } = validation.data;
+    const { subjectName, assessmentTemplateId, childProfileId } =
+      validation.data;
+
+    if (childProfileId) {
+      const childProfile = await prisma.childProfile.findFirst({
+        where: {
+          id: childProfileId,
+          userid: user.id,
+        },
+        select: { id: true },
+      });
+
+      if (!childProfile) {
+        return NextResponse.json(
+          { error: "Child profile not found" },
+          { status: 404 }
+        );
+      }
+    }
 
     // Check concurrent IN_PROGRESS assessments to prevent abuse
     const inProgressCount = await prisma.assessment.count({
@@ -71,14 +90,18 @@ export async function POST(request: NextRequest) {
     const assessment = await AssessmentAI.createNewAssessment(
       user.id,
       subjectName,
-      templateId
+      templateId,
+      childProfileId
     );
 
-    console.log(`[Assessment] ✨ Created assessment ${assessment.id} - credit will be charged on completion`);
+    console.log(
+      `[Assessment] ✨ Created assessment ${assessment.id} - credit will be charged on completion`
+    );
 
     return NextResponse.json({
       id: assessment.shortId, // Return shortId as the primary ID
       shortId: assessment.shortId,
+      childProfileId: childProfileId ?? null,
       message: "Assessment created successfully",
     });
   } catch (error) {
@@ -115,15 +138,24 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get("limit") || "10");
     const offset = parseInt(searchParams.get("offset") || "0");
+    const childIdParam = searchParams.get("childId");
+    const childProfileFilter =
+      childIdParam && childIdParam !== "all" ? childIdParam : null;
 
     // Super admins can see all assessments, regular users only see their own
-    const whereClause =
+    const baseWhere: any =
       user.role === "SUPER_ADMIN"
-        ? {} // No filter - show all assessments
-        : { userId: user.id }; // Filter to user's assessments only
+        ? {}
+        : {
+            userId: user.id,
+          };
+
+    if (childProfileFilter) {
+      baseWhere.childprofileid = childProfileFilter;
+    }
 
     const assessments = await prisma.assessment.findMany({
-      where: whereClause,
+      where: baseWhere,
       orderBy: { startedAt: "desc" },
       take: limit,
       skip: offset,
@@ -142,6 +174,13 @@ export async function GET(request: NextRequest) {
             id: true,
             name: true,
             email: true,
+          },
+        },
+        childprofileid: true,
+        childProfile: {
+          select: {
+            id: true,
+            name: true,
           },
         },
         scores: {

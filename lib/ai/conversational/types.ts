@@ -83,4 +83,5 @@ export interface Question {
   order?: number;
   domain?: string;
   required?: boolean;
+  domainTemplateId?: string;
 }

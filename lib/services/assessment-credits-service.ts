@@ -1,5 +1,23 @@
 import { prisma } from "@/lib/db/prisma";
-import { LicenseType } from "@prisma/client";
+import { LICENSE_CONFIG } from "@/lib/config/license";
+import { addMonths } from "date-fns";
+
+type UserLicenseWithLicense = {
+  id: string;
+  userId: string;
+  licenseId: string;
+  isActive: boolean;
+  assessmentsAllowed: number;
+  assessmentsUsed: number;
+  conversationalReportsAllowed: number | null;
+  conversationalReportsUsed: number | null;
+  assignedAt: Date;
+  lastCreditsRefreshedAt: Date | null;
+  license: {
+    type: string;
+    maxConversationalReports: number | null;
+  };
+};
 export interface AssessmentCreditsInfo {
   hasCredits: boolean;
   creditsRemaining: number;
@@ -16,6 +34,104 @@ export interface AssessmentCreditsInfo {
 }
 
 class AssessmentCreditsService {
+  private getSubscriptionCreditSettings(type: string) {
+    const config = (LICENSE_CONFIG as Record<string, any>)[type];
+    if (!config) return null;
+
+    const creditsPerInterval = config.creditsPerInterval ?? 0;
+    if (!creditsPerInterval || creditsPerInterval <= 0) {
+      return null;
+    }
+
+    const creditIntervalMonths = config.creditIntervalMonths ?? 1;
+    const rolloverCap =
+      config.rolloverCap === undefined ? null : config.rolloverCap;
+
+    return {
+      creditsPerInterval,
+      creditIntervalMonths,
+      rolloverCap,
+    };
+  }
+
+  private async refreshSubscriptionCredits(
+    userLicense: UserLicenseWithLicense
+  ): Promise<UserLicenseWithLicense> {
+    const settings = this.getSubscriptionCreditSettings(
+      userLicense.license.type
+    );
+
+    if (!settings) {
+      return userLicense;
+    }
+
+    if (settings.creditIntervalMonths <= 0) {
+      return userLicense;
+    }
+
+    const baseReference =
+      userLicense.lastCreditsRefreshedAt ?? userLicense.assignedAt ?? new Date();
+    const now = new Date();
+    let lastApplied = baseReference;
+    let intervals = 0;
+
+    while (true) {
+      const candidate = addMonths(lastApplied, settings.creditIntervalMonths);
+      if (candidate <= now) {
+        intervals += 1;
+        lastApplied = candidate;
+      } else {
+        break;
+      }
+    }
+
+    if (intervals <= 0 && userLicense.lastCreditsRefreshedAt) {
+      return userLicense;
+    }
+
+    const creditsToAdd = intervals * (settings.creditsPerInterval ?? 0);
+    const currentRemaining = Math.max(
+      0,
+      userLicense.assessmentsAllowed - userLicense.assessmentsUsed
+    );
+
+    let newRemaining = currentRemaining;
+    if (creditsToAdd > 0) {
+      if (settings.rolloverCap === null) {
+        newRemaining = currentRemaining + creditsToAdd;
+      } else {
+        newRemaining = Math.min(
+          settings.rolloverCap,
+          currentRemaining + creditsToAdd
+        );
+      }
+    }
+
+    const newAssessmentsAllowed =
+      userLicense.assessmentsUsed + newRemaining;
+
+    if (
+      newAssessmentsAllowed === userLicense.assessmentsAllowed &&
+      userLicense.lastCreditsRefreshedAt &&
+      lastApplied.getTime() === userLicense.lastCreditsRefreshedAt.getTime()
+    ) {
+      return userLicense;
+    }
+
+    return prisma.userLicense.update({
+      where: { id: userLicense.id },
+      data: {
+        assessmentsAllowed: newAssessmentsAllowed,
+        lastCreditsRefreshedAt: lastApplied,
+      },
+      include: {
+        license: {
+          select: { type: true, maxConversationalReports: true },
+        },
+      },
+    });
+  }
+
   /**
    * Get the rollover cap for the user's current plan
    */
@@ -25,36 +141,63 @@ class AssessmentCreditsService {
       include: { license: { select: { type: true } } },
     });
     if (!userLicense) return null;
+
     const type = userLicense.license.type;
-    if (type === LicenseType.FAMILY || type === LicenseType.ANNUAL_FAMILY)
-      return 15;
-    if (type === LicenseType.CORE || type === LicenseType.ANNUAL_CORE)
-      return 6;
-    if (type === LicenseType.BASIC) return 6;
-    if (type === LicenseType.FREE_TRIAL) return 0;
-    if (type === LicenseType.PARENT_PILOT || type === LicenseType.DISTRICT_PILOT)
-      return null;
-    if (
-      type === LicenseType.DISTRICT_STANDARD ||
-      type === LicenseType.DISTRICT_PROFESSIONAL ||
-      type === LicenseType.DISTRICT_ENTERPRISE ||
-      type === LicenseType.PROFESSIONAL ||
-      type === LicenseType.ENTERPRISE
-    )
-      return null;
-    if (type === LicenseType.FREE) return 0;
-    return null;
+    const settings = this.getSubscriptionCreditSettings(type);
+    if (settings && settings.rolloverCap !== null) {
+      return settings.rolloverCap ?? null;
+    }
+
+    switch (type) {
+      case "BASIC":
+        return 6;
+      case "FREE_TRIAL":
+      case "FREE":
+        return 0;
+      case "DISTRICT_PILOT":
+      case "DISTRICT_STANDARD":
+      case "DISTRICT_PROFESSIONAL":
+      case "DISTRICT_ENTERPRISE":
+      case "PROFESSIONAL":
+      case "ENTERPRISE":
+        return null;
+      case "MONTHLY_LITE":
+        return 2;
+      default:
+        return null;
+    }
   }
 
   /**
    * Get the next credit earning date for the user
    */
   async getNextCreditDate(userId: string): Promise<string | null> {
-    // This is a placeholder. In production, calculate based on plan cycle and last grant.
-    // For demo, return 1 month from now.
-    const now = new Date();
-    now.setMonth(now.getMonth() + 1);
-    return now.toISOString();
+    const userLicense = await prisma.userLicense.findFirst({
+      where: { userId, isActive: true },
+      select: {
+        id: true,
+        assignedAt: true,
+        lastCreditsRefreshedAt: true,
+        license: { select: { type: true } },
+      },
+    });
+
+    if (!userLicense) {
+      return null;
+    }
+
+    const settings = this.getSubscriptionCreditSettings(
+      userLicense.license.type
+    );
+
+    if (!settings) {
+      return null;
+    }
+
+    const baseReference =
+      userLicense.lastCreditsRefreshedAt ?? userLicense.assignedAt ?? new Date();
+    const nextGrant = addMonths(baseReference, settings.creditIntervalMonths);
+    return nextGrant.toISOString();
   }
 
   /**
@@ -73,7 +216,7 @@ class AssessmentCreditsService {
    */
   async checkUserCredits(userId: string): Promise<AssessmentCreditsInfo> {
     // Get user's active license
-    const userLicense = await prisma.userLicense.findFirst({
+    let userLicense = await prisma.userLicense.findFirst({
       where: {
         userId,
         isActive: true,
@@ -108,13 +251,15 @@ class AssessmentCreditsService {
       };
     }
 
+    userLicense = await this.refreshSubscriptionCredits(userLicense);
+
     const licenseType = userLicense.license.type;
 
-    // Calculate conversational credits
+    // Calculate conversational credits (reports)
     const conversationalCreditsRemaining = Math.max(
       0,
-      userLicense.conversationalAssessmentsAllowed -
-        userLicense.conversationalAssessmentsUsed
+      (userLicense.conversationalReportsAllowed ?? 0) -
+        (userLicense.conversationalReportsUsed ?? 0)
     );
 
     const manualConversationalReportAllowance =
@@ -150,9 +295,9 @@ class AssessmentCreditsService {
         creditsUsed: userLicense.assessmentsUsed,
         licenseType,
         conversationalCredits: conversationalCreditsRemaining,
-        conversationalCreditsUsed: userLicense.conversationalAssessmentsUsed,
+        conversationalCreditsUsed: userLicense.conversationalReportsUsed ?? 0,
         conversationalCreditsAllowed:
-          userLicense.conversationalAssessmentsAllowed,
+          userLicense.conversationalReportsAllowed,
         conversationalReportCredits: conversationalReportCreditsRemaining,
         conversationalReportCreditsUsed: conversationalReportCreditsUsed,
         conversationalReportCreditsAllowed: conversationalReportLimit,
@@ -185,9 +330,9 @@ class AssessmentCreditsService {
       creditsUsed: userLicense.assessmentsUsed,
       licenseType,
       conversationalCredits: conversationalCreditsRemaining,
-      conversationalCreditsUsed: userLicense.conversationalAssessmentsUsed,
+      conversationalCreditsUsed: userLicense.conversationalReportsUsed ?? 0,
       conversationalCreditsAllowed:
-        userLicense.conversationalAssessmentsAllowed,
+        userLicense.conversationalReportsAllowed,
       conversationalReportCredits: conversationalReportCreditsRemaining,
       conversationalReportCreditsUsed: conversationalReportCreditsUsed,
       conversationalReportCreditsAllowed: conversationalReportLimit,
@@ -212,7 +357,6 @@ class AssessmentCreditsService {
       credits.licenseType === "DISTRICT_STANDARD" ||
       credits.licenseType === "DISTRICT_PROFESSIONAL" ||
       credits.licenseType === "DISTRICT_ENTERPRISE" ||
-      credits.licenseType === "PARENT_PILOT" ||
       credits.licenseType === "DISTRICT_PILOT"
     ) {
       return;
@@ -292,7 +436,6 @@ class AssessmentCreditsService {
       credits.licenseType === "DISTRICT_STANDARD" ||
       credits.licenseType === "DISTRICT_PROFESSIONAL" ||
       credits.licenseType === "DISTRICT_ENTERPRISE" ||
-      credits.licenseType === "PARENT_PILOT" ||
       credits.licenseType === "DISTRICT_PILOT"
     ) {
       return {

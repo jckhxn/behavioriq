@@ -14,16 +14,24 @@ $1 per 10k emails (SES)
 
 ## Bugs Track
 
+- [] Implement a robust way of backing up database so you don't lose data again lol.
+- [] Other user assessments load for Super-Admin. Assessments Templates need to enforce "must have one domain selected to be active" So users can't start an asssessment that never loads.
+- [] User management tab for SuperAdmin fails to load users.
 - [] Fix Maintenance mode logic.
 - [] Fix pSEO generating grade level stuff thats not needed.
 - [] Cleanup all the damn console.logs
 - [] Clean .env mess
 - [] Make sure updated license logic works
-  
+- [] Upgrade Path needs to dismiss if user has upgraded lol.
+- [] Make sure Cancel/Pause has Hormozi copy and features explainer.
+- [] Assessment Out Of Credits Upsell modal is out of date.
+- [] Super Admin panel doesn't reflect new license types.
+- [] Does sitemap/robots generate using a route or do I need to write the .ts file @ root
+- [] User management should reflect licenses and allow for modifying license.
 
 ## Features
 
-- [] Assessment In Memory (Progress for prev/next question flow in memory -> Send domain scores to AI/DB calls at end for resume? Speeds up assessment progress by question progression looking instant.)
+- [] / _Dashboard_ route should render components as tabs/pages, so we avoid additional unlinked routes
 - [] Don't allow users to upgrade their account if they are already on the account type.
 - [] Update Billing in Profile to reflect actual account status.
 - [] Users purchasing/upgrade on dashboard should redirect to dash.

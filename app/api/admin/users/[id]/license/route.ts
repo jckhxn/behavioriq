@@ -64,6 +64,7 @@ export async function PUT(
             licenseTemplate.maxConversationalAssessments || 0,
           conversationalReportsAllowed:
             licenseTemplate.maxConversationalReports || 0,
+          lastCreditsRefreshedAt: new Date(),
         },
       });
     } else {
@@ -75,6 +76,7 @@ export async function PUT(
           isActive: true,
           assessmentsAllowed: licenseTemplate.maxAssessments || 0,
           assessmentsUsed: 0,
+          lastCreditsRefreshedAt: new Date(),
           conversationalAssessmentsAllowed:
             licenseTemplate.maxConversationalAssessments || 0,
           conversationalAssessmentsUsed: 0,

@@ -94,48 +94,22 @@ export async function getCurrentUserWithRole() {
       return null;
     }
 
-    // Validate required environment variables
-    if (
-      !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-      !process.env.SUPABASE_SERVICE_ROLE_KEY
-    ) {
-      console.error(
-        "Missing required environment variables: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY"
-      );
-      throw new Error("Server configuration error");
-    }
+    // Use Prisma instead of Supabase query builder to avoid RLS issues
+    const { prisma } = await import("@/lib/db/prisma");
 
-    // Use Supabase service role client to query database
-    // Service role bypasses RLS policies
-    const { createClient } = await import("@supabase/supabase-js");
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: {
+        licenses: {
+          include: {
+            license: true,
+          },
         },
-      }
-    );
+      },
+    });
 
-    // Query user from database using Supabase (not Prisma)
-    const { data: dbUser, error } = await supabaseAdmin
-      .from("users")
-      .select(
-        `
-      *,
-      licenses:user_licenses(
-        *,
-        license:licenses(*)
-      )
-    `
-      )
-      .eq("id", user.id)
-      .single();
-
-    if (error) {
-      console.error("Error fetching user from database:", error);
+    if (!dbUser) {
+      console.error("Error fetching user from database: User not found");
       return null;
     }
 

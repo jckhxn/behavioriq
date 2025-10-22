@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
+import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import React from "react";
@@ -37,24 +38,19 @@ export async function POST(req: Request) {
     const html = `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/></head><body>${rendered}</body></html>`;
 
     // Upsert the rendered HTML into the Template table
-    const template = await prisma.template.upsert({
+    const template = await prisma.emailTemplate.upsert({
       where: { name },
       update: {
-        type: "email",
-        jsx_source: html,
-        default_props: {
-          subject: payload.subject,
-          body: payload.body || "",
-        },
+        subject: payload.subject,
+        html,
+        updatedAt: new Date(),
       },
       create: {
+        id: crypto.randomUUID(),
         name,
-        type: "email",
-        jsx_source: html,
-        default_props: {
-          subject: payload.subject,
-          body: payload.body || "",
-        },
+        subject: payload.subject,
+        html,
+        updatedAt: new Date(),
       },
     });
 

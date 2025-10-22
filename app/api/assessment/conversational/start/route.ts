@@ -358,17 +358,26 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const normalizeWeight = (value: unknown): number => {
+      const numeric = Number(value);
+      return Number.isFinite(numeric) && numeric > 0 ? numeric : 1;
+    };
+
     // Flatten all questions from all domains
     const allQuestions = assessmentTemplate.domains.flatMap(
       (domain: any, domainIndex: number) => {
-        const domainQuestions = domain.domainTemplate.questions as any[];
+        const domainQuestions = Array.isArray(domain.domainTemplate.questions)
+          ? domain.domainTemplate.questions
+          : [];
+
         return domainQuestions.map((question: any, questionIndex: number) => ({
           id: question.id,
           text: question.text,
           order: domainIndex * 100 + questionIndex,
           domain: domain.domainTemplate.name,
           domainSlug: domain.domainTemplate.slug,
-          weight: question.weight || 1,
+          domainTemplateId: domain.domainTemplate.id,
+          weight: normalizeWeight(question.weight),
           required: question.required !== false,
         }));
       }

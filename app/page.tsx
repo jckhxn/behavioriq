@@ -1,5 +1,5 @@
 "use client";
-import LandingPagePricing from "../components/landing/LandingPagePricing";
+// import LandingPagePricing from "../components/landing/LandingPagePricing";
 
 import { useState, useEffect, Suspense } from "react";
 import { useUserData, useSignOut } from "@/lib/hooks/use-supabase-user";
@@ -139,7 +139,6 @@ function HomeContent() {
     return (
       <>
         <LandingPage />
-        <LandingPagePricing />
       </>
     );
   }
@@ -386,7 +385,7 @@ export default function Home() {
         }
       >
         <HomeContent />
-        <LandingPagePricing />
+        {/* <LandingPagePricing /> */}
       </Suspense>
     </OnboardingProvider>
   );

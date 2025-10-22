@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { prisma } from "@/lib/db/prisma";
 import { resolveAssessmentId } from "@/lib/utils/assessmentResolver";
-import { DOMAIN_LABELS } from "@/lib/constants/domains";
+import { AssessmentDomain } from "@prisma/client";
 
 export async function GET(
-  request: NextRequest,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -14,77 +14,71 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const assessmentId = (await params).id;
-
-    // Resolve and verify assessment belongs to user
-    const internalAssessmentId = await resolveAssessmentId(
-      assessmentId,
-      user.id
-    );
-
-    if (!internalAssessmentId) {
+    const identifier = (await params).id;
+    const assessmentId = await resolveAssessmentId(identifier, user.id);
+    if (!assessmentId) {
       return NextResponse.json(
         { error: "Assessment not found" },
         { status: 404 }
       );
     }
 
-    // Get assessment status
-    const assessment = await prisma.assessment.findUnique({
-      where: { id: internalAssessmentId },
-      select: { status: true },
+    const assessment = await prisma.assessment.findFirst({
+      where: {
+        id: assessmentId,
+        userId: user.id,
+      },
+      select: { id: true },
     });
 
-    // Get all scores with domain template names
-    const rawScores = await (prisma.score as any).findMany({
-      where: { assessmentId: internalAssessmentId },
-      orderBy: { timestamp: "desc" },
+    if (!assessment) {
+      return NextResponse.json(
+        { error: "Assessment not found" },
+        { status: 404 }
+      );
+    }
+
+    const scores = await prisma.score.findMany({
+      where: { assessmentId },
       include: {
         domainTemplate: {
           select: {
-            id: true,
             name: true,
-            slug: true,
+            resources: true,
           },
         },
       },
+      orderBy: { timestamp: "asc" },
     });
 
-    // Map scores to response format
-    const scores = rawScores.map((score: any) => ({
-      id: score.id,
-      domain: score.domain,
-      // Use domainName if stored, otherwise use template name, fallback to enum label
-      domainName:
-        score.domainName ||
-        score.domainTemplate?.name ||
-        (score.domain ? (DOMAIN_LABELS as any)[score.domain] : "Unknown"),
-      rawScore: score.rawScore,
-      totalPossible: score.totalPossible,
-      questionsAnswered: score.questionsAnswered,
-      riskLevel: score.riskLevel,
-      confidence: score.confidence,
-      wasTerminatedEarly: score.wasTerminatedEarly,
-      timestamp: score.timestamp,
-    }));
+    const payload = scores.map((score) => {
+      const domainName =
+        score.domainName ??
+        score.domainTemplate?.name ??
+        score.domain ??
+        "Behavior";
+      const fallbackDomain = score.domain ?? AssessmentDomain.ANTISOCIAL;
 
-    // Get message count
-    const messageCount = await prisma.chatMessage.count({
-      where: {
-        assessmentId: internalAssessmentId,
-        role: "USER",
-      },
+      return {
+        id: score.id,
+        domain: fallbackDomain,
+        domainName,
+        rawScore: score.rawScore,
+        totalPossible: score.totalPossible,
+        riskLevel: score.riskLevel,
+        confidence: score.confidence,
+        timestamp: score.timestamp,
+        questionsAnswered: score.questionsAnswered,
+        wasTerminatedEarly: score.wasTerminatedEarly,
+        resources: score.domainTemplate?.resources ?? [],
+      };
     });
 
-    return NextResponse.json({
-      scores,
-      status: assessment?.status,
-      messageCount,
-    });
+    return NextResponse.json({ scores: payload });
   } catch (error) {
-    console.error("Get assessment scores error:", error);
+    console.error("[scores] failed to load assessment scores", error);
     return NextResponse.json(
-      { error: "Failed to fetch scores" },
+      { error: "Failed to load assessment scores" },
       { status: 500 }
     );
   }

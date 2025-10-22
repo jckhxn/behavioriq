@@ -1,5 +1,8 @@
 import { prisma } from "@/lib/db/prisma";
+import { stripe } from "@/lib/stripe/config";
+import { getPlanForStripePrice } from "@/lib/config/stripe-price-ids";
 import { AssessmentStatus, type LicenseType } from "@prisma/client";
+import type Stripe from "stripe";
 
 export type UserPlanType = "free" | "one_time" | "core" | "family";
 export type UserPlanTerm = "monthly" | "annual" | null;
@@ -21,6 +24,26 @@ export interface UserPlanSummary {
     type: string;
     effectiveAt: string | null;
     payload?: Record<string, any>;
+  } | null;
+  stripe: {
+    subscriptionId: string;
+    status: string;
+    priceId: string | null;
+    planNickname: string | null;
+    amountCents: number | null;
+    currency: string | null;
+    currentPeriodEnd: string | null;
+    currentPeriodStart: string | null;
+    cancelAtPeriodEnd: boolean;
+    trialEnd: string | null;
+  } | null;
+  paymentMethod: {
+    id: string;
+    brand: string | null;
+    last4: string | null;
+    expMonth: number | null;
+    expYear: number | null;
+    isDefault: boolean;
   } | null;
 }
 
@@ -103,7 +126,6 @@ function mapLicenseTypeToPlan(
     case "DISTRICT_STANDARD":
     case "DISTRICT_PROFESSIONAL":
     case "DISTRICT_ENTERPRISE":
-    case "PARENT_PILOT":
     case "DISTRICT_PILOT":
       return {
         plan: "family",
@@ -121,12 +143,221 @@ function mapLicenseTypeToPlan(
   }
 }
 
-export async function getUserPlanSummary(userId: string): Promise<UserPlanSummary> {
+interface StripePlanInfo {
+  planOverride: PlanMappingResult | null;
+  subscription: UserPlanSummary["stripe"];
+  paymentMethod: UserPlanSummary["paymentMethod"];
+}
+
+const EMPTY_STRIPE_PLAN_INFO: StripePlanInfo = {
+  planOverride: null,
+  subscription: null,
+  paymentMethod: null,
+};
+
+function isStripeCustomer(
+  customer: Stripe.Customer | Stripe.DeletedCustomer
+): customer is Stripe.Customer {
+  return !(customer as Stripe.DeletedCustomer).deleted;
+}
+
+function isStripeProduct(
+  product: string | Stripe.Product | Stripe.DeletedProduct | null | undefined
+): product is Stripe.Product {
+  return Boolean(
+    product &&
+      typeof product === "object" &&
+      !("deleted" in product && product.deleted)
+  );
+}
+
+type SubscriptionWithLegacyFields = Stripe.Subscription & {
+  current_period_end?: number | null;
+  current_period_start?: number | null;
+  trial_end?: number | null;
+};
+
+let upsellSchemaEnsured = false;
+
+async function ensureUpsellStateSchema() {
+  if (upsellSchemaEnsured) return;
+
+  try {
+    const rows = (await prisma.$queryRaw`
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'user_upsell_state'
+    `) as Array<{ column_name: string }>;
+
+    const columns = new Set(rows.map((row) => row.column_name));
+
+    const renames: Array<{ old: string; next: string }> = [
+      { old: "user_id", next: "userId" },
+      { old: "ribbon_snoozed_until", next: "ribbonSnoozedUntil" },
+      { old: "ribbon_snoozed_at", next: "ribbonSnoozedAt" },
+      { old: "ribbon_snooze_source", next: "ribbonSnoozeSource" },
+      { old: "anonymous_mode_default", next: "anonymousModeDefault" },
+      { old: "paused_until", next: "pausedUntil" },
+      { old: "paused_at", next: "pausedAt" },
+      { old: "pause_count12m", next: "pauseCount12m" },
+      { old: "pause_history", next: "pauseHistory" },
+      { old: "pending_action", next: "pendingAction" },
+      { old: "created_at", next: "createdAt" },
+      { old: "updated_at", next: "updatedAt" },
+    ];
+
+    for (const rename of renames) {
+      if (!columns.has(rename.next) && columns.has(rename.old)) {
+        await prisma.$executeRawUnsafe(
+          `ALTER TABLE "user_upsell_state" RENAME COLUMN "${rename.old}" TO "${rename.next}"`
+        );
+        columns.delete(rename.old);
+        columns.add(rename.next);
+      }
+    }
+
+    await prisma.$executeRawUnsafe(
+      'ALTER TABLE "user_upsell_state" ADD COLUMN IF NOT EXISTS "pauseCount12m" INTEGER DEFAULT 0'
+    );
+    await prisma.$executeRawUnsafe(
+      'ALTER TABLE "user_upsell_state" ADD COLUMN IF NOT EXISTS "pauseHistory" JSONB'
+    );
+    await prisma.$executeRawUnsafe(
+      'ALTER TABLE "user_upsell_state" ADD COLUMN IF NOT EXISTS "pendingAction" JSONB'
+    );
+  } catch (error) {
+    console.warn("[plan-summary] Failed to ensure upsell state schema", error);
+  } finally {
+    upsellSchemaEnsured = true;
+  }
+}
+
+async function fetchStripePlanInfo(
+  stripeCustomerId: string
+): Promise<StripePlanInfo> {
+  try {
+    const [subscriptions, customer] = await Promise.all([
+      stripe.subscriptions.list({
+        customer: stripeCustomerId,
+        status: "all",
+        expand: ["data.default_payment_method", "data.items.data.price"],
+        limit: 5,
+      }),
+      stripe.customers.retrieve(stripeCustomerId, {
+        expand: ["invoice_settings.default_payment_method"],
+      }),
+    ]);
+
+    const subscription =
+      subscriptions.data.find((sub) =>
+        ["active", "trialing", "past_due", "incomplete", "unpaid"].includes(
+          sub.status
+        )
+      ) ??
+      subscriptions.data.find((sub) => sub.status === "incomplete_expired") ??
+      subscriptions.data[0];
+
+    const price = subscription?.items?.data?.[0]?.price ?? null;
+    const planDefinition = price?.id ? getPlanForStripePrice(price.id) : undefined;
+    const derivedPlan: UserPlanType =
+      planDefinition?.tier === "FAMILY" ? "family" : "core";
+    const planOverride: PlanMappingResult | null = planDefinition
+      ? {
+          plan: derivedPlan,
+          term: planDefinition.billingInterval,
+          monthlyCredits: planDefinition.creditsPerInterval,
+          rolloverCap: planDefinition.rolloverCap,
+        }
+      : null;
+
+    const subscriptionWithLegacy = subscription as SubscriptionWithLegacyFields | null;
+    const productName = isStripeProduct(price?.product) ? price?.product.name : null;
+    const currentPeriodEnd = subscriptionWithLegacy?.current_period_end
+      ? new Date(subscriptionWithLegacy.current_period_end * 1000).toISOString()
+      : null;
+    const currentPeriodStart = subscriptionWithLegacy?.current_period_start
+      ? new Date(subscriptionWithLegacy.current_period_start * 1000).toISOString()
+      : null;
+    const trialEnd = subscriptionWithLegacy?.trial_end
+      ? new Date(subscriptionWithLegacy.trial_end * 1000).toISOString()
+      : null;
+
+    const subscriptionInfo = subscription
+      ? {
+          subscriptionId: subscription.id,
+          status: subscription.status,
+          priceId: price?.id ?? null,
+          planNickname:
+            price?.nickname ?? productName,
+          amountCents: price?.unit_amount ?? null,
+          currency: price?.currency ?? null,
+          currentPeriodEnd,
+          currentPeriodStart,
+          cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
+          trialEnd,
+        }
+      : null;
+
+    const subscriptionDefaultPaymentMethod =
+      subscription?.default_payment_method &&
+      typeof subscription.default_payment_method !== "string"
+        ? (subscription.default_payment_method as Stripe.PaymentMethod)
+        : null;
+
+    const customerDefaultPaymentMethod =
+      isStripeCustomer(customer) &&
+      customer.invoice_settings?.default_payment_method &&
+      typeof customer.invoice_settings.default_payment_method !== "string"
+        ? (customer.invoice_settings
+            .default_payment_method as Stripe.PaymentMethod)
+        : null;
+
+    const defaultPaymentMethod =
+      subscriptionDefaultPaymentMethod ?? customerDefaultPaymentMethod;
+
+    const paymentMethodInfo = defaultPaymentMethod
+      ? {
+          id: defaultPaymentMethod.id,
+          brand: defaultPaymentMethod.card?.brand ?? null,
+          last4: defaultPaymentMethod.card?.last4 ?? null,
+          expMonth: defaultPaymentMethod.card?.exp_month ?? null,
+          expYear: defaultPaymentMethod.card?.exp_year ?? null,
+          isDefault: true,
+        }
+      : null;
+
+    return {
+      planOverride,
+      subscription: subscriptionInfo,
+      paymentMethod: paymentMethodInfo,
+    };
+  } catch (error) {
+    console.error("[plan-summary] Failed to load Stripe subscription", error);
+    return EMPTY_STRIPE_PLAN_INFO;
+  }
+}
+
+type GetUserPlanSummaryOptions = {
+  stripeCustomerId?: string | null;
+};
+
+export async function getUserPlanSummary(
+  userId: string,
+  options: GetUserPlanSummaryOptions = {}
+): Promise<UserPlanSummary> {
+  await ensureUpsellStateSchema();
+
+  const stripeInfoPromise = options.stripeCustomerId
+    ? fetchStripePlanInfo(options.stripeCustomerId)
+    : Promise.resolve(EMPTY_STRIPE_PLAN_INFO);
+
   const [
     activeLicense,
     childSubjects,
     reportsLast30d,
     upsellState,
+    stripeInfo,
   ] = await Promise.all([
     prisma.userLicense.findFirst({
       where: {
@@ -170,9 +401,13 @@ export async function getUserPlanSummary(userId: string): Promise<UserPlanSummar
     prisma.userUpsellState.findUnique({
       where: { userId },
     }),
+    stripeInfoPromise,
   ]);
 
-  const mapping = mapLicenseTypeToPlan(activeLicense?.license?.type ?? null);
+  let mapping = mapLicenseTypeToPlan(activeLicense?.license?.type ?? null);
+  if (!activeLicense && stripeInfo.planOverride) {
+    mapping = stripeInfo.planOverride;
+  }
 
   const pauseHistoryRaw = (upsellState?.pauseHistory ?? []) as any;
   const pauseDates = Array.isArray(pauseHistoryRaw)
@@ -205,7 +440,7 @@ export async function getUserPlanSummary(userId: string): Promise<UserPlanSummar
 
   const remainingCredits = activeLicense
     ? Math.max(0, activeLicense.assessmentsAllowed - activeLicense.assessmentsUsed)
-    : 0;
+    : mapping.monthlyCredits ?? 0;
 
   const pausedUntil = upsellState?.pausedUntil
     ? upsellState.pausedUntil.toISOString()
@@ -229,6 +464,8 @@ export async function getUserPlanSummary(userId: string): Promise<UserPlanSummar
       ? upsellState.ribbonSnoozedUntil.toISOString()
       : null,
     pendingAction,
+    stripe: stripeInfo.subscription,
+    paymentMethod: stripeInfo.paymentMethod,
   };
 }
 

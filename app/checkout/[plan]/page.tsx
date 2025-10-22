@@ -57,6 +57,7 @@ export default function CheckoutPlanPage() {
         const planType =
           planKey === "SINGLE" ? "payment" : (searchParams.get("type") ?? "subscription");
         const fromDashboard = searchParams.get("source") === "dashboard";
+        const isUpgrade = searchParams.get("upgrade") === "true";
 
         const response = await fetch("/api/stripe/checkout", {
           method: "POST",
@@ -69,6 +70,7 @@ export default function CheckoutPlanPage() {
             plan: planKey,
             topUp,
             fromDashboard,
+            isUpgrade,
           }),
         });
 

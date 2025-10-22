@@ -7,6 +7,7 @@ import { AssessmentsView } from "@/components/assessment/AssessmentsView";
 import { HeaderPlanRibbon } from "@/components/dashboard/HeaderPlanRibbon";
 import { UpgradePanel } from "@/components/dashboard/UpgradePanel";
 import { InlineUpgradeSlot } from "@/components/dashboard/InlineUpgradeSlot";
+import { ChildProfilesManager } from "@/components/dashboard/ChildProfilesManager";
 import { usePlanData } from "@/hooks/use-plan-data";
 
 type CheckoutSource = "panel" | "drawer" | "inline" | "ribbon";
@@ -20,7 +21,7 @@ export function DashboardShell() {
 
   const shouldShowPanel = useMemo(() => {
     if (!planReady || !plan || !pricing) return false;
-    return plan.plan !== "family";
+    return plan.plan === "free" || plan.plan === "one_time";
   }, [planReady, plan, pricing]);
 
   const shouldShowInline = useMemo(() => {
@@ -109,6 +110,9 @@ export function DashboardShell() {
               }
               onStartSingle={handleStartSingle}
             />
+          )}
+          {planReady && plan && plan.plan === "family" && (
+            <ChildProfilesManager plan={plan} onChildrenChange={refresh} />
           )}
           <AssessmentsView />
         </div>

@@ -281,22 +281,6 @@ export class LicensingService {
           conversationalAISessions: undefined, // Unlimited
         };
 
-      case "PARENT_PILOT":
-        return {
-          maxAssessments: undefined,
-          maxPDFReports: undefined,
-          maxConversationalReports: undefined,
-          maxUsers: undefined,
-          aiRecommendations: true,
-          advancedReports: true,
-          apiAccess: false,
-          bulkUpload: false,
-          customBranding: false,
-          prioritySupport: false,
-          conversationalAI: true,
-          conversationalAISessions: undefined,
-        };
-
       case "DISTRICT_PILOT":
         return {
           maxAssessments: undefined,

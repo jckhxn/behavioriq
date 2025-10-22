@@ -19,6 +19,26 @@ export interface UserPlanResponse {
     effectiveAt: string | null;
     payload?: Record<string, unknown>;
   } | null;
+  stripe?: {
+    subscriptionId: string;
+    status: string;
+    priceId: string | null;
+    planNickname: string | null;
+    amountCents: number | null;
+    currency: string | null;
+    currentPeriodEnd: string | null;
+    currentPeriodStart: string | null;
+    cancelAtPeriodEnd: boolean;
+    trialEnd: string | null;
+  } | null;
+  paymentMethod?: {
+    id: string;
+    brand: string | null;
+    last4: string | null;
+    expMonth: number | null;
+    expYear: number | null;
+    isDefault: boolean;
+  } | null;
 }
 
 export interface PricingAmount {

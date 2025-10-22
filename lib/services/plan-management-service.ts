@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
+import { Prisma } from "@prisma/client";
 import {
   type SubscriptionPlanDefinition,
   type SubscriptionPlanId,
@@ -60,7 +61,7 @@ export async function upgradeUserPlan(
   await prisma.userUpsellState.upsert({
     where: { userId },
     update: {
-      pendingAction: null,
+      pendingAction: Prisma.JsonNull,
     },
     create: { userId },
   });

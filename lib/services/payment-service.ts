@@ -32,6 +32,18 @@ export class PaymentService {
       return this.processConversationalAddonPurchase(session);
     }
 
+    // Handle subscription checkout differently (license sync occurs via invoice webhook)
+    if (session.mode === "subscription") {
+      const subscriptionResult = await this.processSubscriptionCheckout(session);
+      const loginToken = await loginTokenService.generateToken(
+        subscriptionResult.user.id
+      );
+      console.log(
+        `[PaymentService] Login token generated for subscription: ${loginToken.substring(0, 8)}...`
+      );
+      return { ...subscriptionResult, loginToken };
+    }
+
     // Handle assessment/subscription purchase
     return this.processAssessmentPurchase(session);
   }
@@ -68,7 +80,7 @@ export class PaymentService {
           userId: assessment.userId,
           stripePaymentIntentId: session.payment_intent as string,
           stripeCustomerId: session.customer as string,
-          amount: PRICING.ENHANCED_REPORT,
+          amount: PRICING.ENHANCED_REPORT_MEMBER,
           currency: "usd",
           status: "SUCCEEDED",
           planType: "enhanced_report",
@@ -140,6 +152,7 @@ export class PaymentService {
             assessmentsUsed: 0,
             conversationalAssessmentsAllowed: 1, // Give 1 conversational credit
             conversationalAssessmentsUsed: 0,
+            lastCreditsRefreshedAt: new Date(),
           },
           include: { license: true },
         });
@@ -367,7 +380,7 @@ export class PaymentService {
         userId,
         stripePaymentIntentId: session.payment_intent as string,
         stripeCustomerId: session.customer as string,
-        amount: session.amount_total!,
+        amount: session.amount_total ?? session.amount_subtotal ?? 0,
         currency: session.currency || "usd",
         status: "SUCCEEDED",
         planType: assessmentType || plan || "basic",
@@ -458,6 +471,7 @@ export class PaymentService {
         isActive: true,
         assessmentsAllowed: 1, // Each $97 purchase gives 1 assessment
         assessmentsUsed: 0,
+        lastCreditsRefreshedAt: new Date(),
       },
     });
 
@@ -471,6 +485,41 @@ export class PaymentService {
     );
 
     return newLicense;
+  }
+
+  /**
+   * Process subscription checkout (Core / Family plans)
+   * The actual license provisioning happens on invoice events; here we simply
+   * ensure the user exists and their Stripe customer ID is stored for later use.
+   */
+  private async processSubscriptionCheckout(session: Stripe.Checkout.Session) {
+    const { userId } = session.metadata || {};
+    if (!userId) {
+      throw new Error("User ID required for subscription checkout");
+    }
+
+    const stripeCustomerId =
+      typeof session.customer === "string"
+        ? session.customer
+        : session.customer?.id ?? null;
+
+    return prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUniqueOrThrow({
+        where: { id: userId },
+      });
+
+      if (stripeCustomerId && user.stripeCustomerId !== stripeCustomerId) {
+        await tx.user.update({
+          where: { id: userId },
+          data: { stripeCustomerId },
+        });
+        console.log(
+          `[PaymentService] Linked Stripe customer ${stripeCustomerId} to user ${userId}`
+        );
+      }
+
+      return { user };
+    });
   }
 
   /**

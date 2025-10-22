@@ -4,7 +4,8 @@ import React, { useState, useEffect } from "react";
 import { useUserData } from "@/lib/hooks/use-supabase-user";
 import { useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
-import { Role } from "@prisma/client";
+// import { Role } from "@prisma/client";
+import AffiliateRewardsSection from "@/components/settings/AffiliateRewardsSection";
 import { toast } from "sonner";
 import {
   Card,
@@ -64,7 +65,6 @@ const SettingsPane: React.FC = () => {
   const { startTour } = useOnboarding();
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
-
 
   // Check for billing tab in URL params and scroll to upgrade section
   useEffect(() => {
@@ -200,8 +200,7 @@ const SettingsPane: React.FC = () => {
       if (saved) {
         setUserSettings(JSON.parse(saved));
       }
-
-      } catch (error) {
+    } catch (error) {
       console.error("Failed to load settings:", error);
     }
   };
@@ -418,7 +417,7 @@ const SettingsPane: React.FC = () => {
   return (
     <div className="p-3 space-y-3">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-3">
+        <TabsList className="grid w-full grid-cols-5 mb-3">
           <TabsTrigger value="profile" className="text-xs">
             <User className="h-3 w-3 mr-1" />
             Profile
@@ -431,11 +430,22 @@ const SettingsPane: React.FC = () => {
             <Activity className="h-3 w-3 mr-1" />
             Billing
           </TabsTrigger>
+          <TabsTrigger value="affiliate" className="text-xs">
+            <PlayCircle className="h-3 w-3 mr-1" />
+            Affiliate Rewards
+          </TabsTrigger>
           <TabsTrigger value="preferences" className="text-xs">
             <Settings className="h-3 w-3 mr-1" />
             Preferences
           </TabsTrigger>
         </TabsList>
+        {/* Affiliate Rewards Tab */}
+        <TabsContent
+          value="affiliate"
+          className="space-y-3 overflow-auto max-h-[calc(100vh-200px)]"
+        >
+          <AffiliateRewardsSection />
+        </TabsContent>
 
         {/* Profile Tab */}
         <TabsContent value="profile" className="space-y-3">
@@ -764,7 +774,10 @@ const SettingsPane: React.FC = () => {
         </TabsContent>
 
         {/* Preferences Tab */}
-        <TabsContent value="preferences" className="space-y-3 overflow-auto max-h-[calc(100vh-200px)]">
+        <TabsContent
+          value="preferences"
+          className="space-y-3 overflow-auto max-h-[calc(100vh-200px)]"
+        >
           {/* App Preferences */}
           <Card className="border-border bg-card">
             <CardHeader className="pb-3">
@@ -777,9 +790,7 @@ const SettingsPane: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label className="text-xs">Dark Mode</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Switch theme
-                  </p>
+                  <p className="text-xs text-muted-foreground">Switch theme</p>
                 </div>
                 <Switch
                   checked={theme === "dark"}

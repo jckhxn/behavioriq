@@ -55,23 +55,37 @@ export class SubscriptionService {
 
     return prisma.$transaction(async (tx) => {
       // Create payment record
-      await tx.payment.create({
-        data: {
-          userId,
-          stripePaymentIntentId: (invoice as any).payment_intent as string,
-          stripeCustomerId: invoice.customer as string,
-          amount: invoice.amount_paid,
-          currency: invoice.currency || "usd",
-          status: "SUCCEEDED",
-          planType: planDefinition?.id ?? "subscription",
-          plan: planDefinition?.label ?? "Subscription Renewal",
-          metadata: {
-            invoiceId: invoice.id,
-            subscriptionId: subscription.id,
-            billingReason: (invoice as any).billing_reason,
-          } as any,
-        },
-      });
+      const rawPaymentIntent = (invoice as any).payment_intent;
+      const paymentIntentId =
+        typeof rawPaymentIntent === "string"
+          ? rawPaymentIntent
+          : rawPaymentIntent?.id ?? null;
+
+      if (
+        paymentIntentId &&
+        !(await tx.payment.findUnique({
+          where: { stripePaymentIntentId: paymentIntentId },
+          select: { id: true },
+        }))
+      ) {
+        await tx.payment.create({
+          data: {
+            userId,
+            stripePaymentIntentId: paymentIntentId,
+            stripeCustomerId: invoice.customer as string,
+            amount: invoice.amount_paid,
+            currency: invoice.currency || "usd",
+            status: "SUCCEEDED",
+            planType: planDefinition?.id ?? "subscription",
+            plan: planDefinition?.label ?? "Subscription Renewal",
+            metadata: {
+              invoiceId: invoice.id,
+              subscriptionId: subscription.id,
+              billingReason: (invoice as any).billing_reason,
+            } as any,
+          },
+        });
+      }
 
       if (planDefinition) {
         await applySubscriptionPlanToUser(tx, userId, planDefinition, {
@@ -164,6 +178,7 @@ export class SubscriptionService {
             assessmentsUsed: 0,
             conversationalAssessmentsAllowed: 0,
             conversationalAssessmentsUsed: 0,
+            lastCreditsRefreshedAt: new Date(),
           },
         });
       }

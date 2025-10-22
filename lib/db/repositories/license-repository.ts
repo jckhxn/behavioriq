@@ -59,6 +59,7 @@ export class LicenseRepository {
         licenseId,
         userId,
         isActive: true,
+        lastCreditsRefreshedAt: new Date(),
       },
     });
   }

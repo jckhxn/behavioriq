@@ -47,6 +47,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if user has an existing subscription (this is an upgrade)
+    const existingSubscription = await prisma.subscription.findFirst({
+      where: {
+        organization: {
+          users: {
+            some: { id: user.id }
+          }
+        },
+        status: { in: ["ACTIVE", "TRIALING"] }
+      },
+      select: { id: true }
+    });
+
+    const isUpgrade = !!existingSubscription;
+
     await prisma.telemetryEvent.create({
       data: {
         userId: user.id,
@@ -62,11 +77,12 @@ export async function POST(request: NextRequest) {
               ? 99
               : 997,
           source,
+          isUpgrade,
         },
       },
     });
 
-    const redirectUrl = `/checkout/${plan}?billing=${term}&source=${source}&type=subscription`;
+    const redirectUrl = `/checkout/${plan}?billing=${term}&source=${source}&type=subscription${isUpgrade ? "&upgrade=true" : ""}`;
     return NextResponse.json({ redirectUrl });
   } catch (error) {
     console.error("[checkout] POST error", error);

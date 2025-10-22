@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -79,6 +79,7 @@ export function AssessmentCompletion({
   const [isConversational, setIsConversational] = useState(false);
   const [hasEnhancedReport, setHasEnhancedReport] = useState(false);
   const [assessmentData, setAssessmentData] = useState<any>(null);
+  const isExistingReportRef = useRef(false);
 
   // Use AI SDK for streaming recommendations
   const {
@@ -91,6 +92,10 @@ export function AssessmentCompletion({
   } = useAIRecommendations({
     assessmentId,
     onComplete: (recommendations) => {
+      if (isExistingReportRef.current) {
+        return;
+      }
+
       // Save the recommendations when complete
       saveRecommendation(
         `Assessment Recommendations for ${subjectName}`,
@@ -100,6 +105,10 @@ export function AssessmentCompletion({
       );
     },
   });
+
+  useEffect(() => {
+    isExistingReportRef.current = isExistingReport;
+  }, [isExistingReport]);
 
   const recommendationsContent =
     (aiRecommendations && aiRecommendations.trim()) ||

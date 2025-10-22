@@ -26,6 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
+  FileText,
   BadgeCheck,
   CalendarClock,
   CreditCard,
@@ -40,30 +41,40 @@ import { trackTelemetry } from "@/lib/utils/telemetry";
 type ModalState =
   | { type: "upgrade"; target: "core" | "family" }
   | { type: "switch-annual"; target: "core" | "family" }
-  | { type: "upgrade-core-family" }
+  | { type: "upgrade-core-family"; prorateInfo?: ProrateInfo }
   | { type: "downgrade-family-core" }
   | { type: "add-credits" }
   | { type: "pause" }
   | { type: "cancel" }
   | null;
 
+interface ProrateInfo {
+  currentPlan: { name: string; priceCents: number; term: string };
+  targetPlan: { name: string; priceCents: number; term: string };
+  daysRemaining: number;
+  totalDaysInBillingPeriod: number;
+  currentPlanCredit: number;
+  targetPlanCharge: number;
+  finalCharge: number;
+}
+
 type CancelChoice = "pause" | "lite" | "annual" | "cancel";
 
 interface PaymentMethodSummary {
   id: string;
-  brand: string;
-  last4: string;
-  expMonth: number;
-  expYear: number;
+  brand: string | null;
+  last4: string | null;
+  expMonth: number | null;
+  expYear: number | null;
   isDefault: boolean;
 }
 
 interface InvoiceSummary {
   id: string;
-  date: string;
+  date: string | null;
   description: string;
   amount: number;
-  currency: string;
+  currency: string | null;
   status: string;
   downloadUrl: string | null;
 }
@@ -88,13 +99,32 @@ export default function BillingSection() {
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [invoices, setInvoices] = useState<InvoiceSummary[]>([]);
   const [invoiceLoading, setInvoiceLoading] = useState(false);
+  const [prorateLoading, setProrateLoading] = useState(false);
   const [settingsForm, setSettingsForm] = useState({
     email: "",
     company: "",
     address: "",
-    country: "",
-    region: "",
-  });
+  country: "",
+  region: "",
+});
+
+  const formatMoney = (
+    amountCents?: number | null,
+    currency: string | null = "usd"
+  ) => {
+    if (amountCents == null) return null;
+    try {
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: currency ? currency.toUpperCase() : "USD",
+      }).format(amountCents / 100);
+    } catch {
+      return `$${(amountCents / 100).toFixed(2)}`;
+    }
+  };
+
+  const formatDate = (iso?: string | null) =>
+    iso ? new Date(iso).toLocaleDateString() : null;
 
   useEffect(() => {
     if (plan) {
@@ -232,6 +262,32 @@ export default function BillingSection() {
     setModal({ type: "upgrade", target });
   };
 
+  const openUpgradeCoreFamilyModal = async () => {
+    try {
+      setProrateLoading(true);
+      trackTelemetry("billing.click_upgrade_family", { plan: plan?.plan });
+
+      const response = await fetch("/api/checkout/proration", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ target: "family", term: "monthly" }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data?.error || "Unable to calculate proration");
+      }
+
+      const prorateInfo = await response.json();
+      setModal({ type: "upgrade-core-family", prorateInfo });
+    } catch (error) {
+      console.error(error);
+      toast.error(error instanceof Error ? error.message : "Failed to calculate upgrade cost");
+    } finally {
+      setProrateLoading(false);
+    }
+  };
+
   const handleConfirm = async () => {
     if (!modal || !plan || !pricing) return;
     try {
@@ -249,8 +305,8 @@ export default function BillingSection() {
           break;
         }
         case "upgrade-core-family": {
-          await applyPlanMutation("/api/plan/upgrade", { target: "family", term: "monthly" });
-          toast.success("Upgraded to Family plan");
+          // Route through checkout instead of direct upgrade
+          await startCheckout("family", "monthly", "modal");
           break;
         }
         case "downgrade-family-core": {
@@ -330,8 +386,8 @@ export default function BillingSection() {
             <Button variant="outline" onClick={() => setModal({ type: "switch-annual", target: "core" })}>
               Switch to Annual — {pricing.amounts.coreAnnual.formatted}/yr
             </Button>
-            <Button variant="secondary" onClick={() => setModal({ type: "upgrade-core-family" })}>
-              Upgrade to Family
+            <Button variant="secondary" onClick={openUpgradeCoreFamilyModal} disabled={prorateLoading}>
+              {prorateLoading ? "Calculating..." : "Upgrade to Family"}
             </Button>
           </div>
         );
@@ -452,6 +508,53 @@ export default function BillingSection() {
             </div>
           </div>
 
+          {plan.stripe && (
+            <div className="rounded-xl border border-[#223043] bg-[#0f141b] px-4 py-3 text-sm text-slate-200 space-y-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="font-semibold text-white">Billing status</p>
+                  <p className="text-xs text-slate-300 capitalize">
+                    {plan.stripe.status.replace(/_/g, " ")}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="font-semibold text-white">
+                    {formatMoney(plan.stripe.amountCents, plan.stripe.currency) ?? "Subscription"}
+                    {plan.term ? ` / ${plan.term === "annual" ? "year" : "month"}` : ""}
+                  </p>
+                  <p className="text-xs text-slate-300">
+                    {formatDate(plan.stripe.currentPeriodEnd)
+                      ? `Renews ${formatDate(plan.stripe.currentPeriodEnd)}`
+                      : "Renewal date unavailable"}
+                  </p>
+                </div>
+              </div>
+              {plan.paymentMethod && (
+                <div className="rounded-lg border border-[#223043] bg-[#0f141b] px-3 py-2 text-xs text-slate-300">
+                  <p className="font-semibold text-white">Default payment method</p>
+                  <p>
+                    {(plan.paymentMethod.brand
+                      ? `${plan.paymentMethod.brand.toUpperCase()} •••• ${plan.paymentMethod.last4 ?? ""}`
+                      : "Payment method on file").trim()}
+                    {plan.paymentMethod.expMonth && plan.paymentMethod.expYear
+                      ? ` • Expires ${plan.paymentMethod.expMonth}/${plan.paymentMethod.expYear}`
+                      : ""}
+                  </p>
+                </div>
+              )}
+              {plan.stripe.trialEnd && (
+                <p className="text-xs text-slate-300">
+                  Trial ends {formatDate(plan.stripe.trialEnd)}.
+                </p>
+              )}
+              {plan.stripe.cancelAtPeriodEnd && (
+                <p className="text-xs text-amber-400">
+                  Cancels at period end. Access remains until {formatDate(plan.stripe.currentPeriodEnd) ?? "the current cycle ends"}.
+                </p>
+              )}
+            </div>
+          )}
+
           {renderPrimaryActions()}
 
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -555,11 +658,14 @@ export default function BillingSection() {
                   >
                     <div>
                       <p className="font-semibold text-slate-100">
-                        {method.brand.toUpperCase()} •••• {method.last4}
+                        {(method.brand ? method.brand.toUpperCase() : "Card")}
+                        {method.last4 ? ` •••• ${method.last4}` : ""}
                       </p>
-                      <p className="text-xs text-slate-400">
-                        Expires {method.expMonth}/{method.expYear}
-                      </p>
+                      {method.expMonth && method.expYear && (
+                        <p className="text-xs text-slate-400">
+                          Expires {method.expMonth}/{method.expYear}
+                        </p>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 text-xs">
                       {method.isDefault && (
@@ -609,7 +715,7 @@ export default function BillingSection() {
                 <TableBody>
                   {invoices.map((invoice) => (
                     <TableRow key={invoice.id}>
-                      <TableCell>{new Date(invoice.date).toLocaleDateString()}</TableCell>
+                      <TableCell>{invoice.date ? formatDate(invoice.date) : "—"}</TableCell>
                       <TableCell>{invoice.description}</TableCell>
                       <TableCell>
                         {new Intl.NumberFormat("en-US", {
@@ -617,11 +723,13 @@ export default function BillingSection() {
                           currency: invoice.currency?.toUpperCase() ?? "USD",
                         }).format(invoice.amount)}
                       </TableCell>
-                      <TableCell className="capitalize">{invoice.status.toLowerCase()}</TableCell>
+                      <TableCell className="capitalize">{invoice.status ? invoice.status.toLowerCase() : "unknown"}</TableCell>
                       <TableCell className="text-right">
                         {invoice.downloadUrl ? (
                           <Button variant="ghost" size="sm" asChild>
-                            <a href={invoice.downloadUrl}>Download</a>
+                            <a href={invoice.downloadUrl} target="_blank" rel="noopener noreferrer">
+                              Download
+                            </a>
                           </Button>
                         ) : (
                           "—"
@@ -712,6 +820,65 @@ export default function BillingSection() {
             <DialogTitle>{modalTitle(modal)}</DialogTitle>
             <DialogDescription className="text-slate-300">{modalDescription(modal, plan, pricing)}</DialogDescription>
           </DialogHeader>
+
+          {modal?.type === "upgrade-core-family" && modal?.prorateInfo && (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-[#223043] bg-[#0f141b] p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-slate-300">Current Plan</p>
+                    <p className="font-semibold text-white">{modal.prorateInfo.currentPlan.name}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-400">Remaining credit</p>
+                    <p className="font-semibold text-green-400">
+                      -${(modal.prorateInfo.currentPlanCredit / 100).toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="border-t border-[#223043] pt-3">
+                  <p className="text-xs text-slate-400">
+                    {modal.prorateInfo.daysRemaining} of {modal.prorateInfo.totalDaysInBillingPeriod} days remaining in your current billing period
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-[#223043] bg-[#0f141b] p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-slate-300">New Plan</p>
+                    <p className="font-semibold text-white">{modal.prorateInfo.targetPlan.name}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-400">Plan price</p>
+                    <p className="font-semibold text-white">
+                      ${(modal.prorateInfo.targetPlanCharge / 100).toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-lg border-2 border-primary bg-primary/10 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-slate-300">You'll be charged today</p>
+                    <p className="text-2xl font-bold text-white">
+                      ${(modal.prorateInfo.finalCharge / 100).toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="text-right text-xs text-slate-400">
+                    <p>New billing cycle</p>
+                    <p>starts immediately</p>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-xs text-slate-400">
+                Your Core plan credit will be applied toward your Family plan upgrade.
+              </p>
+            </div>
+          )}
 
           {modal?.type === "add-credits" && (
             <div className="space-y-3">
@@ -829,7 +996,7 @@ function modalConfirmLabel(modal: ModalState) {
     case "switch-annual":
       return "Switch to annual";
     case "upgrade-core-family":
-      return "Upgrade to Family";
+      return "Proceed to Checkout";
     case "downgrade-family-core":
       return "Schedule downgrade";
     case "add-credits":
