@@ -1,23 +1,16 @@
-import { prisma } from "@/lib/db/prisma";
+// import { LicenseType } from "@prisma/client";
 import { LICENSE_CONFIG } from "@/lib/config/license";
 import { addMonths } from "date-fns";
-
-type UserLicenseWithLicense = {
-  id: string;
-  userId: string;
-  licenseId: string;
-  isActive: boolean;
-  assessmentsAllowed: number;
-  assessmentsUsed: number;
-  conversationalReportsAllowed: number | null;
-  conversationalReportsUsed: number | null;
-  assignedAt: Date;
-  lastCreditsRefreshedAt: Date | null;
+import prisma from "@/lib/db/prisma";
+import { Prisma } from "@prisma/client";
+const userLicenseInclude = {
   license: {
-    type: string;
-    maxConversationalReports: number | null;
-  };
+    select: { type: true, maxConversationalReports: true },
+  },
 };
+
+// Use Prisma's generated type for userLicense with license select
+// TypeScript will infer the type from Prisma calls
 export interface AssessmentCreditsInfo {
   hasCredits: boolean;
   creditsRemaining: number;
@@ -55,8 +48,8 @@ class AssessmentCreditsService {
   }
 
   private async refreshSubscriptionCredits(
-    userLicense: UserLicenseWithLicense
-  ): Promise<UserLicenseWithLicense> {
+    userLicense: any
+  ): Promise<any> {
     const settings = this.getSubscriptionCreditSettings(
       userLicense.license.type
     );
@@ -70,7 +63,9 @@ class AssessmentCreditsService {
     }
 
     const baseReference =
-      userLicense.lastCreditsRefreshedAt ?? userLicense.assignedAt ?? new Date();
+      userLicense.lastCreditsRefreshedAt ??
+      userLicense.assignedAt ??
+      new Date();
     const now = new Date();
     let lastApplied = baseReference;
     let intervals = 0;
@@ -107,8 +102,7 @@ class AssessmentCreditsService {
       }
     }
 
-    const newAssessmentsAllowed =
-      userLicense.assessmentsUsed + newRemaining;
+    const newAssessmentsAllowed = userLicense.assessmentsUsed + newRemaining;
 
     if (
       newAssessmentsAllowed === userLicense.assessmentsAllowed &&
@@ -195,7 +189,9 @@ class AssessmentCreditsService {
     }
 
     const baseReference =
-      userLicense.lastCreditsRefreshedAt ?? userLicense.assignedAt ?? new Date();
+      userLicense.lastCreditsRefreshedAt ??
+      userLicense.assignedAt ??
+      new Date();
     const nextGrant = addMonths(baseReference, settings.creditIntervalMonths);
     return nextGrant.toISOString();
   }
@@ -216,7 +212,7 @@ class AssessmentCreditsService {
    */
   async checkUserCredits(userId: string): Promise<AssessmentCreditsInfo> {
     // Get user's active license
-    let userLicense = await prisma.userLicense.findFirst({
+  let userLicense = await prisma.userLicense.findFirst({
       where: {
         userId,
         isActive: true,
@@ -251,9 +247,25 @@ class AssessmentCreditsService {
       };
     }
 
-    userLicense = await this.refreshSubscriptionCredits(userLicense);
+  userLicense = await this.refreshSubscriptionCredits(userLicense);
 
-    const licenseType = userLicense.license.type;
+  if (!userLicense) {
+    return {
+      hasCredits: false,
+      creditsRemaining: 0,
+      creditsAllowed: 0,
+      creditsUsed: 0,
+      licenseType: "NONE",
+      conversationalCredits: 0,
+      conversationalCreditsUsed: 0,
+      conversationalCreditsAllowed: 0,
+      conversationalReportCredits: 0,
+      conversationalReportCreditsUsed: 0,
+      conversationalReportCreditsAllowed: 0,
+    };
+  }
+
+  const licenseType = userLicense.license.type;
 
     // Calculate conversational credits (reports)
     const conversationalCreditsRemaining = Math.max(
@@ -296,8 +308,7 @@ class AssessmentCreditsService {
         licenseType,
         conversationalCredits: conversationalCreditsRemaining,
         conversationalCreditsUsed: userLicense.conversationalReportsUsed ?? 0,
-        conversationalCreditsAllowed:
-          userLicense.conversationalReportsAllowed,
+        conversationalCreditsAllowed: userLicense.conversationalReportsAllowed,
         conversationalReportCredits: conversationalReportCreditsRemaining,
         conversationalReportCreditsUsed: conversationalReportCreditsUsed,
         conversationalReportCreditsAllowed: conversationalReportLimit,
@@ -331,8 +342,7 @@ class AssessmentCreditsService {
       licenseType,
       conversationalCredits: conversationalCreditsRemaining,
       conversationalCreditsUsed: userLicense.conversationalReportsUsed ?? 0,
-      conversationalCreditsAllowed:
-        userLicense.conversationalReportsAllowed,
+      conversationalCreditsAllowed: userLicense.conversationalReportsAllowed,
       conversationalReportCredits: conversationalReportCreditsRemaining,
       conversationalReportCreditsUsed: conversationalReportCreditsUsed,
       conversationalReportCreditsAllowed: conversationalReportLimit,

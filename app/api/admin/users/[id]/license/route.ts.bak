@@ -60,42 +60,4 @@ export async function PUT(
           licenseId: licenseTemplate.id,
           // Optionally preserve existing credit balances or reset to license defaults
           assessmentsAllowed: licenseTemplate.maxAssessments || 0,
-          conversationalAssessmentsAllowed:
-            licenseTemplate.maxConversationalAssessments || 0,
-          conversationalReportsAllowed:
-            licenseTemplate.maxConversationalReports || 0,
-          lastCreditsRefreshedAt: new Date(),
-        },
-      });
-    } else {
-      // Create new license for user
-      await prisma.userLicense.create({
-        data: {
-          userId: targetUser.id,
-          licenseId: licenseTemplate.id,
-          isActive: true,
-          assessmentsAllowed: licenseTemplate.maxAssessments || 0,
-          assessmentsUsed: 0,
-          lastCreditsRefreshedAt: new Date(),
-          conversationalAssessmentsAllowed:
-            licenseTemplate.maxConversationalAssessments || 0,
-          conversationalAssessmentsUsed: 0,
-          conversationalReportsAllowed:
-            licenseTemplate.maxConversationalReports || 0,
           conversationalReportsUsed: 0,
-        },
-      });
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: `License updated to ${licenseType}`,
-    });
-  } catch (error) {
-    console.error("Error updating license:", error);
-    return NextResponse.json(
-      { error: "Failed to update license" },
-      { status: 500 }
-    );
-  }
-}

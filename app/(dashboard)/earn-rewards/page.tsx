@@ -1,129 +1,417 @@
-import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
-import { prisma } from "@/lib/db/prisma";
-import Link from "next/link";
+"use client";
 
-export default async function EarnRewardsPage() {
-  const user = await getCurrentUserWithRole();
-  if (!user) {
-    return (
-      <div className="p-8 text-center">
-        Please sign in to view your rewards.
-      </div>
-    );
-  }
-  const referrer = await prisma.affiliateReferrer.findFirst({
-    where: { userId: user.id },
-  });
-  if (!referrer) {
-    return (
-      <div className="p-8 text-center">
-        <h2 className="text-xl font-bold mb-2">Become an Affiliate</h2>
-        <form method="post" action="/api/affiliate/register">
-          <button className="btn btn-primary">Create My Referral Link</button>
-        </form>
-      </div>
-    );
-  }
-  // Stats
-  const stats = {
-    clicks: await prisma.affiliateClick.count({
-      where: { refCode: referrer.refCode },
-    }),
-    signups: await prisma.affiliateAttribution.count({
-      where: { refCode: referrer.refCode },
-    }),
-    paid: await prisma.affiliateCommission.count({
-      where: { refCode: referrer.refCode, status: "paid" },
-    }),
-    pending: await prisma.affiliateCommission.count({
-      where: { refCode: referrer.refCode, status: "pending" },
-    }),
-    payable: await prisma.affiliateCommission.count({
-      where: { refCode: referrer.refCode, status: "payable" },
-    }),
-    paidOut: await prisma.affiliatePayout.count({
-      where: { referrerUserId: user.id },
-    }),
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
+interface AffiliateData {
+  refCode: string;
+  status: string;
+  stats: {
+    clicks: number;
+    signups: number;
+    paid: number;
+    pending: number;
+    payable: number;
+    paidOut: number;
   };
-  const payableBalance = await prisma.affiliateCommission.aggregate({
-    where: { refCode: referrer.refCode, status: "payable" },
-    _sum: { amountCents: true },
-  });
+  balances: {
+    payableCents: number;
+    totalEarnedCents: number;
+    totalPaidOutCents: number;
+  };
+  stripe: {
+    isOnboarded: boolean;
+    isReady: boolean;
+    transfersEnabled: boolean;
+    pendingRequirements: string[];
+  };
+  nextPayoutEligibleDate: string;
+}
+
+export default function EarnRewardsPage() {
+  const [data, setData] = useState<AffiliateData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [registering, setRegistering] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchAffiliateData();
+  }, []);
+
+  const fetchAffiliateData = async () => {
+    try {
+      setError(null);
+      const res = await fetch("/api/affiliate/me");
+      if (res.status === 404) {
+        setData(null);
+      } else if (res.ok) {
+        const json = await res.json();
+        setData(json);
+      } else {
+        const json = await res.json();
+        setError(json.error || "Failed to fetch affiliate data");
+      }
+    } catch (error) {
+      console.error("Failed to fetch affiliate data:", error);
+      setError("Network error - please try again");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegister = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    setRegistering(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/affiliate/register", { method: "POST" });
+      if (res.ok) {
+        const json = await res.json();
+        console.log("Registration successful:", json);
+        // Delay a moment then refresh to show new affiliate data
+        setTimeout(() => {
+          fetchAffiliateData();
+        }, 500);
+      } else {
+        const json = await res.json();
+        setError(json.error || "Failed to register");
+      }
+    } catch (error) {
+      console.error("Failed to register:", error);
+      setError("Network error - please try again");
+    } finally {
+      setRegistering(false);
+    }
+  };
+
+  const handleConnectOnboarding = async () => {
+    try {
+      setError(null);
+      const res = await fetch("/api/affiliate/connect-onboarding", {
+        method: "POST",
+      });
+      const json = await res.json();
+      if (json.onboardingUrl) {
+        window.location.href = json.onboardingUrl;
+      } else if (json.dashboardUrl) {
+        window.location.href = json.dashboardUrl;
+      } else {
+        setError(json.message || json.error || "Failed to start onboarding");
+      }
+    } catch (error) {
+      console.error("Failed to start onboarding:", error);
+      setError("Network error - please try again");
+    }
+  };
+
+  const handleRequestPayout = async () => {
+    try {
+      setError(null);
+      const res = await fetch("/api/affiliate/payout", { method: "POST" });
+      const json = await res.json();
+      if (json.success) {
+        alert("Payout initiated! Funds will arrive in 1-3 business days.");
+        await fetchAffiliateData();
+      } else {
+        setError(json.error || "Failed to request payout");
+      }
+    } catch (error) {
+      console.error("Failed to request payout:", error);
+      setError("Network error - please try again");
+    }
+  };
+
+  const copyReferralLink = () => {
+    if (data?.refCode) {
+      const link = `${process.env.NEXT_PUBLIC_SITE_URL || "https://app.behavioriq.com"}/?ref=${data.refCode}`;
+      navigator.clipboard.writeText(link);
+      alert("Referral link copied!");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="max-w-6xl mx-auto p-8">
+        <div className="text-center py-12">
+          <p className="text-gray-600">Loading your affiliate dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show signup form if no affiliate account exists
+  if (!data && !error) {
+    return (
+      <div className="max-w-6xl mx-auto p-8">
+        <div>
+          <h1 className="text-3xl font-bold">Earn Rewards</h1>
+          <p className="text-gray-600 mt-2">Give $20 off. Get $20 cash.</p>
+        </div>
+
+        <div className="max-w-md mx-auto mt-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Become an Affiliate</CardTitle>
+              <CardDescription>Start earning rewards by referring friends</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-gray-600">
+                Earn $20 for each qualified referral, plus bonuses when they upgrade to premium plans.
+              </p>
+              <Button
+                onClick={handleRegister}
+                disabled={registering}
+                className="w-full"
+              >
+                {registering ? "Creating..." : "Create My Referral Link"}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if something went wrong
+  if (error) {
+    return (
+      <div className="max-w-6xl mx-auto p-8">
+        <div>
+          <h1 className="text-3xl font-bold">Earn Rewards</h1>
+          <p className="text-gray-600 mt-2">Give $20 off. Get $20 cash.</p>
+        </div>
+
+        <div className="bg-red-50 border border-red-200 rounded p-4 mt-8">
+          <p className="text-red-800">{error}</p>
+          <Button
+            onClick={() => fetchAffiliateData()}
+            className="mt-4"
+            variant="outline"
+          >
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Guard clause - data must exist at this point
+  if (!data) {
+    return null;
+  }
+
+  const payableUSD = (data.balances.payableCents / 100).toFixed(2);
+  const totalEarnedUSD = (data.balances.totalEarnedCents / 100).toFixed(2);
+  const totalPaidOutUSD = (data.balances.totalPaidOutCents / 100).toFixed(2);
+
   return (
-    <div className="max-w-2xl mx-auto p-8">
-      <h1 className="text-2xl font-bold mb-4">Earn Rewards</h1>
-      <div className="mb-6">
-        <div className="font-semibold">Your Referral Link:</div>
-        <div className="bg-gray-100 rounded px-3 py-2 mt-2 mb-2 text-sm select-all">
-          {`${process.env.NEXT_PUBLIC_BASE_URL}/?ref=${referrer.refCode}`}
-        </div>
-        <button
-          className="btn btn-secondary"
-          onClick={() =>
-            navigator.clipboard.writeText(
-              `${process.env.NEXT_PUBLIC_BASE_URL}/?ref=${referrer.refCode}`
-            )
-          }
-        >
-          Copy Link
-        </button>
+    <div className="max-w-6xl mx-auto p-8 space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold">Earn Rewards</h1>
+        <p className="text-gray-600 mt-2">Give $20 off. Get $20 cash.</p>
       </div>
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="bg-white rounded shadow p-4">
-          <div className="text-lg font-bold">Clicks</div>
-          <div className="text-2xl">{stats.clicks}</div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded p-4">
+          <p className="text-sm text-red-800">{error}</p>
         </div>
-        <div className="bg-white rounded shadow p-4">
-          <div className="text-lg font-bold">Signups</div>
-          <div className="text-2xl">{stats.signups}</div>
-        </div>
-        <div className="bg-white rounded shadow p-4">
-          <div className="text-lg font-bold">Pending</div>
-          <div className="text-2xl">{stats.pending}</div>
-        </div>
-        <div className="bg-white rounded shadow p-4">
-          <div className="text-lg font-bold">Payable</div>
-          <div className="text-2xl">{stats.payable}</div>
-        </div>
-        <div className="bg-white rounded shadow p-4">
-          <div className="text-lg font-bold">Paid</div>
-          <div className="text-2xl">{stats.paid}</div>
-        </div>
-        <div className="bg-white rounded shadow p-4">
-          <div className="text-lg font-bold">Paid Out</div>
-          <div className="text-2xl">{stats.paidOut}</div>
-        </div>
+      )}
+
+      {/* Referral Link Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Your Referral Link</CardTitle>
+          <CardDescription>Share to earn $20 per qualified referral</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="bg-gray-100 rounded p-4 font-mono text-sm break-all">
+            {`${process.env.NEXT_PUBLIC_SITE_URL || "https://app.behavioriq.com"}/?ref=${data.refCode}`}
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <Button onClick={copyReferralLink} variant="outline">
+              Copy Link
+            </Button>
+            <Button
+              onClick={() => {
+                const link = `${process.env.NEXT_PUBLIC_SITE_URL || "https://app.behavioriq.com"}/?ref=${data.refCode}`;
+                const text = `Got instant clarity using BehaviorIQ™. $20 off your child's AI screening: ${link} (I may earn a referral reward.)`;
+                window.open(
+                  `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`
+                );
+              }}
+              variant="outline"
+            >
+              Share on X
+            </Button>
+          </div>
+          <p className="text-xs text-gray-500">💡 Remember to include: "I may earn a referral reward"</p>
+        </CardContent>
+      </Card>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">Clicks</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{data.stats.clicks}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">Signups</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{data.stats.signups}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">Conversion Rate</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {data.stats.clicks > 0
+                ? ((data.stats.signups / data.stats.clicks) * 100).toFixed(1)
+                : "0"}
+              %
+            </div>
+          </CardContent>
+        </Card>
       </div>
-      <div className="mb-6">
-        <div className="font-semibold">Payable Balance:</div>
-        <div className="text-2xl font-bold">
-          ${((payableBalance._sum.amountCents || 0) / 100).toFixed(2)}
-        </div>
-        <form method="post" action="/api/affiliate/payout">
-          <button className="btn btn-primary mt-2">Request Payout</button>
-        </form>
+
+      {/* Commission Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Commission Status</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex justify-between">
+              <span>Pending</span>
+              <span className="font-semibold text-yellow-600">{data.stats.pending}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Payable (Ready to Payout)</span>
+              <span className="font-semibold text-green-600">{data.stats.payable}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Paid Out</span>
+              <span className="font-semibold text-blue-600">{data.stats.paid}</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Earnings</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex justify-between">
+              <span>Payable Balance</span>
+              <span className="font-semibold">${payableUSD}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Total Earned</span>
+              <span className="font-semibold">${totalEarnedUSD}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Total Paid Out</span>
+              <span className="font-semibold">${totalPaidOutUSD}</span>
+            </div>
+          </CardContent>
+        </Card>
       </div>
-      <div className="mb-6">
-        <h2 className="text-lg font-bold mb-2">FAQ</h2>
-        <ul className="list-disc pl-6 text-sm">
-          <li>
-            Share your referral link to earn rewards for every signup and
-            purchase.
-          </li>
-          <li>
-            Payouts are sent via Stripe Connect once your balance reaches $10.
-          </li>
-          <li>
-            Pending commissions become payable after the refund window closes.
-          </li>
-          <li>Contact support for questions or issues.</li>
-        </ul>
-      </div>
-      <div className="mb-6">
-        <Link href="/settings/stripe-connect" className="btn btn-secondary">
-          Setup Stripe Connect
-        </Link>
-      </div>
+
+      {/* Stripe Connect Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Payout Setup</CardTitle>
+          <CardDescription>Connect your Stripe account to receive payouts</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {!data.stripe.isOnboarded ? (
+            <>
+              <p className="text-sm text-gray-600">
+                Complete Stripe Connect setup to enable payouts. We'll collect your tax information and banking details.
+              </p>
+              <Button onClick={handleConnectOnboarding}>
+                Start Stripe Connect Setup
+              </Button>
+            </>
+          ) : data.stripe.isReady ? (
+            <>
+              <div className="bg-green-50 border border-green-200 rounded p-4">
+                <p className="text-sm text-green-800">
+                  ✅ Your account is verified and ready for payouts.
+                </p>
+              </div>
+              {parseFloat(payableUSD) >= 50 ? (
+                <Button onClick={handleRequestPayout} className="bg-green-600 hover:bg-green-700">
+                  Request Payout Now (${payableUSD})
+                </Button>
+              ) : (
+                <p className="text-sm text-gray-600">
+                  Minimum payout: $50 (Current: ${payableUSD})
+                </p>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="bg-yellow-50 border border-yellow-200 rounded p-4">
+                <p className="text-sm text-yellow-800 mb-2">
+                  ⚠️ Verification pending. Complete the following:
+                </p>
+                <ul className="text-sm text-yellow-800 list-disc pl-5 space-y-1">
+                  {data.stripe.pendingRequirements.map((req) => (
+                    <li key={req}>{req}</li>
+                  ))}
+                </ul>
+              </div>
+              <Button onClick={handleConnectOnboarding}>
+                Continue Verification
+              </Button>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* FAQ */}
+      <Card>
+        <CardHeader>
+          <CardTitle>FAQ</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <h4 className="font-semibold text-sm mb-1">How long does it take to get paid?</h4>
+            <p className="text-sm text-gray-600">
+              Commissions are held for 14 days (to prevent refund abuse). After that, they become payable. Payouts are processed nightly when your balance reaches $50.
+            </p>
+          </div>
+          <div>
+            <h4 className="font-semibold text-sm mb-1">What counts as a qualified referral?</h4>
+            <p className="text-sm text-gray-600">
+              First-time customers only. They must complete a purchase and not refund within 14 days. We verify through fraud screening to ensure legitimate referrals.
+            </p>
+          </div>
+          <div>
+            <h4 className="font-semibold text-sm mb-1">Do I need to pay taxes on referral earnings?</h4>
+            <p className="text-sm text-gray-600">
+              If you earn $600+ per year, we'll send a 1099-NEC tax form via Stripe Connect. Consult your tax professional.
+            </p>
+          </div>
+          <div>
+            <h4 className="font-semibold text-sm mb-1">Can I refer friends and family?</h4>
+            <p className="text-sm text-gray-600">
+              Yes, but we have household verification to prevent abuse. We check payment method, device, and IP to ensure referrals are genuine.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

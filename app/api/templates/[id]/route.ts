@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const template = await prisma.template.findUnique({
+  const template = await prisma.assessmentTemplate.findUnique({
     where: { id },
   });
   return NextResponse.json(template);
@@ -19,10 +19,11 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const { jsx_source, default_props } = await req.json();
-  const template = await prisma.template.update({
+  const { name, description, instructions, isActive, version } =
+    await req.json();
+  const template = await prisma.assessmentTemplate.update({
     where: { id },
-    data: { jsx_source, default_props },
+    data: { name, description, instructions, isActive, version },
   });
   return NextResponse.json(template);
 }

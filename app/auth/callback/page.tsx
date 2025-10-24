@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { attributeSignupToAffiliate } from "@/lib/affiliate/onboarding";
 import {
   Card,
   CardContent,
@@ -55,6 +56,9 @@ export default function AuthCallbackPage() {
         if (session) {
           console.log("✅ Session established:", session.user.email);
 
+          // Attribute signup to affiliate if user came from referral link
+          await attributeSignupToAffiliate(session.user.id);
+
           // Check if this is a password reset flow
           const type = searchParams.get("type");
           if (type === "recovery" || type === "invite") {
@@ -74,12 +78,16 @@ export default function AuthCallbackPage() {
             console.log("Auth state changed:", event, newSession?.user?.email);
             if (newSession) {
               subscription.unsubscribe();
-              const type = searchParams.get("type");
-              if (type === "recovery" || type === "invite") {
-                router.push("/auth/reset-password");
-              } else {
-                router.push("/dashboard");
-              }
+
+              // Attribute signup to affiliate if user came from referral link
+              attributeSignupToAffiliate(newSession.user.id).then(() => {
+                const type = searchParams.get("type");
+                if (type === "recovery" || type === "invite") {
+                  router.push("/auth/reset-password");
+                } else {
+                  router.push("/dashboard");
+                }
+              });
             }
           });
 

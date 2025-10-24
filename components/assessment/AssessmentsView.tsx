@@ -721,7 +721,7 @@ export function AssessmentsView() {
                             <span className="hidden sm:inline">
                               Subscribe -{" "}
                             </span>
-                            {formatPrice(PRICING.MONTHLY_SUBSCRIPTION)}/mo
+                            {formatPrice(PRICING.MONTHLY_CORE)}/mo
                           </Button>
                         </Link>
                         <Link href="/pricing" className="w-full sm:w-auto">
@@ -733,12 +733,12 @@ export function AssessmentsView() {
                             <span className="hidden sm:inline">
                               Subscribe -{" "}
                             </span>
-                            {formatPrice(PRICING.ANNUAL_SUBSCRIPTION)}/yr
+                            {formatPrice(PRICING.ANNUAL_CORE)}/yr
                             <span className="hidden md:inline">
                               {" "}
                               (Save $
-                              {(PRICING.MONTHLY_SUBSCRIPTION * 12 -
-                                PRICING.ANNUAL_SUBSCRIPTION) /
+                              {(PRICING.MONTHLY_CORE * 12 -
+                                PRICING.ANNUAL_CORE) /
                                 100}
                               !)
                             </span>

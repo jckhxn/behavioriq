@@ -912,13 +912,26 @@ ${JSON.stringify(topDomains, null, 2)}`;
           domainNameToTemplateId[domainScore.domain.toUpperCase()] ||
           domainNameToTemplateId[domainScore.domain.toLowerCase()];
 
+        // Map domain string to AssessmentDomain enum if possible
+        let domainEnum: any = null;
+        const domainStr = domainScore.domain?.toUpperCase();
+        if (
+          [
+            "ANTISOCIAL",
+            "VIOLENCE",
+            "ATTENTION",
+            "EMOTIONAL",
+            "CONDUCT",
+          ].includes(domainStr)
+        ) {
+          domainEnum = domainStr;
+        }
+
         return {
           assessmentId: this.assessmentId,
           domainTemplateId: domainTemplateId || null,
           domainName: domainScore.domain, // Store the domain name directly
-          domain: domainTemplateId
-            ? null
-            : this.mapDomainToEnum(domainScore.domain), // Only use enum as fallback for legacy
+          domain: domainTemplateId ? null : domainEnum,
           rawScore: domainScore.score,
           totalPossible: domainScore.totalPossible,
           questionsAnswered: domainScore.questionsAnswered,

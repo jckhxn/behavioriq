@@ -59,7 +59,7 @@ export class PaymentService {
       `[PaymentService] Processing enhanced report for: ${assessmentId}`
     );
 
-    return prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Get assessment
       const assessment = await tx.assessment.findUniqueOrThrow({
         where: { id: assessmentId },
@@ -117,14 +117,14 @@ export class PaymentService {
       `[PaymentService] Processing conversational addon for user: ${userId}`
     );
 
-    return prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Get the user
       const user = await tx.user.findUniqueOrThrow({
         where: { id: userId },
       });
 
       // Get or create user's license
-      let userLicense = await tx.userLicense.findFirst({
+  let userLicense: any = await tx.userLicense.findFirst({
         where: { userId },
         include: { license: true },
       });
@@ -150,8 +150,8 @@ export class PaymentService {
             isActive: true,
             assessmentsAllowed: 0,
             assessmentsUsed: 0,
-            conversationalAssessmentsAllowed: 1, // Give 1 conversational credit
-            conversationalAssessmentsUsed: 0,
+            conversationalReportsAllowed: 1, // Give 1 conversational credit
+            conversationalReportsUsed: 0,
             lastCreditsRefreshedAt: new Date(),
           },
           include: { license: true },
@@ -162,10 +162,10 @@ export class PaymentService {
         );
       } else {
         // Increment conversational assessment credits for existing user license
-        userLicense = await tx.userLicense.update({
+        const updatedUserLicense = await tx.userLicense.update({
           where: { id: userLicense.id },
           data: {
-            conversationalAssessmentsAllowed: {
+            conversationalReportsAllowed: {
               increment: 1,
             },
           },
@@ -173,8 +173,9 @@ export class PaymentService {
         });
 
         console.log(
-          `[PaymentService] ✅ Incremented conversational credits for user ${userId}: ${userLicense.conversationalAssessmentsAllowed - 1} → ${userLicense.conversationalAssessmentsAllowed}`
+          `[PaymentService] ✅ Incremented conversational credits for user ${userId}: ${updatedUserLicense.conversationalReportsAllowed - 1} → ${updatedUserLicense.conversationalReportsAllowed}`
         );
+        userLicense = updatedUserLicense;
       }
 
       // Create payment record
@@ -199,7 +200,12 @@ export class PaymentService {
         `[PaymentService] ✅ Conversational addon purchased for user: ${userId}`
       );
 
-      return { user, payment, license: userLicense.license, userLicense };
+      // Ensure license relation is present
+      let license = userLicense.license;
+      if (!license) {
+        license = await tx.license.findUnique({ where: { id: userLicense.licenseId } });
+      }
+      return { user, payment, license, userLicense };
     });
   }
 
@@ -210,7 +216,7 @@ export class PaymentService {
     console.log(`[PaymentService] Processing assessment purchase`);
 
     // Transaction ensures all-or-nothing
-    const result = await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // 1. Get or create user
       const user = await this.getOrCreateUser(session, tx);
       console.log(`[PaymentService] User resolved: ${user.id}`);
@@ -473,6 +479,7 @@ export class PaymentService {
         assessmentsUsed: 0,
         lastCreditsRefreshedAt: new Date(),
       },
+      include: { license: true },
     });
 
     console.log(
@@ -503,7 +510,7 @@ export class PaymentService {
         ? session.customer
         : session.customer?.id ?? null;
 
-    return prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const user = await tx.user.findUniqueOrThrow({
         where: { id: userId },
       });

@@ -12,6 +12,11 @@ $1 per 10k emails (SES)
 
 ---
 
+# Stashed
+
+- useworkflow.dev for stuff like emails?
+  [ConnectOnboarding] ❌ Error: [Error: Your platform needs approval for accounts to have requested the `transfers` capability without the `card_payments` capability. If you would like to request transfers without card_payments, please contact us via https://support.stripe.com/contact.]
+
 ## Bugs Track
 
 - [] Implement a robust way of backing up database so you don't lose data again lol.
@@ -31,6 +36,8 @@ $1 per 10k emails (SES)
 
 ## Features
 
+- [] Verify Analytics setup on web, integrate IDs on app properly.
+- [] Maybe sure Stripe Connect is setup for Afiliate.
 - [] / _Dashboard_ route should render components as tabs/pages, so we avoid additional unlinked routes
 - [] Don't allow users to upgrade their account if they are already on the account type.
 - [] Update Billing in Profile to reflect actual account status.
@@ -57,7 +64,7 @@ $1 per 10k emails (SES)
 
 - [] Make it an iOS/iPad app
 - [] Command Menu on Dash (https://github.com/shadcn-ui/ui/blob/main/apps/v4/components/command-menu.tsx)
-- [] Sentry and Analytics.
+- [] Sentry and Analytics (GA4 and Meta pixel for retargeting.)
 
 ## 📖 Quick Links
 

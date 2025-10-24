@@ -38,13 +38,14 @@ export async function POST(request: Request) {
       );
     }
 
-    const responses = (trialRecord.responses as Record<string, number> | null) ?? {};
+    const responses =
+      (trialRecord.responses as Record<string, number> | null) ?? {};
     const snapshot = scoreTrialSnapshot({ responses, template });
 
     await prisma.assessmentTrial.update({
       where: { id: trialRecord.id },
       data: {
-        scoreSnapshot: snapshot,
+        scoreSnapshot: JSON.stringify(snapshot),
       },
     });
 

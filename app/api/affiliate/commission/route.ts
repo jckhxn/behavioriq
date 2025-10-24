@@ -5,7 +5,7 @@ import { isUserBanned, isVelocityLimited } from "@/lib/affiliate/fraud";
 import { trackAffiliateEvent } from "@/lib/analytics/trackAffiliateEvent";
 
 export async function POST(req: NextRequest) {
-  const { refCode, orderId, amountCents, userId, deviceId, ip, email } =
+  const { refCode, orderId, amountCents, referredUserId: userId, deviceId, ip, email } =
     await req.json();
   if (!refCode || !orderId || !amountCents || !userId) {
     return NextResponse.json(
@@ -30,14 +30,27 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Find referrer by refCode
+  const referrer = await prisma.affiliateReferrer.findFirst({
+    where: { refCode },
+  });
+
+  if (!referrer) {
+    return NextResponse.json(
+      { error: "Invalid referral code" },
+      { status: 404 }
+    );
+  }
+
   await prisma.affiliateCommission.create({
     data: {
       refCode,
+      referrerId: referrer.id,
+      referredUserId: userId,
       orderId,
       amountCents,
-      userId,
+      event: "paid_report",
       status: "pending",
-      timestamp: new Date(),
     },
   });
   // Track analytics event

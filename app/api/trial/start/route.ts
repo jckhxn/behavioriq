@@ -15,7 +15,7 @@ export async function POST(request: Request) {
         anonymous: Boolean(body.anonymous),
         consented: true,
         region: body.region ?? null,
-        utm: body.utm ?? undefined,
+        utm: body.utm ? JSON.stringify(body.utm) : undefined,
       },
     });
 

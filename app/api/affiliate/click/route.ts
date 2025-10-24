@@ -4,51 +4,71 @@ import { prisma } from "@/lib/db/prisma";
 import {
   isDeviceBanned,
   isVelocityLimited,
-  isUserBanned,
 } from "@/lib/affiliate/fraud";
-import { trackAffiliateEvent } from "@/lib/analytics/trackAffiliateEvent";
 
 export async function POST(req: NextRequest) {
-  const { refCode, ip, deviceId, userId, email } = await req.json();
-  if (!refCode) {
-    return NextResponse.json({ error: "Missing refCode" }, { status: 400 });
-  }
+  try {
+    const { refCode, sessionId, ip, ua, utm } = await req.json();
 
-  // Device ban
-  if (deviceId && (await isDeviceBanned(deviceId))) {
-    return NextResponse.json({ error: "Device is banned" }, { status: 403 });
-  }
+    if (!refCode || !sessionId) {
+      return NextResponse.json(
+        { error: "refCode and sessionId are required" },
+        { status: 400 }
+      );
+    }
 
-  // Velocity limit
-  if (deviceId && ip && (await isVelocityLimited(deviceId, ip))) {
+    // Verify refCode exists
+    const referrer = await prisma.affiliateReferrer.findFirst({
+      where: { refCode },
+    });
+
+    if (!referrer) {
+      return NextResponse.json(
+        { error: "Invalid referral code" },
+        { status: 404 }
+      );
+    }
+
+    // Device ban check (if device ID provided)
+    // Note: deviceId should be passed from client via FingerprintJS
+    const deviceId = req.headers.get("x-device-id");
+    if (deviceId && (await isDeviceBanned(deviceId))) {
+      return NextResponse.json(
+        { error: "Device is banned" },
+        { status: 403 }
+      );
+    }
+
+    // Velocity limit check
+    if (deviceId && ip && (await isVelocityLimited(deviceId, ip))) {
+      return NextResponse.json(
+        { error: "Too many clicks from this device or IP" },
+        { status: 429 }
+      );
+    }
+
+    // Create click record
+    const click = await prisma.affiliateClick.create({
+      data: {
+        refCode,
+        sessionId,
+        ip: ip || null,
+        ua: ua || null,
+        utm: utm || null,
+      },
+    });
+
+    console.log(
+      `[AffiliateClick] ✅ Tracked click: ${click.id} for ${refCode}`
+    );
+
+    return NextResponse.json({ success: true, clickId: click.id });
+  } catch (error) {
+    console.error("[AffiliateClick] ❌ Error:", error);
+
     return NextResponse.json(
-      { error: "Too many clicks from this device or IP" },
-      { status: 429 }
+      { error: "Failed to track click" },
+      { status: 500 }
     );
   }
-
-  // Ban list
-  if (await isUserBanned(userId, email)) {
-    return NextResponse.json(
-      { error: "User or email is banned" },
-      { status: 403 }
-    );
-  }
-
-  await prisma.affiliateClick.create({
-    data: {
-      refCode,
-      ip,
-      deviceId,
-      eventType: "click",
-      timestamp: new Date(),
-    },
-  });
-  // Track analytics event
-  await trackAffiliateEvent({
-    userId,
-    event: "referral.click",
-    metadata: { refCode, ip, deviceId, email },
-  });
-  return NextResponse.json({ success: true });
 }

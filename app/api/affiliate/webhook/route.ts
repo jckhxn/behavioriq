@@ -9,9 +9,9 @@ export async function POST(request: NextRequest) {
   if (event.type === "payout.paid") {
     const payoutId = event.data.object.id;
     // Mark payout as paid
-    await prisma.affiliatePayout.update({
-      where: { stripePayoutId: payoutId },
-      data: { status: "paid" },
+    await prisma.affiliatePayout.updateMany({
+      where: { transferId: payoutId },
+      data: { status: "sent" },
     });
   }
   // Add more event types as needed

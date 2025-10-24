@@ -222,7 +222,7 @@ export async function POST(request: NextRequest) {
           await prisma.userLicense.update({
             where: { id: userLicense.id },
             data: {
-              conversationalAssessmentsUsed: {
+              conversationalReportsUsed: {
                 increment: 1,
               },
             },

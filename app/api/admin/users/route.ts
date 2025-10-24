@@ -42,8 +42,6 @@ export async function GET(request: NextRequest) {
               id: true,
               assessmentsAllowed: true,
               assessmentsUsed: true,
-              conversationalAssessmentsAllowed: true,
-              conversationalAssessmentsUsed: true,
               conversationalReportsAllowed: true,
               conversationalReportsUsed: true,
               isActive: true,
@@ -83,10 +81,6 @@ export async function GET(request: NextRequest) {
 
       const assessmentsAllowed = activeLicense.assessmentsAllowed ?? 0;
       const assessmentsUsed = activeLicense.assessmentsUsed ?? 0;
-      const conversationalAssessmentsAllowed =
-        activeLicense.conversationalAssessmentsAllowed ?? 0;
-      const conversationalAssessmentsUsed =
-        activeLicense.conversationalAssessmentsUsed ?? 0;
       const conversationalReportsAllowed =
         activeLicense.conversationalReportsAllowed ?? 0;
       const conversationalReportsUsed =
@@ -120,13 +114,11 @@ export async function GET(request: NextRequest) {
           ...activeLicense,
           assessmentsAllowed,
           assessmentsUsed,
-          conversationalAssessmentsAllowed,
-          conversationalAssessmentsUsed,
           conversationalReportsAllowed,
           conversationalReportsUsed,
           creditsRemaining: assessmentsAllowed - assessmentsUsed,
           conversationalCreditsRemaining:
-            conversationalAssessmentsAllowed - conversationalAssessmentsUsed,
+            conversationalReportsAllowed - conversationalReportsUsed,
           conversationalReportLimit,
           hasUnlimitedConversationalReports,
           conversationalReportCreditsRemaining,

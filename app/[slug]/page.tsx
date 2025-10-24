@@ -9,6 +9,7 @@ import { FinalCTASection } from "../../components/pseo/FinalCTASection";
 import { Footer } from "../../components/pseo/Footer";
 import fs from "fs";
 import path from "path";
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
@@ -521,16 +522,9 @@ export default function Page({ params }: { params: { slug: string } }) {
   }
   const normalized = normalizePage(page);
   return (
-    <main className="min-h-screen">
-      <HeroSection {...normalized.hero} />
-      <SocialProofSection {...normalized.socialProof} />
-      <ContentSection {...normalized.definition} />
-      <WalkthroughSection {...normalized.process} />
-      <ComparisonSection {...normalized.comparison} />
-      <LeadMagnetSection {...normalized.leadMagnet} />
-      <FAQSection faqs={normalized.faq} />
-      <FinalCTASection />
-      <Footer {...normalized.footer} />
-    </main>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><span className="text-muted-foreground">Loading...</span></div>}>
+      <SlugClientShell {...normalized} />
+    </Suspense>
   );
 }
+import SlugClientShell from "../../components/pseo/SlugClientShell";

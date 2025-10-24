@@ -16,14 +16,17 @@ model BannedEmail {
   createdAt DateTime @default(now())
 }
 model AffiliateReferrer {
-  id            String   @id @default(cuid())
-  userId        String   @unique
-  refCode       String   @unique
-  status        String   @default("active") // 'active' | 'suspended'
-  createdAt     DateTime @default(now())
-  user          User     @relation(fields: [userId], references: [id])
-  commissions   AffiliateCommission[] @relation("ReferrerCommissions")
-  payouts       AffiliatePayout[] @relation("ReferrerPayouts")
+  id                      String   @id @default(cuid())
+  userId                  String   @unique
+  refCode                 String   @unique
+  status                  String   @default("active") // 'active' | 'suspended'
+  stripeConnectAccountId  String?  // Stripe Connect Express account ID
+  createdAt               DateTime @default(now())
+  user                    User     @relation(fields: [userId], references: [id])
+  commissions             AffiliateCommission[] @relation("ReferrerCommissions")
+  payouts                 AffiliatePayout[] @relation("ReferrerPayouts")
+
+  @@index([status])
 }
 
 model AffiliateClick {
@@ -32,17 +35,29 @@ model AffiliateClick {
   sessionId  String
   ip         String?
   ua         String?
+  utm        Json?    // UTM parameters: { source, medium, campaign, content, term }
   createdAt  DateTime @default(now())
+
+  @@index([refCode])
+  @@index([sessionId])
+  @@index([createdAt])
 }
 
 model AffiliateAttribution {
   id              String   @id @default(cuid())
   refCode         String
   prospectUserId  String
-  clickId         String
+  clickId         String?
+  deviceId        String?  // FingerprintJS visitor ID for household detection
+  ip              String?  // IP address for /24 subnet matching
+  utm             Json?    // UTM parameters captured at attribution time
   model           String   @default("last_non_direct")
   expiresAt       DateTime
   createdAt       DateTime @default(now())
+
+  @@unique([prospectUserId])
+  @@index([refCode])
+  @@index([createdAt])
 }
 
 model AffiliateCommission {
@@ -52,21 +67,33 @@ model AffiliateCommission {
   referredUserId  String
   event           String   // 'paid_report' | 'core_sub' | 'family_sub' | 'annual_sub'
   amountCents     Int
-  status          String   @default("pending") // 'pending' | 'payable' | 'paid' | 'void'
+  status          String   @default("pending") // 'pending' | 'payable' | 'paid' | 'void' | 'clawed_back'
+  voidReason      String?  // 'refund' | 'dispute' | 'household' | 'manual' | 'clawback'
   holdUntil       DateTime?
-  orderId         String?
+  orderId         String?  @unique
   createdAt       DateTime @default(now())
   referrer        AffiliateReferrer @relation("ReferrerCommissions", fields: [referrerId], references: [id])
+
+  @@index([referrerId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model AffiliatePayout {
   id              String   @id @default(cuid())
   referrerId      String
   amountCents     Int
+  status          String   @default("pending") // 'pending' | 'sent' | 'failed'
   provider        String   @default("stripe_connect")
-  transferId      String?
+  transferId      String?  // Stripe Transfer ID
+  failureReason   String?  // Error message if status='failed'
   createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
   referrer        AffiliateReferrer @relation("ReferrerPayouts", fields: [referrerId], references: [id])
+
+  @@index([referrerId])
+  @@index([status])
+  @@index([createdAt])
 }
 generator client {
   provider        = "prisma-client-js"
@@ -91,6 +118,7 @@ model User {
   updatedAt                                        DateTime                    @updatedAt
   isActive                                         Boolean                     @default(true)
   lastLoginAt                                      DateTime?
+  firstPaidReportAt                                DateTime?                   // Tracks first paid purchase for affiliate bonus window
   organizationId                                   String?
   parentUserId                                     String?
   onboardingCompleted                              Boolean                     @default(false)

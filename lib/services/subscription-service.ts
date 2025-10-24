@@ -1,6 +1,6 @@
 import { prismaService as prisma } from "@/lib/db/prisma-service";
 import type { Stripe } from "stripe";
-import type { LicenseType } from "@prisma/client";
+
 import { type SubscriptionPlanDefinition } from "@/lib/config/pricing";
 import { getPlanForStripePrice } from "@/lib/config/stripe-price-ids";
 import { applySubscriptionPlanToUser } from "@/lib/services/subscription-plan-updater";
@@ -53,7 +53,7 @@ export class SubscriptionService {
       );
     }
 
-    return prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx: import("@prisma/client").Prisma.TransactionClient) => {
       // Create payment record
       const rawPaymentIntent = (invoice as any).payment_intent;
       const paymentIntentId =
@@ -109,14 +109,14 @@ export class SubscriptionService {
       throw new Error(`No userId in subscription metadata: ${subscription.id}`);
     }
 
-    return await prisma.$transaction(async (tx) => {
+  return await prisma.$transaction(async (tx: import("@prisma/client").Prisma.TransactionClient) => {
       // Find user's current licenses
       const userLicenses = await tx.userLicense.findMany({
         where: { userId },
         include: { license: true },
       });
 
-      const cancellableTypes: LicenseType[] = [
+  const cancellableTypes: string[] = [
         "CORE",
         "ANNUAL_CORE",
         "FAMILY",
@@ -145,7 +145,7 @@ export class SubscriptionService {
       }
 
       const existingFree = userLicenses.find(
-        (license) => license.license.type === "FREE"
+  (license: any) => license.license.type === "FREE"
       );
 
       if (existingFree) {
@@ -158,14 +158,14 @@ export class SubscriptionService {
           data: {
             isActive: true,
             assessmentsAllowed: 0,
-            conversationalAssessmentsAllowed: 0,
+            conversationalReportsAllowed: 0,
           },
         });
       } else {
         const freeLicense = await tx.license.create({
           data: {
             licenseKey: `FREE_${userId}_${Date.now()}`,
-            type: "FREE" as LicenseType,
+            type: "FREE",
             status: "ACTIVE",
           },
         });
@@ -176,8 +176,8 @@ export class SubscriptionService {
             licenseId: freeLicense.id,
             assessmentsAllowed: 0,
             assessmentsUsed: 0,
-            conversationalAssessmentsAllowed: 0,
-            conversationalAssessmentsUsed: 0,
+            conversationalReportsAllowed: 0,
+            conversationalReportsUsed: 0,
             lastCreditsRefreshedAt: new Date(),
           },
         });
@@ -207,7 +207,7 @@ export class SubscriptionService {
       : undefined;
 
     if (planDefinition) {
-      await prisma.$transaction((tx) =>
+  await prisma.$transaction((tx: import("@prisma/client").Prisma.TransactionClient) =>
         applySubscriptionPlanToUser(tx, userId, planDefinition, {
           topUp: false,
         })
@@ -223,7 +223,7 @@ export class SubscriptionService {
       include: { license: true },
     });
 
-    const managedTypes: LicenseType[] = [
+  const managedTypes: string[] = [
       "CORE",
       "ANNUAL_CORE",
       "FAMILY",

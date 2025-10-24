@@ -1,3 +1,4 @@
+export default GET;
 import fs from "fs";
 import path from "path";
 

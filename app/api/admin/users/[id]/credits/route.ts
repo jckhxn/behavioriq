@@ -21,15 +21,12 @@ export async function POST(
     const body = await request.json();
     const {
       assessmentCredits,
-      conversationalCredits,
       conversationalReportCredits,
     } = body;
 
     if (
       (assessmentCredits !== undefined &&
         typeof assessmentCredits !== "number") ||
-      (conversationalCredits !== undefined &&
-        typeof conversationalCredits !== "number") ||
       (conversationalReportCredits !== undefined &&
         typeof conversationalReportCredits !== "number")
     ) {
@@ -63,11 +60,6 @@ export async function POST(
       };
     }
 
-    if (conversationalCredits !== undefined) {
-      updateData.conversationalAssessmentsAllowed = {
-        increment: conversationalCredits,
-      };
-    }
     if (conversationalReportCredits !== undefined) {
       updateData.conversationalReportsAllowed = {
         increment: conversationalReportCredits,
@@ -81,7 +73,7 @@ export async function POST(
 
     console.log(
       `[Admin] ✅ ${user.email} assigned credits to user ${userId}:`,
-      { assessmentCredits, conversationalCredits, conversationalReportCredits }
+      { assessmentCredits, conversationalReportCredits }
     );
 
     return NextResponse.json({
@@ -89,10 +81,6 @@ export async function POST(
       updatedLicense: {
         assessmentsAllowed: updatedLicense.assessmentsAllowed,
         assessmentsUsed: updatedLicense.assessmentsUsed,
-        conversationalAssessmentsAllowed:
-          updatedLicense.conversationalAssessmentsAllowed,
-        conversationalAssessmentsUsed:
-          updatedLicense.conversationalAssessmentsUsed,
         conversationalReportsAllowed:
           updatedLicense.conversationalReportsAllowed,
         conversationalReportsUsed:
@@ -128,8 +116,6 @@ export async function PUT(
     const {
       assessmentsAllowed,
       assessmentsUsed,
-      conversationalAssessmentsAllowed,
-      conversationalAssessmentsUsed,
       conversationalReportsAllowed,
       conversationalReportsUsed,
     } = body;
@@ -156,11 +142,6 @@ export async function PUT(
       updateData.assessmentsAllowed = assessmentsAllowed;
     if (assessmentsUsed !== undefined)
       updateData.assessmentsUsed = assessmentsUsed;
-    if (conversationalAssessmentsAllowed !== undefined)
-      updateData.conversationalAssessmentsAllowed =
-        conversationalAssessmentsAllowed;
-    if (conversationalAssessmentsUsed !== undefined)
-      updateData.conversationalAssessmentsUsed = conversationalAssessmentsUsed;
     if (conversationalReportsAllowed !== undefined)
       updateData.conversationalReportsAllowed = conversationalReportsAllowed;
     if (conversationalReportsUsed !== undefined)
@@ -181,10 +162,6 @@ export async function PUT(
       updatedLicense: {
         assessmentsAllowed: updatedLicense.assessmentsAllowed,
         assessmentsUsed: updatedLicense.assessmentsUsed,
-        conversationalAssessmentsAllowed:
-          updatedLicense.conversationalAssessmentsAllowed,
-        conversationalAssessmentsUsed:
-          updatedLicense.conversationalAssessmentsUsed,
         conversationalReportsAllowed:
           updatedLicense.conversationalReportsAllowed,
         conversationalReportsUsed:

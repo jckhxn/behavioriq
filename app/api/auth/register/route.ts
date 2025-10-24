@@ -64,10 +64,34 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    // Attribute signup to affiliate if user came from referral link
+    const refCode = request.headers.get("x-ref-code") || body.refCode
+    if (refCode) {
+      try {
+        const deviceId = request.headers.get("x-device-id")
+        const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || request.headers.get("x-real-ip") || "unknown"
+
+        await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/api/affiliate/attribute`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            refCode,
+            prospectUserId: user.id,
+            deviceId: deviceId || null,
+            ip: ip !== "unknown" ? ip : null,
+            utm: body.utm || null
+          })
+        })
+      } catch (error) {
+        console.error("[Register] Error attributing signup to affiliate:", error)
+        // Don't fail registration if affiliate attribution fails
+      }
+    }
+
     return NextResponse.json(
-      { 
+      {
         message: "User created successfully",
-        user 
+        user
       },
       { status: 201 }
     )

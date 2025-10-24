@@ -7,13 +7,36 @@ export async function middleware(req: NextRequest) {
   const authSecret =
     process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || undefined;
 
+  // Capture affiliate ref parameter if present
+  const ref = req.nextUrl.searchParams.get("ref");
+  const response = NextResponse.next();
+
+  if (ref) {
+    // Set first-party cookie for 30 days (HTTPOnly, SameSite=Lax)
+    const domain = process.env.AFFILIATE_COOKIE_DOMAIN || "";
+    response.cookies.set("biq_ref", ref, {
+      maxAge: 30 * 24 * 60 * 60, // 30 days
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      domain: domain || undefined,
+    });
+
+    console.log(`[Middleware] Set affiliate cookie: ref=${ref}`);
+
+    // Track click asynchronously (fire and forget)
+    trackAffiliateClick(ref, req).catch((e) =>
+      console.error("[Middleware] Failed to track affiliate click:", e)
+    );
+  }
+
   // Always allow API and static assets to pass through middleware without redirects
   if (
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico" ||
     pathname.startsWith("/api") // allow all API routes (prevents HTML redirects breaking fetch JSON)
   ) {
-    return NextResponse.next();
+    return response;
   }
 
   const hostname = req.headers.get("host") || "";
@@ -150,9 +173,9 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  const response = NextResponse.next();
-  applyBrandingHeaders(response, branding);
-  return response;
+  const finalResponse = NextResponse.next();
+  applyBrandingHeaders(finalResponse, branding);
+  return finalResponse;
 }
 
 export const config = {
@@ -268,4 +291,50 @@ function applyBrandingHeaders(
   if (branding.footerText) {
     response.headers.set("x-brand-footer-text", branding.footerText);
   }
+}
+
+/**
+ * Track affiliate click asynchronously
+ * Non-blocking to avoid slowing down page load
+ */
+async function trackAffiliateClick(refCode: string, req: NextRequest) {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    const sessionId = req.cookies.get("sessionId")?.value || generateSessionId();
+
+    // Extract UTM parameters
+    const utm = {
+      source: req.nextUrl.searchParams.get("utm_source"),
+      medium: req.nextUrl.searchParams.get("utm_medium"),
+      campaign: req.nextUrl.searchParams.get("utm_campaign"),
+      content: req.nextUrl.searchParams.get("utm_content"),
+      term: req.nextUrl.searchParams.get("utm_term"),
+    };
+
+    // Call click tracking endpoint
+    const response = await fetch(`${baseUrl}/api/affiliate/click`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        refCode,
+        sessionId,
+        ip: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip"),
+        ua: req.headers.get("user-agent"),
+        utm: Object.values(utm).some((v) => v) ? utm : null,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error(
+        `[Middleware] Failed to track click: ${response.status} ${response.statusText}`
+      );
+    }
+  } catch (error) {
+    console.error("[Middleware] Error tracking affiliate click:", error);
+    // Silently fail - don't block page load
+  }
+}
+
+function generateSessionId(): string {
+  return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
