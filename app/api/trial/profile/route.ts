@@ -5,14 +5,13 @@ interface ProfilePayload {
   sessionId: string;
   childFirstName?: string;
   ageBand?: string | null;
-  gradeBand?: string | null;
   region?: string | null;
 }
 
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as ProfilePayload;
-    const { sessionId, ageBand, gradeBand } = body;
+    const { sessionId, ageBand } = body;
 
     if (!sessionId) {
       return NextResponse.json(
@@ -49,7 +48,6 @@ export async function POST(request: Request) {
         data: {
           childFirstName: body.childFirstName ?? null,
           ageBand: ageBand ?? existingTrial.ageBand ?? null,
-          gradeBand: gradeBand ?? existingTrial.gradeBand ?? null,
           region: body.region ?? existingTrial.region ?? null,
         },
       });
@@ -59,7 +57,6 @@ export async function POST(request: Request) {
           sessionId,
           childFirstName: body.childFirstName ?? null,
           ageBand: ageBand ?? null,
-          gradeBand: gradeBand ?? null,
           region: body.region ?? session.region ?? null,
         },
       });

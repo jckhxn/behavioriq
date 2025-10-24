@@ -44,30 +44,6 @@ export const pseoConfig: PSEOConfig = {
         },
       },
     },
-    {
-      id: "subject-assessments",
-      template: "subject-assessment",
-      path: "/assessments/[category]/[subject]",
-      dataKey: "subjects",
-      enabled: true,
-      priority: 0.7,
-      changefreq: "weekly",
-      seo: {
-        titleTemplate: "{{subject}} {{category}} Assessment - AI Diagnostic",
-        descriptionTemplate:
-          "Assess your {{subject}} skills in {{category}} with our AI-powered diagnostic tool. Get detailed feedback and personalized learning recommendations.",
-        keywordsTemplate:
-          "{{subject}} assessment, {{category}} evaluation, {{subject}} skills test, AI diagnostic, personalized learning",
-        openGraph: {
-          titleTemplate: "{{subject}} {{category}} Assessment",
-          descriptionTemplate:
-            "Test your {{subject}} knowledge and get AI-powered recommendations for improvement.",
-          type: "website",
-          siteName: "AI Diagnostic",
-          imageTemplate: "/api/og/subject/{{categoryId}}/{{subjectId}}",
-        },
-      },
-    },
   ],
   dataSource: {
     type: "hybrid",
@@ -101,13 +77,6 @@ export const pseoConfig: PSEOConfig = {
           category: data.category || "general",
           categoryId: data.id,
         }),
-      },
-      {
-        key: "subjects",
-        type: "json",
-        config: {
-          path: "./data/subjects.json",
-        },
       },
     ],
     cache: {
