@@ -522,7 +522,13 @@ export default function Page({ params }: { params: { slug: string } }) {
   }
   const normalized = normalizePage(page);
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><span className="text-muted-foreground">Loading...</span></div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <span className="text-muted-foreground">Loading...</span>
+        </div>
+      }
+    >
       <SlugClientShell {...normalized} />
     </Suspense>
   );

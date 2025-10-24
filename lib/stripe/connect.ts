@@ -18,7 +18,10 @@ export class StripeConnectService {
    * Create a Stripe Connect Express account for a user
    * Returns the account ID for storage
    */
-  async createConnectAccount(email: string, userFullName: string): Promise<string> {
+  async createConnectAccount(
+    email: string,
+    userFullName: string
+  ): Promise<string> {
     try {
       const account = await stripe.accounts.create({
         type: "express",
@@ -55,11 +58,16 @@ export class StripeConnectService {
         return_url: RETURN_URL,
       });
 
-      console.log(`[StripeConnect] ✅ Generated onboarding link for ${stripeAccountId}`);
+      console.log(
+        `[StripeConnect] ✅ Generated onboarding link for ${stripeAccountId}`
+      );
 
       return accountLink.url;
     } catch (error) {
-      console.error(`[StripeConnect] ❌ Error generating onboarding link:`, error);
+      console.error(
+        `[StripeConnect] ❌ Error generating onboarding link:`,
+        error
+      );
       throw error;
     }
   }
@@ -71,11 +79,16 @@ export class StripeConnectService {
     try {
       const loginLink = await stripe.accounts.createLoginLink(stripeAccountId);
 
-      console.log(`[StripeConnect] ✅ Generated dashboard link for ${stripeAccountId}`);
+      console.log(
+        `[StripeConnect] ✅ Generated dashboard link for ${stripeAccountId}`
+      );
 
       return loginLink.url;
     } catch (error) {
-      console.error(`[StripeConnect] ❌ Error generating dashboard link:`, error);
+      console.error(
+        `[StripeConnect] ❌ Error generating dashboard link:`,
+        error
+      );
       throw error;
     }
   }
@@ -103,7 +116,7 @@ export class StripeConnectService {
         isReady,
         requirements,
         chargesEnabled: account.charges_enabled || false,
-  transfersEnabled: account.payouts_enabled || false,
+        transfersEnabled: account.payouts_enabled || false,
       };
     } catch (error) {
       console.error(`[StripeConnect] ❌ Error checking account status:`, error);
@@ -138,7 +151,8 @@ export class StripeConnectService {
         success: true,
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       console.error(`[StripeConnect] ❌ Error creating transfer:`, error);
 
       return {

@@ -53,46 +53,48 @@ export class SubscriptionService {
       );
     }
 
-  return prisma.$transaction(async (tx: import("@prisma/client").Prisma.TransactionClient) => {
-      // Create payment record
-      const rawPaymentIntent = (invoice as any).payment_intent;
-      const paymentIntentId =
-        typeof rawPaymentIntent === "string"
-          ? rawPaymentIntent
-          : rawPaymentIntent?.id ?? null;
+    return prisma.$transaction(
+      async (tx: import("@prisma/client").Prisma.TransactionClient) => {
+        // Create payment record
+        const rawPaymentIntent = (invoice as any).payment_intent;
+        const paymentIntentId =
+          typeof rawPaymentIntent === "string"
+            ? rawPaymentIntent
+            : (rawPaymentIntent?.id ?? null);
 
-      if (
-        paymentIntentId &&
-        !(await tx.payment.findUnique({
-          where: { stripePaymentIntentId: paymentIntentId },
-          select: { id: true },
-        }))
-      ) {
-        await tx.payment.create({
-          data: {
-            userId,
-            stripePaymentIntentId: paymentIntentId,
-            stripeCustomerId: invoice.customer as string,
-            amount: invoice.amount_paid,
-            currency: invoice.currency || "usd",
-            status: "SUCCEEDED",
-            planType: planDefinition?.id ?? "subscription",
-            plan: planDefinition?.label ?? "Subscription Renewal",
-            metadata: {
-              invoiceId: invoice.id,
-              subscriptionId: subscription.id,
-              billingReason: (invoice as any).billing_reason,
-            } as any,
-          },
-        });
-      }
+        if (
+          paymentIntentId &&
+          !(await tx.payment.findUnique({
+            where: { stripePaymentIntentId: paymentIntentId },
+            select: { id: true },
+          }))
+        ) {
+          await tx.payment.create({
+            data: {
+              userId,
+              stripePaymentIntentId: paymentIntentId,
+              stripeCustomerId: invoice.customer as string,
+              amount: invoice.amount_paid,
+              currency: invoice.currency || "usd",
+              status: "SUCCEEDED",
+              planType: planDefinition?.id ?? "subscription",
+              plan: planDefinition?.label ?? "Subscription Renewal",
+              metadata: {
+                invoiceId: invoice.id,
+                subscriptionId: subscription.id,
+                billingReason: (invoice as any).billing_reason,
+              } as any,
+            },
+          });
+        }
 
-      if (planDefinition) {
-        await applySubscriptionPlanToUser(tx, userId, planDefinition, {
-          topUp: false,
-        });
+        if (planDefinition) {
+          await applySubscriptionPlanToUser(tx, userId, planDefinition, {
+            topUp: false,
+          });
+        }
       }
-    });
+    );
   }
 
   /**
@@ -109,84 +111,89 @@ export class SubscriptionService {
       throw new Error(`No userId in subscription metadata: ${subscription.id}`);
     }
 
-  return await prisma.$transaction(async (tx: import("@prisma/client").Prisma.TransactionClient) => {
-      // Find user's current licenses
-      const userLicenses = await tx.userLicense.findMany({
-        where: { userId },
-        include: { license: true },
-      });
+    return await prisma.$transaction(
+      async (tx: import("@prisma/client").Prisma.TransactionClient) => {
+        // Find user's current licenses
+        const userLicenses = await tx.userLicense.findMany({
+          where: { userId },
+          include: { license: true },
+        });
 
-  const cancellableTypes: string[] = [
-        "CORE",
-        "ANNUAL_CORE",
-        "FAMILY",
-        "ANNUAL_FAMILY",
-        "PROFESSIONAL",
-        "ENTERPRISE",
-        "DISTRICT_STANDARD",
-        "DISTRICT_PROFESSIONAL",
-        "DISTRICT_ENTERPRISE",
-      ];
+        const cancellableTypes: string[] = [
+          "CORE",
+          "ANNUAL_CORE",
+          "FAMILY",
+          "ANNUAL_FAMILY",
+          "PROFESSIONAL",
+          "ENTERPRISE",
+          "DISTRICT_STANDARD",
+          "DISTRICT_PROFESSIONAL",
+          "DISTRICT_ENTERPRISE",
+        ];
 
-      for (const userLicense of userLicenses) {
-        if (cancellableTypes.includes(userLicense.license.type)) {
+        for (const userLicense of userLicenses) {
+          if (cancellableTypes.includes(userLicense.license.type)) {
+            await tx.license.update({
+              where: { id: userLicense.license.id },
+              data: { status: "CANCELLED" },
+            });
+            await tx.userLicense.update({
+              where: { id: userLicense.id },
+              data: {
+                isActive: false,
+                assessmentsAllowed: userLicense.assessmentsUsed,
+              },
+            });
+            console.log(
+              `[SubscriptionService] Cancelled license: ${userLicense.license.id}`
+            );
+          }
+        }
+
+        const existingFree = userLicenses.find(
+          (license: any) => license.license.type === "FREE"
+        );
+
+        if (existingFree) {
           await tx.license.update({
-            where: { id: userLicense.license.id },
-            data: { status: "CANCELLED" },
+            where: { id: existingFree.license.id },
+            data: { status: "ACTIVE" },
           });
           await tx.userLicense.update({
-            where: { id: userLicense.id },
-            data: { isActive: false, assessmentsAllowed: userLicense.assessmentsUsed },
+            where: { id: existingFree.id },
+            data: {
+              isActive: true,
+              assessmentsAllowed: 0,
+              conversationalReportsAllowed: 0,
+            },
           });
-          console.log(
-            `[SubscriptionService] Cancelled license: ${userLicense.license.id}`
-          );
+        } else {
+          const freeLicense = await tx.license.create({
+            data: {
+              licenseKey: `FREE_${userId}_${Date.now()}`,
+              type: "FREE",
+              status: "ACTIVE",
+            },
+          });
+
+          await tx.userLicense.create({
+            data: {
+              userId,
+              licenseId: freeLicense.id,
+              assessmentsAllowed: 0,
+              assessmentsUsed: 0,
+              conversationalReportsAllowed: 0,
+              conversationalReportsUsed: 0,
+              lastCreditsRefreshedAt: new Date(),
+            },
+          });
         }
+
+        console.log(
+          `[SubscriptionService] ✅ Subscription cancelled, downgraded to FREE license for user: ${userId}`
+        );
       }
-
-      const existingFree = userLicenses.find(
-  (license: any) => license.license.type === "FREE"
-      );
-
-      if (existingFree) {
-        await tx.license.update({
-          where: { id: existingFree.license.id },
-          data: { status: "ACTIVE" },
-        });
-        await tx.userLicense.update({
-          where: { id: existingFree.id },
-          data: {
-            isActive: true,
-            assessmentsAllowed: 0,
-            conversationalReportsAllowed: 0,
-          },
-        });
-      } else {
-        const freeLicense = await tx.license.create({
-          data: {
-            licenseKey: `FREE_${userId}_${Date.now()}`,
-            type: "FREE",
-            status: "ACTIVE",
-          },
-        });
-
-        await tx.userLicense.create({
-          data: {
-            userId,
-            licenseId: freeLicense.id,
-            assessmentsAllowed: 0,
-            assessmentsUsed: 0,
-            conversationalReportsAllowed: 0,
-            conversationalReportsUsed: 0,
-            lastCreditsRefreshedAt: new Date(),
-          },
-        });
-      }
-
-      console.log(
-        `[SubscriptionService] ✅ Subscription cancelled, downgraded to FREE license for user: ${userId}`
-      );
-    });
+    );
   }
 
   /**
@@ -202,15 +209,14 @@ export class SubscriptionService {
     }
 
     const priceId = subscription.items.data[0]?.price?.id;
-    const planDefinition = priceId
-      ? getPlanForStripePrice(priceId)
-      : undefined;
+    const planDefinition = priceId ? getPlanForStripePrice(priceId) : undefined;
 
     if (planDefinition) {
-  await prisma.$transaction((tx: import("@prisma/client").Prisma.TransactionClient) =>
-        applySubscriptionPlanToUser(tx, userId, planDefinition, {
-          topUp: false,
-        })
+      await prisma.$transaction(
+        (tx: import("@prisma/client").Prisma.TransactionClient) =>
+          applySubscriptionPlanToUser(tx, userId, planDefinition, {
+            topUp: false,
+          })
       );
     }
 
@@ -223,7 +229,7 @@ export class SubscriptionService {
       include: { license: true },
     });
 
-  const managedTypes: string[] = [
+    const managedTypes: string[] = [
       "CORE",
       "ANNUAL_CORE",
       "FAMILY",

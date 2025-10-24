@@ -9,7 +9,9 @@ export async function GET() {
   let urls = "";
 
   if (fs.existsSync(generatedDir)) {
-    const files = fs.readdirSync(generatedDir).filter((file) => file.endsWith(".json"));
+    const files = fs
+      .readdirSync(generatedDir)
+      .filter((file) => file.endsWith(".json"));
 
     files.forEach((file) => {
       const slug = file.replace(".json", "");

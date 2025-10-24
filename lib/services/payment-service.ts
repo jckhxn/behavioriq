@@ -34,7 +34,8 @@ export class PaymentService {
 
     // Handle subscription checkout differently (license sync occurs via invoice webhook)
     if (session.mode === "subscription") {
-      const subscriptionResult = await this.processSubscriptionCheckout(session);
+      const subscriptionResult =
+        await this.processSubscriptionCheckout(session);
       const loginToken = await loginTokenService.generateToken(
         subscriptionResult.user.id
       );
@@ -59,7 +60,7 @@ export class PaymentService {
       `[PaymentService] Processing enhanced report for: ${assessmentId}`
     );
 
-  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Get assessment
       const assessment = await tx.assessment.findUniqueOrThrow({
         where: { id: assessmentId },
@@ -117,14 +118,14 @@ export class PaymentService {
       `[PaymentService] Processing conversational addon for user: ${userId}`
     );
 
-  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Get the user
       const user = await tx.user.findUniqueOrThrow({
         where: { id: userId },
       });
 
       // Get or create user's license
-  let userLicense: any = await tx.userLicense.findFirst({
+      let userLicense: any = await tx.userLicense.findFirst({
         where: { userId },
         include: { license: true },
       });
@@ -203,7 +204,9 @@ export class PaymentService {
       // Ensure license relation is present
       let license = userLicense.license;
       if (!license) {
-        license = await tx.license.findUnique({ where: { id: userLicense.licenseId } });
+        license = await tx.license.findUnique({
+          where: { id: userLicense.licenseId },
+        });
       }
       return { user, payment, license, userLicense };
     });
@@ -216,21 +219,23 @@ export class PaymentService {
     console.log(`[PaymentService] Processing assessment purchase`);
 
     // Transaction ensures all-or-nothing
-  const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      // 1. Get or create user
-      const user = await this.getOrCreateUser(session, tx);
-      console.log(`[PaymentService] User resolved: ${user.id}`);
+    const result = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
+        // 1. Get or create user
+        const user = await this.getOrCreateUser(session, tx);
+        console.log(`[PaymentService] User resolved: ${user.id}`);
 
-      // 2. Create payment record
-      const payment = await this.createPaymentRecord(session, user.id, tx);
-      console.log(`[PaymentService] Payment created: ${payment.id}`);
+        // 2. Create payment record
+        const payment = await this.createPaymentRecord(session, user.id, tx);
+        console.log(`[PaymentService] Payment created: ${payment.id}`);
 
-      // 3. Create or update license
-      const license = await this.createOrUpdateLicense(user.id, session, tx);
-      console.log(`[PaymentService] License created/updated: ${license.id}`);
+        // 3. Create or update license
+        const license = await this.createOrUpdateLicense(user.id, session, tx);
+        console.log(`[PaymentService] License created/updated: ${license.id}`);
 
-      return { user, payment, license };
-    });
+        return { user, payment, license };
+      }
+    );
 
     // 4. Generate one-time login token for auto-login
     const loginToken = await loginTokenService.generateToken(result.user.id);
@@ -482,14 +487,11 @@ export class PaymentService {
       include: { license: true },
     });
 
-    console.log(
-      `[PaymentService] ✅ Created new license for user ${userId}:`,
-      {
-        licenseId: newLicense.id,
-        userLicenseId: newUserLicense.id,
-        assessmentsAllowed: 1,
-      }
-    );
+    console.log(`[PaymentService] ✅ Created new license for user ${userId}:`, {
+      licenseId: newLicense.id,
+      userLicenseId: newUserLicense.id,
+      assessmentsAllowed: 1,
+    });
 
     return newLicense;
   }
@@ -508,9 +510,9 @@ export class PaymentService {
     const stripeCustomerId =
       typeof session.customer === "string"
         ? session.customer
-        : session.customer?.id ?? null;
+        : (session.customer?.id ?? null);
 
-  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const user = await tx.user.findUniqueOrThrow({
         where: { id: userId },
       });

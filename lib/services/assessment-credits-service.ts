@@ -47,9 +47,7 @@ class AssessmentCreditsService {
     };
   }
 
-  private async refreshSubscriptionCredits(
-    userLicense: any
-  ): Promise<any> {
+  private async refreshSubscriptionCredits(userLicense: any): Promise<any> {
     const settings = this.getSubscriptionCreditSettings(
       userLicense.license.type
     );
@@ -212,7 +210,7 @@ class AssessmentCreditsService {
    */
   async checkUserCredits(userId: string): Promise<AssessmentCreditsInfo> {
     // Get user's active license
-  let userLicense = await prisma.userLicense.findFirst({
+    let userLicense = await prisma.userLicense.findFirst({
       where: {
         userId,
         isActive: true,
@@ -247,25 +245,25 @@ class AssessmentCreditsService {
       };
     }
 
-  userLicense = await this.refreshSubscriptionCredits(userLicense);
+    userLicense = await this.refreshSubscriptionCredits(userLicense);
 
-  if (!userLicense) {
-    return {
-      hasCredits: false,
-      creditsRemaining: 0,
-      creditsAllowed: 0,
-      creditsUsed: 0,
-      licenseType: "NONE",
-      conversationalCredits: 0,
-      conversationalCreditsUsed: 0,
-      conversationalCreditsAllowed: 0,
-      conversationalReportCredits: 0,
-      conversationalReportCreditsUsed: 0,
-      conversationalReportCreditsAllowed: 0,
-    };
-  }
+    if (!userLicense) {
+      return {
+        hasCredits: false,
+        creditsRemaining: 0,
+        creditsAllowed: 0,
+        creditsUsed: 0,
+        licenseType: "NONE",
+        conversationalCredits: 0,
+        conversationalCreditsUsed: 0,
+        conversationalCreditsAllowed: 0,
+        conversationalReportCredits: 0,
+        conversationalReportCreditsUsed: 0,
+        conversationalReportCreditsAllowed: 0,
+      };
+    }
 
-  const licenseType = userLicense.license.type;
+    const licenseType = userLicense.license.type;
 
     // Calculate conversational credits (reports)
     const conversationalCreditsRemaining = Math.max(
