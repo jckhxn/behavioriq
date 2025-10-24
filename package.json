@@ -11,6 +11,9 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
+    "db:backup": "bash scripts/backup-database.sh",
+    "db:restore": "bash scripts/restore-database.sh",
+    "db:verify": "tsx scripts/test-db-connection.ts",
     "generate:pseo": "node scripts/generateAll.js"
   },
   "prisma": {
