@@ -447,17 +447,44 @@ export function UpgradePanel(props: UpgradePanelProps) {
   const [isDismissed, setIsDismissed] = useState<boolean | null>(null);
   const isDesktop = useMediaQuery("(min-width: 1024px)");
 
+  // Check if user has actually upgraded away from free/one_time plans
+  const hasUpgraded = props.plan.plan !== "free" && props.plan.plan !== "one_time";
+
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
+
     try {
       const stored = window.localStorage.getItem(DISMISS_STORAGE_KEY);
+
+      // If user has upgraded to a paid plan, permanently dismiss the panel
+      if (hasUpgraded) {
+        setIsDismissed(true);
+        // Update storage to mark as upgraded for future visits
+        const payload = JSON.stringify({
+          upgraded: true,
+          upgradedAt: new Date().toISOString(),
+        });
+        window.localStorage.setItem(DISMISS_STORAGE_KEY, payload);
+        return;
+      }
+
+      // For free tier users, check if they've dismissed this session
       if (!stored) {
         setIsDismissed(false);
         return;
       }
-      const parsed = JSON.parse(stored) as { plan?: string } | null;
+
+      const parsed = JSON.parse(stored) as { upgraded?: boolean; plan?: string } | null;
+
+      // If previously marked as upgraded, respect it
+      if (parsed?.upgraded === true) {
+        setIsDismissed(true);
+        return;
+      }
+
+      // Legacy: check if dismissed during current free tier
       if (parsed?.plan === props.plan.plan) {
         setIsDismissed(true);
       } else {
@@ -466,7 +493,7 @@ export function UpgradePanel(props: UpgradePanelProps) {
     } catch {
       setIsDismissed(false);
     }
-  }, [props.plan.plan]);
+  }, [props.plan.plan, hasUpgraded]);
 
   const handleDismiss = useCallback(() => {
     setIsDismissed(true);
