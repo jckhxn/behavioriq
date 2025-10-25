@@ -42,14 +42,14 @@ export async function POST(request: Request) {
       (trialRecord.responses as Record<string, number> | null) ?? {};
     const snapshot = scoreTrialSnapshot({ responses, template });
 
-    await prisma.assessmentTrial.update({
+    const updated = await prisma.assessmentTrial.update({
       where: { id: trialRecord.id },
       data: {
         scoreSnapshot: JSON.stringify(snapshot),
       },
     });
 
-    return NextResponse.json({ snapshot });
+    return NextResponse.json({ snapshot, trialId: updated.id });
   } catch (error) {
     console.error("[trial/score] failed", error);
     return NextResponse.json(

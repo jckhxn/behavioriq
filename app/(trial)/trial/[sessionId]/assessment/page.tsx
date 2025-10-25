@@ -176,7 +176,7 @@ export default function AssessmentPage() {
       }
 
       const scoreData = await scoreResponse.json();
-      const trialId = scoreData.snapshot?.trialId || sessionId;
+      const trialId = scoreData.trialId || sessionId;
 
       trackTelemetry('trial.complete', {
         sessionId,
