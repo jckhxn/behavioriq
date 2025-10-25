@@ -292,6 +292,8 @@ export default function ResultsPage() {
             onBuy={handleBuy}
             onDecline={handleDecline}
             isLoading={isCheckingOut}
+            trialId={trialId}
+            sessionId={data.sessionId}
           />
         )}
 

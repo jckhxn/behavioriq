@@ -5,17 +5,23 @@
 
 import { Button } from '@/components/ui/button';
 import { Sparkles, CheckCircle, Clock } from 'lucide-react';
+import { SampleModal } from './SampleModal';
+import { GuaranteeModal } from './GuaranteeModal';
 
 interface PaidUpgradeProps {
   onBuy: () => void;
   onDecline: () => void;
   isLoading?: boolean;
+  trialId?: string;
+  sessionId?: string;
 }
 
 export function PaidUpgrade({
   onBuy,
   onDecline,
   isLoading = false,
+  trialId = '',
+  sessionId = '',
 }: PaidUpgradeProps) {
   return (
     <section className="mb-8 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 rounded-lg border border-blue-200 dark:border-blue-800">
@@ -85,10 +91,13 @@ export function PaidUpgrade({
           Clinician-reviewed rubric • References: CDC / APA
         </p>
         <p className="font-semibold text-foreground">
-          Guarantee: 3 concrete, school-ready actions in 24h or refund.
+          <GuaranteeModal />: 3 concrete, school-ready actions in 24h or refund.
         </p>
         <p className="text-xs text-muted-foreground italic">
           Typical evaluations: $1,500–$3,000 and 6–12 weeks.
+        </p>
+        <p className="text-xs text-muted-foreground">
+          <SampleModal trialId={trialId} sessionId={sessionId} />
         </p>
       </div>
 
