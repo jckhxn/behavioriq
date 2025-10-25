@@ -21,10 +21,11 @@ export function CompactLollipopCard({
   showLabels = true,
 }: CompactLollipopCardProps) {
   const maxScore = 100;
-  const barHeight = size === 'sm' ? 80 : size === 'lg' ? 140 : 120;
-  const barWidth = size === 'sm' ? 24 : size === 'lg' ? 36 : 28;
+  const barHeight = size === 'sm' ? 100 : size === 'lg' ? 160 : 140;
+  const barWidth = size === 'sm' ? 20 : size === 'lg' ? 32 : 24;
+  const containerWidth = size === 'sm' ? 60 : size === 'lg' ? 100 : 80;
 
-  // Calculate proportions
+  // Calculate proportions from bottom
   const scorePercent = (domain.score / maxScore) * 100;
   const screenerPercent = (domain.screener / maxScore) * 100;
   const diagnosticPercent = (domain.diagnostic / maxScore) * 100;
@@ -58,81 +59,89 @@ export function CompactLollipopCard({
         <p className="text-[10px] text-muted-foreground">/100</p>
       </div>
 
-      {/* Main chart area */}
-      <div className="relative flex flex-col items-center">
-        {/* Reference line container with scale markers */}
+      {/* Main chart container */}
+      <div className="relative flex justify-center" style={{ width: `${containerWidth}px` }}>
+        {/* Scale background with grid lines */}
         <div
-          className="relative flex flex-col justify-between items-center"
+          className="absolute left-1/2 -translate-x-1/2 flex flex-col justify-between opacity-5 pointer-events-none"
+          style={{ height: `${barHeight}px`, width: '100%' }}
+        >
+          <div className="h-px bg-slate-400 w-full" />
+          <div className="h-px bg-slate-400 w-full" />
+          <div className="h-px bg-slate-400 w-full" />
+          <div className="h-px bg-slate-400 w-full" />
+          <div className="h-px bg-slate-400 w-full" />
+        </div>
+
+        {/* Diagnostic reference line - thicker, more visible */}
+        <div
+          className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 pointer-events-none"
+          style={{
+            bottom: `${diagnosticPercent}%`,
+            width: `${containerWidth * 0.9}px`,
+          }}
+        >
+          <div className="h-0.5 flex-1 bg-red-500 opacity-60" />
+          <span className="text-[10px] text-red-600 dark:text-red-400 font-bold whitespace-nowrap">
+            ◉ {domain.diagnostic}
+          </span>
+        </div>
+
+        {/* Screener cutoff line - thicker, more visible */}
+        <div
+          className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 pointer-events-none"
+          style={{
+            bottom: `${screenerPercent}%`,
+            width: `${containerWidth * 0.9}px`,
+          }}
+        >
+          <div className="h-0.5 flex-1 bg-amber-500 opacity-60" />
+          <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold whitespace-nowrap">
+            ⊙ {domain.screener}
+          </span>
+        </div>
+
+        {/* Chart content area */}
+        <div
+          className="relative flex flex-col items-center justify-end"
           style={{ height: `${barHeight}px`, width: `${barWidth}px` }}
         >
-          {/* Background scale grid */}
-          <div className="absolute inset-0 flex flex-col justify-between opacity-10 pointer-events-none">
-            <div className="h-px bg-slate-400 w-full" />
-            <div className="h-px bg-slate-400 w-full" />
-            <div className="h-px bg-slate-400 w-full" />
-            <div className="h-px bg-slate-400 w-full" />
-            <div className="h-px bg-slate-400 w-full" />
-          </div>
-
-          {/* Diagnostic reference line */}
+          {/* Thin stick/stem line */}
           <div
-            className="absolute w-full h-px bg-red-400 flex items-center justify-end pr-1"
-            style={{ bottom: `${diagnosticPercent}%` }}
-          >
-            <div className="text-[8px] text-red-600 dark:text-red-400 font-semibold whitespace-nowrap ml-1">
-              ◉
-            </div>
-          </div>
+            className="absolute bottom-0 left-1/2 -translate-x-1/2 w-px bg-slate-400 opacity-30"
+            style={{ height: `${scorePercent}%` }}
+          />
 
-          {/* Screener cutoff line */}
+          {/* Main bar with gradient - the visual representation */}
           <div
-            className="absolute w-full h-px bg-amber-400 flex items-center justify-end pr-1"
-            style={{ bottom: `${screenerPercent}%` }}
-          >
-            <div className="text-[8px] text-amber-600 dark:text-amber-400 font-semibold whitespace-nowrap ml-1">
-              ⊙
-            </div>
-          </div>
+            className={cn(
+              'rounded-t-lg shadow-md transition-all duration-300 hover:shadow-lg hover:scale-110',
+              `bg-gradient-to-t ${getScoreColor(domain.score)}`
+            )}
+            style={{
+              height: `${scorePercent}%`,
+              width: `100%`,
+            }}
+          />
 
-          {/* Main score bar with gradient */}
-          <div className="absolute bottom-0 flex flex-col items-center w-full">
-            {/* Thin stick line */}
-            <div
-              className="w-px bg-slate-400 opacity-40"
-              style={{ height: `${(domain.score / maxScore) * barHeight}px` }}
-            />
+          {/* Lollipop circle at top */}
+          <div
+            className={cn(
+              'rounded-full shadow-lg border-2 border-white dark:border-slate-950 -mt-2 transition-all duration-300 hover:scale-125 hover:-mt-3',
+              domain.score >= domain.diagnostic
+                ? 'bg-red-600 shadow-red-500/60'
+                : domain.score >= domain.screener
+                  ? 'bg-amber-600 shadow-amber-500/60'
+                  : 'bg-blue-600 shadow-blue-500/60'
+            )}
+            style={{
+              width: `${barWidth + 8}px`,
+              height: `${barWidth + 8}px`,
+            }}
+          />
 
-            {/* Main bar with gradient */}
-            <div
-              className={cn(
-                'rounded-t-lg shadow-md transition-all duration-300 hover:shadow-lg',
-                `bg-gradient-to-t ${getScoreColor(domain.score)}`
-              )}
-              style={{
-                height: `${(domain.score / maxScore) * barHeight}px`,
-                width: `${barWidth}px`,
-              }}
-            />
-
-            {/* Lollipop circle at top */}
-            <div
-              className={cn(
-                'rounded-full shadow-md border-2 border-white dark:border-slate-900 -mt-2 transition-all duration-300 hover:scale-125',
-                domain.score >= domain.diagnostic
-                  ? 'bg-red-600 shadow-red-500/50'
-                  : domain.score >= domain.screener
-                    ? 'bg-amber-600 shadow-amber-500/50'
-                    : 'bg-blue-600 shadow-blue-500/50'
-              )}
-              style={{
-                width: `${barWidth + 6}px`,
-                height: `${barWidth + 6}px`,
-              }}
-            />
-          </div>
-
-          {/* Bottom axis line */}
-          <div className="absolute bottom-0 w-full h-px bg-slate-400 opacity-30" />
+          {/* Bottom baseline */}
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-px bg-slate-400 opacity-40" />
         </div>
       </div>
 
