@@ -410,14 +410,54 @@ export function UserManagementTab() {
                   <SelectValue placeholder="Select license" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="BASIC" className="text-xs">
-                    BASIC
+                  {/* Core Plans */}
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                    Core Plans
+                  </div>
+                  <SelectItem value="CORE" className="text-xs">
+                    CORE - $59/mo (2 credits)
                   </SelectItem>
-                  <SelectItem value="PROFESSIONAL" className="text-xs">
-                    PROFESSIONAL
+                  <SelectItem value="ANNUAL_CORE" className="text-xs">
+                    CORE - $249/yr (2 credits)
                   </SelectItem>
-                  <SelectItem value="ENTERPRISE" className="text-xs">
-                    ENTERPRISE
+
+                  {/* Family Plans */}
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                    Family Plans
+                  </div>
+                  <SelectItem value="FAMILY" className="text-xs">
+                    FAMILY - $99/mo (5 credits)
+                  </SelectItem>
+                  <SelectItem value="ANNUAL_FAMILY" className="text-xs">
+                    FAMILY - $349/yr (5 credits)
+                  </SelectItem>
+
+                  {/* District Plans */}
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                    District Plans
+                  </div>
+                  <SelectItem value="DISTRICT_PILOT" className="text-xs">
+                    District Pilot (90-day)
+                  </SelectItem>
+                  <SelectItem value="DISTRICT_STANDARD" className="text-xs">
+                    District Standard
+                  </SelectItem>
+                  <SelectItem value="DISTRICT_PROFESSIONAL" className="text-xs">
+                    District Professional
+                  </SelectItem>
+                  <SelectItem value="DISTRICT_ENTERPRISE" className="text-xs">
+                    District Enterprise
+                  </SelectItem>
+
+                  {/* Promotional Plans */}
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                    Promotional
+                  </div>
+                  <SelectItem value="DISCOUNTED_CORE" className="text-xs">
+                    CORE - Founders Pricing
+                  </SelectItem>
+                  <SelectItem value="DISCOUNTED_FAMILY" className="text-xs">
+                    FAMILY - Founders Pricing
                   </SelectItem>
                 </SelectContent>
               </Select>

@@ -205,13 +205,27 @@ export default function AdminUsersPage() {
 
   const getLicenseBadge = (type: string) => {
     const colors: Record<string, string> = {
-      ENTERPRISE: "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400",
-      PROFESSIONAL: "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400",
-      BASIC: "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400",
+      // Core Plans
+      CORE: "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400",
+      ANNUAL_CORE: "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400",
+
+      // Family Plans
+      FAMILY: "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400",
+      ANNUAL_FAMILY: "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400",
+
+      // District Plans
+      DISTRICT_PILOT: "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400",
+      DISTRICT_STANDARD: "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400",
+      DISTRICT_PROFESSIONAL: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400",
+      DISTRICT_ENTERPRISE: "bg-teal-100 text-teal-800 dark:bg-teal-900/20 dark:text-teal-400",
+
+      // Promotional
+      DISCOUNTED_CORE: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/20 dark:text-indigo-400",
+      DISCOUNTED_FAMILY: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/20 dark:text-indigo-400",
     };
 
     return (
-      <Badge className={colors[type] || colors.BASIC}>
+      <Badge className={colors[type] || "bg-slate-100 text-slate-800 dark:bg-slate-900/20 dark:text-slate-400"}>
         {type}
       </Badge>
     );
