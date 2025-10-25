@@ -76,17 +76,18 @@ export async function POST(request: NextRequest) {
         },
       ],
       mode: isSubscriptionCheckout ? "subscription" : "payment",
-      // For subscription upgrades, redirect to dashboard; for one-time payments from dashboard, also redirect to dashboard
-      // For trial users, redirect to payment-success page
+      // For subscription upgrades, redirect to dashboard tab with upgrade success message
+      // For one-time payments from dashboard, redirect to dashboard tab with purchase success message
+      // For assessments or other one-time purchases, use payment-success page
       success_url: isSubscriptionCheckout
-        ? `${process.env.NEXTAUTH_URL}/dashboard?upgraded=true`
+        ? `${process.env.NEXTAUTH_URL}/?tab=dashboard&upgraded=true`
         : fromDashboard
-          ? `${process.env.NEXTAUTH_URL}/dashboard?purchase=success`
+          ? `${process.env.NEXTAUTH_URL}/?tab=dashboard&purchase=success`
           : `${process.env.NEXTAUTH_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}${childName ? `&childName=${encodeURIComponent(childName)}` : ""}`,
       cancel_url: isSubscriptionCheckout
-        ? `${process.env.NEXTAUTH_URL}/payment-success?upgrade_cancelled=true`
+        ? `${process.env.NEXTAUTH_URL}/?tab=dashboard&purchase=cancelled`
         : fromDashboard
-          ? `${process.env.NEXTAUTH_URL}/dashboard?purchase=cancelled`
+          ? `${process.env.NEXTAUTH_URL}/?tab=dashboard&purchase=cancelled`
           : `${process.env.NEXTAUTH_URL}/payment?cancelled=true`,
       metadata: {
         userId: user.id,
