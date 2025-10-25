@@ -59,14 +59,19 @@ export default function AuthCallbackPage() {
           // Attribute signup to affiliate if user came from referral link
           await attributeSignupToAffiliate(session.user.id);
 
+          // Refresh to ensure session is established before redirect
+          router.refresh();
+
           // Check if this is a password reset flow
           const type = searchParams.get("type");
-          if (type === "recovery" || type === "invite") {
-            router.push("/auth/reset-password");
-          } else {
-            // Regular login - redirect to dashboard
-            router.push("/dashboard");
-          }
+          setTimeout(() => {
+            if (type === "recovery" || type === "invite") {
+              router.push("/auth/reset-password");
+            } else {
+              // Regular login - redirect to dashboard
+              router.push("/dashboard");
+            }
+          }, 100);
         } else {
           // No session yet, might still be processing
           console.log("No session found after callback");
@@ -81,12 +86,18 @@ export default function AuthCallbackPage() {
 
               // Attribute signup to affiliate if user came from referral link
               attributeSignupToAffiliate(newSession.user.id).then(() => {
-                const type = searchParams.get("type");
-                if (type === "recovery" || type === "invite") {
-                  router.push("/auth/reset-password");
-                } else {
-                  router.push("/dashboard");
-                }
+                // Refresh to ensure session is established before redirect
+                router.refresh();
+
+                // Wait for refresh to complete before navigating
+                setTimeout(() => {
+                  const type = searchParams.get("type");
+                  if (type === "recovery" || type === "invite") {
+                    router.push("/auth/reset-password");
+                  } else {
+                    router.push("/dashboard");
+                  }
+                }, 100);
               });
             }
           });
