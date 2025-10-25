@@ -90,6 +90,17 @@ function LoginForm() {
         return;
       }
 
+      // CRITICAL: Verify session is available before navigating
+      // This ensures tokens are synced to localStorage/sessionStorage before server receives the request
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Session not established. Please try again.");
+        console.error("[Login] No session after signin");
+        return;
+      }
+
+      console.log("[Login] Session established for:", session.user.email);
+
       // Check if user has MFA enabled
       const { data: factors } = await supabase.auth.mfa.listFactors();
       const hasMFA = factors?.totp?.some((f) => f.status === "verified");
@@ -97,11 +108,14 @@ function LoginForm() {
       if (hasMFA) {
         // Redirect to MFA verification page
         toast.info("Please verify your two-factor authentication code");
+        console.log("[Login] MFA required, redirecting to:", `/mfa-verify?redirect=${encodeURIComponent(from)}`);
+        router.refresh();
         router.push(`/mfa-verify?redirect=${encodeURIComponent(from)}`);
       } else {
         toast.success("Signed in successfully");
-        router.push(from);
+        console.log("[Login] No MFA, redirecting to:", from);
         router.refresh();
+        router.push(from);
       }
     } catch (error: any) {
       toast.error(error.message || "An error occurred. Please try again.");

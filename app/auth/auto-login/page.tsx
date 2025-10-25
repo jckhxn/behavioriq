@@ -89,8 +89,9 @@ function AutoLoginContent() {
 
         // Redirect to dashboard
         const redirectTo = searchParams.get("redirect") || "/dashboard";
-        router.push(redirectTo);
+        console.log("[AutoLogin] Session established, redirecting to:", redirectTo);
         router.refresh();
+        router.push(redirectTo);
       } catch (err) {
         console.error("Auto-login error:", err);
         setError(err instanceof Error ? err.message : "Login failed");

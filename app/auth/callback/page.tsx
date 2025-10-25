@@ -59,6 +59,9 @@ export default function AuthCallbackPage() {
           // Attribute signup to affiliate if user came from referral link
           await attributeSignupToAffiliate(session.user.id);
 
+          // Refresh to sync session to server before navigation
+          router.refresh();
+
           // Check if this is a password reset flow
           const type = searchParams.get("type");
           if (type === "recovery" || type === "invite") {
@@ -81,6 +84,8 @@ export default function AuthCallbackPage() {
 
               // Attribute signup to affiliate if user came from referral link
               attributeSignupToAffiliate(newSession.user.id).then(() => {
+                // Refresh to sync session to server before navigation
+                router.refresh();
                 const type = searchParams.get("type");
                 if (type === "recovery" || type === "invite") {
                   router.push("/auth/reset-password");
