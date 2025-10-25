@@ -33,6 +33,7 @@ import {
   PauseCircle,
   ShieldCheck,
   TriangleAlert,
+  CheckCircle2,
 } from "lucide-react";
 import { usePlanData } from "@/hooks/use-plan-data";
 import type { PricingResponse, UserPlanResponse } from "@/types/plan";
@@ -250,6 +251,51 @@ export default function BillingSection() {
         return `${plan.remainingCredits}/${plan.monthlyCredits ?? 5} credits • Rollover limit ${plan.rolloverCap ?? 15} • Unlimited child chat • Unlimited Enhanced.`;
       default:
         return "Manage your plan and billing settings.";
+    }
+  }, [plan, pricing?.amounts.enhancedMember.amount]);
+
+  const planFeatures = useMemo(() => {
+    if (!plan) return [];
+    switch (plan.plan) {
+      case "free":
+        return [
+          "Free assessment snapshot",
+          "View assessment summaries",
+          "Upgrade anytime to unlock full features",
+        ];
+      case "one_time":
+        return [
+          "Single comprehensive assessment",
+          "Full assessment dashboard",
+          "School-ready PDF download",
+          "Access to assessment history",
+        ];
+      case "core":
+        return [
+          `${plan.monthlyCredits ?? 2} assessment credits per month`,
+          `Rollover protection (up to ${plan.rolloverCap ?? 6} credits)`,
+          `Enhanced report pricing: $${pricing?.amounts.enhancedMember.amount ?? 9}`,
+          "Full assessment dashboard",
+          "School-ready PDF downloads",
+          "Priority email support",
+          "FERPA/HIPAA-ready",
+          "Anonymous mode available",
+        ];
+      case "family":
+        return [
+          `${plan.monthlyCredits ?? 5} assessment credits per month`,
+          `Rollover protection (up to ${plan.rolloverCap ?? 15} credits)`,
+          "Unlimited enhanced reports included",
+          "Unlimited conversational AI sessions",
+          "Multi-child profile management",
+          "Full assessment dashboard for each child",
+          "School-ready PDF downloads",
+          "Priority support + live chat",
+          "FERPA/HIPAA-ready",
+          "Anonymous mode available",
+        ];
+      default:
+        return [];
     }
   }, [plan, pricing?.amounts.enhancedMember.amount]);
 
@@ -507,6 +553,21 @@ export default function BillingSection() {
               <span>FERPA/HIPAA-ready</span>
             </div>
           </div>
+
+          {/* Plan Features Section */}
+          {planFeatures.length > 0 && (
+            <div className="rounded-xl border border-[#223043] bg-[#0f141b] px-4 py-4 space-y-3">
+              <p className="font-semibold text-white text-sm">What's included in your plan</p>
+              <div className="grid gap-2">
+                {planFeatures.map((feature, idx) => (
+                  <div key={idx} className="flex items-start gap-2 text-sm text-slate-200">
+                    <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                    <span>{feature}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {plan.stripe && (
             <div className="rounded-xl border border-[#223043] bg-[#0f141b] px-4 py-3 text-sm text-slate-200 space-y-3">
