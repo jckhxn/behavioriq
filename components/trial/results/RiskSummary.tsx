@@ -11,13 +11,15 @@ interface RiskSummaryProps {
 
 export function RiskSummary({ flags }: RiskSummaryProps) {
   const topFlag = flags[0] || 'some areas';
+  const displayedFlags = flags.slice(0, 3);
+  const remainingCount = Math.max(0, flags.length - 3);
 
   return (
     <section className="mb-8">
-      {/* Domain chips */}
+      {/* Domain chips - show up to 3, aggregate the rest */}
       {flags.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-4">
-          {flags.map((flag) => (
+        <div className="flex flex-wrap gap-2 mb-4 items-center">
+          {displayedFlags.map((flag) => (
             <Badge
               key={flag}
               variant="secondary"
@@ -26,6 +28,14 @@ export function RiskSummary({ flags }: RiskSummaryProps) {
               {flag}: Elevated
             </Badge>
           ))}
+          {remainingCount > 0 && (
+            <Badge
+              variant="secondary"
+              className="px-3 py-1 text-sm font-medium"
+            >
+              +{remainingCount} more
+            </Badge>
+          )}
         </div>
       )}
 
