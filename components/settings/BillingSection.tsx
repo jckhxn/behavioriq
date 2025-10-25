@@ -960,29 +960,153 @@ export default function BillingSection() {
 
           {modal?.type === "cancel" && (
             <div className="space-y-4">
-              <p className="text-sm text-slate-300">Before you go, choose what works best for you:</p>
-              <div className="space-y-2">
-                {([
-                  { value: "pause" as CancelChoice, label: "Pause 2 months (recommended)" },
-                  { value: "lite" as CancelChoice, label: "Downgrade to Lite — $29/mo" },
-                  { value: "annual" as CancelChoice, label: "Switch to Annual (save + bonuses)" },
-                  { value: "cancel" as CancelChoice, label: "Continue to cancel" },
-                ]).map((option) => (
-                  <label
-                    key={option.value}
-                    className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2 text-sm ${cancelChoice === option.value ? "border-primary text-primary" : "border-[#223043] text-slate-200"}`}
-                    onClick={() => setCancelChoice(option.value)}
-                  >
+              <div className="space-y-3">
+                {/* Pause Option - Green */}
+                <div
+                  className={`cursor-pointer rounded-xl border-2 p-4 transition-all ${
+                    cancelChoice === "pause"
+                      ? "border-green-500 bg-green-500/10"
+                      : "border-green-500/30 bg-green-950/20 hover:border-green-500/60"
+                  }`}
+                  onClick={() => setCancelChoice("pause")}
+                >
+                  <div className="flex items-start gap-3">
                     <input
                       type="radio"
                       name="cancel-choice"
-                      value={option.value}
-                      checked={cancelChoice === option.value}
-                      onChange={() => setCancelChoice(option.value)}
+                      value="pause"
+                      checked={cancelChoice === "pause"}
+                      onChange={() => setCancelChoice("pause")}
+                      className="mt-1"
                     />
-                    {option.label}
-                  </label>
-                ))}
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-bold text-green-100">Pause 2 months</h4>
+                        <span className="rounded bg-green-600 px-2 py-0.5 text-xs font-bold text-white">
+                          RECOMMENDED
+                        </span>
+                      </div>
+                      <p className="mt-1 text-sm text-green-200">
+                        Take a break. No charges, keep all your data.
+                      </p>
+                      <ul className="mt-2 space-y-1 text-xs text-green-100">
+                        <li>✓ 2 months free</li>
+                        <li>✓ All reports safe</li>
+                        <li>✓ Auto-resume</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Downgrade Option - Blue */}
+                <div
+                  className={`cursor-pointer rounded-xl border-2 p-4 transition-all ${
+                    cancelChoice === "lite"
+                      ? "border-blue-500 bg-blue-500/10"
+                      : "border-blue-500/30 bg-blue-950/20 hover:border-blue-500/60"
+                  }`}
+                  onClick={() => setCancelChoice("lite")}
+                >
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="radio"
+                      name="cancel-choice"
+                      value="lite"
+                      checked={cancelChoice === "lite"}
+                      onChange={() => setCancelChoice("lite")}
+                      className="mt-1"
+                    />
+                    <div className="flex-1">
+                      <h4 className="font-bold text-blue-100">Downgrade to Lite</h4>
+                      <p className="mt-1 text-sm text-blue-200">
+                        Save 50% and keep essential features.
+                      </p>
+                      <div className="mt-2 rounded bg-blue-600/20 px-2 py-1 text-sm font-semibold text-blue-100">
+                        $14.50/month
+                      </div>
+                      <ul className="mt-2 space-y-1 text-xs text-blue-100">
+                        <li>✓ Dashboard access</li>
+                        <li>✓ Keep all reports</li>
+                        <li>✓ Upgrade anytime</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Annual Option - Purple */}
+                <div
+                  className={`cursor-pointer rounded-xl border-2 p-4 transition-all ${
+                    cancelChoice === "annual"
+                      ? "border-purple-500 bg-purple-500/10"
+                      : "border-purple-500/30 bg-purple-950/20 hover:border-purple-500/60"
+                  }`}
+                  onClick={() => setCancelChoice("annual")}
+                >
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="radio"
+                      name="cancel-choice"
+                      value="annual"
+                      checked={cancelChoice === "annual"}
+                      onChange={() => setCancelChoice("annual")}
+                      className="mt-1"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-bold text-purple-100">Switch to Annual</h4>
+                        <span className="rounded bg-purple-600 px-2 py-0.5 text-xs font-bold text-white">
+                          BEST VALUE
+                        </span>
+                      </div>
+                      <p className="mt-1 text-sm text-purple-200">
+                        Lock in the best price for a full year.
+                      </p>
+                      <div className="mt-2 rounded bg-purple-600/20 px-2 py-1 text-sm font-semibold text-purple-100">
+                        Save 30% annually
+                      </div>
+                      <ul className="mt-2 space-y-1 text-xs text-purple-100">
+                        <li>✓ Lowest price guaranteed</li>
+                        <li>✓ Full benefits included</li>
+                        <li>✓ Cancel anytime</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Cancel Option - Red */}
+                <div
+                  className={`cursor-pointer rounded-xl border-2 p-4 transition-all ${
+                    cancelChoice === "cancel"
+                      ? "border-red-500 bg-red-500/10"
+                      : "border-red-500/30 bg-red-950/20 hover:border-red-500/60"
+                  }`}
+                  onClick={() => setCancelChoice("cancel")}
+                >
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="radio"
+                      name="cancel-choice"
+                      value="cancel"
+                      checked={cancelChoice === "cancel"}
+                      onChange={() => setCancelChoice("cancel")}
+                      className="mt-1"
+                    />
+                    <div className="flex-1">
+                      <h4 className="font-bold text-red-100">Cancel Membership</h4>
+                      <p className="mt-1 text-sm text-red-200">
+                        We'd prefer you stay, but we understand.
+                      </p>
+                      <div className="mt-2 rounded bg-red-600/20 px-2 py-1 text-sm text-red-100">
+                        <p className="font-semibold mb-1">You'll lose:</p>
+                        <ul className="space-y-0.5">
+                          <li>✗ Progress tracking</li>
+                          <li>✗ AI insights</li>
+                          <li>✗ Member discount</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
