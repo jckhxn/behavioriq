@@ -1,15 +1,19 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
+import { updateSession } from "@/lib/supabase/middleware";
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const authSecret =
     process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || undefined;
 
+  // CRITICAL: Update Supabase session and sync auth tokens to server cookies
+  // This must happen before any auth checks so the middleware can detect logged-in users
+  let response = await updateSession(req);
+
   // Capture affiliate ref parameter if present
   const ref = req.nextUrl.searchParams.get("ref");
-  const response = NextResponse.next();
 
   if (ref) {
     // Set first-party cookie for 30 days (HTTPOnly, SameSite=Lax)
@@ -46,6 +50,10 @@ export async function middleware(req: NextRequest) {
     const redirectResponse = NextResponse.redirect(
       new URL(redirectToMain, req.url)
     );
+    // Preserve Supabase auth cookies from the session update
+    response.cookies.getAll().forEach(({ name, value, options }) => {
+      redirectResponse.cookies.set(name, value, options);
+    });
     applyBrandingHeaders(redirectResponse, branding);
     return redirectResponse;
   }
@@ -121,6 +129,10 @@ export async function middleware(req: NextRequest) {
       const redirectResponse = NextResponse.redirect(
         new URL("/maintenance", req.url)
       );
+      // Preserve Supabase auth cookies
+      response.cookies.getAll().forEach(({ name, value, options }) => {
+        redirectResponse.cookies.set(name, value, options);
+      });
       applyBrandingHeaders(redirectResponse, branding);
       return redirectResponse;
     }
@@ -137,6 +149,10 @@ export async function middleware(req: NextRequest) {
     const redirectResponse = NextResponse.redirect(
       new URL(`/login?from=${encodeURIComponent(from)}`, req.url)
     );
+    // Preserve Supabase auth cookies
+    response.cookies.getAll().forEach(({ name, value, options }) => {
+      redirectResponse.cookies.set(name, value, options);
+    });
     applyBrandingHeaders(redirectResponse, branding);
     return redirectResponse;
   }
@@ -168,14 +184,18 @@ export async function middleware(req: NextRequest) {
       const redirectResponse = NextResponse.redirect(
         new URL("/settings?tab=security&mfa=required", req.url)
       );
+      // Preserve Supabase auth cookies
+      response.cookies.getAll().forEach(({ name, value, options }) => {
+        redirectResponse.cookies.set(name, value, options);
+      });
       applyBrandingHeaders(redirectResponse, branding);
       return redirectResponse;
     }
   }
 
-  const finalResponse = NextResponse.next();
-  applyBrandingHeaders(finalResponse, branding);
-  return finalResponse;
+  // Return the response with Supabase auth cookies already set from updateSession
+  applyBrandingHeaders(response, branding);
+  return response;
 }
 
 export const config = {
