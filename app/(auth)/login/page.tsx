@@ -44,6 +44,7 @@ function LoginForm() {
       if (typeof window !== "undefined") {
         try {
           // Route Supabase auth storage based on the "Remember Me" selection
+          // IMPORTANT: Clear the storage that WON'T be used to prevent session mixing
           if (rememberMe) {
             window.localStorage.setItem(
               SUPABASE_STORAGE_PREFERENCE_KEY,
@@ -52,6 +53,12 @@ function LoginForm() {
             window.sessionStorage.removeItem(
               SUPABASE_STORAGE_PREFERENCE_KEY
             );
+            // Clear sessionStorage auth token since we're using localStorage
+            try {
+              window.sessionStorage.removeItem("sb-auth-token");
+            } catch {
+              // Ignore
+            }
           } else {
             window.sessionStorage.setItem(
               SUPABASE_STORAGE_PREFERENCE_KEY,
@@ -60,6 +67,12 @@ function LoginForm() {
             window.localStorage.removeItem(
               SUPABASE_STORAGE_PREFERENCE_KEY
             );
+            // Clear localStorage auth token since we're using sessionStorage
+            try {
+              window.localStorage.removeItem("sb-auth-token");
+            } catch {
+              // Ignore
+            }
           }
         } catch {
           // Ignore storage preference errors (e.g., disabled storage)
@@ -67,11 +80,6 @@ function LoginForm() {
       }
 
       const supabase = createClient();
-
-      // Sign out any existing session first to prevent session mixing
-      // This is important when switching between accounts
-      await supabase.auth.signOut();
-
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,

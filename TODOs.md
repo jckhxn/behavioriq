@@ -16,14 +16,15 @@ $1 per 10k emails (SES)
 
 - useworkflow.dev for stuff like emails?
   [ConnectOnboarding] ❌ Error: [Error: Your platform needs approval for accounts to have requested the `transfers` capability without the `card_payments` capability. If you would like to request transfers without card_payments, please contact us via https://support.stripe.com/contact.]
-  - [] Add Sentry error reporting
-    -- https://brightpath-39.sentry.io/onboarding/setup-docs/
-    -- https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
 
 ## Bugs Track
 
 ## Features
 
+- [] Sentry and Analytics (GA4 and Meta pixel for retargeting.)
+  - [] Add Sentry error reporting
+    -- https://brightpath-39.sentry.io/onboarding/setup-docs/
+    -- https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
 - [] Verify Analytics setup on web, integrate IDs on app properly.
 - [] Make sure Stripe Connect is setup for Afiliate.
 
@@ -41,7 +42,6 @@ $1 per 10k emails (SES)
 
 - [] Make it an iOS/iPad app
 - [] Command Menu on Dash (https://github.com/shadcn-ui/ui/blob/main/apps/v4/components/command-menu.tsx)
-- [] Sentry and Analytics (GA4 and Meta pixel for retargeting.)
 
 ## 📖 Quick Links
 
