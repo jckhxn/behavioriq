@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AffiliateTracker } from "@/components/AffiliateTracker";
+import { AnalyticsInitializer } from "@/components/analytics/AnalyticsInitializer";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -108,6 +110,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const ga4MeasurementId = process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID;
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -124,6 +128,30 @@ export default function RootLayout({
             `,
           }}
         />
+
+        {/* Google Analytics 4 */}
+        {ga4MeasurementId && (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${ga4MeasurementId}`}
+              strategy="afterInteractive"
+            />
+            <script
+              dangerouslySetInnerHTML={{
+                __html: `
+                  window.dataLayer = window.dataLayer || [];
+                  function gtag(){dataLayer.push(arguments);}
+                  gtag('js', new Date());
+                  gtag('config', '${ga4MeasurementId}', {
+                    'anonymize_ip': true,
+                    'cookie_flags': 'SameSite=None;Secure'
+                  });
+                `,
+              }}
+              strategy="afterInteractive"
+            />
+          </>
+        )}
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
@@ -131,6 +159,7 @@ export default function RootLayout({
         <ThemeProvider>
           <Suspense fallback={null}>
             <AffiliateTracker />
+            <AnalyticsInitializer />
           </Suspense>
           {children}
           <Toaster />
