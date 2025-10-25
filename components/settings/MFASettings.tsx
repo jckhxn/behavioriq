@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import {
   Shield,
   Smartphone,
@@ -261,25 +262,25 @@ export function MFASettings() {
               </div>
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="verify-code" className="text-xs">
-                Enter verification code
-              </Label>
-              <Input
-                id="verify-code"
-                type="number"
-                inputMode="numeric"
-                placeholder="000000"
-                value={verifyCode}
-                onChange={(e) =>
-                  setVerifyCode(e.target.value.replace(/\D/g, "").slice(0, 6))
-                }
-                min="0"
-                max="999999"
+            <div className="space-y-2">
+              <Label className="text-xs">Enter verification code</Label>
+              <InputOTP
                 maxLength={6}
-                className="h-8 text-center text-lg tracking-widest font-mono"
-                autoFocus
-              />
+                value={verifyCode}
+                onChange={setVerifyCode}
+                containerClassName="justify-center gap-2"
+              >
+                <InputOTPGroup>
+                  <InputOTPSlot index={0} />
+                  <InputOTPSlot index={1} />
+                  <InputOTPSlot index={2} />
+                </InputOTPGroup>
+                <InputOTPGroup>
+                  <InputOTPSlot index={3} />
+                  <InputOTPSlot index={4} />
+                  <InputOTPSlot index={5} />
+                </InputOTPGroup>
+              </InputOTP>
             </div>
 
             <div className="flex gap-2">

@@ -16,6 +16,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Shield, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 function LoadingState() {
   return (
@@ -144,26 +145,24 @@ function MFAVerifyContent() {
 
             <div className="space-y-2">
               <Label htmlFor="code">Verification Code</Label>
-              <Input
-                id="code"
-                type="number"
-                inputMode="numeric"
-                placeholder="000000"
-                value={code}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/\D/g, "");
-                  if (value.length <= 6) {
-                    setCode(value);
-                  }
-                }}
-                min="0"
-                max="999999"
+              <InputOTP
                 maxLength={6}
-                className="text-center text-2xl tracking-widest"
-                autoComplete="off"
-                autoFocus
+                value={code}
+                onChange={setCode}
                 disabled={isVerifying}
-              />
+                containerClassName="justify-center gap-2"
+              >
+                <InputOTPGroup>
+                  <InputOTPSlot index={0} />
+                  <InputOTPSlot index={1} />
+                  <InputOTPSlot index={2} />
+                </InputOTPGroup>
+                <InputOTPGroup>
+                  <InputOTPSlot index={3} />
+                  <InputOTPSlot index={4} />
+                  <InputOTPSlot index={5} />
+                </InputOTPGroup>
+              </InputOTP>
             </div>
 
             <Button
