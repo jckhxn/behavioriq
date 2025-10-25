@@ -10,9 +10,18 @@ interface RiskSummaryProps {
 }
 
 export function RiskSummary({ flags }: RiskSummaryProps) {
-  const topFlag = flags[0] || 'some areas';
   const displayedFlags = flags.slice(0, 3);
   const remainingCount = Math.max(0, flags.length - 3);
+
+  // Create summary text mentioning all elevated domains
+  const getSummaryText = () => {
+    if (flags.length === 0) return 'some areas';
+    if (flags.length === 1) return flags[0];
+    if (flags.length === 2) return `${flags[0]} and ${flags[1]}`;
+    return `${flags.slice(0, -1).join(', ')}, and ${flags[flags.length - 1]}`;
+  };
+
+  const summaryText = getSummaryText();
 
   return (
     <section className="mb-8">
@@ -39,10 +48,10 @@ export function RiskSummary({ flags }: RiskSummaryProps) {
         </div>
       )}
 
-      {/* Key takeaway */}
+      {/* Key takeaway - mentions all elevated domains */}
       <p className="text-sm text-foreground mb-2">
         Based on your screening,{' '}
-        <span className="font-semibold">{topFlag} shows elevated indicators</span>
+        <span className="font-semibold">{summaryText} {flags.length !== 1 ? 'show' : 'shows'} elevated indicators</span>
         . Consider next steps.
       </p>
 

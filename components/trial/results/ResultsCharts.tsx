@@ -49,23 +49,27 @@ export function ResultsCharts({
       </div>
 
       {/* Specific Areas - Collapsible */}
-      <details
-        className="mb-4 group"
-        onToggle={handleExpandSubdomains}
-      >
-        <summary className="cursor-pointer">
-          <h2 className="text-lg font-semibold inline">Specific Areas</h2>
-          <span className="text-sm text-muted-foreground ml-2">
-            {elevatedCount > 0 && `${elevatedCount} items elevated • `}
-            tap to expand
-          </span>
-        </summary>
-        <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-6 justify-items-center">
-          {subdomains.map((subdomain) => (
-            <CompactLollipopCard key={subdomain.name} domain={subdomain} size="md" />
-          ))}
-        </div>
-      </details>
+      {subdomains.length > 0 && (
+        <details
+          className="mb-4 group p-4 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800"
+          onToggle={handleExpandSubdomains}
+        >
+          <summary className="cursor-pointer select-none">
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-semibold">Specific Areas</span>
+              <span className="text-sm text-muted-foreground">
+                {elevatedCount > 0 && `${elevatedCount} items elevated • `}
+                tap to expand
+              </span>
+            </div>
+          </summary>
+          <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-6 justify-items-center">
+            {subdomains.map((subdomain) => (
+              <CompactLollipopCard key={subdomain.name} domain={subdomain} size="md" />
+            ))}
+          </div>
+        </details>
+      )}
 
       {/* Inline Legend */}
       <div className="text-xs text-muted-foreground mt-6 pt-4 border-t">
