@@ -8,9 +8,26 @@ export async function middleware(req: NextRequest) {
   const authSecret =
     process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || undefined;
 
+  // Always allow API and static assets to pass through middleware without redirects
+  if (
+    pathname.startsWith("/_next") ||
+    pathname === "/favicon.ico" ||
+    pathname.startsWith("/api") // allow all API routes (prevents HTML redirects breaking fetch JSON)
+  ) {
+    return NextResponse.next({ request: req });
+  }
+
   // CRITICAL: Update Supabase session and sync auth tokens to server cookies
   // This must happen before any auth checks so the middleware can detect logged-in users
-  let response = await updateSession(req);
+  // Do this AFTER the API/static asset early return to avoid unnecessary processing
+  let response: NextResponse;
+  try {
+    response = await updateSession(req);
+  } catch (error) {
+    console.error('[Middleware] updateSession failed:', error);
+    // Fall back to basic next response if updateSession fails
+    response = NextResponse.next({ request: req });
+  }
 
   // Capture affiliate ref parameter if present
   const ref = req.nextUrl.searchParams.get("ref");
@@ -32,15 +49,6 @@ export async function middleware(req: NextRequest) {
     trackAffiliateClick(ref, req).catch((e) =>
       console.error("[Middleware] Failed to track affiliate click:", e)
     );
-  }
-
-  // Always allow API and static assets to pass through middleware without redirects
-  if (
-    pathname.startsWith("/_next") ||
-    pathname === "/favicon.ico" ||
-    pathname.startsWith("/api") // allow all API routes (prevents HTML redirects breaking fetch JSON)
-  ) {
-    return response;
   }
 
   const hostname = req.headers.get("host") || "";
