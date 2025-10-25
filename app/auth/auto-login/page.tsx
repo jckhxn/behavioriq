@@ -89,10 +89,8 @@ function AutoLoginContent() {
 
         // Redirect to dashboard
         const redirectTo = searchParams.get("redirect") || "/dashboard";
+        router.push(redirectTo);
         router.refresh();
-        setTimeout(() => {
-          router.push(redirectTo);
-        }, 100);
       } catch (err) {
         console.error("Auto-login error:", err);
         setError(err instanceof Error ? err.message : "Login failed");

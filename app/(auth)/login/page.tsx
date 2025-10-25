@@ -97,16 +97,11 @@ function LoginForm() {
       if (hasMFA) {
         // Redirect to MFA verification page
         toast.info("Please verify your two-factor authentication code");
-        router.refresh();
-        setTimeout(() => {
-          router.push(`/mfa-verify?redirect=${encodeURIComponent(from)}`);
-        }, 100);
+        router.push(`/mfa-verify?redirect=${encodeURIComponent(from)}`);
       } else {
         toast.success("Signed in successfully");
+        router.push(from);
         router.refresh();
-        setTimeout(() => {
-          router.push(from);
-        }, 100);
       }
     } catch (error: any) {
       toast.error(error.message || "An error occurred. Please try again.");
