@@ -16,10 +16,91 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://behavioriq.app";
+
 export const metadata: Metadata = {
-  title: "AI Assessment & Document Chat",
+  // Basic SEO
+  title: {
+    default: "BehaviorIQ - AI-Powered Behavioral Assessments",
+    template: "%s | BehaviorIQ",
+  },
   description:
-    "Conversational AI behavioral assessments with intelligent document-based chat",
+    "Conversational AI behavioral assessments with intelligent document-based chat. Comprehensive parent-led screening for ADHD, autism, anxiety, and more.",
+
+  // Keywords
+  keywords: [
+    "behavioral assessment",
+    "ADHD screening",
+    "autism assessment",
+    "anxiety screening",
+    "child behavioral evaluation",
+    "mental health assessment",
+    "parent assessment tool",
+    "AI assessment",
+    "behavioral health screening",
+  ],
+
+  // Open Graph (for social media sharing)
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: BASE_URL,
+    siteName: "BehaviorIQ",
+    title: "BehaviorIQ - AI-Powered Behavioral Assessments",
+    description:
+      "Conversational AI behavioral assessments with intelligent document-based chat. Comprehensive parent-led screening for ADHD, autism, anxiety, and more.",
+    images: [
+      {
+        url: `${BASE_URL}/og-image.png`,
+        width: 1200,
+        height: 630,
+        alt: "BehaviorIQ - AI-Powered Behavioral Assessments",
+        type: "image/png",
+      },
+    ],
+  },
+
+  // Twitter Card
+  twitter: {
+    card: "summary_large_image",
+    title: "BehaviorIQ - AI-Powered Behavioral Assessments",
+    description:
+      "Conversational AI behavioral assessments with intelligent document-based chat. Comprehensive parent-led screening for ADHD, autism, anxiety, and more.",
+    images: [`${BASE_URL}/og-image.png`],
+    creator: "@behavioriq",
+  },
+
+  // Additional metadata
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
+
+  // Robots configuration
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-snippet": -1,
+      "max-image-preview": "large",
+      "max-video-preview": -1,
+    },
+  },
+
+  // Canonical URL (will be overridden per-page if needed)
+  alternates: {
+    canonical: BASE_URL,
+    languages: {
+      "en-US": `${BASE_URL}/en-US`,
+    },
+  },
+
+  // Verification
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_VERIFICATION,
+  },
 };
 
 export default function RootLayout({

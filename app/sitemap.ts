@@ -3,12 +3,57 @@ import fs from "fs";
 import path from "path";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://yourdomain.com";
+  const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://behavioriq.app";
   const generatedDir = path.join(process.cwd(), "data", "generated");
 
   const entries: MetadataRoute.Sitemap = [];
 
-  // Add generated pages from pSEO
+  // Primary pages - highest priority
+  const primaryPages = [
+    { url: "", priority: 1.0, changeFrequency: "weekly" as const },
+    { url: "pricing", priority: 0.9, changeFrequency: "weekly" as const },
+    { url: "login", priority: 0.7, changeFrequency: "monthly" as const },
+    { url: "register", priority: 0.7, changeFrequency: "monthly" as const },
+  ];
+
+  primaryPages.forEach((page) => {
+    entries.push({
+      url: `${BASE_URL}/${page.url}`,
+      changeFrequency: page.changeFrequency,
+      priority: page.priority,
+      lastModified: new Date(),
+    });
+  });
+
+  // Feature pages
+  const featurePages = [
+    {
+      url: "assessment/new",
+      priority: 0.8,
+      changeFrequency: "monthly" as const,
+    },
+    {
+      url: "payment-success",
+      priority: 0.6,
+      changeFrequency: "yearly" as const,
+    },
+    {
+      url: "auth/forgot-password",
+      priority: 0.5,
+      changeFrequency: "yearly" as const,
+    },
+  ];
+
+  featurePages.forEach((page) => {
+    entries.push({
+      url: `${BASE_URL}/${page.url}`,
+      changeFrequency: page.changeFrequency,
+      priority: page.priority,
+      lastModified: new Date(),
+    });
+  });
+
+  // Add generated pages from pSEO (informational content)
   if (fs.existsSync(generatedDir)) {
     const files = fs
       .readdirSync(generatedDir)
@@ -18,29 +63,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       const slug = file.replace(".json", "");
       entries.push({
         url: `${BASE_URL}/${slug}`,
-        changeFrequency: "daily",
-        priority: 0.8,
+        changeFrequency: "monthly",
+        priority: 0.7,
         lastModified: new Date(),
       });
     });
   }
-
-  // Add static routes
-  const staticPages = [
-    { url: "", priority: 1, changeFrequency: "weekly" as const },
-    { url: "pricing", priority: 0.7, changeFrequency: "weekly" as const },
-    { url: "assessment", priority: 0.7, changeFrequency: "weekly" as const },
-    { url: "contact", priority: 0.7, changeFrequency: "weekly" as const },
-  ];
-
-  staticPages.forEach((page) => {
-    entries.push({
-      url: `${BASE_URL}/${page.url}`,
-      changeFrequency: page.changeFrequency,
-      priority: page.priority,
-      lastModified: new Date(),
-    });
-  });
 
   return entries;
 }
