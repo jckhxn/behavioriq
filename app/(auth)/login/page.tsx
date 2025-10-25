@@ -67,6 +67,11 @@ function LoginForm() {
       }
 
       const supabase = createClient();
+
+      // Sign out any existing session first to prevent session mixing
+      // This is important when switching between accounts
+      await supabase.auth.signOut();
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
