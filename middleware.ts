@@ -101,6 +101,9 @@ export async function middleware(req: NextRequest) {
     req.nextUrl.pathname === "/" ||
     req.nextUrl.pathname.startsWith("/trial-assessment") ||
     req.nextUrl.pathname.startsWith("/trial-results") ||
+    req.nextUrl.pathname.startsWith("/consent") ||
+    req.nextUrl.pathname.startsWith("/trial/") ||
+    req.nextUrl.pathname.startsWith("/results/") ||
     req.nextUrl.pathname.startsWith("/payment") ||
     req.nextUrl.pathname.startsWith("/payment-success") ||
     req.nextUrl.pathname.startsWith("/share") ||

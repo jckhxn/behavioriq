@@ -1,0 +1,97 @@
+/**
+ * Paid Upgrade Component
+ * PRIMARY monetization block with sales copy from spec
+ */
+
+import { Button } from '@/components/ui/button';
+import { Sparkles, CheckCircle } from 'lucide-react';
+
+interface PaidUpgradeProps {
+  onBuy: () => void;
+  onDecline: () => void;
+  isLoading?: boolean;
+}
+
+export function PaidUpgrade({
+  onBuy,
+  onDecline,
+  isLoading = false,
+}: PaidUpgradeProps) {
+  return (
+    <section className="mb-8 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 rounded-lg border border-blue-200 dark:border-blue-800">
+      {/* Headline */}
+      <h3 className="text-2xl font-bold text-foreground mb-4">
+        Unlock Full, School-Ready Report — $97 (Instant PDF)
+      </h3>
+
+      {/* Main Features */}
+      <div className="mb-6">
+        <ul className="space-y-2">
+          {[
+            "Teacher-ready 1-pager for tomorrow's class",
+            '3 classroom accommodations matched to flagged domains',
+            'Parent email/script for counselor outreach',
+            'Optional child conversation transcript add-on ($9)',
+          ].map((feature) => (
+            <li key={feature} className="flex gap-3 text-sm text-foreground">
+              <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+              <span>{feature}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* Bonuses */}
+      <div className="mb-6 p-4 bg-white dark:bg-slate-900 rounded border border-blue-200 dark:border-blue-800">
+        <p className="text-sm font-semibold text-foreground mb-2">
+          Bonuses included today
+        </p>
+        <ul className="space-y-1">
+          {[
+            '30-day progress check plan (re-screen + updated 1-pager)',
+            '$20 coupon for a sibling/follow-up (valid 48h)',
+          ].map((bonus) => (
+            <li key={bonus} className="flex gap-2 text-sm text-foreground">
+              <Sparkles className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" />
+              <span>{bonus}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* Trust & Risk Reversal */}
+      <div className="mb-6 space-y-2 text-sm">
+        <p className="text-muted-foreground">
+          Clinician-reviewed rubric • References: CDC / APA
+        </p>
+        <p className="font-semibold text-foreground">
+          Guarantee: 3 concrete, school-ready actions in 24h or refund.
+        </p>
+        <p className="text-xs text-muted-foreground italic">
+          Typical evaluations: $1,500–$3,000 and 6–12 weeks.
+        </p>
+      </div>
+
+      {/* CTAs */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <Button
+          onClick={onBuy}
+          disabled={isLoading}
+          size="lg"
+          className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold"
+        >
+          {isLoading ? 'Starting checkout...' : 'Unlock Full Report — $97'}
+        </Button>
+        <Button
+          onClick={onDecline}
+          disabled={isLoading}
+          variant="outline"
+          size="lg"
+          className="flex-1"
+        >
+          No thanks
+        </Button>
+      </div>
+    </section>
+  );
+}

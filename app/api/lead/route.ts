@@ -6,6 +6,13 @@ interface LeadPayload {
   email: string;
   consentMarketing?: boolean;
   sessionId?: string;
+  trialId?: string;
+}
+
+interface LeadResponse {
+  leadId: string;
+  couponCode: string;
+  couponExpiresAt: string;
 }
 
 function isValidEmail(email: string): boolean {
@@ -84,7 +91,17 @@ export async function POST(request: Request) {
       });
     }
 
-    return NextResponse.json({ leadId: lead.id });
+    // Generate coupon expiration (48 hours from now)
+    const couponExpiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+    const couponCode = process.env.STRIPE_FIRST_3_MONTHS_50_COUPON || "REFERRAL_20";
+
+    const response: LeadResponse = {
+      leadId: lead.id,
+      couponCode,
+      couponExpiresAt,
+    };
+
+    return NextResponse.json(response);
   } catch (error) {
     console.error("[lead] failed", error);
     return NextResponse.json({ error: "Unable to capture lead" }, { status: 500 });

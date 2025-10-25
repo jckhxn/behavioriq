@@ -19,6 +19,9 @@ $1 per 10k emails (SES)
 
 ## Bugs Track
 
+- [] Login hella broken bruh
+
+
 ## Features
 
 - [] Sentry and Analytics (GA4 and Meta pixel for retargeting.)

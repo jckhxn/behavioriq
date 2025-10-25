@@ -5,6 +5,7 @@ interface ProfilePayload {
   sessionId: string;
   childFirstName?: string;
   ageBand?: string | null;
+  gradeBand?: string | null;
   region?: string | null;
 }
 
@@ -48,6 +49,7 @@ export async function POST(request: Request) {
         data: {
           childFirstName: body.childFirstName ?? null,
           ageBand: ageBand ?? existingTrial.ageBand ?? null,
+          gradeBand: body.gradeBand ?? existingTrial.gradeBand ?? null,
           region: body.region ?? existingTrial.region ?? null,
         },
       });
@@ -57,6 +59,7 @@ export async function POST(request: Request) {
           sessionId,
           childFirstName: body.childFirstName ?? null,
           ageBand: ageBand ?? null,
+          gradeBand: body.gradeBand ?? null,
           region: body.region ?? session.region ?? null,
         },
       });
