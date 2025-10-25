@@ -19,6 +19,10 @@ $1 per 10k emails (SES)
 
 ## Bugs Track
 
+- [] Logging in with MFA requires two tries.
+- [] Use shadcn number input for MFA.
+- [] Assessment template shows total questions.
+- [] Platform Settings set global assessments should not appear if an assessment isn't active.
 - [] Implement a robust way of backing up database so you don't lose data again lol.
 - [] Other user assessments load for Super-Admin. Assessments Templates need to enforce "must have one domain selected to be active" So users can't start an asssessment that never loads.
 - [] User management tab for SuperAdmin fails to load users.
@@ -36,6 +40,8 @@ $1 per 10k emails (SES)
 
 ## Features
 
+- [] Super Admin adding conversation credits doesn't display any changes (does it add convo credits?)
+- [] Super Admin can change license type, license type reflects (Core,Family, all types)
 - [] Verify Analytics setup on web, integrate IDs on app properly.
 - [] Maybe sure Stripe Connect is setup for Afiliate.
 - [] / _Dashboard_ route should render components as tabs/pages, so we avoid additional unlinked routes
