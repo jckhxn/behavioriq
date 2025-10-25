@@ -20,6 +20,10 @@ $1 per 10k emails (SES)
 ## Bugs Track
 
 - [] Login hella broken bruh
+- [] Send Email Snapshot isn't implemented.
+- [] Blurred Sample Report doesn't load.
+- [] Update the domain lollipop scores better
+- [] Trial Results -> Purchase -> Account creation -> Post Payment Screen?
 
 
 ## Features
