@@ -41,6 +41,9 @@ import BillingSection from "@/components/settings/BillingSection";
 import { MFASettings } from "@/components/settings/MFASettings";
 import { PasskeySettings } from "@/components/settings/PasskeySettings";
 import NotificationPreferences from "@/components/settings/NotificationPreferences";
+import { EmailChangeForm } from "@/components/settings/EmailChangeForm";
+import { AvatarUpload } from "@/components/settings/AvatarUpload";
+import { DeleteAccountDialog } from "@/components/settings/DeleteAccountDialog";
 import { useOnboarding } from "@/lib/contexts/OnboardingContext";
 
 interface UserSettings {
@@ -65,6 +68,10 @@ const SettingsPane: React.FC = () => {
   const { startTour } = useOnboarding();
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null | undefined>(
+    userData?.avatarUrl
+  );
 
   // Check for billing tab in URL params and scroll to upgrade section
   useEffect(() => {
@@ -509,6 +516,16 @@ const SettingsPane: React.FC = () => {
             </CardContent>
           </Card>
 
+          {/* Avatar Upload */}
+          <AvatarUpload
+            currentAvatarUrl={avatarUrl}
+            userName={userData?.name}
+            onAvatarChanged={setAvatarUrl}
+          />
+
+          {/* Email Change */}
+          <EmailChangeForm currentEmail={userData?.email || ""} />
+
           {/* Change Password */}
           <Card className="border-border bg-card">
             <CardHeader className="pb-3">
@@ -760,6 +777,43 @@ const SettingsPane: React.FC = () => {
               </Button>
             </CardContent>
           </Card>
+
+          {/* Delete Account */}
+          <Card className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <Trash2 className="h-4 w-4 text-red-600" />
+                <CardTitle className="text-sm text-red-600">
+                  Delete Account
+                </CardTitle>
+              </div>
+              <CardDescription className="text-xs">
+                Permanently delete your account and all associated data
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-red-700 dark:text-red-300 mb-4">
+                This action cannot be undone. All your assessments, results, and
+                personal information will be permanently deleted.
+              </p>
+              <Button
+                variant="destructive"
+                onClick={() => setDeleteDialogOpen(true)}
+                size="sm"
+                className="w-full"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete My Account
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Delete Account Dialog */}
+          <DeleteAccountDialog
+            open={deleteDialogOpen}
+            onOpenChange={setDeleteDialogOpen}
+            userEmail={userData?.email || ""}
+          />
         </TabsContent>
 
         {/* Security Tab */}

@@ -16,6 +16,7 @@ $1 per 10k emails (SES)
 
 - useworkflow.dev for stuff like emails?
   [ConnectOnboarding] ❌ Error: [Error: Your platform needs approval for accounts to have requested the `transfers` capability without the `card_payments` capability. If you would like to request transfers without card_payments, please contact us via https://support.stripe.com/contact.]
+  - [] Add Sentry error reporting
 
 ## Bugs Track
 
@@ -46,15 +47,10 @@ $1 per 10k emails (SES)
 - [] Maybe sure Stripe Connect is setup for Afiliate.
 - [] / _Dashboard_ route should render components as tabs/pages, so we avoid additional unlinked routes
 - [] Don't allow users to upgrade their account if they are already on the account type.
-- [] Update Billing in Profile to reflect actual account status.
-- [] Users purchasing/upgrade on dashboard should redirect to dash.
+
 - [] Make sure each account feature set is implemented
 - - i.e Multi-child profiles for Family lol
 - [] Redesign look of trial assessment, email capture, etc
-- [] pSEO has redundant code/folders
-- [] SEO/OpenGraph/pSEO/Metadata implementation
-- [] Have pSEO script generate sitemap automatically.
-- [] AI Recommendation read out could be prettier (use custom components?)
 - [] Verify Convo Assessment Flow (A->Results Page->Generate AI Report?)
 - [] Add trial taking, full assessment taking as a ChatGPT App ( Refer to this repo as a guide. The API needs to be setup to provide the trial questions and full assessment questions and assessment taking https://chatgpt.com/c/68e861c5-9f8c-8320-9d58-94114bc55ab8)
 - - chatgpt app example https://vercel.com/templates/next.js/chatgpt-app-with-next-js

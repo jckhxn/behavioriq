@@ -253,7 +253,7 @@ export function trackReferral(params: {
  * This function helps ensure GA4 is properly initialized
  */
 export function initializeGA4(measurementId?: string) {
-  const id = measurementId || process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID;
+  const id = measurementId || process.env.NEXT_PUBLIC_GA4_ID || process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID;
 
   if (!id) {
     console.warn("GA4 measurement ID not configured");

@@ -125,6 +125,16 @@ model User {
   onboardingStep                                   Int                         @default(0)
   onboardingSkipped                                Boolean                     @default(false)
   stripeCustomerId                                 String?                     @unique @db.VarChar
+  // Profile enhancements
+  avatarUrl                                        String?                     // User profile picture URL
+  emailVerified                                    Boolean                     @default(false)
+  emailVerificationToken                           String?                     @unique
+  emailVerificationTokenExpiresAt                  DateTime?
+  pendingEmail                                     String?                     // For email change flow
+  // Account status
+  isDeactivated                                    Boolean                     @default(false)
+  deactivatedAt                                    DateTime?
+  deletionRequestedAt                              DateTime?                   // Soft delete tracking
   generatedAIReports                               AIReport[]
   createdAssessmentVersions                        AssessmentTemplateVersion[] @relation("AssessmentVersionsCreated")
   createdAssessmentTemplates                       AssessmentTemplate[]        @relation("AssessmentTemplatesCreated")
