@@ -1,7 +1,7 @@
 /**
  * Compact Lollipop Card Component
- * Single domain display with enhanced visual design
- * Combines mini bar chart with reference line indicators
+ * T-Score based vertical lollipop chart (20-80 scale)
+ * Shows individual score vs screener and diagnostic thresholds
  */
 
 'use client';
@@ -20,21 +20,40 @@ export function CompactLollipopCard({
   size = 'md',
   showLabels = true,
 }: CompactLollipopCardProps) {
-  const maxScore = 100;
-  const barHeight = size === 'sm' ? 100 : size === 'lg' ? 160 : 140;
-  const barWidth = size === 'sm' ? 20 : size === 'lg' ? 32 : 24;
-  const containerWidth = size === 'sm' ? 60 : size === 'lg' ? 100 : 80;
+  // T-Score scale: 20-80
+  const MIN_T_SCORE = 20;
+  const MAX_T_SCORE = 80;
+  const T_SCORE_RANGE = MAX_T_SCORE - MIN_T_SCORE; // 60 points
 
-  // Calculate proportions from bottom
-  const scorePercent = (domain.score / maxScore) * 100;
-  const screenerPercent = (domain.screener / maxScore) * 100;
-  const diagnosticPercent = (domain.diagnostic / maxScore) * 100;
+  const barHeight = size === 'sm' ? 140 : size === 'lg' ? 200 : 180;
+  const barWidth = size === 'sm' ? 20 : size === 'lg' ? 32 : 28;
+  const containerWidth = size === 'sm' ? 70 : size === 'lg' ? 110 : 90;
 
-  // Color based on score
-  const getScoreColor = (score: number) => {
-    if (score >= domain.diagnostic) return 'from-red-600 to-red-500';
-    if (score >= domain.screener) return 'from-amber-600 to-amber-500';
-    return 'from-blue-600 to-blue-500';
+  // Convert scores to T-Score scale (domain data is on 0-100, convert to 20-80 T-score)
+  const convertToTScore = (score: number): number => {
+    // Assuming domain scores are on 0-100 scale, map to 20-80 T-score
+    // 0 -> 20, 100 -> 80
+    return MIN_T_SCORE + (score / 100) * T_SCORE_RANGE;
+  };
+
+  const tScore = convertToTScore(domain.score);
+  const screenerTScore = convertToTScore(domain.screener);
+  const diagnosticTScore = convertToTScore(domain.diagnostic);
+
+  // Calculate percentage positions from bottom (0% = T20, 100% = T80)
+  const getPercentFromBottom = (tScore: number): number => {
+    return ((tScore - MIN_T_SCORE) / T_SCORE_RANGE) * 100;
+  };
+
+  const scorePercent = getPercentFromBottom(tScore);
+  const screenerPercent = getPercentFromBottom(screenerTScore);
+  const diagnosticPercent = getPercentFromBottom(diagnosticTScore);
+
+  // Color based on T-score position relative to thresholds
+  const getScoreColor = (tScore: number) => {
+    if (tScore >= diagnosticTScore) return 'bg-red-500';
+    if (tScore >= screenerTScore) return 'bg-amber-500';
+    return 'bg-blue-500';
   };
 
   const sizeClasses = {
@@ -49,56 +68,27 @@ export function CompactLollipopCard({
     lg: 'text-base',
   };
 
+  // T-Score axis marks (every 10 points: 20, 30, 40, 50, 60, 70, 80)
+  const tScoreMarks = [20, 30, 40, 50, 60, 70, 80];
+
   return (
     <div className={`flex flex-col items-center ${sizeClasses[size]}`}>
-      {/* Score display */}
-      <div className="text-center">
-        <p className={`font-bold text-foreground ${textSizes[size]}`}>
-          {domain.score}
-        </p>
-        <p className="text-[10px] text-muted-foreground">/100</p>
-      </div>
-
-      {/* Main chart container */}
-      <div className="relative flex justify-center" style={{ width: `${containerWidth}px` }}>
-        {/* Scale background with grid lines */}
+      {/* Main chart container with axis */}
+      <div className="relative flex gap-2" style={{ height: `${barHeight}px` }}>
+        {/* Y-Axis labels (T-Score marks) */}
         <div
-          className="absolute left-1/2 -translate-x-1/2 flex flex-col justify-between opacity-5 pointer-events-none"
-          style={{ height: `${barHeight}px`, width: '100%' }}
+          className="relative flex flex-col justify-between items-end pr-2"
+          style={{ height: `${barHeight}px`, width: '40px' }}
         >
-          <div className="h-px bg-slate-400 w-full" />
-          <div className="h-px bg-slate-400 w-full" />
-          <div className="h-px bg-slate-400 w-full" />
-          <div className="h-px bg-slate-400 w-full" />
-          <div className="h-px bg-slate-400 w-full" />
-        </div>
-
-        {/* Diagnostic reference line - thicker, more visible */}
-        <div
-          className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 pointer-events-none"
-          style={{
-            bottom: `${diagnosticPercent}%`,
-            width: `${containerWidth * 0.9}px`,
-          }}
-        >
-          <div className="h-0.5 flex-1 bg-red-500 opacity-60" />
-          <span className="text-[10px] text-red-600 dark:text-red-400 font-bold whitespace-nowrap">
-            ◉ {domain.diagnostic}
-          </span>
-        </div>
-
-        {/* Screener cutoff line - thicker, more visible */}
-        <div
-          className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 pointer-events-none"
-          style={{
-            bottom: `${screenerPercent}%`,
-            width: `${containerWidth * 0.9}px`,
-          }}
-        >
-          <div className="h-0.5 flex-1 bg-amber-500 opacity-60" />
-          <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold whitespace-nowrap">
-            ⊙ {domain.screener}
-          </span>
+          {tScoreMarks.reverse().map((tScore) => (
+            <div
+              key={tScore}
+              className="text-[9px] text-muted-foreground font-semibold h-0 flex items-center"
+              style={{ lineHeight: '1' }}
+            >
+              {tScore}
+            </div>
+          ))}
         </div>
 
         {/* Chart content area */}
@@ -106,56 +96,76 @@ export function CompactLollipopCard({
           className="relative flex flex-col items-center justify-end"
           style={{ height: `${barHeight}px`, width: `${barWidth}px` }}
         >
-          {/* Thin stick/stem line */}
+          {/* Grid lines for marked increments (every 10 T-score points) */}
+          {tScoreMarks.map((tScore) => {
+            const percent = getPercentFromBottom(tScore);
+            return (
+              <div
+                key={`grid-${tScore}`}
+                className="absolute left-0 right-0 h-px bg-slate-300 dark:bg-slate-700 opacity-20"
+                style={{ bottom: `${percent}%` }}
+              />
+            );
+          })}
+
+          {/* Diagnostic reference line (DX cutoff) - Pink/Magenta */}
           <div
-            className="absolute bottom-0 left-1/2 -translate-x-1/2 w-px bg-slate-400 opacity-30"
+            className="absolute left-0 right-0 h-1 bg-pink-500 opacity-70 rounded-sm"
+            style={{ bottom: `${diagnosticPercent}%` }}
+          />
+
+          {/* Screener cutoff line - Orange/Tan */}
+          <div
+            className="absolute left-0 right-0 h-1 bg-orange-400 opacity-70 rounded-sm"
+            style={{ bottom: `${screenerPercent}%` }}
+          />
+
+          {/* Thin vertical line (stem of lollipop) */}
+          <div
+            className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0.5 bg-slate-400 opacity-40"
             style={{ height: `${scorePercent}%` }}
           />
 
-          {/* Main bar with gradient - the visual representation */}
+          {/* Bar/stick section */}
           <div
             className={cn(
-              'rounded-t-lg shadow-md transition-all duration-300 hover:shadow-lg hover:scale-110',
-              `bg-gradient-to-t ${getScoreColor(domain.score)}`
+              'absolute bottom-0 left-1/2 -translate-x-1/2 transition-all duration-300',
+              getScoreColor(tScore)
             )}
             style={{
               height: `${scorePercent}%`,
-              width: `100%`,
+              width: `${barWidth}px`,
+              borderRadius: '4px 4px 0 0',
             }}
           />
 
-          {/* Lollipop circle at top */}
+          {/* Lollipop circle (individual score indicator) - Gray */}
           <div
-            className={cn(
-              'rounded-full shadow-lg border-2 border-white dark:border-slate-950 -mt-2 transition-all duration-300 hover:scale-125 hover:-mt-3',
-              domain.score >= domain.diagnostic
-                ? 'bg-red-600 shadow-red-500/60'
-                : domain.score >= domain.screener
-                  ? 'bg-amber-600 shadow-amber-500/60'
-                  : 'bg-blue-600 shadow-blue-500/60'
-            )}
+            className="absolute left-1/2 -translate-x-1/2 rounded-full bg-slate-400 dark:bg-slate-500 shadow-lg border-2 border-white dark:border-slate-950 transition-all duration-300 hover:scale-125 z-10"
             style={{
-              width: `${barWidth + 8}px`,
-              height: `${barWidth + 8}px`,
+              bottom: `${scorePercent}%`,
+              width: `${barWidth + 10}px`,
+              height: `${barWidth + 10}px`,
+              transform: 'translate(-50%, 50%)',
             }}
           />
 
-          {/* Bottom baseline */}
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-px bg-slate-400 opacity-40" />
+          {/* Bottom baseline (T-Score 20) */}
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-500 opacity-50 rounded-sm" />
         </div>
       </div>
 
-      {/* Domain name */}
+      {/* Domain name - displayed below the chart */}
       {showLabels && (
-        <p className={`font-medium text-center text-foreground ${textSizes[size]}`}>
+        <p className={`font-semibold text-center text-foreground mt-2 w-full ${textSizes[size]}`}>
           {domain.name}
         </p>
       )}
 
       {/* Accessibility text */}
       <p className="sr-only">
-        {domain.name}: Individual score {domain.score}; Screener cutoff {domain.screener};
-        Diagnostic reference {domain.diagnostic}
+        {domain.name}: T-Score {tScore.toFixed(1)}; Screener threshold T{screenerTScore.toFixed(1)};
+        Diagnostic threshold T{diagnosticTScore.toFixed(1)}
       </p>
     </div>
   );
