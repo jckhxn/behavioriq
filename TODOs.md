@@ -17,12 +17,10 @@ $1 per 10k emails (SES)
 - useworkflow.dev for stuff like emails?
   [ConnectOnboarding] ❌ Error: [Error: Your platform needs approval for accounts to have requested the `transfers` capability without the `card_payments` capability. If you would like to request transfers without card_payments, please contact us via https://support.stripe.com/contact.]
   - [] Add Sentry error reporting
+    -- https://brightpath-39.sentry.io/onboarding/setup-docs/
+    -- https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
 
 ## Bugs Track
-
-- [] Logging in with MFA requires two tries.
-- [] Use shadcn number input for MFA.
-- [] "Remember Me" on login should remember user next time they visit.
 
 ## Features
 
