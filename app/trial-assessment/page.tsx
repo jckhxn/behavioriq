@@ -1,13 +1,28 @@
-import { TrialAssessment } from "@/components/trial/TrialAssessment";
-import { Suspense } from "react";
-import { LoadingPage } from "@/components/ui/loading";
+import { redirect } from "next/navigation";
 
-export default function TrialAssessmentPage() {
-  return (
-    <div className="min-h-screen bg-background">
-      <Suspense fallback={<LoadingPage text="Loading trial assessment..." />}>
-        <TrialAssessment />
-      </Suspense>
-    </div>
-  );
+/**
+ * Legacy trial-assessment page
+ * Redirects to new nested routes structure (/consent)
+ * Preserves query parameters for UTM tracking and affiliate refs
+ */
+export default function TrialAssessmentRedirect({
+  searchParams,
+}: {
+  searchParams: Record<string, string | string[] | undefined>;
+}) {
+  // Build query string preserving all params
+  const queryString = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(searchParams)) {
+    if (value) {
+      if (Array.isArray(value)) {
+        value.forEach((v) => queryString.append(key, v));
+      } else {
+        queryString.append(key, value);
+      }
+    }
+  }
+
+  const redirectUrl = `/consent${queryString.toString() ? `?${queryString.toString()}` : ""}`;
+  redirect(redirectUrl);
 }
