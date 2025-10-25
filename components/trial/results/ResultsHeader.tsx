@@ -29,7 +29,7 @@ export function ResultsHeader({
         <span className="font-semibold">Screening</span>
       </p>
       <p className="text-xs text-muted-foreground italic">
-        Screening tool, not a diagnosis.
+        Screening tool, not a diagnosis. Teacher-ready PDF available today.
       </p>
     </section>
   );

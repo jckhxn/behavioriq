@@ -3,14 +3,38 @@
  * Displays domain scores as vertical bar charts with inline legend
  */
 
+'use client';
+
+import { useState } from 'react';
 import { type DomainScore } from '@/lib/api/trial';
+import { trackTelemetry } from '@/lib/utils/telemetry';
 
 interface ResultsChartsProps {
   domains: DomainScore[];
   subdomains: DomainScore[];
+  trialId?: string;
+  sessionId?: string;
 }
 
-export function ResultsCharts({ domains, subdomains }: ResultsChartsProps) {
+export function ResultsCharts({
+  domains,
+  subdomains,
+  trialId = '',
+  sessionId = '',
+}: ResultsChartsProps) {
+  const [expandedSubdomains, setExpandedSubdomains] = useState(false);
+
+  const elevatedCount = subdomains.filter(s => s.score >= 70).length;
+
+  const handleExpandSubdomains = () => {
+    setExpandedSubdomains(!expandedSubdomains);
+    trackTelemetry('trial.expand_subdomains', {
+      trialId,
+      sessionId,
+      expanded: !expandedSubdomains,
+    });
+  };
+
   return (
     <section className="mb-8">
       {/* Overall Domains */}
@@ -23,15 +47,24 @@ export function ResultsCharts({ domains, subdomains }: ResultsChartsProps) {
         </div>
       </div>
 
-      {/* Specific Areas */}
-      <div className="mb-4">
-        <h2 className="text-lg font-semibold mb-4">Specific Areas</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Specific Areas - Collapsible */}
+      <details
+        className="mb-4 group"
+        onToggle={handleExpandSubdomains}
+      >
+        <summary className="cursor-pointer">
+          <h2 className="text-lg font-semibold inline">Specific Areas</h2>
+          <span className="text-sm text-muted-foreground ml-2">
+            {elevatedCount > 0 && `${elevatedCount} items elevated • `}
+            tap to expand
+          </span>
+        </summary>
+        <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
           {subdomains.map((subdomain) => (
             <DomainChart key={subdomain.name} domain={subdomain} />
           ))}
         </div>
-      </div>
+      </details>
 
       {/* Inline Legend */}
       <div className="text-xs text-muted-foreground mt-6 pt-4 border-t">

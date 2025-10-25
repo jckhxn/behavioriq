@@ -252,6 +252,8 @@ export default function ResultsPage() {
 
         {/* Section C: Results Charts */}
         <ResultsCharts
+          trialId={trialId}
+          sessionId={data.sessionId}
           domains={data.domains}
           subdomains={data.subdomains}
         />

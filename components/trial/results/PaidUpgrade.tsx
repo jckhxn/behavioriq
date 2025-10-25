@@ -4,7 +4,7 @@
  */
 
 import { Button } from '@/components/ui/button';
-import { Sparkles, CheckCircle } from 'lucide-react';
+import { Sparkles, CheckCircle, Clock } from 'lucide-react';
 
 interface PaidUpgradeProps {
   onBuy: () => void;
@@ -41,6 +41,26 @@ export function PaidUpgrade({
         </ul>
       </div>
 
+      {/* What Happens Next 24h */}
+      <div className="mb-6 p-4 bg-white dark:bg-slate-900 rounded border border-amber-200 dark:border-amber-800">
+        <p className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+          <Clock className="w-4 h-4 text-amber-600" />
+          What you'll get in the next 24 hours
+        </p>
+        <ul className="space-y-2">
+          {[
+            "You'll download a teacher-ready 1-pager.",
+            "You'll send a prewritten email to the counselor.",
+            "You'll have 3 accommodations to request.",
+          ].map((outcome) => (
+            <li key={outcome} className="flex gap-3 text-sm text-foreground">
+              <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+              <span>{outcome}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
       {/* Bonuses */}
       <div className="mb-6 p-4 bg-white dark:bg-slate-900 rounded border border-blue-200 dark:border-blue-800">
         <p className="text-sm font-semibold text-foreground mb-2">
@@ -69,6 +89,13 @@ export function PaidUpgrade({
         </p>
         <p className="text-xs text-muted-foreground italic">
           Typical evaluations: $1,500–$3,000 and 6–12 weeks.
+        </p>
+      </div>
+
+      {/* Risk Math */}
+      <div className="mb-6 p-3 bg-red-50 dark:bg-red-950 rounded border border-red-200 dark:border-red-800">
+        <p className="text-xs text-red-700 dark:text-red-300 font-medium">
+          ⚠️ Waiting 8 weeks = 40 school days without targeted supports.
         </p>
       </div>
 
