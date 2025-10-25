@@ -38,6 +38,7 @@ export default function ResultsPage() {
   const [ctaState, setCtaState] = useState<CtaState>('BUY_PRIMARY');
   const [coupon, setCoupon] = useState<{ code?: string; expiresAt?: string }>({});
   const [idle, setIdle] = useState(false);
+  const [exitIntent, setExitIntent] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [isSubmittingLead, setIsSubmittingLead] = useState(false);
 
@@ -71,6 +72,30 @@ export default function ResultsPage() {
       }
     })();
   }, [trialId]);
+
+  // Exit-intent detection (desktop only)
+  useEffect(() => {
+    if (exitIntent) return; // Only trigger once
+
+    const handleMouseLeave = (e: MouseEvent) => {
+      // Only trigger on desktop (not mobile)
+      if (window.innerWidth < 768) return;
+      
+      // Detect if mouse is leaving from top
+      if (e.clientY <= 0 && e.clientX > 0) {
+        setExitIntent(true);
+        setCtaState('EMAIL_PRIMARY');
+        trackTelemetry('trial.offer_decline', {
+          reason: 'exit_intent',
+          trialId,
+          sessionId: data?.sessionId,
+        });
+      }
+    };
+
+    document.addEventListener('mouseleave', handleMouseLeave);
+    return () => document.removeEventListener('mouseleave', handleMouseLeave);
+  }, [exitIntent, trialId, data?.sessionId]);
 
   // Idle timer: 30 seconds after data loads
   useEffect(() => {
@@ -281,6 +306,8 @@ export default function ResultsPage() {
             couponExpiresAt={coupon.expiresAt}
             isLoading={isSubmittingLead}
             showSuccess={ctaState === 'DOWNLOAD_PRIMARY'}
+            trialId={trialId}
+            sessionId={data.sessionId}
           />
         )}
 

@@ -3,12 +3,13 @@
  * Captures email + marketing consent, shows coupon timer on success
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AlertCircle, Clock } from 'lucide-react';
+import { trackTelemetry } from '@/lib/utils/telemetry';
 
 interface EmailCaptureProps {
   visible: boolean;
@@ -16,6 +17,8 @@ interface EmailCaptureProps {
   couponExpiresAt?: string;
   isLoading?: boolean;
   showSuccess?: boolean;
+  trialId?: string;
+  sessionId?: string;
 }
 
 export function EmailCapture({
@@ -24,10 +27,57 @@ export function EmailCapture({
   couponExpiresAt,
   isLoading = false,
   showSuccess = false,
+  trialId = '',
+  sessionId = '',
 }: EmailCaptureProps) {
   const [email, setEmail] = useState('');
   const [consent, setConsent] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [countdownText, setCountdownText] = useState<string>('');
+
+  // Track when email form first becomes visible
+  useEffect(() => {
+    if (visible && !submitted) {
+      trackTelemetry('trial.countdown_seen', {
+        trialId,
+        sessionId,
+      });
+    }
+  }, [visible, submitted, trialId, sessionId]);
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (!couponExpiresAt || !showSuccess || !submitted) return;
+
+    const updateCountdown = () => {
+      const now = new Date().getTime();
+      const expires = new Date(couponExpiresAt).getTime();
+      const diff = expires - now;
+
+      if (diff <= 0) {
+        setCountdownText('Offer expired');
+        trackTelemetry('trial.countdown_expired', {
+          trialId,
+          sessionId,
+        });
+        return;
+      }
+
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      if (hours > 0) {
+        setCountdownText(`${hours}h ${minutes}m remaining`);
+      } else {
+        setCountdownText(`${minutes}m ${seconds}s remaining`);
+      }
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, [couponExpiresAt, showSuccess, submitted, trialId, sessionId]);
 
   const expiresIn = useMemo(() => {
     if (!couponExpiresAt) return null;
@@ -63,7 +113,7 @@ export function EmailCapture({
                 Your $20 coupon is ready!
               </p>
               <p className="text-xs text-green-700 dark:text-green-200 mt-1">
-                Expires: {expiresIn}
+                ⏱️ {countdownText || 'Calculating...'}
               </p>
             </div>
           </div>
