@@ -267,11 +267,15 @@ export function MFASettings() {
               </Label>
               <Input
                 id="verify-code"
+                type="number"
+                inputMode="numeric"
                 placeholder="000000"
                 value={verifyCode}
                 onChange={(e) =>
                   setVerifyCode(e.target.value.replace(/\D/g, "").slice(0, 6))
                 }
+                min="0"
+                max="999999"
                 maxLength={6}
                 className="h-8 text-center text-lg tracking-widest font-mono"
                 autoFocus

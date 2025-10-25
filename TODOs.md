@@ -22,41 +22,18 @@ $1 per 10k emails (SES)
 
 - [] Logging in with MFA requires two tries.
 - [] Use shadcn number input for MFA.
-- [] Assessment template shows total questions.
-- [] Platform Settings set global assessments should not appear if an assessment isn't active.
-- [] Implement a robust way of backing up database so you don't lose data again lol.
-- [] Other user assessments load for Super-Admin. Assessments Templates need to enforce "must have one domain selected to be active" So users can't start an asssessment that never loads.
-- [] User management tab for SuperAdmin fails to load users.
-- [] Fix Maintenance mode logic.
-- [] Fix pSEO generating grade level stuff thats not needed.
-- [] Cleanup all the damn console.logs
-- [] Clean .env mess
-- [] Make sure updated license logic works
-- [] Upgrade Path needs to dismiss if user has upgraded lol.
-- [] Make sure Cancel/Pause has Hormozi copy and features explainer.
-- [] Assessment Out Of Credits Upsell modal is out of date.
-- [] Super Admin panel doesn't reflect new license types.
-- [] Does sitemap/robots generate using a route or do I need to write the .ts file @ root
-- [] User management should reflect licenses and allow for modifying license.
+- [] "Remember Me" on login should remember user next time they visit.
 
 ## Features
 
-- [] Super Admin adding conversation credits doesn't display any changes (does it add convo credits?)
-- [] Super Admin can change license type, license type reflects (Core,Family, all types)
 - [] Verify Analytics setup on web, integrate IDs on app properly.
-- [] Maybe sure Stripe Connect is setup for Afiliate.
-- [] / _Dashboard_ route should render components as tabs/pages, so we avoid additional unlinked routes
-- [] Don't allow users to upgrade their account if they are already on the account type.
+- [] Make sure Stripe Connect is setup for Afiliate.
 
-- [] Make sure each account feature set is implemented
-- - i.e Multi-child profiles for Family lol
-- [] Redesign look of trial assessment, email capture, etc
-- [] Verify Convo Assessment Flow (A->Results Page->Generate AI Report?)
+- [] Redesign look of trial assessment, email capture,
+- [] Refine AI Prompt for Conversational Assessment
 - [] Add trial taking, full assessment taking as a ChatGPT App ( Refer to this repo as a guide. The API needs to be setup to provide the trial questions and full assessment questions and assessment taking https://chatgpt.com/c/68e861c5-9f8c-8320-9d58-94114bc55ab8)
 - - chatgpt app example https://vercel.com/templates/next.js/chatgpt-app-with-next-js
 - - Vercel guide https://vercel.com/blog/running-next-js-inside-chatgpt-a-deep-dive-into-native-app-integration
-
-- [] Global max limit for both AI reports and AI convos (This supercedes the amount of credits a user has purchased.)
 - [] Districts can configure PDF Branding & Email settings
 - [] Super Admin can set global defaults for PDF Branding Email settings
   - - [PDF Style, https ://v0.app/chat/behavior-assessment-report-hUefj467caB]
@@ -152,6 +129,14 @@ $1 per 10k emails (SES)
 ---
 
 ## 🟢 PRIORITY 3: POST-MVP (After Launch, Based on User Feedback)
+
+### Immediate Post-Phase 6 Work
+
+- [ ] **Refine AI Prompt for Conversational Assessment** (1-2 hours)
+  - Review and enhance prompt quality for domain recommendations
+  - Ensure recommendations are specific and actionable
+  - Test with various assessment profiles
+  - Improve response consistency and clarity
 
 ### User-Requested Features (Build After Validation)
 

@@ -107,7 +107,12 @@ function MFAVerifyContent() {
       }
 
       toast.success("MFA verification successful");
-      router.push(redirectTo);
+      // Refresh to ensure session is established before redirect
+      router.refresh();
+      // Wait a moment for refresh to complete, then redirect
+      setTimeout(() => {
+        router.push(redirectTo);
+      }, 100);
     } catch (err) {
       console.error("MFA verification error:", err);
       setError("Failed to verify MFA code. Please try again.");
@@ -141,7 +146,8 @@ function MFAVerifyContent() {
               <Label htmlFor="code">Verification Code</Label>
               <Input
                 id="code"
-                type="text"
+                type="number"
+                inputMode="numeric"
                 placeholder="000000"
                 value={code}
                 onChange={(e) => {
@@ -150,6 +156,8 @@ function MFAVerifyContent() {
                     setCode(value);
                   }
                 }}
+                min="0"
+                max="999999"
                 maxLength={6}
                 className="text-center text-2xl tracking-widest"
                 autoComplete="off"
