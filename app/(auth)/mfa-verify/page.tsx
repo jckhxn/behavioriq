@@ -50,24 +50,36 @@ function MFAVerifyContent() {
 
   useEffect(() => {
     const checkMFAStatus = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
 
-      if (!user) {
+        if (!user) {
+          router.push("/login");
+          return;
+        }
+
+        // Ensure we have a valid session before proceeding
+        const { data: session } = await supabase.auth.getSession();
+        if (!session.session) {
+          router.push("/login");
+          return;
+        }
+
+        const { data: factors } = await supabase.auth.mfa.listFactors();
+        const totpFactor = factors?.totp?.find((f) => f.status === "verified");
+
+        if (!totpFactor) {
+          router.push(redirectTo);
+          return;
+        }
+
+        setFactorId(totpFactor.id);
+      } catch (error) {
+        console.error("MFA status check error:", error);
         router.push("/login");
-        return;
       }
-
-      const { data: factors } = await supabase.auth.mfa.listFactors();
-      const totpFactor = factors?.totp?.find((f) => f.status === "verified");
-
-      if (!totpFactor) {
-        router.push(redirectTo);
-        return;
-      }
-
-      setFactorId(totpFactor.id);
     };
 
     checkMFAStatus();
@@ -103,6 +115,14 @@ function MFAVerifyContent() {
 
       if (verifyError) {
         setError("Invalid verification code. Please try again.");
+        setIsVerifying(false);
+        return;
+      }
+
+      // Verify the authenticated user is correct
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
+        setError("Session verification failed. Please try again.");
         setIsVerifying(false);
         return;
       }

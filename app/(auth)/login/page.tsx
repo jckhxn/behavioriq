@@ -43,6 +43,15 @@ function LoginForm() {
     try {
       if (typeof window !== "undefined") {
         try {
+          // Clear any existing auth sessions before logging in with a new email
+          // This prevents session mixing when switching between accounts
+          try {
+            window.localStorage.removeItem("sb-auth-token");
+            window.sessionStorage.removeItem("sb-auth-token");
+          } catch {
+            // Ignore storage clear errors
+          }
+
           // Route Supabase auth storage based on the "Remember Me" selection
           if (rememberMe) {
             window.localStorage.setItem(
