@@ -22,8 +22,9 @@ $1 per 10k emails (SES)
 - [] Login hella broken bruh
 - [] Send Email Snapshot isn't implemented.
 - [] Blurred Sample Report doesn't load.
-- [] Update the domain lollipop scores better
+- [x] Update the domain lollipop scores better (FIXED - now shows reference lines with values)
 - [] Adjust Trial -> Dashboard flow.
+- [x] Multiple domains not showing in summary (FIXED - now lists all elevated domains)
 
 ## Features
 
