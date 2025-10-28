@@ -131,12 +131,20 @@ export async function POST(
     );
 
     // Mark assessment as completed when all questions are answered
-    if (isDone && assessment.status === "IN_PROGRESS") {
+    // Always calculate/recalculate scores when done, regardless of status
+    // This ensures trial→full transition creates full scores
+    if (isDone) {
       try {
         console.log(
-          `[answer] Creating scores for assessment ${assessmentId}, domains count: ${assessment.assessmentTemplate.domains?.length || 0}`
+          `[answer] Creating/updating scores for assessment ${assessmentId}, domains count: ${assessment.assessmentTemplate.domains?.length || 0}`
         );
-        // Calculate scores for each domain before marking as complete
+
+        // Delete existing scores to recalculate (ensures accuracy on trial→full transition)
+        await prisma.score.deleteMany({
+          where: { assessmentId },
+        });
+
+        // Calculate scores for each domain
         const scores = [];
         for (const domain of assessment.assessmentTemplate.domains) {
         const domainTemplate = domain.domainTemplate as any;
