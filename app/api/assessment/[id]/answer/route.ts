@@ -126,10 +126,20 @@ export async function POST(
 
     // Mark assessment as completed when all questions are answered
     if (isDone && assessment.status === "IN_PROGRESS") {
-      // Calculate scores for each domain before marking as complete
-      const scores = [];
-      for (const domain of assessment.assessmentTemplate.domains) {
+      try {
+        // Calculate scores for each domain before marking as complete
+        const scores = [];
+        for (const domain of assessment.assessmentTemplate.domains) {
         const domainTemplate = domain.domainTemplate as any;
+
+        // Skip if no domainTemplate or no questions
+        if (!domainTemplate || !domainTemplate.questions) {
+          console.warn(
+            `[answer] Skipping domain without template or questions: ${domain.id}`
+          );
+          continue;
+        }
+
         const questions = domainTemplate.questions as any[];
 
         // Get active questions for this domain
@@ -220,13 +230,27 @@ export async function POST(
         });
       }
 
-      await prisma.assessment.update({
-        where: { id: assessmentId },
-        data: {
-          status: "COMPLETED",
-          completedAt: new Date(),
-        },
-      });
+        await prisma.assessment.update({
+          where: { id: assessmentId },
+          data: {
+            status: "COMPLETED",
+            completedAt: new Date(),
+          },
+        });
+      } catch (scoreError) {
+        console.error(
+          "[answer] Error creating scores, still marking assessment complete:",
+          scoreError
+        );
+        // Still mark assessment as complete even if score creation fails
+        await prisma.assessment.update({
+          where: { id: assessmentId },
+          data: {
+            status: "COMPLETED",
+            completedAt: new Date(),
+          },
+        });
+      }
     }
 
     return NextResponse.json({
