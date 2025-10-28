@@ -169,14 +169,15 @@ export async function POST(
           const totalPossible = domainQuestions.length;
 
           // Calculate risk level based on percentage
+          // Valid RiskLevel enum values: LOW, MODERATE, HIGH, VERY_HIGH
           const percentage = (yesCount / totalPossible) * 100;
-          let riskLevel = "MINIMAL_RISK";
+          let riskLevel = "LOW";
           if (percentage >= 75) {
-            riskLevel = "SEVERE_RISK";
+            riskLevel = "VERY_HIGH";
           } else if (percentage >= 50) {
-            riskLevel = "MODERATE_RISK";
+            riskLevel = "HIGH";
           } else if (percentage >= 25) {
-            riskLevel = "MILD_RISK";
+            riskLevel = "MODERATE";
           }
 
           // Map valid AssessmentDomain enums
