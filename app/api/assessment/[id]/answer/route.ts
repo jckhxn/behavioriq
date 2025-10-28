@@ -35,7 +35,13 @@ export async function POST(
           include: {
             domains: {
               include: {
-                domainTemplate: true,
+                domainTemplate: {
+                  select: {
+                    id: true,
+                    name: true,
+                    questions: true, // Make sure questions are loaded
+                  },
+                },
               },
               orderBy: { order: "asc" },
             },
