@@ -56,83 +56,8 @@ export default function AuthCallbackPage() {
         if (session) {
           console.log("✅ Session established:", session.user.email);
 
-          // Create user in database if they don't exist yet
-          try {
-            // Get password from localStorage (stored during registration)
-            const pendingUserPassword =
-              typeof window !== "undefined"
-                ? localStorage.getItem("pendingUserPassword")
-                : null;
-
-            const createUserResponse = await fetch("/api/auth/create-user", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                id: session.user.id,
-                email: session.user.email,
-                name: session.user.user_metadata?.name || session.user.email,
-                password: pendingUserPassword, // Pass the password to be hashed
-              }),
-            });
-
-            // Clear the stored password after attempting to use it
-            if (typeof window !== "undefined") {
-              localStorage.removeItem("pendingUserPassword");
-            }
-
-            if (createUserResponse.ok) {
-              console.log("✅ User created in database");
-            } else {
-              const errorData = await createUserResponse.json();
-              console.warn(
-                "Failed to create user in database:",
-                createUserResponse.status,
-                errorData
-              );
-              // Non-fatal error - user may already exist
-            }
-          } catch (createUserError) {
-            console.error("Error creating user in database:", createUserError);
-            // Non-fatal error - user may already exist
-          }
-
           // Attribute signup to affiliate if user came from referral link
           await attributeSignupToAffiliate(session.user.id);
-
-          // Check if there's a pending assessment to link
-          const pendingAssessmentId =
-            typeof window !== "undefined"
-              ? localStorage.getItem("pendingAssessmentId")
-              : null;
-          if (pendingAssessmentId) {
-            try {
-              console.log("Linking assessment:", pendingAssessmentId);
-              const linkResponse = await fetch("/api/assessment/link-to-user", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ assessmentId: pendingAssessmentId }),
-              });
-
-              if (linkResponse.ok) {
-                console.log("✅ Assessment linked successfully");
-                // Clear the pending assessmentId from localStorage
-                localStorage.removeItem("pendingAssessmentId");
-              } else {
-                console.warn(
-                  "Assessment linking failed:",
-                  linkResponse.status
-                );
-                // Non-fatal error - user is authenticated, continue
-              }
-            } catch (linkError) {
-              console.error("Error linking assessment:", linkError);
-              // Non-fatal error - user is authenticated, continue
-            }
-          }
 
           // Refresh to sync session to server before navigation
           router.refresh();
@@ -141,12 +66,10 @@ export default function AuthCallbackPage() {
           const type = searchParams.get("type");
           if (type === "recovery" || type === "invite") {
             router.push("/auth/reset-password");
-          } else if (pendingAssessmentId) {
-            // If we had a pending assessment, redirect to it to show results
-            router.push(`/assessment/${pendingAssessmentId}`);
           } else {
-            // Regular login - redirect to dashboard
-            router.push("/dashboard");
+            // For new signups, redirect to set password page
+            // (User just confirmed their email and needs to set a password)
+            router.push("/auth/set-password");
           }
         } else {
           // No session yet, might still be processing
@@ -160,96 +83,16 @@ export default function AuthCallbackPage() {
             if (newSession) {
               subscription.unsubscribe();
 
-              // Create user in database if they don't exist yet
-              const pendingUserPassword =
-                typeof window !== "undefined"
-                  ? localStorage.getItem("pendingUserPassword")
-                  : null;
-
-              fetch("/api/auth/create-user", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  id: newSession.user.id,
-                  email: newSession.user.email,
-                  name:
-                    newSession.user.user_metadata?.name ||
-                    newSession.user.email,
-                  password: pendingUserPassword, // Pass the password to be hashed
-                }),
-              })
-                .then((res) => {
-                  // Clear the stored password after attempting to use it
-                  if (typeof window !== "undefined") {
-                    localStorage.removeItem("pendingUserPassword");
-                  }
-                  if (res.ok) {
-                    console.log("✅ User created in database");
-                  } else {
-                    console.warn(
-                      "Failed to create user in database:",
-                      res.status
-                    );
-                  }
-                })
-                .catch((err) => {
-                  // Clear the stored password even if there was an error
-                  if (typeof window !== "undefined") {
-                    localStorage.removeItem("pendingUserPassword");
-                  }
-                  console.error("Error creating user in database:", err);
-                });
-
               // Attribute signup to affiliate if user came from referral link
               attributeSignupToAffiliate(newSession.user.id).then(async () => {
-                // Check if there's a pending assessment to link
-                const pendingAssessmentId =
-                  typeof window !== "undefined"
-                    ? localStorage.getItem("pendingAssessmentId")
-                    : null;
-                if (pendingAssessmentId) {
-                  try {
-                    console.log("Linking assessment:", pendingAssessmentId);
-                    const linkResponse = await fetch(
-                      "/api/assessment/link-to-user",
-                      {
-                        method: "POST",
-                        headers: {
-                          "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({
-                          assessmentId: pendingAssessmentId,
-                        }),
-                      }
-                    );
-
-                    if (linkResponse.ok) {
-                      console.log("✅ Assessment linked successfully");
-                      // Clear the pending assessmentId from localStorage
-                      localStorage.removeItem("pendingAssessmentId");
-                    } else {
-                      console.warn(
-                        "Assessment linking failed:",
-                        linkResponse.status
-                      );
-                    }
-                  } catch (linkError) {
-                    console.error("Error linking assessment:", linkError);
-                  }
-                }
-
                 // Refresh to sync session to server before navigation
                 router.refresh();
                 const type = searchParams.get("type");
                 if (type === "recovery" || type === "invite") {
                   router.push("/auth/reset-password");
-                } else if (pendingAssessmentId) {
-                  // If we had a pending assessment, redirect to it to show results
-                  router.push(`/assessment/${pendingAssessmentId}`);
                 } else {
-                  router.push("/dashboard");
+                  // For new signups, redirect to set password page
+                  router.push("/auth/set-password");
                 }
               });
             }
