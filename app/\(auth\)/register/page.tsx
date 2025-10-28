@@ -41,24 +41,27 @@ function RegisterForm() {
   useEffect(() => {
     const checkTrialCompletion = () => {
       try {
-        // Check if we have an assessmentId from the results page
+        // Check if we have an assessmentId from the results page (comes from completed assessment)
         const urlAssessmentId = searchParams.get("assessmentId");
         if (urlAssessmentId) {
           setAssessmentId(urlAssessmentId);
+          setHasCompletedTrial(true); // Mark as completed since they came from assessment
+          return;
+        }
+
+        // Check localStorage for trial completion flag from standard trial flow
+        const trialCompleted = localStorage.getItem("trial_completed");
+        if (trialCompleted === "true") {
           setHasCompletedTrial(true);
           return;
         }
 
-        // Check localStorage for trial completion flag
-        const trialCompleted = localStorage.getItem("trial_completed");
-        setHasCompletedTrial(trialCompleted === "true");
-
-        // If not completed and no assessmentId, redirect to trial after a short delay
-        if (trialCompleted !== "true") {
-          setTimeout(() => {
-            router.push("/trial-assessment");
-          }, 3000);
-        }
+        // No trial completed and no assessment - require trial completion
+        // After a short delay, redirect to trial assessment
+        setHasCompletedTrial(false);
+        setTimeout(() => {
+          router.push("/trial-assessment");
+        }, 3000);
       } catch (error) {
         console.error("Error checking trial completion:", error);
         setHasCompletedTrial(false);
