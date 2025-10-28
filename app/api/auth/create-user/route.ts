@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
+import bcrypt from "bcryptjs";
 
 /**
  * POST /api/auth/create-user
  * Creates a user in the database from Supabase Auth credentials
  * Called after email confirmation to sync user to database
+ *
+ * Body: { id, email, name, password }
  */
 export async function POST(request: NextRequest) {
   try {
-    const { id, email, name } = await request.json();
+    const { id, email, name, password } = await request.json();
 
     if (!id || !email) {
       return NextResponse.json(
@@ -31,6 +34,12 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Hash the password if provided
+    let hashedPassword = "supabase-auth-placeholder"; // Default if no password
+    if (password) {
+      hashedPassword = await bcrypt.hash(password, 12);
+    }
+
     // Create new user
     const user = await prisma.user.create({
       data: {
@@ -38,6 +47,7 @@ export async function POST(request: NextRequest) {
         email,
         name: name || email.split("@")[0],
         role: "USER",
+        password: hashedPassword,
       },
     });
 

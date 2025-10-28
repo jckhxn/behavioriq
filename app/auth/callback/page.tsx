@@ -58,6 +58,12 @@ export default function AuthCallbackPage() {
 
           // Create user in database if they don't exist yet
           try {
+            // Get password from localStorage (stored during registration)
+            const pendingUserPassword =
+              typeof window !== "undefined"
+                ? localStorage.getItem("pendingUserPassword")
+                : null;
+
             const createUserResponse = await fetch("/api/auth/create-user", {
               method: "POST",
               headers: {
@@ -67,15 +73,23 @@ export default function AuthCallbackPage() {
                 id: session.user.id,
                 email: session.user.email,
                 name: session.user.user_metadata?.name || session.user.email,
+                password: pendingUserPassword, // Pass the password to be hashed
               }),
             });
+
+            // Clear the stored password after attempting to use it
+            if (typeof window !== "undefined") {
+              localStorage.removeItem("pendingUserPassword");
+            }
 
             if (createUserResponse.ok) {
               console.log("✅ User created in database");
             } else {
+              const errorData = await createUserResponse.json();
               console.warn(
                 "Failed to create user in database:",
-                createUserResponse.status
+                createUserResponse.status,
+                errorData
               );
               // Non-fatal error - user may already exist
             }
@@ -147,6 +161,11 @@ export default function AuthCallbackPage() {
               subscription.unsubscribe();
 
               // Create user in database if they don't exist yet
+              const pendingUserPassword =
+                typeof window !== "undefined"
+                  ? localStorage.getItem("pendingUserPassword")
+                  : null;
+
               fetch("/api/auth/create-user", {
                 method: "POST",
                 headers: {
@@ -158,9 +177,14 @@ export default function AuthCallbackPage() {
                   name:
                     newSession.user.user_metadata?.name ||
                     newSession.user.email,
+                  password: pendingUserPassword, // Pass the password to be hashed
                 }),
               })
                 .then((res) => {
+                  // Clear the stored password after attempting to use it
+                  if (typeof window !== "undefined") {
+                    localStorage.removeItem("pendingUserPassword");
+                  }
                   if (res.ok) {
                     console.log("✅ User created in database");
                   } else {
@@ -171,6 +195,10 @@ export default function AuthCallbackPage() {
                   }
                 })
                 .catch((err) => {
+                  // Clear the stored password even if there was an error
+                  if (typeof window !== "undefined") {
+                    localStorage.removeItem("pendingUserPassword");
+                  }
                   console.error("Error creating user in database:", err);
                 });
 
