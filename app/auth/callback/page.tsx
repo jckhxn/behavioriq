@@ -56,6 +56,34 @@ export default function AuthCallbackPage() {
         if (session) {
           console.log("✅ Session established:", session.user.email);
 
+          // Create user in database if they don't exist yet
+          try {
+            const createUserResponse = await fetch("/api/auth/create-user", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                id: session.user.id,
+                email: session.user.email,
+                name: session.user.user_metadata?.name || session.user.email,
+              }),
+            });
+
+            if (createUserResponse.ok) {
+              console.log("✅ User created in database");
+            } else {
+              console.warn(
+                "Failed to create user in database:",
+                createUserResponse.status
+              );
+              // Non-fatal error - user may already exist
+            }
+          } catch (createUserError) {
+            console.error("Error creating user in database:", createUserError);
+            // Non-fatal error - user may already exist
+          }
+
           // Attribute signup to affiliate if user came from referral link
           await attributeSignupToAffiliate(session.user.id);
 
@@ -117,6 +145,34 @@ export default function AuthCallbackPage() {
             console.log("Auth state changed:", event, newSession?.user?.email);
             if (newSession) {
               subscription.unsubscribe();
+
+              // Create user in database if they don't exist yet
+              fetch("/api/auth/create-user", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  id: newSession.user.id,
+                  email: newSession.user.email,
+                  name:
+                    newSession.user.user_metadata?.name ||
+                    newSession.user.email,
+                }),
+              })
+                .then((res) => {
+                  if (res.ok) {
+                    console.log("✅ User created in database");
+                  } else {
+                    console.warn(
+                      "Failed to create user in database:",
+                      res.status
+                    );
+                  }
+                })
+                .catch((err) => {
+                  console.error("Error creating user in database:", err);
+                });
 
               // Attribute signup to affiliate if user came from referral link
               attributeSignupToAffiliate(newSession.user.id).then(async () => {
