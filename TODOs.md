@@ -16,7 +16,12 @@ $1 per 10k emails (SES)
 
 - [] Trial Results Look.
 - [] Work on Lead Magnet Offer and Core Offer.
+- [] Work on Monthly Offer for subscriber retention
+  - - Progress reports, etc.
+- [] Snapshot Offer Preview
 - [] Trial -> Dashboard Flow.
+- [] Move to react-pdf?
+- [] react-email <Tailwind> render method -> static HTML
 
 # Stashed
 

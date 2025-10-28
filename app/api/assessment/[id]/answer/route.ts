@@ -169,11 +169,39 @@ export async function POST(
             riskLevel = "MILD_RISK";
           }
 
+          // Map valid AssessmentDomain enums
+          const validDomains: { [key: string]: string } = {
+            ANTISOCIAL: "ANTISOCIAL",
+            VIOLENCE: "VIOLENCE",
+            ATTENTION: "ATTENTION",
+            EMOTIONAL: "EMOTIONAL",
+            CONDUCT: "CONDUCT",
+          };
+
+          // Use domain.domain if valid, otherwise map domainName to enum
+          let domainEnum = null;
+          if (domain.domain && validDomains[domain.domain]) {
+            domainEnum = domain.domain;
+          } else if (domainTemplate.name) {
+            // Try to map domainTemplate.name to enum
+            const nameLower = domainTemplate.name.toLowerCase();
+            if (nameLower.includes("emotional")) domainEnum = "EMOTIONAL";
+            else if (nameLower.includes("hyperactivity") || nameLower.includes("impulsivity") || nameLower.includes("attention"))
+              domainEnum = "ATTENTION";
+            else if (nameLower.includes("conduct")) domainEnum = "CONDUCT";
+            else if (nameLower.includes("violence") || nameLower.includes("aggressive"))
+              domainEnum = "VIOLENCE";
+            else if (nameLower.includes("antisocial")) domainEnum = "ANTISOCIAL";
+            else domainEnum = "EMOTIONAL"; // Safe default
+          } else {
+            domainEnum = "EMOTIONAL"; // Safe default
+          }
+
           scores.push({
             assessmentId,
-            domain: domain.domain || "GENERAL",
+            domain: domainEnum,
             domainTemplateId: domainTemplate.id || null,
-            domainName: domainTemplate.name || domain.domain || "Unknown Domain",
+            domainName: domainTemplate.name || "Unknown Domain",
             rawScore,
             totalPossible,
             riskLevel,
