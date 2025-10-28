@@ -26,7 +26,6 @@ function RegisterForm() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [isLinkingAssessment, setIsLinkingAssessment] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [accountCreated, setAccountCreated] = useState(false);
@@ -45,6 +44,8 @@ function RegisterForm() {
         const urlAssessmentId = searchParams.get("assessmentId");
         if (urlAssessmentId) {
           setAssessmentId(urlAssessmentId);
+          // Store assessmentId in localStorage so we can link it after email confirmation
+          localStorage.setItem("pendingAssessmentId", urlAssessmentId);
           setHasCompletedTrial(true); // Mark as completed since they came from assessment
           return;
         }
@@ -70,41 +71,6 @@ function RegisterForm() {
 
     checkTrialCompletion();
   }, [router, searchParams]);
-
-  const linkAssessmentToUser = async () => {
-    if (!assessmentId) return;
-
-    setIsLinkingAssessment(true);
-    try {
-      const response = await fetch("/api/assessment/link-to-user", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ assessmentId }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        console.error("Failed to link assessment:", error);
-        // Non-fatal error - user is still registered
-        toast.warning(
-          "Account created but couldn't link assessment. You can access it from your dashboard."
-        );
-      } else {
-        const data = await response.json();
-        toast.success("Assessment linked to your account!");
-      }
-    } catch (error) {
-      console.error("Error linking assessment:", error);
-      // Non-fatal error - user is still registered
-      toast.warning(
-        "Account created but couldn't link assessment. You can access it from your dashboard."
-      );
-    } finally {
-      setIsLinkingAssessment(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -145,20 +111,11 @@ function RegisterForm() {
       if (error) {
         toast.error(error.message);
       } else {
-        // If we have an assessmentId, link it to the new user
-        if (assessmentId) {
-          await linkAssessmentToUser();
-        }
-
         setAccountCreated(true);
         toast.success("Account created! Check your email to confirm.");
 
-        // If they came from an assessment, redirect them there after confirmation
-        if (assessmentId) {
-          setTimeout(() => {
-            router.push(`/assessment/${assessmentId}`);
-          }, 3000);
-        }
+        // NOTE: Assessment linking will happen after email confirmation
+        // See auth/callback route for the linking logic
       }
     } catch (error: any) {
       toast.error(error.message || "An error occurred. Please try again.");
@@ -238,8 +195,7 @@ function RegisterForm() {
             {assessmentId ? (
               <>
                 <p className="text-sm text-muted-foreground">
-                  After confirming your email, you'll be redirected to view your
-                  assessment results.
+                  After confirming your email, your assessment results will be automatically linked to your account.
                 </p>
               </>
             ) : null}
@@ -274,7 +230,7 @@ function RegisterForm() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                disabled={isLoading || isLinkingAssessment}
+                disabled={isLoading}
               />
             </div>
             <div className="space-y-2">
@@ -286,7 +242,7 @@ function RegisterForm() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                disabled={isLoading || isLinkingAssessment}
+                disabled={isLoading}
               />
             </div>
             <div className="space-y-2">
@@ -298,7 +254,7 @@ function RegisterForm() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  disabled={isLoading || isLinkingAssessment}
+                  disabled={isLoading}
                   placeholder="Min. 8 characters"
                 />
                 <button
@@ -323,7 +279,7 @@ function RegisterForm() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
-                  disabled={isLoading || isLinkingAssessment}
+                  disabled={isLoading}
                   placeholder="Re-enter password"
                 />
                 <button
@@ -340,14 +296,8 @@ function RegisterForm() {
               </div>
             </div>
 
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isLoading || isLinkingAssessment}
-            >
-              {isLoading || isLinkingAssessment
-                ? "Creating account..."
-                : "Create account"}
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Creating account..." : "Create account"}
             </Button>
           </form>
 

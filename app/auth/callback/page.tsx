@@ -59,6 +59,39 @@ export default function AuthCallbackPage() {
           // Attribute signup to affiliate if user came from referral link
           await attributeSignupToAffiliate(session.user.id);
 
+          // Check if there's a pending assessment to link
+          const pendingAssessmentId =
+            typeof window !== "undefined"
+              ? localStorage.getItem("pendingAssessmentId")
+              : null;
+          if (pendingAssessmentId) {
+            try {
+              console.log("Linking assessment:", pendingAssessmentId);
+              const linkResponse = await fetch("/api/assessment/link-to-user", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ assessmentId: pendingAssessmentId }),
+              });
+
+              if (linkResponse.ok) {
+                console.log("✅ Assessment linked successfully");
+                // Clear the pending assessmentId from localStorage
+                localStorage.removeItem("pendingAssessmentId");
+              } else {
+                console.warn(
+                  "Assessment linking failed:",
+                  linkResponse.status
+                );
+                // Non-fatal error - user is authenticated, continue
+              }
+            } catch (linkError) {
+              console.error("Error linking assessment:", linkError);
+              // Non-fatal error - user is authenticated, continue
+            }
+          }
+
           // Refresh to sync session to server before navigation
           router.refresh();
 
@@ -66,6 +99,9 @@ export default function AuthCallbackPage() {
           const type = searchParams.get("type");
           if (type === "recovery" || type === "invite") {
             router.push("/auth/reset-password");
+          } else if (pendingAssessmentId) {
+            // If we had a pending assessment, redirect to it to show results
+            router.push(`/assessment/${pendingAssessmentId}`);
           } else {
             // Regular login - redirect to dashboard
             router.push("/dashboard");
@@ -83,12 +119,51 @@ export default function AuthCallbackPage() {
               subscription.unsubscribe();
 
               // Attribute signup to affiliate if user came from referral link
-              attributeSignupToAffiliate(newSession.user.id).then(() => {
+              attributeSignupToAffiliate(newSession.user.id).then(async () => {
+                // Check if there's a pending assessment to link
+                const pendingAssessmentId =
+                  typeof window !== "undefined"
+                    ? localStorage.getItem("pendingAssessmentId")
+                    : null;
+                if (pendingAssessmentId) {
+                  try {
+                    console.log("Linking assessment:", pendingAssessmentId);
+                    const linkResponse = await fetch(
+                      "/api/assessment/link-to-user",
+                      {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                          assessmentId: pendingAssessmentId,
+                        }),
+                      }
+                    );
+
+                    if (linkResponse.ok) {
+                      console.log("✅ Assessment linked successfully");
+                      // Clear the pending assessmentId from localStorage
+                      localStorage.removeItem("pendingAssessmentId");
+                    } else {
+                      console.warn(
+                        "Assessment linking failed:",
+                        linkResponse.status
+                      );
+                    }
+                  } catch (linkError) {
+                    console.error("Error linking assessment:", linkError);
+                  }
+                }
+
                 // Refresh to sync session to server before navigation
                 router.refresh();
                 const type = searchParams.get("type");
                 if (type === "recovery" || type === "invite") {
                   router.push("/auth/reset-password");
+                } else if (pendingAssessmentId) {
+                  // If we had a pending assessment, redirect to it to show results
+                  router.push(`/assessment/${pendingAssessmentId}`);
                 } else {
                   router.push("/dashboard");
                 }
