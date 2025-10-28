@@ -136,7 +136,7 @@ export default function RootLayout({
               src={`https://www.googletagmanager.com/gtag/js?id=${ga4MeasurementId}`}
               strategy="afterInteractive"
             />
-            <script
+            <Script
               dangerouslySetInnerHTML={{
                 __html: `
                   window.dataLayer = window.dataLayer || [];

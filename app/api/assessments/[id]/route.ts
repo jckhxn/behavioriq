@@ -8,14 +8,28 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await getCurrentUserWithRole();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const { id: assessmentId } = await params;
+    const user = await getCurrentUserWithRole();
 
-    const assessment = await getAssessmentByIdentifier(assessmentId, user.id);
+    // Authorization logic:
+    // - Assessments WITH userId: Private, only accessible to owner
+    // - Assessments WITHOUT userId: Public by direct ID if FULL mode (paid by anonymous)
+    let assessment;
+
+    if (user) {
+      // Authenticated user - use standard lookup with ownership check
+      assessment = await getAssessmentByIdentifier(assessmentId, user.id);
+    } else {
+      // Anonymous user - only allow viewing assessments WITHOUT userId (anonymous paid users)
+      // and only if they're in FULL mode (they paid for it)
+      assessment = await prisma.assessment.findFirst({
+        where: {
+          id: assessmentId,
+          userId: null, // Must be an anonymous assessment
+          mode: "FULL", // Must be paid (FULL mode)
+        },
+      });
+    }
 
     if (!assessment) {
       return NextResponse.json(

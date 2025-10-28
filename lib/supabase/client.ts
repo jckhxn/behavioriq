@@ -56,17 +56,25 @@ export function createClient(options?: CreateBrowserClientOptions) {
         : window.localStorage
       : undefined);
 
+  // Extract project ID from Supabase URL for proper cookie naming
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const projectIdMatch = supabaseUrl.match(/^https:\/\/([a-zA-Z0-9-]+)\.supabase\.co/);
+  const projectId = projectIdMatch ? projectIdMatch[1] : "supabase";
+  const storageKey = `sb-${projectId}-auth-token`;
+
+  const authOptions = {
+    ...options?.auth,
+    storage: resolvedStorage,
+    storageKey: storageKey,
+    flowType: "pkce" as const,
+  };
+
   return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    supabaseUrl,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       ...options,
-      auth: {
-        ...options?.auth,
-        storage: resolvedStorage,
-        storageKey: "sb-auth-token",
-        flowType: "pkce",
-      },
-    }
+      auth: authOptions,
+    } as CreateBrowserClientOptions
   );
 }

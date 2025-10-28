@@ -6,7 +6,8 @@ interface LeadPayload {
   email: string;
   consentMarketing?: boolean;
   sessionId?: string;
-  trialId?: string;
+  assessmentId?: string;  // NEW: assessment ID
+  trialId?: string;       // LEGACY: trial ID
 }
 
 interface LeadResponse {
@@ -21,7 +22,7 @@ function isValidEmail(email: string): boolean {
 
 export async function POST(request: Request) {
   try {
-    const { email, consentMarketing = false, sessionId } = (await request.json()) as LeadPayload;
+    const { email, consentMarketing = false, sessionId, assessmentId, trialId } = (await request.json()) as LeadPayload;
 
     if (!email || !isValidEmail(email)) {
       return NextResponse.json({ error: "A valid email is required" }, { status: 400 });
@@ -60,9 +61,20 @@ export async function POST(request: Request) {
         });
 
     // Send snapshot summary if available
-    const trial = await prisma.assessmentTrial.findFirst({
-      where: { sessionId },
-    });
+    // Try new Assessment flow first, fall back to legacy AssessmentTrial
+    let trial: any = null;
+
+    if (assessmentId) {
+      trial = await prisma.assessment.findUnique({
+        where: { id: assessmentId },
+      });
+    }
+
+    if (!trial) {
+      trial = await prisma.assessmentTrial.findFirst({
+        where: { sessionId },
+      });
+    }
 
     if (trial?.scoreSnapshot && process.env.SES_FROM_EMAIL) {
       const snapshot = trial.scoreSnapshot as any;

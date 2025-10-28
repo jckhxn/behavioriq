@@ -5,7 +5,19 @@ import { getCurrentUser } from "@/lib/supabase/auth-helpers";
 export async function POST(request: NextRequest) {
   try {
     const user = await getCurrentUser();
-    const body = await request.json();
+
+    // Handle empty request body gracefully
+    let body;
+    try {
+      body = await request.json();
+    } catch (parseError) {
+      // If body is empty or invalid JSON, return early
+      return NextResponse.json(
+        { error: "Invalid JSON body" },
+        { status: 400 }
+      );
+    }
+
     const event = body?.event as string | undefined;
     if (!event) {
       return NextResponse.json(

@@ -109,13 +109,21 @@ function LoginForm() {
         // Redirect to MFA verification page
         toast.info("Please verify your two-factor authentication code");
         console.log("[Login] MFA required, redirecting to:", `/mfa-verify?redirect=${encodeURIComponent(from)}`);
+        // Wait a moment for middleware to sync cookies before redirecting
+        await new Promise(resolve => setTimeout(resolve, 300));
         router.refresh();
         router.push(`/mfa-verify?redirect=${encodeURIComponent(from)}`);
       } else {
         toast.success("Signed in successfully");
         console.log("[Login] No MFA, redirecting to:", from);
+        // Wait a moment for middleware to sync cookies before redirecting
+        // This ensures the auth cookie is set before the next page loads
+        await new Promise(resolve => setTimeout(resolve, 300));
         router.refresh();
-        router.push(from);
+        // Ensure we go to dashboard if from parameter is missing or is login page
+        const redirectTo = from && from !== "/login" ? from : "/dashboard";
+        console.log("[Login] Final redirect to:", redirectTo);
+        router.push(redirectTo);
       }
     } catch (error: any) {
       toast.error(error.message || "An error occurred. Please try again.");

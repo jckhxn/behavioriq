@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
       result = await SESEmailService.sendAssessmentReport({
         to: recipientEmail,
         userName:
-          assessmentWithDetails?.user.name || assessment.subjectName || "User",
+          assessmentWithDetails?.user?.name || assessment.subjectName || "User",
         assessmentName: `Assessment for ${assessment.subjectName}`,
         assessmentId: assessment.id,
         pdfBuffer: reportPdf,
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
       // Fallback to legacy EmailService
       result = await EmailService.sendAssessmentReport({
         recipientName:
-          assessmentWithDetails?.user.name || assessment.subjectName || "User",
+          assessmentWithDetails?.user?.name || assessment.subjectName || "User",
         recipientEmail,
         assessmentTitle: `Assessment for ${assessment.subjectName}`,
         riskLevel,

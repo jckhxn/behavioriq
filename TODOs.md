@@ -12,22 +12,51 @@ $1 per 10k emails (SES)
 
 ---
 
+# Pending Implementations.
+
+- [] Trial Results Look.
+- [] Work on Lead Magnet Offer and Core Offer.
+- [] Trial -> Dashboard Flow.
+
 # Stashed
 
 - useworkflow.dev for stuff like emails?
   [ConnectOnboarding] ❌ Error: [Error: Your platform needs approval for accounts to have requested the `transfers` capability without the `card_payments` capability. If you would like to request transfers without card_payments, please contact us via https://support.stripe.com/contact.]
 
+- [] Test Trial - Dashboard Flow.
+- [] Link Stripe checkout info (like email) to autofill account creation?
+
 ## Bugs Track
 
-- [] Login hella broken bruh
+-[] There is a broken user flow where I login to my Super Admin account, enter my MFA, and am returned to the login screen. I then go through the same process but am returned to the dashboard. If I refresh the login screen after the first login attempt, the dashboard appears.
+
+- [][Fingerprint] Error getting device fingerprint: {}
+
+lib/affiliate/fingerprint.ts (30:13) @ getDeviceFingerprint
+
+28 | return null;
+29 | } catch (error) {
+
+> 30 | console.error("[Fingerprint] Error getting device fingerprint:", error);
+
+     |             ^
+
+31 | return null;
+32 | }
+33 | }
+
 - [] Send Email Snapshot isn't implemented.
 - [] Blurred Sample Report doesn't load.
-- [x] Update the domain lollipop scores better (FIXED - now shows reference lines with values)
+- [] Trial page has problem areas vs diagnostic cutoffs then what they scored on the other domains with comparisons. So they get a full report of the trial with the problem areas highlighted.
+  (Highlight problem areas, then give rest of scores with breakdowns.)
 - [] Adjust Trial -> Dashboard flow.
-- [x] Multiple domains not showing in summary (FIXED - now lists all elevated domains)
 
 ## Features
 
+- [] Anayltics tab should pull from GA4/Meta if possible.
+- [] Make sure Email Capture works.
+- [] Explore modern web design for site but keep copy/user flow based on Hormozi landing page framework
+- [] Send Marketing Emails etc from Super Admin?
 - [] Sentry and Analytics (GA4 and Meta pixel for retargeting.)
   - [] Add Sentry error reporting
     -- https://brightpath-39.sentry.io/onboarding/setup-docs/

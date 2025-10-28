@@ -24,6 +24,8 @@ import {
   ExternalLink,
   Bookmark,
   BookmarkCheck,
+  UserPlus,
+  ArrowRight,
 } from "lucide-react";
 import { AssessmentDomain, RiskLevel } from "@prisma/client";
 import {
@@ -61,12 +63,14 @@ interface AssessmentCompletionProps {
   assessmentId: string;
   subjectName: string;
   aiRecommendations?: string;
+  isAnonymous?: boolean;
 }
 
 export function AssessmentCompletion({
   assessmentId,
   subjectName,
   aiRecommendations: initialRecommendations,
+  isAnonymous = false,
 }: AssessmentCompletionProps) {
   const [scores, setScores] = useState<Score[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -803,6 +807,16 @@ export function AssessmentCompletion({
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-4">
+            {isAnonymous && (
+              <Button
+                onClick={() => window.location.href = `/register?assessmentId=${assessmentId}`}
+                className="flex-1 min-w-[200px] bg-green-600 hover:bg-green-700 text-white"
+              >
+                <UserPlus className="h-4 w-4 mr-2" />
+                Create Account & Save Results
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            )}
             <Button
               onClick={downloadPDF}
               disabled={isDownloading}

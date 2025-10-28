@@ -70,7 +70,7 @@ export async function POST(
         totalPossible: score.totalPossible,
         riskLevel: score.riskLevel,
       })),
-      user: assessment.user,
+      user: assessment.user || { name: null, email: "" },
     };
     const pdfBuffer = await generateAssessmentPDF(assessmentData);
 

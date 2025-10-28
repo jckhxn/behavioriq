@@ -16,11 +16,17 @@ export class PaymentService {
    * Uses database transaction for atomicity
    */
   async processCheckout(session: Stripe.Checkout.Session) {
-    const { userId, userEmail, productType, assessmentId } =
+    const { userId, userEmail, productType, assessmentId, source } =
       session.metadata || {};
 
     console.log(`[PaymentService] Processing checkout: ${session.id}`);
     console.log(`[PaymentService] Product type: ${productType}`);
+    console.log(`[PaymentService] Source: ${source}`);
+
+    // Handle trial conversion (upgrade trial assessment to full)
+    if (source === "trial_conversion" && assessmentId) {
+      return this.processTrialConversion(session, assessmentId);
+    }
 
     // Handle enhanced report purchase
     if (productType === "enhanced_report" && assessmentId) {
@@ -47,6 +53,67 @@ export class PaymentService {
 
     // Handle assessment/subscription purchase
     return this.processAssessmentPurchase(session);
+  }
+
+  /**
+   * Process trial conversion (flip trial assessment to full)
+   * Called after successful payment for trial→full upgrade
+   */
+  private async processTrialConversion(
+    session: Stripe.Checkout.Session,
+    assessmentId: string
+  ) {
+    console.log(
+      `[PaymentService] Processing trial conversion for assessment: ${assessmentId}`
+    );
+
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // Get the assessment
+      const assessment = await tx.assessment.findUniqueOrThrow({
+        where: { id: assessmentId },
+      });
+
+      // Verify it's still in TRIAL mode
+      if (assessment.mode !== "TRIAL") {
+        throw new Error(
+          `Assessment ${assessmentId} is not in TRIAL mode (current: ${assessment.mode})`
+        );
+      }
+
+      // Flip the mode to FULL
+      const updatedAssessment = await tx.assessment.update({
+        where: { id: assessmentId },
+        data: {
+          mode: "FULL",
+          paidAt: new Date(),
+        },
+      });
+
+      // Create payment record
+      const payment = await tx.payment.create({
+        data: {
+          userId: assessment.userId,
+          stripePaymentIntentId: session.payment_intent as string,
+          stripeCustomerId: session.customer as string,
+          amount: 9700, // $97.00
+          currency: "usd",
+          status: "SUCCEEDED",
+          planType: "full_assessment",
+          plan: "Full Assessment",
+          metadata: {
+            sessionId: session.id,
+            productType: "full_assessment",
+            assessmentId,
+            source: "trial_conversion",
+          } as any,
+        },
+      });
+
+      console.log(
+        `[PaymentService] ✅ Trial converted to full assessment: ${assessmentId}`
+      );
+      return { assessment: updatedAssessment, payment };
+    });
   }
 
   /**

@@ -23,27 +23,57 @@ export type TrialResults = {
 
 /**
  * Fetch trial results from API
+ * Supports both:
+ * - Old system: /api/trial/results?trialId=... (AssessmentTrial model)
+ * - New system: /api/assessment/[id]/results (Assessment model with mode=TRIAL)
  */
-export async function getResults(trialId: string): Promise<TrialResults> {
-  const res = await fetch(
-    `/api/trial/results?trialId=${encodeURIComponent(trialId)}`,
-    { cache: "no-store" }
-  );
+export async function getResults(id: string): Promise<TrialResults> {
+  // Try new assessment results endpoint first
+  let res = await fetch(`/api/assessment/${encodeURIComponent(id)}/results`, {
+    cache: "no-store",
+  });
+
+  // Fall back to legacy trial results endpoint if new endpoint returns 404
+  if (!res.ok && res.status === 404) {
+    res = await fetch(
+      `/api/trial/results?trialId=${encodeURIComponent(id)}`,
+      { cache: "no-store" }
+    );
+  }
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
     throw new Error(error.error || "Failed to load results");
   }
 
-  return res.json();
+  const data = await res.json();
+
+  // Transform new format to old format if needed
+  if (data.id && data.mode) {
+    // New assessment format - transform to TrialResults
+    return {
+      childLabel: data.childLabel || "Child",
+      age: 0,
+      completedAt: data.completedAt,
+      anonymous: data.anonymous,
+      domains: data.domains || [],
+      subdomains: [],
+      flags: data.flags || [],
+      sessionId: data.sessionId || "",
+    };
+  }
+
+  return data;
 }
 
 /**
  * Create Stripe checkout session for trial conversion
+ * Supports both assessmentId (new flow) and trialId (legacy flow)
  */
 export async function createCheckout(input: {
   product: "full_assessment";
-  trialId: string;
+  assessmentId?: string;  // NEW: assessment ID
+  trialId?: string;       // LEGACY: trial ID
   sessionId: string;
   couponCode?: string;
 }): Promise<{ checkoutUrl: string }> {
@@ -63,11 +93,13 @@ export async function createCheckout(input: {
 
 /**
  * Submit email lead and get coupon code
+ * Supports both assessmentId (new flow) and trialId (legacy flow)
  */
 export async function submitLead(input: {
   email: string;
   consentMarketing: boolean;
-  trialId: string;
+  assessmentId?: string;  // NEW: assessment ID
+  trialId?: string;       // LEGACY: trial ID
   sessionId: string;
 }): Promise<{
   leadId: string;
@@ -90,9 +122,11 @@ export async function submitLead(input: {
 
 /**
  * Download snapshot PDF (watermarked, no recommendations)
+ * Supports both assessmentId (new flow) and trialId (legacy flow)
  */
 export async function downloadSnapshot(input: {
-  trialId: string;
+  assessmentId?: string;  // NEW: assessment ID
+  trialId?: string;       // LEGACY: trial ID
   sessionId: string;
 }): Promise<{ pdfUrl: string }> {
   const res = await fetch("/api/snapshot/pdf", {

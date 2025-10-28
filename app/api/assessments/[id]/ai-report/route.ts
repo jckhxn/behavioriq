@@ -70,6 +70,8 @@ export async function POST(
       select: {
         isConversational: true,
         userId: true,
+        mode: true,
+        aiReportGenerated: true,
       },
     });
 
@@ -77,6 +79,29 @@ export async function POST(
       return NextResponse.json(
         { error: "Assessment not found" },
         { status: 404 }
+      );
+    }
+
+    // Gate AI report generation on FULL mode (requires paid upgrade)
+    if (assessment.mode === "TRIAL") {
+      return NextResponse.json(
+        {
+          error:
+            "AI reports are only available for full assessments. Please complete the trial and upgrade to generate a full report.",
+        },
+        { status: 403 }
+      );
+    }
+
+    // Gate AI report generation on aiReportGenerated flag (prevent re-runs to control costs)
+    if (assessment.aiReportGenerated) {
+      return NextResponse.json(
+        {
+          error:
+            "AI report has already been generated for this assessment. AI reports are generated once per assessment to control costs.",
+          hasExisting: true,
+        },
+        { status: 403 }
       );
     }
 
@@ -174,6 +199,22 @@ export async function POST(
       user.id,
       reportOptions
     );
+
+    // Set aiReportGenerated flag to true (prevent re-runs)
+    try {
+      await prisma.assessment.update({
+        where: { id: assessmentId },
+        data: {
+          aiReportGenerated: true,
+        },
+      });
+    } catch (flagError) {
+      console.error(
+        "[AIReport] Failed to set aiReportGenerated flag:",
+        flagError
+      );
+      // Don't fail the response, just log the error
+    }
 
     const response = NextResponse.json({
       success: true,

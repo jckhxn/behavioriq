@@ -9,27 +9,42 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await getCurrentUserWithRole();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const identifier = (await params).id;
-    const assessmentId = await resolveAssessmentId(identifier, user.id);
-    if (!assessmentId) {
-      return NextResponse.json(
-        { error: "Assessment not found" },
-        { status: 404 }
-      );
-    }
+    const user = await getCurrentUserWithRole();
 
-    const assessment = await prisma.assessment.findFirst({
-      where: {
-        id: assessmentId,
-        userId: user.id,
-      },
-      select: { id: true },
-    });
+    let assessmentId: string | null = null;
+    let assessment;
+
+    if (user) {
+      // Authenticated user - use standard lookup with ownership check
+      assessmentId = await resolveAssessmentId(identifier, user.id);
+      if (!assessmentId) {
+        return NextResponse.json(
+          { error: "Assessment not found" },
+          { status: 404 }
+        );
+      }
+
+      assessment = await prisma.assessment.findFirst({
+        where: {
+          id: assessmentId,
+          userId: user.id,
+        },
+        select: { id: true, mode: true, status: true },
+      });
+    } else {
+      // Anonymous user - only allow viewing scores for assessments WITHOUT userId (anonymous paid users)
+      // and only if they're in FULL mode (they paid for it)
+      assessment = await prisma.assessment.findFirst({
+        where: {
+          id: identifier,
+          userId: null, // Must be an anonymous assessment
+          mode: "FULL", // Must be paid (FULL mode)
+        },
+        select: { id: true, mode: true, status: true },
+      });
+      assessmentId = assessment?.id || null;
+    }
 
     if (!assessment) {
       return NextResponse.json(

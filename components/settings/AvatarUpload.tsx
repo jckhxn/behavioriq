@@ -242,9 +242,8 @@ export function AvatarUpload({
                   type="button"
                   onClick={handleDelete}
                   disabled={loading}
-                  className="w-full"
+                  className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
                   variant="outline"
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
                 >
                   {loading ? (
                     <>

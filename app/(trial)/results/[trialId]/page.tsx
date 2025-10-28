@@ -140,7 +140,8 @@ export default function ResultsPage() {
       setIsCheckingOut(true);
       const response = await createCheckout({
         product: 'full_assessment',
-        trialId,
+        assessmentId: trialId,  // Try assessmentId first (new flow)
+        trialId: trialId,       // Fall back to trialId (legacy)
         sessionId: data.sessionId,
         couponCode: coupon.code,
       });
@@ -181,7 +182,8 @@ export default function ResultsPage() {
       const response = await submitLead({
         email,
         consentMarketing,
-        trialId,
+        assessmentId: trialId,  // Try assessmentId first (new flow)
+        trialId: trialId,       // Fall back to trialId (legacy)
         sessionId: data.sessionId,
       });
 
@@ -218,7 +220,8 @@ export default function ResultsPage() {
 
     try {
       const response = await downloadSnapshot({
-        trialId,
+        assessmentId: trialId,  // Try assessmentId first (new flow)
+        trialId: trialId,       // Fall back to trialId (legacy)
         sessionId: data.sessionId,
       });
 

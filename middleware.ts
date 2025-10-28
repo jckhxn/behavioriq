@@ -116,6 +116,7 @@ export async function middleware(req: NextRequest) {
     req.nextUrl.pathname.startsWith("/payment-success") ||
     req.nextUrl.pathname.startsWith("/share") ||
     req.nextUrl.pathname.startsWith("/auth/") ||
+    req.nextUrl.pathname.startsWith("/assessment/") || // Allow assessment continuation for paid anonymous users
     isPseoPage;
 
   // Declare isCheckoutPage before isAllowedDuringMaintenance
@@ -236,8 +237,25 @@ function getSupabaseAuthCookieName(): string | null {
 }
 
 function isSupabaseAuthenticated(req: NextRequest): boolean {
-  if (!SUPABASE_AUTH_COOKIE_NAME) return false;
-  return req.cookies.has(SUPABASE_AUTH_COOKIE_NAME);
+  if (!SUPABASE_AUTH_COOKIE_NAME) {
+    console.warn('[Middleware] SUPABASE_AUTH_COOKIE_NAME not found');
+    return false;
+  }
+
+  const hasCookie = req.cookies.has(SUPABASE_AUTH_COOKIE_NAME);
+
+  // Debug logging
+  if (!hasCookie) {
+    const allCookies = req.cookies.getAll();
+    const authCookies = allCookies
+      .filter(c => c.name.includes('auth') || c.name.includes('sb-'))
+      .map(c => c.name);
+    if (authCookies.length > 0) {
+      console.warn(`[Middleware] Expected cookie "${SUPABASE_AUTH_COOKIE_NAME}" not found. Available auth cookies:`, authCookies);
+    }
+  }
+
+  return hasCookie;
 }
 
 async function fetchMaintenanceMode(req: NextRequest): Promise<boolean> {

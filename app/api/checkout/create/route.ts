@@ -4,7 +4,8 @@ import { prisma } from "@/lib/db/prisma";
 
 interface CheckoutCreatePayload {
   product: "full_assessment";
-  trialId: string;
+  assessmentId?: string;  // NEW: assessment ID (preferred)
+  trialId?: string;       // LEGACY: trial ID (backwards compat)
   sessionId: string;
   couponCode?: string;
 }
@@ -13,19 +14,22 @@ interface CheckoutCreatePayload {
  * POST /api/checkout/create
  *
  * Creates a Stripe checkout session for trial conversion to full assessment.
+ * Accepts either assessmentId (new flow) or trialId (legacy flow).
  * No authentication required (anonymous trial users can upgrade).
  */
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as CheckoutCreatePayload;
-    const { product, trialId, sessionId, couponCode } = body;
+    const { product, assessmentId, trialId, sessionId, couponCode } = body;
+
+    const id = assessmentId || trialId;
 
     // Validate required fields
-    if (!product || !trialId || !sessionId) {
+    if (!product || !id || !sessionId) {
       return NextResponse.json(
         {
           error:
-            "product, trialId, and sessionId are required",
+            "product, (assessmentId or trialId), and sessionId are required",
         },
         { status: 400 }
       );
@@ -38,17 +42,32 @@ export async function POST(request: Request) {
       );
     }
 
-    // Verify trial exists
-    const trial = await prisma.assessmentTrial.findUnique({
-      where: { id: trialId },
-      include: { session: true },
-    });
+    // Verify assessment/trial exists
+    let isAnonymous = true;
+    if (assessmentId) {
+      const assessment = await prisma.assessment.findUnique({
+        where: { id: assessmentId },
+      });
+      if (!assessment) {
+        return NextResponse.json(
+          { error: "Assessment not found" },
+          { status: 404 }
+        );
+      }
+      isAnonymous = !assessment.userId;
+    } else {
+      const trial = await prisma.assessmentTrial.findUnique({
+        where: { id: trialId! },
+        include: { session: true },
+      });
 
-    if (!trial) {
-      return NextResponse.json(
-        { error: "Trial not found" },
-        { status: 404 }
-      );
+      if (!trial) {
+        return NextResponse.json(
+          { error: "Trial not found" },
+          { status: 404 }
+        );
+      }
+      isAnonymous = trial.session.anonymous;
     }
 
     // Get price ID from environment
@@ -88,19 +107,24 @@ export async function POST(request: Request) {
     const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
     const checkoutSession = await stripe.checkout.sessions.create({
       // No customer email for anonymous trials
-      ...(trial.session.anonymous ? {} : { customer_email: trial.session.id }),
+      ...(isAnonymous ? {} : { customer_email: sessionId }),
       line_items: lineItems,
       ...(discounts.length > 0 && { discounts }),
-      mode: "payment",
-      success_url: `${baseUrl}/payment-success?trialId=${encodeURIComponent(trialId)}&sessionId=${encodeURIComponent(sessionId)}`,
-      cancel_url: `${baseUrl}/results/${trialId}?checkout=cancelled`,
+      mode: "payment" as any,
+      success_url: assessmentId
+        ? `${baseUrl}/assessment/${assessmentId}/continue`
+        : `${baseUrl}/payment-success?trialId=${encodeURIComponent(trialId!)}&sessionId=${encodeURIComponent(sessionId)}`,
+      cancel_url: assessmentId
+        ? `${baseUrl}/results/${assessmentId}?checkout=cancelled`
+        : `${baseUrl}/results/${trialId}?checkout=cancelled`,
       metadata: {
-        trialId,
+        assessmentId: assessmentId,
+        trialId: trialId,
         sessionId,
         source: "trial_conversion",
-        anonymous: trial.session.anonymous.toString(),
+        anonymous: isAnonymous.toString(),
       },
-    });
+    } as any);
 
     if (!checkoutSession.url) {
       console.error("Stripe checkout URL not generated", checkoutSession);

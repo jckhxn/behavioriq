@@ -76,6 +76,7 @@ export function EnhancedLollipopChart({ domains }: EnhancedLollipopChartProps) {
 
   return (
     <ChartContainer config={chartConfig} className="w-full h-full">
+      <div className="w-full">
       <ResponsiveContainer width="100%" height={400}>
         <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 60 }}>
           <defs>
@@ -177,7 +178,7 @@ export function EnhancedLollipopChart({ domains }: EnhancedLollipopChartProps) {
       </ResponsiveContainer>
 
       {/* Legend */}
-      <div className="flex gap-4 justify-center text-xs mt-4">
+      <div className="flex gap-4 justify-center text-xs mt-4 w-full">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'hsl(217, 91%, 60%)' }} />
           <span>Score</span>
@@ -190,6 +191,7 @@ export function EnhancedLollipopChart({ domains }: EnhancedLollipopChartProps) {
           <div className="w-3 h-1 rounded-full" style={{ backgroundColor: 'hsl(0, 84%, 60%)' }} />
           <span>Diagnostic Ref</span>
         </div>
+      </div>
       </div>
     </ChartContainer>
   );

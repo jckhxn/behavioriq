@@ -15,9 +15,13 @@ export interface TrialTemplateMeta {
 }
 
 export async function getTrialTemplate(): Promise<TrialTemplateMeta | null> {
+  // TODO: DEPRECATED - globalTrialAssessmentId field is now deprecated
+  // Trial questions are now marked with isTrial flag on individual questions
+  // within the globalRegularAssessmentId
+
   const platformSettings = await prisma.platformSettings.findFirst({
     include: {
-      globalTrialAssessment: {
+      globalRegularAssessment: {
         include: {
           domains: {
             include: {
@@ -30,32 +34,35 @@ export async function getTrialTemplate(): Promise<TrialTemplateMeta | null> {
     },
   });
 
-  if (!platformSettings?.globalTrialAssessment || platformSettings.trialAssessmentsEnabled === false) {
+  if (!platformSettings?.globalRegularAssessment || platformSettings.trialAssessmentsEnabled === false) {
     return null;
   }
 
-  const trialAssessment = platformSettings.globalTrialAssessment;
-  if (!trialAssessment.isActive) {
+  const assessment = platformSettings.globalRegularAssessment;
+  if (!assessment.isActive) {
     return null;
   }
 
-  const questions = trialAssessment.domains.flatMap((domain: any, domainIndex: number) => {
+  // Filter questions by isTrial flag from the regular assessment
+  const questions = assessment.domains.flatMap((domain: any, domainIndex: number) => {
     const domainQuestions = domain.domainTemplate.questions as any[];
-    return domainQuestions.map((question: any, questionIndex: number) => ({
-      id: question.id,
-      text: question.text,
-      domain: domain.domainTemplate.name,
-      domainSlug: domain.domainTemplate.slug,
-      order: domainIndex * 100 + questionIndex,
-    }));
+    return domainQuestions
+      .filter((q: any) => q.isTrial === true) // ← FILTER FOR TRIAL QUESTIONS ONLY
+      .map((question: any, questionIndex: number) => ({
+        id: question.id,
+        text: question.text,
+        domain: domain.domainTemplate.name,
+        domainSlug: domain.domainTemplate.slug,
+        order: domainIndex * 100 + questionIndex,
+      }));
   });
 
   questions.sort((a, b) => a.order - b.order);
 
   return {
-    assessmentId: trialAssessment.id,
+    assessmentId: assessment.id,
     questions,
-    domains: trialAssessment.domains.map((domain: any) => ({
+    domains: assessment.domains.map((domain: any) => ({
       name: domain.domainTemplate.name,
       slug: domain.domainTemplate.slug,
     })),

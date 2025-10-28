@@ -261,11 +261,14 @@ model DocumentChunk {
 
 model Assessment {
   id                        String                 @id @default(cuid())
-  userId                    String
+  userId                    String?
   subjectName               String
   status                    AssessmentStatus       @default(IN_PROGRESS)
+  mode                      AssessmentMode         @default(TRIAL)
+  sessionId                 String?
   startedAt                 DateTime               @default(now())
   completedAt               DateTime?
+  paidAt                    DateTime?
   currentDomain             AssessmentDomain?
   currentQuestionOrder      Int?
   shortId                   String?                @unique
@@ -273,12 +276,13 @@ model Assessment {
   isConversational          Boolean                @default(false)
   hasEnhancedReport         Boolean                @default(false)
   enhancedReportPurchasedAt DateTime?
+  aiReportGenerated         Boolean                @default(false)
   childResponses            Json?
   enhancedAnalysis          Json?
   childprofileid            String?
   aiReport                  AIReport?
   assessmentTemplate        AssessmentTemplate?    @relation("AssessmentFromTemplate", fields: [assessmentTemplateId], references: [id])
-  user                      User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                      User?                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   childProfile              ChildProfile?          @relation(fields: [childprofileid], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_assessment_childprofile")
   messages                  ChatMessage[]
   conversationalSession     ConversationalSession?
@@ -292,8 +296,13 @@ model Assessment {
   @@index([shortId])
   @@index([assessmentTemplateId])
   @@index([hasEnhancedReport])
+  @@index([mode])
+  @@index([sessionId])
   @@map("assessments")
 }
+
+// AssessmentMode enum must match the database migration
+// DO NOT modify this without updating the migration SQL
 
 model AIReport {
   id                String     @id @default(cuid())
@@ -564,12 +573,14 @@ model Question {
   isGatingQuestion Boolean     @default(false)
   weight           Int         @default(1)
   isActive         Boolean     @default(true)
+  isTrial          Boolean     @default(false)
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
   questionSet      QuestionSet @relation(fields: [questionSetId], references: [id], onDelete: Cascade)
 
   @@unique([questionSetId, order])
   @@index([questionSetId, isActive])
+  @@index([isTrial])
   @@map("questions")
 }
 
@@ -698,7 +709,7 @@ model Subscription {
 
 model Payment {
   id                    String   @id @default(cuid())
-  userId                String
+  userId                String?
   stripePaymentIntentId String   @unique
   stripeCustomerId      String?
   amount                Int
@@ -710,7 +721,7 @@ model Payment {
   metadata              Json?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
-  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                  User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([status])
@@ -1029,6 +1040,11 @@ enum AssessmentStatus {
   IN_PROGRESS
   COMPLETED
   ABANDONED
+}
+
+enum AssessmentMode {
+  TRIAL
+  FULL
 }
 
 enum ChatSessionType {

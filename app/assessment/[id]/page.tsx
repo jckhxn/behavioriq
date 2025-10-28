@@ -31,17 +31,18 @@ export default function AssessmentPage() {
 
   useEffect(() => {
     if (isLoading) return;
-    if (!user) {
-      router.push("/login");
-      return;
-    }
 
+    // Allow both authenticated users and anonymous users to view completed assessments
+    // (Anonymous users can view results after paying for full assessment)
     const fetchAssessment = async () => {
       try {
         const response = await fetch(`/api/assessments/${assessmentId}`);
         if (!response.ok) {
           if (response.status === 404) {
             setError("Assessment not found");
+          } else if (response.status === 401) {
+            // For unauthorized, only redirect if they're not an anonymous paid user
+            setError("You don't have access to this assessment");
           } else {
             setError("Failed to load assessment");
           }
@@ -58,7 +59,7 @@ export default function AssessmentPage() {
     };
 
     fetchAssessment();
-  }, [assessmentId, user, isLoading, router]);
+  }, [assessmentId, isLoading]);
 
   if (isLoading || loading) {
     return (
@@ -142,13 +143,51 @@ export default function AssessmentPage() {
           <AssessmentCompletion
             assessmentId={assessmentId}
             subjectName={assessment.subjectName}
+            isAnonymous={!user}
           />
         </div>
       </div>
     );
   }
 
-  // For regular assessments or in-progress conversational assessments
+  // For completed assessments, show results (no chat interface)
+  if (assessment.status === "COMPLETED") {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 dark:from-background dark:via-background dark:to-muted/20">
+        <div className="container mx-auto px-4 py-8 max-w-6xl">
+          {/* Header */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <Link href="/">
+                <Button variant="ghost" size="sm">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Assessments
+                </Button>
+              </Link>
+            </div>
+
+            <div className="text-center">
+              <h1 className="text-3xl font-bold mb-2">
+                Assessment Results: {assessment.subjectName}
+              </h1>
+              <p className="text-muted-foreground">
+                Completed on {new Date(assessment.completedAt || assessment.startedAt).toLocaleDateString()}
+              </p>
+            </div>
+          </div>
+
+          {/* Results */}
+          <AssessmentCompletion
+            assessmentId={assessmentId}
+            subjectName={assessment.subjectName}
+            isAnonymous={!user}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // For in-progress assessments, show chat interface
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 dark:from-background dark:via-background dark:to-muted/20">
       <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -166,15 +205,9 @@ export default function AssessmentPage() {
                 Assessment Status
               </div>
               <div
-                className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                  assessment.status === "COMPLETED"
-                    ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
-                    : "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
-                }`}
+                className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400`}
               >
-                {assessment.status === "COMPLETED"
-                  ? "Completed"
-                  : "In Progress"}
+                In Progress
               </div>
             </div>
           </div>
@@ -185,12 +218,6 @@ export default function AssessmentPage() {
             </h1>
             <p className="text-muted-foreground">
               Started on {new Date(assessment.startedAt).toLocaleDateString()}
-              {assessment.completedAt && (
-                <>
-                  {" • Completed on "}
-                  {new Date(assessment.completedAt).toLocaleDateString()}
-                </>
-              )}
             </p>
           </div>
         </div>

@@ -72,12 +72,12 @@ export function trackAssessmentStart(params: {
   domain?: string;
   [key: string]: any;
 }) {
-  trackGA4Event("assessment_start", {
+  const eventParams: GA4EventParams = {
     assessment_id: params.assessmentId,
-    child_name: params.childName,
-    domain: params.domain,
-    ...params,
-  });
+  };
+  if (params.childName) eventParams.child_name = params.childName;
+  if (params.domain) eventParams.domain = params.domain;
+  trackGA4Event("assessment_start", eventParams);
 }
 
 /**

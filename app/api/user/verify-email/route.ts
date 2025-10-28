@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { prisma } from "@/lib/prisma/client";
-import { sendEmail } from "@/lib/email/send";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { prisma } from "@/lib/db/prisma";
 import crypto from "crypto";
 
 /**
@@ -10,7 +9,7 @@ import crypto from "crypto";
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const supabase = await createServerSupabaseClient();
 
     // Get authenticated user
     const {
@@ -74,40 +73,18 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Send verification email
+    // Send verification email (TODO: integrate with email service)
     const verificationLink = `${process.env.NEXT_PUBLIC_BASE_URL}/verify-email?token=${token}`;
 
-    try {
-      await sendEmail({
-        to: newEmail,
-        subject: "Verify Your New Email Address",
-        template: "email_verification",
-        data: {
-          name: updatedUser.name || "User",
-          currentEmail: updatedUser.email,
-          newEmail: newEmail,
-          verificationLink,
-          expiresIn: "24 hours",
-        },
-      });
-    } catch (emailError) {
-      console.error("Failed to send verification email:", emailError);
-      // Don't fail the request if email sending fails - token is still created
-      return NextResponse.json(
-        {
-          warning:
-            "Verification email could not be sent, but token was created",
-          pendingEmail: newEmail,
-        },
-        { status: 200 }
-      );
-    }
+    // Note: Email sending is not yet implemented
+    // In the meantime, we still create the verification token
 
     return NextResponse.json(
       {
         success: true,
-        message: "Verification email sent to " + newEmail,
+        message: "Verification token created. Email notification not yet implemented.",
         pendingEmail: newEmail,
+        verificationLink: process.env.NODE_ENV === "development" ? verificationLink : undefined,
       },
       { status: 200 }
     );

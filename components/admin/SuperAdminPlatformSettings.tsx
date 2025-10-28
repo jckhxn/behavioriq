@@ -261,46 +261,20 @@ export function SuperAdminPlatformSettings() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="trial-assessment">
-                    Trial Assessment (Free Users)
-                  </Label>
-                  <Select
-                    value={settings.globalTrialAssessmentId || "none"}
-                    onValueChange={(value) =>
-                      updateSetting(
-                        "globalTrialAssessmentId",
-                        value === "none" ? null : value
-                      )
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select trial assessment..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">
-                        None (Disable trial assessments)
-                      </SelectItem>
-                      {availableAssessments.map((assessment) => (
-                        <SelectItem key={assessment.id} value={assessment.id}>
-                          {assessment.name}{" "}
-                          {assessment.isActive ? "" : "(Inactive)"}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {settings.globalTrialAssessment && (
-                    <p className="text-sm text-muted-foreground">
-                      Current: {settings.globalTrialAssessment.name}
-                    </p>
-                  )}
+              <div className="space-y-4">
+                <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-lg">
+                  <p className="text-xs text-amber-800 dark:text-amber-100">
+                    <strong>Trial Assessment (DEPRECATED):</strong> Trial questions are now configured at the question level within the regular assessment. Use the "Configure Trial" button in Domain Templates to mark which questions appear in the trial. The global trial assessment selector below is deprecated and will be removed in a future version.
+                  </p>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="regular-assessment">
-                    Regular Assessment (Paid Users)
+                    Regular Assessment (Source for Trial & Full)
                   </Label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    This assessment is the source of truth for both trial and full assessments. Questions marked with <code className="bg-muted px-1 rounded text-[10px]">isTrial: true</code> appear in the trial; all questions appear in the full assessment.
+                  </p>
                   <Select
                     value={settings.globalRegularAssessmentId || "none"}
                     onValueChange={(value) =>

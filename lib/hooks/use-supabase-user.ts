@@ -63,6 +63,8 @@ interface UserData {
   name: string;
   role: string;
   createdAt: Date;
+  avatarUrl?: string | null;
+  organizationId?: string | null;
   // Add other fields as needed
 }
 

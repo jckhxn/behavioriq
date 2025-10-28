@@ -2,12 +2,12 @@
 
 import { useEffect } from "react";
 import { initializeGA4 } from "@/lib/analytics/ga4-service";
-import { initializeSentry, setSentryUser } from "@/lib/integrations/sentry-service";
+// import { initializeSentry, setSentryUser } from "@/lib/integrations/sentry-service";
 import { useUserData } from "@/lib/hooks/use-supabase-user";
 
 /**
  * Analytics Initializer Component
- * Initializes GA4 and Sentry on client-side
+ * Initializes GA4 on client-side
  * Runs once per session
  */
 export function AnalyticsInitializer() {
@@ -17,13 +17,12 @@ export function AnalyticsInitializer() {
     // Initialize GA4
     initializeGA4();
 
-    // Initialize Sentry
-    initializeSentry();
-
-    // Set user context in Sentry if logged in
-    if (userData?.id) {
-      setSentryUser(userData.id, userData.email, userData.name);
-    }
+    // NOTE: Sentry integration disabled until @sentry/react is installed
+    // Uncomment below and install @sentry/react to enable error tracking
+    // initializeSentry();
+    // if (userData?.id) {
+    //   setSentryUser(userData.id, userData.email, userData.name);
+    // }
   }, [userData]);
 
   return null;

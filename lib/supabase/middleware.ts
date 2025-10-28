@@ -21,7 +21,7 @@ export async function updateSession(request: NextRequest) {
           supabaseResponse = NextResponse.next({
             request,
           });
-          cookiesToSet.forEach(({ name, value, options }) =>
+          cookiesToSet.forEach(({ name, value, options }: any) =>
             supabaseResponse.cookies.set(name, value, options)
           );
         },
@@ -36,6 +36,10 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  if (user) {
+    console.log(`[Middleware] User authenticated: ${user.email}`);
+  }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is.
   return supabaseResponse;

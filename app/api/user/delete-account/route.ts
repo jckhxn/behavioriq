@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { prisma } from "@/lib/prisma/client";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { prisma } from "@/lib/db/prisma";
 
 /**
  * POST /api/user/delete-account
@@ -8,7 +8,7 @@ import { prisma } from "@/lib/prisma/client";
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const supabase = await createServerSupabaseClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
 
       // Delete child profiles (cascade)
       prisma.childProfile.deleteMany({
-        where: { userId: user.id },
+        where: { userid: user.id },
       }),
 
       // Delete assessments (cascade)
@@ -177,7 +177,7 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const supabase = await createServerSupabaseClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();

@@ -4,45 +4,86 @@ import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import { v4 as uuidv4 } from "uuid";
 
 interface SnapshotPdfPayload {
-  trialId: string;
+  assessmentId?: string;  // NEW: assessment ID
+  trialId?: string;       // LEGACY: trial ID
   sessionId: string;
 }
 
 /**
  * POST /api/snapshot/pdf
  *
- * Generates a watermarked snapshot PDF of trial results.
+ * Generates a watermarked snapshot PDF of trial results (provisional, no AI recommendations).
+ * Supports both assessmentId (new flow) and trialId (legacy flow).
  * The PDF includes only the assessment summary, NOT recommendations.
  * Watermarked with: "SNAPSHOT – NOT A DIAGNOSIS"
  */
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as SnapshotPdfPayload;
-    const { trialId, sessionId } = body;
+    const { assessmentId, trialId, sessionId } = body;
 
-    if (!trialId || !sessionId) {
+    const id = assessmentId || trialId;
+    if (!id || !sessionId) {
       return NextResponse.json(
-        { error: "trialId and sessionId are required" },
+        { error: "(assessmentId or trialId) and sessionId are required" },
         { status: 400 }
       );
     }
 
-    // Fetch trial data
-    const trial = await prisma.assessmentTrial.findUnique({
-      where: { id: trialId },
-      include: { session: true },
-    });
+    // Try to fetch as Assessment (new flow) first, fall back to AssessmentTrial (legacy)
+    let trial: any = null;
+
+    if (assessmentId) {
+      // New flow: fetch from Assessment table
+      const assessment = await prisma.assessment.findUnique({
+        where: { id: assessmentId },
+        include: {
+          responses: {
+            select: { questionId: true, response: true },
+          },
+          assessmentTemplate: {
+            include: {
+              domains: {
+                include: { domainTemplate: true },
+                orderBy: { order: "asc" },
+              },
+            },
+          },
+        },
+      });
+
+      if (assessment && assessment.mode === "TRIAL") {
+        // Convert Assessment to trial format for PDF generation
+        trial = {
+          childFirstName: assessment.subjectName,
+          ageBand: "Unknown",
+          createdAt: assessment.startedAt,
+          scoreSnapshot: JSON.stringify({
+            domains: [], // TODO: Calculate from responses
+            recommendationPreview: null,
+          }),
+        };
+      }
+    }
+
+    // Fall back to legacy AssessmentTrial
+    if (!trial && trialId) {
+      trial = await prisma.assessmentTrial.findUnique({
+        where: { id: trialId },
+        include: { session: true },
+      });
+    }
 
     if (!trial) {
       return NextResponse.json(
-        { error: "Trial not found" },
+        { error: "Trial/Assessment not found" },
         { status: 404 }
       );
     }
 
     if (!trial.scoreSnapshot) {
       return NextResponse.json(
-        { error: "Trial has not been scored" },
+        { error: "Assessment has not been scored" },
         { status: 400 }
       );
     }
@@ -72,7 +113,7 @@ export async function POST(request: Request) {
  */
 async function generateSnapshotPDF(trial: any): Promise<Buffer> {
   const pdfDoc = await PDFDocument.create();
-  const page = pdfDoc.addPage([612, 792]); // 8.5" x 11" (letter)
+  let page = pdfDoc.addPage([612, 792]); // 8.5" x 11" (letter)
   const { width, height } = page.getSize();
 
   const fontSize = 12;
@@ -230,7 +271,7 @@ async function generateSnapshotPDF(trial: any): Promise<Buffer> {
     yPosition -= 30;
   }
 
-  // Watermark
+  // Watermark (rotate parameter uses degrees and needs to be a specific format)
   page.drawText("SNAPSHOT – NOT A DIAGNOSIS", {
     x: width / 2 - 80,
     y: height / 2,
@@ -238,7 +279,7 @@ async function generateSnapshotPDF(trial: any): Promise<Buffer> {
     font: regularFont,
     color: rgb(200, 200, 200),
     opacity: 0.3,
-    rotate: -45,
+    rotate: { angle: 315 } as any, // 315 degrees = -45 degrees counterclockwise
   });
 
   // Footer

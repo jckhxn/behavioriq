@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +23,7 @@ import {
   FileText,
   Eye,
   Download,
+  Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 import AssessmentPreview from "./AssessmentPreview";
@@ -204,6 +206,104 @@ const DomainEditDialog: React.FC<DomainEditDialogProps> = ({
   );
 };
 
+interface DomainTrialEditorProps {
+  isOpen: boolean;
+  domainName: string;
+  questions: any[];
+  onClose: () => void;
+  onSave: () => void;
+  onUpdateQuestion: (index: number, isTrial: boolean) => void;
+  onToggleAll: (isTrial: boolean) => void;
+}
+
+const DomainTrialEditor: React.FC<DomainTrialEditorProps> = ({
+  isOpen,
+  domainName,
+  questions,
+  onClose,
+  onSave,
+  onUpdateQuestion,
+  onToggleAll,
+}) => {
+  const trialCount = questions.filter((q) => q.isTrial === true).length;
+  const allSelected = trialCount === questions.length && questions.length > 0;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Configure Trial Questions: {domainName}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between p-2 bg-accent/50 dark:bg-accent/30 rounded border border-border">
+            <span className="text-sm font-medium">
+              {trialCount} of {questions.length} questions marked for trial
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onToggleAll(true)}
+              >
+                Mark All
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onToggleAll(false)}
+              >
+                Unmark All
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-2 max-h-96 overflow-y-auto border rounded p-3">
+            {questions.map((question, index) => (
+              <div
+                key={index}
+                className={`flex items-start gap-3 p-2 rounded transition-colors ${
+                  question.isTrial
+                    ? "bg-primary/10 dark:bg-primary/20 border border-primary/30 dark:border-primary/50"
+                    : "hover:bg-accent dark:hover:bg-accent/50 border border-transparent"
+                }`}
+              >
+                <Checkbox
+                  id={`trial-question-${index}`}
+                  checked={question.isTrial || false}
+                  onCheckedChange={(checked) =>
+                    onUpdateQuestion(index, !!checked)
+                  }
+                  className="mt-1 shrink-0"
+                />
+                <div className="flex-1 min-w-0">
+                  <Label
+                    htmlFor={`trial-question-${index}`}
+                    className="text-sm font-medium cursor-pointer block"
+                  >
+                    Q{index + 1}. {question.text || question.title || "Untitled"}
+                  </Label>
+                  {question.description && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {question.description}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4">
+            <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button onClick={onSave}>Save Trial Configuration</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 const AssessmentTemplateManager: React.FC = () => {
   const [assessmentTemplates, setAssessmentTemplates] = useState<
     AssessmentTemplate[]
@@ -223,6 +323,11 @@ const AssessmentTemplateManager: React.FC = () => {
   const [editingDomain, setEditingDomain] = useState<DomainTemplate | null>(
     null
   );
+
+  // Trial editor state
+  const [isTrialEditorOpen, setIsTrialEditorOpen] = useState(false);
+  const [trialEditorDomainId, setTrialEditorDomainId] = useState<string | null>(null);
+  const [trialEditorQuestions, setTrialEditorQuestions] = useState<any[]>([]);
 
   // Upload state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -292,6 +397,99 @@ const AssessmentTemplateManager: React.FC = () => {
       }
     } catch (error) {
       console.error("Error fetching platform settings:", error);
+    }
+  };
+
+  // Calculate total questions in an assessment template
+  const getTotalQuestionCount = (template: AssessmentTemplate): number => {
+    return template.domains.reduce((total, { domainTemplate }) => {
+      const questionCount = Array.isArray(domainTemplate.questions)
+        ? domainTemplate.questions.length
+        : 0;
+      return total + questionCount;
+    }, 0);
+  };
+
+  // Trial editor functions
+  const openDomainTrialEditor = (domain: DomainTemplate) => {
+    if (Array.isArray(domain.questions)) {
+      setTrialEditorDomainId(domain.id);
+      setTrialEditorQuestions(
+        domain.questions.map((q) => ({
+          ...q,
+          isTrial: q.isTrial === true,
+        }))
+      );
+      setIsTrialEditorOpen(true);
+    }
+  };
+
+  const updateQuestionTrialStatus = (index: number, isTrial: boolean) => {
+    setTrialEditorQuestions((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], isTrial };
+      return updated;
+    });
+  };
+
+  const toggleAllQuestionsTrialStatus = (isTrial: boolean) => {
+    setTrialEditorQuestions((prev) =>
+      prev.map((q) => ({ ...q, isTrial }))
+    );
+  };
+
+  const getTrialQuestionCount = (questions: any[]): number => {
+    return Array.isArray(questions)
+      ? questions.filter((q) => q.isTrial === true).length
+      : 0;
+  };
+
+  // Calculate total and trial questions for selected domains in form data
+  const getSelectedDomainsStats = (): { totalQuestions: number; trialQuestions: number } => {
+    let totalQuestions = 0;
+    let trialQuestions = 0;
+
+    formData.selectedDomains.forEach((selectedDomain) => {
+      const domain = domainTemplates.find((d) => d.id === selectedDomain.id);
+      if (domain) {
+        const domainTotal = Array.isArray(domain.questions) ? domain.questions.length : 0;
+        const domainTrial = getTrialQuestionCount(domain.questions);
+        totalQuestions += domainTotal;
+        trialQuestions += domainTrial;
+      }
+    });
+
+    return { totalQuestions, trialQuestions };
+  };
+
+  const saveTrialChanges = async () => {
+    if (!trialEditorDomainId || !selectedTemplate) return;
+
+    try {
+      // Update the assessment template with new trial questions
+      const response = await fetch("/api/admin/assessment-templates/trial", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          assessmentId: selectedTemplate.id,
+          domainId: trialEditorDomainId,
+          questions: trialEditorQuestions,
+        }),
+      });
+
+      if (response.ok) {
+        toast.success("Trial configuration updated successfully");
+        setIsTrialEditorOpen(false);
+        setTrialEditorDomainId(null);
+        setTrialEditorQuestions([]);
+        // Refresh the assessment templates to show updated trial status
+        fetchAssessmentTemplates();
+      } else {
+        const error = await response.json();
+        toast.error(error.error || "Failed to update trial configuration");
+      }
+    } catch (error) {
+      toast.error("Error updating trial configuration");
     }
   };
 
@@ -1095,32 +1293,56 @@ const AssessmentTemplateManager: React.FC = () => {
 
                 <div>
                   <p className="text-xs sm:text-sm font-medium mb-1.5 sm:mb-2">
-                    Domains ({template.domains.length}):
+                    {getTotalQuestionCount(template)} total questions ({template.domains.length} domains):
                   </p>
                   <div className="flex flex-wrap gap-1 sm:gap-1.5">
-                    {template.domains.map(({ domainTemplate }) => (
-                      <div
-                        key={domainTemplate.id}
-                        className="flex items-center gap-1"
-                      >
-                        <Badge
-                          variant="outline"
+                    {template.domains.map(({ domainTemplate }) => {
+                      const totalCount = Array.isArray(domainTemplate.questions)
+                        ? domainTemplate.questions.length
+                        : 0;
+                      const trialCount = getTrialQuestionCount(domainTemplate.questions);
+
+                      return (
+                        <div
+                          key={domainTemplate.id}
                           className="flex items-center gap-1"
                         >
-                          {domainTemplate.name}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEditDomain(domainTemplate);
-                            }}
-                            className="ml-1 p-0.5 hover:bg-accent dark:hover:bg-accent/50 rounded transition-colors"
-                            title={`Edit ${domainTemplate.name} domain`}
+                          <Badge
+                            variant="outline"
+                            className="flex items-center gap-1 text-[10px] sm:text-xs"
                           >
-                            <Edit className="h-3 w-3" />
-                          </button>
-                        </Badge>
-                      </div>
-                    ))}
+                            {domainTemplate.name} ({totalCount}
+                            {trialCount > 0 && (
+                              <span className="text-primary font-medium">
+                                /{trialCount}
+                              </span>
+                            )}
+                            )
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedTemplate(template);
+                                openDomainTrialEditor(domainTemplate);
+                              }}
+                              className="ml-1 p-0.5 hover:bg-primary/20 dark:hover:bg-primary/30 rounded transition-colors"
+                              title={`Configure trial questions for ${domainTemplate.name}`}
+                            >
+                              <Zap className="h-2.5 w-2.5" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditDomain(domainTemplate);
+                              }}
+                              className="ml-0.5 p-0.5 hover:bg-accent dark:hover:bg-accent/50 rounded transition-colors"
+                              title={`Edit ${domainTemplate.name} domain`}
+                            >
+                              <Edit className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -1135,6 +1357,19 @@ const AssessmentTemplateManager: React.FC = () => {
           <DialogHeader>
             <DialogTitle>Edit Assessment Template</DialogTitle>
           </DialogHeader>
+
+          {/* Assessment Stats Summary */}
+          {formData.selectedDomains.length > 0 && (
+            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+              <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                {(() => {
+                  const { totalQuestions, trialQuestions } = getSelectedDomainsStats();
+                  return `Assessment Summary: ${totalQuestions} total questions (${trialQuestions} trial)`;
+                })()}
+              </p>
+            </div>
+          )}
+
           <div className="space-y-4 max-h-96 overflow-y-auto">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -1205,50 +1440,74 @@ const AssessmentTemplateManager: React.FC = () => {
             <div>
               <Label>Select Domains *</Label>
               <div className="grid grid-cols-1 gap-2 mt-2 max-h-32 overflow-y-auto">
-                {domainTemplates.map((domain) => (
-                  <div
-                    key={domain.id}
-                    className="flex items-center justify-between p-2 rounded hover:bg-accent dark:hover:bg-accent/50 transition-colors border border-transparent hover:border-border"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`edit-domain-${domain.id}`}
-                        checked={formData.selectedDomains.some(
-                          (d) => d.id === domain.id
-                        )}
-                        onCheckedChange={(checked) =>
-                          handleDomainToggle(domain.id, !!checked)
-                        }
-                      />
-                      <div>
-                        <Label
-                          htmlFor={`edit-domain-${domain.id}`}
-                          className="text-sm font-medium"
-                        >
-                          {domain.name}
-                        </Label>
-                        <p className="text-xs text-muted-foreground">
-                          {Array.isArray(domain.questions)
-                            ? domain.questions.length
-                            : 0}{" "}
-                          questions
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        handleEditDomain(domain);
-                      }}
-                      className="h-8 w-8 p-0"
-                      title={`Edit ${domain.name} questions`}
+                {domainTemplates.map((domain) => {
+                  const trialCount = getTrialQuestionCount(domain.questions);
+                  const totalCount = Array.isArray(domain.questions)
+                    ? domain.questions.length
+                    : 0;
+                  const isSelected = formData.selectedDomains.some(
+                    (d) => d.id === domain.id
+                  );
+
+                  return (
+                    <div
+                      key={domain.id}
+                      className="flex items-center justify-between p-2 rounded hover:bg-accent dark:hover:bg-accent/50 transition-colors border border-transparent hover:border-border"
                     >
-                      <Edit className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ))}
+                      <div className="flex items-center space-x-2 flex-1">
+                        <Checkbox
+                          id={`edit-domain-${domain.id}`}
+                          checked={isSelected}
+                          onCheckedChange={(checked) =>
+                            handleDomainToggle(domain.id, !!checked)
+                          }
+                        />
+                        <div>
+                          <Label
+                            htmlFor={`edit-domain-${domain.id}`}
+                            className="text-sm font-medium"
+                          >
+                            {domain.name}
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            {totalCount} questions
+                            {isSelected && trialCount > 0 && (
+                              <span className="ml-1 text-primary font-medium">
+                                ({trialCount} trial)
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                      {isSelected && (
+                        <div className="flex gap-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openDomainTrialEditor(domain)}
+                            className="h-8 w-8 p-0"
+                            title={`Configure trial questions for ${domain.name}`}
+                          >
+                            <Zap className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              handleEditDomain(domain);
+                            }}
+                            className="h-8 w-8 p-0"
+                            title={`Edit ${domain.name} questions`}
+                          >
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -1271,6 +1530,25 @@ const AssessmentTemplateManager: React.FC = () => {
           template={selectedTemplate}
           isOpen={isPreviewDialogOpen}
           onClose={() => setIsPreviewDialogOpen(false)}
+        />
+      )}
+
+      {/* Domain Trial Editor Dialog */}
+      {trialEditorDomainId && (
+        <DomainTrialEditor
+          isOpen={isTrialEditorOpen}
+          domainName={
+            domainTemplates.find((d) => d.id === trialEditorDomainId)?.name || ""
+          }
+          questions={trialEditorQuestions}
+          onClose={() => {
+            setIsTrialEditorOpen(false);
+            setTrialEditorDomainId(null);
+            setTrialEditorQuestions([]);
+          }}
+          onSave={saveTrialChanges}
+          onUpdateQuestion={updateQuestionTrialStatus}
+          onToggleAll={toggleAllQuestionsTrialStatus}
         />
       )}
 
