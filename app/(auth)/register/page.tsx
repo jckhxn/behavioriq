@@ -26,29 +26,42 @@ function RegisterForm() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isLinkingAssessment, setIsLinkingAssessment] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [accountCreated, setAccountCreated] = useState(false);
   const [hasCompletedTrial, setHasCompletedTrial] = useState<boolean | null>(
     null
   );
+  const [assessmentId, setAssessmentId] = useState<string | null>(null);
 
   const from = searchParams.get("from") || "/dashboard";
 
-  // Check if user has completed trial assessment
+  // Check if user has completed trial assessment OR has assessmentId from results page
   useEffect(() => {
     const checkTrialCompletion = () => {
       try {
-        // Check localStorage for trial completion flag
-        const trialCompleted = localStorage.getItem("trial_completed");
-        setHasCompletedTrial(trialCompleted === "true");
-
-        // If not completed, redirect to trial after a short delay
-        if (trialCompleted !== "true") {
-          setTimeout(() => {
-            router.push("/trial-assessment");
-          }, 3000);
+        // Check if we have an assessmentId from the results page (comes from completed assessment)
+        const urlAssessmentId = searchParams.get("assessmentId");
+        if (urlAssessmentId) {
+          setAssessmentId(urlAssessmentId);
+          setHasCompletedTrial(true); // Mark as completed since they came from assessment
+          return;
         }
+
+        // Check localStorage for trial completion flag from standard trial flow
+        const trialCompleted = localStorage.getItem("trial_completed");
+        if (trialCompleted === "true") {
+          setHasCompletedTrial(true);
+          return;
+        }
+
+        // No trial completed and no assessment - require trial completion
+        // After a short delay, redirect to trial assessment
+        setHasCompletedTrial(false);
+        setTimeout(() => {
+          router.push("/trial-assessment");
+        }, 3000);
       } catch (error) {
         console.error("Error checking trial completion:", error);
         setHasCompletedTrial(false);
@@ -56,7 +69,42 @@ function RegisterForm() {
     };
 
     checkTrialCompletion();
-  }, [router]);
+  }, [router, searchParams]);
+
+  const linkAssessmentToUser = async () => {
+    if (!assessmentId) return;
+
+    setIsLinkingAssessment(true);
+    try {
+      const response = await fetch("/api/assessment/link-to-user", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ assessmentId }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error("Failed to link assessment:", error);
+        // Non-fatal error - user is still registered
+        toast.warning(
+          "Account created but couldn't link assessment. You can access it from your dashboard."
+        );
+      } else {
+        const data = await response.json();
+        toast.success("Assessment linked to your account!");
+      }
+    } catch (error) {
+      console.error("Error linking assessment:", error);
+      // Non-fatal error - user is still registered
+      toast.warning(
+        "Account created but couldn't link assessment. You can access it from your dashboard."
+      );
+    } finally {
+      setIsLinkingAssessment(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,8 +145,20 @@ function RegisterForm() {
       if (error) {
         toast.error(error.message);
       } else {
+        // If we have an assessmentId, link it to the new user
+        if (assessmentId) {
+          await linkAssessmentToUser();
+        }
+
         setAccountCreated(true);
         toast.success("Account created! Check your email to confirm.");
+
+        // If they came from an assessment, redirect them there after confirmation
+        if (assessmentId) {
+          setTimeout(() => {
+            router.push(`/assessment/${assessmentId}`);
+          }, 3000);
+        }
       }
     } catch (error: any) {
       toast.error(error.message || "An error occurred. Please try again.");
@@ -123,7 +183,7 @@ function RegisterForm() {
     );
   }
 
-  // Show message if trial not completed
+  // Show message if trial not completed (and no assessmentId)
   if (hasCompletedTrial === false) {
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
@@ -175,6 +235,14 @@ function RegisterForm() {
               Click the link in the email to confirm your account and start
               using AI Diagnostic.
             </p>
+            {assessmentId ? (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  After confirming your email, you'll be redirected to view your
+                  assessment results.
+                </p>
+              </>
+            ) : null}
             <Button onClick={() => router.push("/login")} className="w-full">
               Return to Login
             </Button>
@@ -190,7 +258,9 @@ function RegisterForm() {
         <CardHeader>
           <CardTitle>Create an Account</CardTitle>
           <CardDescription>
-            Sign up to access AI-powered behavioral assessments
+            {assessmentId
+              ? "Save your assessment results by creating an account"
+              : "Sign up to access AI-powered behavioral assessments"}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -204,7 +274,7 @@ function RegisterForm() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                disabled={isLoading}
+                disabled={isLoading || isLinkingAssessment}
               />
             </div>
             <div className="space-y-2">
@@ -216,7 +286,7 @@ function RegisterForm() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                disabled={isLoading}
+                disabled={isLoading || isLinkingAssessment}
               />
             </div>
             <div className="space-y-2">
@@ -228,7 +298,7 @@ function RegisterForm() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  disabled={isLoading}
+                  disabled={isLoading || isLinkingAssessment}
                   placeholder="Min. 8 characters"
                 />
                 <button
@@ -253,7 +323,7 @@ function RegisterForm() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
-                  disabled={isLoading}
+                  disabled={isLoading || isLinkingAssessment}
                   placeholder="Re-enter password"
                 />
                 <button
@@ -270,8 +340,14 @@ function RegisterForm() {
               </div>
             </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Creating account..." : "Create account"}
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={isLoading || isLinkingAssessment}
+            >
+              {isLoading || isLinkingAssessment
+                ? "Creating account..."
+                : "Create account"}
             </Button>
           </form>
 
@@ -282,15 +358,17 @@ function RegisterForm() {
                 Sign in
               </Link>
             </div>
-            <div>
-              Want to try it first?{" "}
-              <Link
-                href="/trial-assessment"
-                className="text-primary hover:underline"
-              >
-                Take a free trial
-              </Link>
-            </div>
+            {!assessmentId && (
+              <div>
+                Want to try it first?{" "}
+                <Link
+                  href="/trial-assessment"
+                  className="text-primary hover:underline"
+                >
+                  Take a free trial
+                </Link>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

@@ -42,7 +42,7 @@ export async function POST(
           },
         },
         responses: {
-          select: { questionId: true },
+          select: { questionId: true, response: true },
         },
       },
     });
@@ -126,6 +126,72 @@ export async function POST(
 
     // Mark assessment as completed when all questions are answered
     if (isDone && assessment.status === "IN_PROGRESS") {
+      // Calculate scores for each domain before marking as complete
+      const scores = [];
+      for (const domain of assessment.assessmentTemplate.domains) {
+        const domainTemplate = domain.domainTemplate as any;
+        const questions = domainTemplate.questions as any[];
+
+        // Get active questions for this domain
+        let domainQuestions = questions.filter((q: any) => q.active !== false);
+        if (assessment.mode === "TRIAL") {
+          domainQuestions = domainQuestions.filter((q: any) => q.isTrial);
+        }
+
+        // Count yes responses for this domain
+        let yesCount = 0;
+        let answeredInDomain = 0;
+        for (const question of domainQuestions) {
+          const response = assessment.responses.find(
+            (r) => r.questionId === question.id
+          );
+          if (response) {
+            answeredInDomain++;
+            if (response.response === true) {
+              yesCount++;
+            }
+          }
+        }
+
+        // Only create score if there are questions in this domain
+        if (domainQuestions.length > 0) {
+          const rawScore = yesCount;
+          const totalPossible = domainQuestions.length;
+
+          // Calculate risk level based on percentage
+          const percentage = (yesCount / totalPossible) * 100;
+          let riskLevel = "MINIMAL_RISK";
+          if (percentage >= 75) {
+            riskLevel = "SEVERE_RISK";
+          } else if (percentage >= 50) {
+            riskLevel = "MODERATE_RISK";
+          } else if (percentage >= 25) {
+            riskLevel = "MILD_RISK";
+          }
+
+          scores.push({
+            assessmentId,
+            domain: domain.domain || "GENERAL",
+            domainTemplateId: domainTemplate.id || null,
+            domainName: domainTemplate.name || domain.domain || "Unknown Domain",
+            rawScore,
+            totalPossible,
+            riskLevel,
+            confidence: 0.95, // Default confidence
+            questionsAnswered: answeredInDomain,
+            wasTerminatedEarly: false,
+          });
+        }
+      }
+
+      // Create all scores for this assessment
+      if (scores.length > 0) {
+        await prisma.score.createMany({
+          data: scores,
+          skipDuplicates: true,
+        });
+      }
+
       await prisma.assessment.update({
         where: { id: assessmentId },
         data: {

@@ -23,7 +23,7 @@ $1 per 10k emails (SES)
 - useworkflow.dev for stuff like emails?
   [ConnectOnboarding] ❌ Error: [Error: Your platform needs approval for accounts to have requested the `transfers` capability without the `card_payments` capability. If you would like to request transfers without card_payments, please contact us via https://support.stripe.com/contact.]
 
-- [] Test Trial - Dashboard Flow.
+- [] Test Trial - Dashboard Flow
 - [] Link Stripe checkout info (like email) to autofill account creation?
 
 ## Bugs Track
