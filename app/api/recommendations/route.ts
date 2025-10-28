@@ -6,16 +6,14 @@ import { resolveAssessmentId } from "@/lib/utils/assessmentResolver";
 export async function POST(request: NextRequest) {
   console.log("[Recommendations] POST request received");
   try {
+    // Auth is optional - support both authenticated and anonymous users
     const user = await getCurrentUserWithRole();
+    const userId = user?.id;
+
     console.log("[Recommendations] User authenticated:", {
-      userId: user?.id,
+      userId,
       email: user?.email,
     });
-
-    if (!user) {
-      console.error("[Recommendations] Unauthorized - no user found");
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     const requestBody = await request.json();
     console.log("[Recommendations] POST request body:", requestBody);
@@ -34,7 +32,7 @@ export async function POST(request: NextRequest) {
       content,
       category,
       priority,
-      userId: user.id,
+      userId,
     });
 
     if (!assessmentIdentifier || !title || !content) {
@@ -59,13 +57,13 @@ export async function POST(request: NextRequest) {
     );
     const assessmentId = await resolveAssessmentId(
       assessmentIdentifier,
-      user.id
+      userId || undefined
     );
 
     if (!assessmentId) {
       console.error("[Recommendations] Assessment not found:", {
         identifier: assessmentIdentifier,
-        userId: user.id,
+        userId,
       });
       return NextResponse.json(
         {
@@ -81,31 +79,36 @@ export async function POST(request: NextRequest) {
       resolved: assessmentId,
     });
 
-    // Verify the user owns the assessment
+    // Build conditional where clause based on auth status
+    // If authenticated: require ownership (userId must match)
+    // If anonymous: only allow assessments with userId: null AND mode: FULL (paid assessments)
+    const whereClause = userId
+      ? { id: assessmentId, userId }
+      : { id: assessmentId, userId: null, mode: "FULL" };
+
     console.log("[Recommendations] Looking up assessment:", {
       assessmentId,
-      userId: user.id,
+      userId,
+      whereClause,
     });
 
     const assessment = await prisma.assessment.findFirst({
-      where: {
-        id: assessmentId,
-        userId: user.id,
-      },
+      where: whereClause,
     });
 
     console.log("[Recommendations] Assessment lookup result:", {
       assessmentId,
-      userId: user.id,
+      userId,
       found: !!assessment,
       assessmentUserId: assessment?.userId,
+      assessmentMode: assessment?.mode,
     });
 
     if (!assessment) {
       // Check if assessment exists at all
       const anyAssessment = await prisma.assessment.findUnique({
         where: { id: assessmentId },
-        select: { id: true, userId: true },
+        select: { id: true, userId: true, mode: true },
       });
 
       if (!anyAssessment) {
@@ -117,11 +120,12 @@ export async function POST(request: NextRequest) {
           },
           { status: 404 }
         );
-      } else {
+      } else if (userId && anyAssessment.userId !== userId) {
+        // Authenticated user trying to access another user's assessment
         console.error("Assessment access denied:", {
           assessmentId,
           assessmentUserId: anyAssessment.userId,
-          requestUserId: user.id,
+          requestUserId: userId,
         });
         return NextResponse.json(
           {
@@ -130,14 +134,28 @@ export async function POST(request: NextRequest) {
           },
           { status: 403 }
         );
+      } else if (!userId && (anyAssessment.userId || anyAssessment.mode !== "FULL")) {
+        // Anonymous user trying to access authenticated assessment or non-FULL assessment
+        console.error("Assessment access denied for anonymous user:", {
+          assessmentId,
+          assessmentUserId: anyAssessment.userId,
+          assessmentMode: anyAssessment.mode,
+        });
+        return NextResponse.json(
+          {
+            error: "Access denied",
+            details: "Anonymous users can only generate recommendations for paid (FULL) assessments",
+          },
+          { status: 403 }
+        );
       }
     }
 
-    // @ts-ignore - Temporary workaround for Prisma type issue
+    // Create recommendation with optional userId
     const recommendation = await prisma.recommendation.create({
       data: {
         assessmentId,
-        userId: user.id,
+        userId: userId || null, // null for anonymous, user id for authenticated
         title,
         content,
         category: category || null,

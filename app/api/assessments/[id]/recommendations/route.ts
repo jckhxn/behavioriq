@@ -12,28 +12,29 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Auth is optional - support both authenticated and anonymous users
     const user = await getCurrentUserWithRole();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const userId = user?.id;
 
-    // Check rate limits before proceeding
-    const rateLimitResult = checkAIRateLimit(user.id);
-    if (!rateLimitResult.allowed) {
-      return NextResponse.json(
-        {
-          error: "Rate limit exceeded",
-          reason: rateLimitResult.reason,
-          resetTime: rateLimitResult.resetTime,
-        },
-        { status: 429 }
-      );
+    // Check rate limits if user is authenticated
+    if (userId) {
+      const rateLimitResult = checkAIRateLimit(userId);
+      if (!rateLimitResult.allowed) {
+        return NextResponse.json(
+          {
+            error: "Rate limit exceeded",
+            reason: rateLimitResult.reason,
+            resetTime: rateLimitResult.resetTime,
+          },
+          { status: 429 }
+        );
+      }
     }
 
     const identifier = (await params).id;
 
     // Resolve shortId to UUID if needed
-    const assessmentId = await resolveAssessmentId(identifier, user.id);
+    const assessmentId = await resolveAssessmentId(identifier, userId || undefined);
     if (!assessmentId) {
       return NextResponse.json(
         { error: "Assessment not found" },
@@ -41,12 +42,16 @@ export async function POST(
       );
     }
 
+    // Build conditional where clause based on auth status
+    // If authenticated: require ownership (userId must match)
+    // If anonymous: only allow assessments with userId: null AND mode: FULL (paid assessments)
+    const whereClause = userId
+      ? { id: assessmentId, userId }
+      : { id: assessmentId, userId: null, mode: "FULL" };
+
     // Fetch assessment with scores and domain template data
     const assessment = await prisma.assessment.findUnique({
-      where: {
-        id: assessmentId,
-        userId: user.id,
-      },
+      where: whereClause,
       include: {
         scores: {
           include: {
@@ -125,7 +130,7 @@ export async function POST(
 
     // Generate streaming AI recommendations based on scores (first time only)
     console.log("No existing AI recommendations found, generating new ones");
-    const result = await streamRecommendations(assessment, user.id);
+    const result = await streamRecommendations(assessment, userId);
 
     // If it's already a Response (mock), return it directly
     if (result instanceof Response) {
@@ -143,7 +148,7 @@ export async function POST(
   }
 }
 
-async function streamRecommendations(assessment: any, userId: string) {
+async function streamRecommendations(assessment: any, userId: string | undefined) {
   console.log("streamRecommendations called");
   const scores = assessment.scores;
 
@@ -222,8 +227,10 @@ async function streamRecommendations(assessment: any, userId: string) {
   // Real AI streaming logic for when mock is disabled
   console.log("Using real AI streaming with OpenAI...");
 
-  // Record the AI call for rate limiting and cost tracking
-  recordAICall(userId);
+  // Record the AI call for rate limiting and cost tracking (only for authenticated users)
+  if (userId) {
+    recordAICall(userId);
+  }
 
   // Format domain analysis with names and resources
   const domainAnalysis = scoreSummary
