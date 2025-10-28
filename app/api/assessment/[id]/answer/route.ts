@@ -127,6 +127,9 @@ export async function POST(
     // Mark assessment as completed when all questions are answered
     if (isDone && assessment.status === "IN_PROGRESS") {
       try {
+        console.log(
+          `[answer] Creating scores for assessment ${assessmentId}, domains count: ${assessment.assessmentTemplate.domains?.length || 0}`
+        );
         // Calculate scores for each domain before marking as complete
         const scores = [];
         for (const domain of assessment.assessmentTemplate.domains) {
@@ -223,13 +226,18 @@ export async function POST(
         }
       }
 
-      // Create all scores for this assessment
-      if (scores.length > 0) {
-        await prisma.score.createMany({
-          data: scores,
-          skipDuplicates: true,
-        });
-      }
+        // Create all scores for this assessment
+        console.log(`[answer] Scores to create: ${scores.length}`);
+        if (scores.length > 0) {
+          console.log("[answer] Creating scores:", JSON.stringify(scores, null, 2));
+          await prisma.score.createMany({
+            data: scores,
+            skipDuplicates: true,
+          });
+          console.log(`[answer] Successfully created ${scores.length} scores`);
+        } else {
+          console.log("[answer] No scores to create - domains may not have questions");
+        }
 
         await prisma.assessment.update({
           where: { id: assessmentId },
