@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { SystemStats } from "./SystemStats";
+import { AdminAnalytics } from "./AdminAnalytics";
 import { AssessmentBuilder } from "./AssessmentBuilder";
 import { UserManagementTab } from "./UserManagementTab";
 import { SystemSettings } from "./SystemSettings";
@@ -73,7 +73,7 @@ export function AdminDashboard() {
         </TabsContent>
 
         <TabsContent value="analytics">
-          <SystemStats />
+          <AdminAnalytics />
         </TabsContent>
       </Tabs>
     </div>
