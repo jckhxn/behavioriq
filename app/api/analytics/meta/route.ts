@@ -144,8 +144,9 @@ async function fetchMetaAnalytics(
     );
 
     if (!insightsResponse.ok) {
-      console.error(`[Meta] API returned status ${insightsResponse.status}`);
-      throw new Error(`Meta API error: ${insightsResponse.statusText}`);
+      const errorData = await insightsResponse.json();
+      console.error(`[Meta] API returned status ${insightsResponse.status}:`, errorData);
+      throw new Error(`Meta API error: ${insightsResponse.statusText} - ${errorData.error?.message || JSON.stringify(errorData)}`);
     }
 
     const insightsData = await insightsResponse.json();

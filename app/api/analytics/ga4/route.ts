@@ -71,7 +71,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Get access token from Google
+    console.log("[GA4 Analytics] Attempting to get access token with email:", email);
     const accessToken = await getGoogleAccessToken(email, privateKey);
+    console.log("[GA4 Analytics] Successfully obtained access token");
 
     // Calculate date range
     const endDate = new Date();
@@ -166,11 +168,18 @@ async function getGoogleAccessToken(
       }).toString(),
     });
 
-    const data = (await response.json()) as { access_token: string };
-    return data.access_token;
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("[GA4] Failed to get access token:", data);
+      throw new Error(`Failed to get Google access token: ${data.error} - ${data.error_description}`);
+    }
+
+    const accessData = data as { access_token: string };
+    return accessData.access_token;
   } catch (error) {
     console.error("[GA4] Error getting access token:", error);
-    throw new Error("Failed to get Google access token");
+    throw error;
   }
 }
 
