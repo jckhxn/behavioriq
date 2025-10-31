@@ -1,7 +1,24 @@
 /**
  * Sentry Error Tracking Service
  * Integrates Sentry for error monitoring and tracking
+ *
+ * NOTE: Sentry package (@sentry/react) is optional.
+ * This service gracefully handles missing Sentry installation.
  */
+
+type AnySentry = any;
+let sentryModule: AnySentry | null = null;
+
+// Try to load Sentry if available (using dynamic require to avoid TypeScript resolution)
+if (typeof window !== "undefined") {
+  try {
+    const sentryPath = "@sentry/react";
+    const mod = (globalThis as any).require?.(sentryPath) || null;
+    if (mod) sentryModule = mod;
+  } catch {
+    // Sentry not installed, skip
+  }
+}
 
 /**
  * Initialize Sentry
@@ -22,24 +39,29 @@ export function initializeSentry() {
     }
 
     // Dynamic import to avoid bundling Sentry if not configured
-    import("@sentry/react").then((Sentry) => {
-      Sentry.init({
-        dsn,
-        environment,
-        tracesSampleRate: environment === "production" ? 0.1 : 1.0,
-        debug: environment !== "production",
-        // Only send errors in production, but all traces
-        beforeSend(event) {
-          if (environment !== "production") {
+    (eval('import("@sentry/react")') as Promise<AnySentry>)
+      .then((Sentry) => {
+        sentryModule = Sentry;
+        Sentry.init({
+          dsn,
+          environment,
+          tracesSampleRate: environment === "production" ? 0.1 : 1.0,
+          debug: environment !== "production",
+          // Only send errors in production, but all traces
+          beforeSend(event: any) {
+            if (environment !== "production") {
+              return event;
+            }
+            // In production, filter out certain errors if needed
             return event;
-          }
-          // In production, filter out certain errors if needed
-          return event;
-        },
-      });
+          },
+        });
 
-      console.log("Sentry initialized");
-    });
+        console.log("Sentry initialized");
+      })
+      .catch((error) => {
+        console.warn("Sentry module not installed, skipping initialization:", error);
+      });
   } catch (error) {
     console.error("Failed to initialize Sentry:", error);
   }
@@ -52,16 +74,26 @@ export function captureException(
   error: Error | string,
   context?: Record<string, any>
 ) {
-  try {
-    import("@sentry/react").then((Sentry) => {
-      Sentry.captureException(error, {
-        contexts: {
-          application: context,
-        },
+  if (!sentryModule && typeof window !== "undefined") {
+    // Try dynamic import
+    (eval('import("@sentry/react")') as Promise<AnySentry>)
+      .then((Sentry) => {
+        sentryModule = Sentry;
+        Sentry.captureException(error, {
+          contexts: {
+            application: context,
+          },
+        });
+      })
+      .catch(() => {
+        // Sentry not available
       });
+  } else if (sentryModule) {
+    sentryModule.captureException(error, {
+      contexts: {
+        application: context,
+      },
     });
-  } catch (e) {
-    console.error("Failed to report to Sentry:", e);
   }
 }
 
@@ -72,12 +104,18 @@ export function captureMessage(
   message: string,
   level: "fatal" | "error" | "warning" | "info" | "debug" = "info"
 ) {
-  try {
-    import("@sentry/react").then((Sentry) => {
-      Sentry.captureMessage(message, level);
-    });
-  } catch (e) {
-    console.error("Failed to send message to Sentry:", e);
+  if (!sentryModule && typeof window !== "undefined") {
+    // Try dynamic import
+    (eval('import("@sentry/react")') as Promise<AnySentry>)
+      .then((Sentry) => {
+        sentryModule = Sentry;
+        Sentry.captureMessage(message, level);
+      })
+      .catch(() => {
+        // Sentry not available
+      });
+  } else if (sentryModule) {
+    sentryModule.captureMessage(message, level);
   }
 }
 
@@ -85,16 +123,26 @@ export function captureMessage(
  * Set user context for error tracking
  */
 export function setSentryUser(userId: string, email?: string, name?: string) {
-  try {
-    import("@sentry/react").then((Sentry) => {
-      Sentry.setUser({
-        id: userId,
-        email,
-        username: name,
+  if (!sentryModule && typeof window !== "undefined") {
+    // Try dynamic import
+    (eval('import("@sentry/react")') as Promise<AnySentry>)
+      .then((Sentry) => {
+        sentryModule = Sentry;
+        Sentry.setUser({
+          id: userId,
+          email,
+          username: name,
+        });
+      })
+      .catch(() => {
+        // Sentry not available
       });
+  } else if (sentryModule) {
+    sentryModule.setUser({
+      id: userId,
+      email,
+      username: name,
     });
-  } catch (e) {
-    console.error("Failed to set Sentry user:", e);
   }
 }
 
@@ -102,12 +150,8 @@ export function setSentryUser(userId: string, email?: string, name?: string) {
  * Clear user context
  */
 export function clearSentryUser() {
-  try {
-    import("@sentry/react").then((Sentry) => {
-      Sentry.setUser(null);
-    });
-  } catch (e) {
-    console.error("Failed to clear Sentry user:", e);
+  if (sentryModule) {
+    sentryModule.setUser(null);
   }
 }
 
@@ -119,17 +163,13 @@ export function addSentryBreadcrumb(
   category: string,
   level: "fatal" | "error" | "warning" | "info" | "debug" = "info"
 ) {
-  try {
-    import("@sentry/react").then((Sentry) => {
-      Sentry.addBreadcrumb({
-        message,
-        category,
-        level,
-        timestamp: Date.now() / 1000,
-      });
+  if (sentryModule) {
+    sentryModule.addBreadcrumb({
+      message,
+      category,
+      level,
+      timestamp: Date.now() / 1000,
     });
-  } catch (e) {
-    console.error("Failed to add Sentry breadcrumb:", e);
   }
 }
 
@@ -214,17 +254,14 @@ export function startSentryTransaction(
   name: string,
   op: string = "transaction"
 ) {
-  try {
-    import("@sentry/react").then((Sentry) => {
-      const transaction = Sentry.startTransaction({
-        name,
-        op,
-      });
-      return transaction;
+  if (sentryModule) {
+    const transaction = sentryModule.startTransaction({
+      name,
+      op,
     });
-  } catch (e) {
-    console.error("Failed to start Sentry transaction:", e);
+    return transaction;
   }
+  return null;
 }
 
 export default {

@@ -39,6 +39,7 @@ import ResourceLibraryManager from "@/components/admin/ResourceLibraryManager";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
 import { SESUsageWidget } from "@/components/admin/SESUsageWidget";
 import { UserManagementTab } from "@/components/admin/UserManagementTab";
+import { LeadsManagementTab } from "@/components/admin/LeadsManagementTab";
 import { AssessmentBuilder } from "@/components/admin/AssessmentBuilder";
 import { SystemStats } from "@/components/admin/SystemStats";
 import TemplatesAndStylesTab from "@/components/admin/TemplatesAndStylesTab";
@@ -232,6 +233,10 @@ export function SuperAdminPlatformSettings() {
           <TabsTrigger value="users" className="whitespace-nowrap">
             <Users className="h-4 w-4 mr-2" />
             Users
+          </TabsTrigger>
+          <TabsTrigger value="leads" className="whitespace-nowrap">
+            <Mail className="h-4 w-4 mr-2" />
+            Leads
           </TabsTrigger>
           <TabsTrigger value="resources" className="whitespace-nowrap">
             <Library className="h-4 w-4 mr-2" />
@@ -574,6 +579,10 @@ export function SuperAdminPlatformSettings() {
 
         <TabsContent value="users" className="mt-6">
           <UserManagementTab />
+        </TabsContent>
+
+        <TabsContent value="leads" className="mt-6">
+          <LeadsManagementTab />
         </TabsContent>
 
         <TabsContent value="resources" className="mt-6">

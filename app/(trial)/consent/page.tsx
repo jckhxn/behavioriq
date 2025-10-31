@@ -21,6 +21,14 @@ export default function ConsentPage() {
   // Preserve query params from referral links
   const queryParams = new URLSearchParams(searchParams.toString());
 
+  // Debug: Log the ref param if present
+  const refFromUrl = queryParams.get('ref');
+  if (refFromUrl) {
+    console.log('[Consent] 🔗 Found ref in URL:', refFromUrl);
+  } else {
+    console.log('[Consent] ⚠️ No ref found in URL');
+  }
+
   const handleStart = async () => {
     if (!consent) {
       toast.error('Please accept consent to continue');
@@ -64,8 +72,12 @@ export default function ConsentPage() {
         utm_campaign: queryParams.get('utm_campaign'),
       });
 
-      // Redirect to profile
-      router.push(`/trial/${sessionId}/profile`);
+      // Redirect to profile (preserve ref param for downstream processing)
+      const ref = queryParams.get('ref');
+      const redirectUrl = ref
+        ? `/trial/${sessionId}/profile?ref=${encodeURIComponent(ref)}`
+        : `/trial/${sessionId}/profile`;
+      router.push(redirectUrl);
     } catch (error) {
       console.error('Failed to start trial:', error);
       toast.error('Unable to start assessment. Please try again.');

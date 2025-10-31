@@ -48,6 +48,55 @@ export async function GET(
   }
 }
 
+// PATCH /api/assessments/[id] - Rename an assessment
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const user = await getCurrentUserWithRole();
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id: assessmentId } = await params;
+    const body = await request.json();
+
+    // Validate the new name
+    const { subjectName } = body;
+    if (!subjectName || typeof subjectName !== "string" || subjectName.trim().length === 0) {
+      return NextResponse.json(
+        { error: "Invalid assessment name" },
+        { status: 400 }
+      );
+    }
+
+    // Find and verify ownership
+    const existing = await getAssessmentByIdentifier(assessmentId, user.id);
+    if (!existing) {
+      return NextResponse.json(
+        { error: "Assessment not found" },
+        { status: 404 }
+      );
+    }
+
+    // Update the assessment name
+    const updated = await prisma.assessment.update({
+      where: { id: existing.id },
+      data: { subjectName: subjectName.trim() },
+    });
+
+    return NextResponse.json(updated);
+  } catch (error) {
+    console.error("[assessment PATCH] Error:", error);
+    return NextResponse.json(
+      { error: "Failed to update assessment" },
+      { status: 500 }
+    );
+  }
+}
+
 // DELETE /api/assessments/[id] - Delete an assessment
 export async function DELETE(
   request: NextRequest,

@@ -50,8 +50,8 @@ export async function POST(
       : { id: assessmentId, userId: null, mode: "FULL" };
 
     // Fetch assessment with scores and domain template data
-    const assessment = await prisma.assessment.findUnique({
-      where: whereClause,
+    const assessment = await prisma.assessment.findFirst({
+      where: whereClause as any,
       include: {
         scores: {
           include: {

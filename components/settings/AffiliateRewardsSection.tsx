@@ -127,7 +127,7 @@ const AffiliateRewardsSection: React.FC = () => {
   if (loading) {
     return (
       <div className="text-center py-8">
-        <p className="text-gray-600">Loading your affiliate dashboard...</p>
+        <p className="text-muted-foreground">Loading your affiliate dashboard...</p>
       </div>
     );
   }
@@ -138,7 +138,7 @@ const AffiliateRewardsSection: React.FC = () => {
       <div className="space-y-4">
         <div>
           <h2 className="text-lg font-bold">Earn Rewards</h2>
-          <p className="text-sm text-gray-600">Give $20 off. Get $20 cash.</p>
+          <p className="text-sm text-muted-foreground">Give $20 off. Get $20 cash.</p>
         </div>
 
         <Card>
@@ -147,7 +147,7 @@ const AffiliateRewardsSection: React.FC = () => {
             <CardDescription>Start earning rewards by referring friends</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-muted-foreground">
               Earn $20 for each qualified referral, plus bonuses when they upgrade to premium plans.
             </p>
             <Button
@@ -170,11 +170,11 @@ const AffiliateRewardsSection: React.FC = () => {
       <div className="space-y-4">
         <div>
           <h2 className="text-lg font-bold">Earn Rewards</h2>
-          <p className="text-sm text-gray-600">Give $20 off. Get $20 cash.</p>
+          <p className="text-sm text-muted-foreground">Give $20 off. Get $20 cash.</p>
         </div>
 
-        <div className="bg-red-50 border border-red-200 rounded p-3">
-          <p className="text-sm text-red-800">{error}</p>
+        <div className="bg-red-950 dark:bg-red-950 border border-red-700 dark:border-red-800 rounded p-3">
+          <p className="text-sm text-red-300 dark:text-red-400">{error}</p>
           <Button
             onClick={() => fetchAffiliateData()}
             className="mt-2"
@@ -201,12 +201,12 @@ const AffiliateRewardsSection: React.FC = () => {
     <div className="space-y-4">
       <div>
         <h2 className="text-lg font-bold">Earn Rewards</h2>
-        <p className="text-sm text-gray-600">Give $20 off. Get $20 cash.</p>
+        <p className="text-sm text-muted-foreground">Give $20 off. Get $20 cash.</p>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded p-3">
-          <p className="text-sm text-red-800">{error}</p>
+        <div className="bg-red-950 dark:bg-red-950 border border-red-700 dark:border-red-800 rounded p-3">
+          <p className="text-sm text-red-300 dark:text-red-400">{error}</p>
         </div>
       )}
 
@@ -218,7 +218,7 @@ const AffiliateRewardsSection: React.FC = () => {
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex gap-2 items-center">
-            <div className="flex-1 bg-gray-100 rounded p-3 font-mono text-xs break-all">
+            <div className="flex-1 bg-muted rounded p-3 font-mono text-xs break-all">
               {`${process.env.NEXT_PUBLIC_SITE_URL || "https://app.behavioriq.com"}/?ref=${data.refCode}`}
             </div>
             <CopyButton
@@ -249,21 +249,21 @@ const AffiliateRewardsSection: React.FC = () => {
       <div className="grid grid-cols-3 gap-2">
         <Card>
           <CardContent className="p-3">
-            <div className="text-xs text-gray-600 font-medium">Clicks</div>
+            <div className="text-xs text-muted-foreground font-medium">Clicks</div>
             <div className="text-xl font-bold">{data.stats.clicks}</div>
           </CardContent>
         </Card>
 
         <Card>
           <CardContent className="p-3">
-            <div className="text-xs text-gray-600 font-medium">Signups</div>
+            <div className="text-xs text-muted-foreground font-medium">Signups</div>
             <div className="text-xl font-bold">{data.stats.signups}</div>
           </CardContent>
         </Card>
 
         <Card>
           <CardContent className="p-3">
-            <div className="text-xs text-gray-600 font-medium">Conversion</div>
+            <div className="text-xs text-muted-foreground font-medium">Conversion</div>
             <div className="text-xl font-bold">
               {data.stats.clicks > 0
                 ? ((data.stats.signups / data.stats.clicks) * 100).toFixed(1)
@@ -283,15 +283,15 @@ const AffiliateRewardsSection: React.FC = () => {
           <CardContent className="space-y-2 text-xs">
             <div className="flex justify-between">
               <span>Pending</span>
-              <span className="font-semibold text-yellow-600">{data.stats.pending}</span>
+              <span className="font-semibold text-yellow-500 dark:text-yellow-400">{data.stats.pending}</span>
             </div>
             <div className="flex justify-between">
               <span>Payable</span>
-              <span className="font-semibold text-green-600">{data.stats.payable}</span>
+              <span className="font-semibold text-green-500 dark:text-green-400">{data.stats.payable}</span>
             </div>
             <div className="flex justify-between">
               <span>Paid Out</span>
-              <span className="font-semibold text-blue-600">{data.stats.paid}</span>
+              <span className="font-semibold text-blue-500 dark:text-blue-400">{data.stats.paid}</span>
             </div>
           </CardContent>
         </Card>
@@ -326,7 +326,7 @@ const AffiliateRewardsSection: React.FC = () => {
         <CardContent className="space-y-3">
           {!data.stripe.isOnboarded ? (
             <>
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-muted-foreground">
                 Complete Stripe Connect setup to enable payouts. We'll collect your tax information and banking details.
               </p>
               <Button onClick={handleConnectOnboarding} size="sm" className="w-full">
@@ -335,28 +335,28 @@ const AffiliateRewardsSection: React.FC = () => {
             </>
           ) : data.stripe.isReady ? (
             <>
-              <div className="bg-green-50 border border-green-200 rounded p-2">
-                <p className="text-xs text-green-800">
+              <div className="bg-green-950 dark:bg-green-950 border border-green-700 dark:border-green-800 rounded p-2">
+                <p className="text-xs text-green-300 dark:text-green-400">
                   ✅ Your account is verified and ready for payouts.
                 </p>
               </div>
               {parseFloat(payableUSD) >= 50 ? (
-                <Button onClick={handleRequestPayout} className="bg-green-600 hover:bg-green-700 w-full" size="sm">
+                <Button onClick={handleRequestPayout} className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 w-full" size="sm">
                   Request Payout Now (${payableUSD})
                 </Button>
               ) : (
-                <p className="text-xs text-gray-600">
+                <p className="text-xs text-muted-foreground">
                   Minimum payout: $50 (Current: ${payableUSD})
                 </p>
               )}
             </>
           ) : (
             <>
-              <div className="bg-yellow-50 border border-yellow-200 rounded p-2">
-                <p className="text-xs text-yellow-800 mb-1 font-semibold">
+              <div className="bg-yellow-950 dark:bg-yellow-950 border border-yellow-700 dark:border-yellow-800 rounded p-2">
+                <p className="text-xs text-yellow-300 dark:text-yellow-400 mb-1 font-semibold">
                   ⚠️ Verification pending
                 </p>
-                <ul className="text-xs text-yellow-800 list-disc pl-4 space-y-0.5">
+                <ul className="text-xs text-yellow-300 dark:text-yellow-400 list-disc pl-4 space-y-0.5">
                   {data.stripe.pendingRequirements.map((req) => (
                     <li key={req}>{req}</li>
                   ))}

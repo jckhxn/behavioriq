@@ -92,9 +92,9 @@ export function trackAssessmentComplete(params: {
 }) {
   trackGA4Event("assessment_complete", {
     assessment_id: params.assessmentId,
-    duration_seconds: params.duration,
-    score: params.score,
-    domain: params.domain,
+    duration_seconds: params.duration ?? 0,
+    score: params.score ?? 0,
+    domain: params.domain ?? "unknown",
     ...params,
   });
 }
@@ -111,9 +111,9 @@ export function trackUpgrade(params: {
 }) {
   trackGA4Event("upgrade", {
     plan_name: params.planName,
-    value: params.planPrice,
+    value: params.planPrice ?? 0,
     currency: params.currency || "USD",
-    source: params.source,
+    source: params.source ?? "direct",
     ...params,
   });
 }
@@ -168,7 +168,7 @@ export function trackSubscriptionCancel(params: {
   trackGA4Event("subscription_cancel", {
     subscription_id: params.subscriptionId,
     plan_name: params.planName,
-    reason: params.reason,
+    reason: params.reason ?? "not_provided",
     ...params,
   });
 }
@@ -183,7 +183,7 @@ export function trackFeatureUsage(params: {
 }) {
   trackGA4Event("feature_usage", {
     feature_name: params.featureName,
-    category: params.category,
+    category: params.category ?? "general",
     ...params,
   });
 }
@@ -197,8 +197,8 @@ export function trackPageView(params: {
   [key: string]: any;
 }) {
   trackGA4Event("page_view", {
-    page_title: params.pageTitle,
-    page_path: params.pagePath,
+    page_title: params.pageTitle ?? "untitled",
+    page_path: params.pagePath ?? "/",
     ...params,
   });
 }
@@ -211,10 +211,11 @@ export function trackException(params: {
   fatal?: boolean;
   [key: string]: any;
 }) {
+  const { description, fatal, ...rest } = params;
   trackGA4Event("exception", {
-    description: params.description,
-    fatal: params.fatal || false,
-    ...params,
+    description: description,
+    fatal: fatal || false,
+    ...rest,
   });
 }
 
@@ -228,7 +229,7 @@ export function trackEngagement(params: {
 }) {
   trackGA4Event("engagement", {
     engagement_type: params.engagementType,
-    duration_seconds: params.duration,
+    duration_seconds: params.duration ?? 0,
     ...params,
   });
 }
@@ -242,8 +243,8 @@ export function trackReferral(params: {
   [key: string]: any;
 }) {
   trackGA4Event("referral", {
-    referral_code: params.referralCode,
-    source: params.source,
+    referral_code: params.referralCode ?? "none",
+    source: params.source ?? "direct",
     ...params,
   });
 }

@@ -208,7 +208,17 @@ export default function ResultsPage() {
       toast.success('Check your email for your snapshot!');
     } catch (err) {
       console.error('Lead submission error:', err);
-      toast.error('Failed to submit. Please try again.');
+
+      // Provide specific error message for duplicate emails
+      const errorMessage = err instanceof Error ? err.message : 'Failed to submit. Please try again.';
+
+      if (errorMessage.includes('already been used')) {
+        toast.error('This email has already been registered. Please use a different email address.');
+      } else if (errorMessage.includes('valid email')) {
+        toast.error('Please enter a valid email address.');
+      } else {
+        toast.error(errorMessage);
+      }
     } finally {
       setIsSubmittingLead(false);
     }

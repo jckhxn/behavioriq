@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -41,12 +41,35 @@ const GRADE_BANDS = [
 export default function ProfilePage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const sessionId = params.sessionId as string;
+  const ref = searchParams.get('ref');
 
   const [childName, setChildName] = useState('');
   const [ageBand, setAgeBand] = useState('');
   const [gradeBand, setGradeBand] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isAnonymous, setIsAnonymous] = useState(false);
+  const [sessionLoading, setSessionLoading] = useState(true);
+
+  // Fetch session to check anonymity setting
+  useEffect(() => {
+    const fetchSession = async () => {
+      try {
+        const response = await fetch(`/api/trial/session/${sessionId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setIsAnonymous(data.anonymous || false);
+        }
+      } catch (error) {
+        console.error('Error fetching session:', error);
+      } finally {
+        setSessionLoading(false);
+      }
+    };
+
+    fetchSession();
+  }, [sessionId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,8 +106,11 @@ export default function ProfilePage() {
         hasName: !!childName,
       });
 
-      // Redirect to assessment
-      router.push(`/trial/${sessionId}/assessment`);
+      // Redirect to assessment (preserve ref param if present)
+      const assessmentUrl = ref
+        ? `/trial/${sessionId}/assessment?ref=${encodeURIComponent(ref)}`
+        : `/trial/${sessionId}/assessment`;
+      router.push(assessmentUrl);
     } catch (error) {
       console.error('Profile submission error:', error);
       toast.error('Unable to save profile. Please try again.');
@@ -127,7 +153,11 @@ export default function ProfilePage() {
         hasName: false,
       });
 
-      router.push(`/trial/${sessionId}/assessment`);
+      // Redirect to assessment (preserve ref param if present)
+      const assessmentUrl = ref
+        ? `/trial/${sessionId}/assessment?ref=${encodeURIComponent(ref)}`
+        : `/trial/${sessionId}/assessment`;
+      router.push(assessmentUrl);
     } catch (error) {
       console.error('Profile skip error:', error);
       toast.error('Unable to continue. Please try again.');
@@ -159,23 +189,34 @@ export default function ProfilePage() {
 
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Child Name */}
-            <div className="space-y-2">
-              <Label htmlFor="name" className="text-sm font-medium">
-                Child's name <span className="text-muted-foreground">(optional)</span>
-              </Label>
-              <Input
-                id="name"
-                type="text"
-                placeholder="e.g., Sarah"
-                value={childName}
-                onChange={(e) => setChildName(e.target.value)}
-                disabled={loading}
-              />
-              <p className="text-xs text-muted-foreground">
-                Leave blank for anonymous assessment
-              </p>
-            </div>
+            {/* Child Name - Only show if not in anonymous mode */}
+            {!isAnonymous && (
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-sm font-medium">
+                  Child's name <span className="text-muted-foreground">(optional)</span>
+                </Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="e.g., Sarah"
+                  value={childName}
+                  onChange={(e) => setChildName(e.target.value)}
+                  disabled={loading}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Leave blank for anonymous assessment
+                </p>
+              </div>
+            )}
+
+            {/* Anonymous Mode Notice */}
+            {isAnonymous && (
+              <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <p className="text-sm text-blue-900 dark:text-blue-100">
+                  <strong>Anonymous Mode:</strong> Your child's name will not be saved or displayed.
+                </p>
+              </div>
+            )}
 
             {/* Age Band */}
             <div className="space-y-2">
@@ -227,14 +268,14 @@ export default function ProfilePage() {
             <div className="space-y-2 pt-4">
               <Button
                 type="submit"
-                disabled={!isComplete || loading}
+                disabled={!isComplete || loading || sessionLoading}
                 size="lg"
                 className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold"
               >
-                {loading ? (
+                {loading || sessionLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Continuing...
+                    {sessionLoading ? 'Loading...' : 'Continuing...'}
                   </>
                 ) : (
                   <>
@@ -247,7 +288,7 @@ export default function ProfilePage() {
               <Button
                 type="button"
                 onClick={handleSkip}
-                disabled={!isComplete || loading}
+                disabled={!isComplete || loading || sessionLoading}
                 variant="ghost"
                 size="sm"
                 className="w-full"

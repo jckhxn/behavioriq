@@ -126,7 +126,7 @@ export class AIReportService {
     }
 
     // Generate AI recommendations
-    const aiRecommendations = await generateAIRecommendations(assessment);
+    const aiRecommendations = await generateAIRecommendations(assessment as any);
 
     // Calculate overall risk level
     const overallRisk = this.calculateOverallRisk(assessment.scores);
@@ -158,7 +158,7 @@ export class AIReportService {
 
         const generator = new PDFReportGenerator();
         const pdfBlob = await generator.generateReport(
-          reportData,
+          reportData as any,
           reportOptions
         );
 
@@ -277,7 +277,7 @@ export class AIReportService {
 
       const generator = new PDFReportGenerator();
       const pdfBlob = await generator.generateReport(
-        reportData,
+        reportData as any,
         report.reportOptions as unknown as ReportOptions
       );
 

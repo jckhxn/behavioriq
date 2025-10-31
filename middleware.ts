@@ -33,17 +33,25 @@ export async function middleware(req: NextRequest) {
   const ref = req.nextUrl.searchParams.get("ref");
 
   if (ref) {
-    // Set first-party cookie for 30 days (HTTPOnly, SameSite=Lax)
-    const domain = process.env.AFFILIATE_COOKIE_DOMAIN || "";
-    response.cookies.set("biq_ref", ref, {
+    // Set first-party cookie for 30 days
+    // Safari has strict cookie policies - need explicit path for localhost
+    const cookieOptions: any = {
       maxAge: 30 * 24 * 60 * 60, // 30 days
       httpOnly: true,
-      sameSite: "lax",
+      path: "/", // CRITICAL: Must explicitly set path for localhost
+      sameSite: "lax" as const,
       secure: process.env.NODE_ENV === "production",
-      domain: domain || undefined,
-    });
+    };
 
-    console.log(`[Middleware] Set affiliate cookie: ref=${ref}`);
+    // Only set domain if explicitly configured (don't set for localhost)
+    const domain = process.env.AFFILIATE_COOKIE_DOMAIN;
+    if (domain && domain.trim()) {
+      cookieOptions.domain = domain;
+    }
+
+    response.cookies.set("biq_ref", ref, cookieOptions);
+
+    console.log(`[Middleware] ✅ Set affiliate cookie: ref=${ref}`);
 
     // Track click asynchronously (fire and forget)
     trackAffiliateClick(ref, req).catch((e) =>
@@ -59,8 +67,8 @@ export async function middleware(req: NextRequest) {
       new URL(redirectToMain, req.url)
     );
     // Preserve Supabase auth cookies from the session update
-    response.cookies.getAll().forEach(({ name, value, options }) => {
-      redirectResponse.cookies.set(name, value, options);
+    response.cookies.getAll().forEach(({ name, value }) => {
+      redirectResponse.cookies.set(name, value);
     });
     applyBrandingHeaders(redirectResponse, branding);
     return redirectResponse;
@@ -142,8 +150,8 @@ export async function middleware(req: NextRequest) {
         new URL("/maintenance", req.url)
       );
       // Preserve Supabase auth cookies
-      response.cookies.getAll().forEach(({ name, value, options }) => {
-        redirectResponse.cookies.set(name, value, options);
+      response.cookies.getAll().forEach(({ name, value }) => {
+        redirectResponse.cookies.set(name, value);
       });
       applyBrandingHeaders(redirectResponse, branding);
       return redirectResponse;
@@ -162,8 +170,8 @@ export async function middleware(req: NextRequest) {
       new URL(`/login?from=${encodeURIComponent(from)}`, req.url)
     );
     // Preserve Supabase auth cookies
-    response.cookies.getAll().forEach(({ name, value, options }) => {
-      redirectResponse.cookies.set(name, value, options);
+    response.cookies.getAll().forEach(({ name, value }) => {
+      redirectResponse.cookies.set(name, value);
     });
     applyBrandingHeaders(redirectResponse, branding);
     return redirectResponse;
@@ -197,8 +205,8 @@ export async function middleware(req: NextRequest) {
         new URL("/settings?tab=security&mfa=required", req.url)
       );
       // Preserve Supabase auth cookies
-      response.cookies.getAll().forEach(({ name, value, options }) => {
-        redirectResponse.cookies.set(name, value, options);
+      response.cookies.getAll().forEach(({ name, value }) => {
+        redirectResponse.cookies.set(name, value);
       });
       applyBrandingHeaders(redirectResponse, branding);
       return redirectResponse;
@@ -242,16 +250,22 @@ function isSupabaseAuthenticated(req: NextRequest): boolean {
     return false;
   }
 
-  const hasCookie = req.cookies.has(SUPABASE_AUTH_COOKIE_NAME);
+  // Supabase SSR library splits large tokens into multiple cookies with suffixes (.0, .1, etc.)
+  // Check for either the base cookie name OR any cookie that starts with the base name
+  const allCookies = req.cookies.getAll();
+  const cookieNames = allCookies.map(c => c.name);
+
+  const hasCookie =
+    req.cookies.has(SUPABASE_AUTH_COOKIE_NAME) ||
+    cookieNames.some(name => name.startsWith(SUPABASE_AUTH_COOKIE_NAME));
 
   // Debug logging
   if (!hasCookie) {
-    const allCookies = req.cookies.getAll();
     const authCookies = allCookies
       .filter(c => c.name.includes('auth') || c.name.includes('sb-'))
       .map(c => c.name);
     if (authCookies.length > 0) {
-      console.warn(`[Middleware] Expected cookie "${SUPABASE_AUTH_COOKIE_NAME}" not found. Available auth cookies:`, authCookies);
+      console.warn(`[Middleware] Expected cookie "${SUPABASE_AUTH_COOKIE_NAME}" or split variants not found. Available auth cookies:`, authCookies);
     }
   }
 

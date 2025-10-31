@@ -54,7 +54,7 @@ export async function GET(
     }
 
     const scores = await prisma.score.findMany({
-      where: { assessmentId },
+      where: { assessmentId: assessment.id },
       include: {
         domainTemplate: {
           select: {

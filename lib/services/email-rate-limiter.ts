@@ -55,6 +55,7 @@ export class EmailRateLimiter {
     userId: string,
     emailType: EmailType
   ): Promise<RateLimitCheck> {
+
     const now = new Date();
     const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
     const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
@@ -146,6 +147,7 @@ export class EmailRateLimiter {
    * Check global rate limits (all users combined)
    */
   static async checkGlobalLimit(): Promise<RateLimitCheck> {
+
     const now = new Date();
     const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
@@ -190,6 +192,7 @@ export class EmailRateLimiter {
   static async checkRecipientLimit(
     recipientEmail: string
   ): Promise<RateLimitCheck> {
+
     const now = new Date();
     const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
 

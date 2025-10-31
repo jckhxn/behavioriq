@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -35,7 +35,9 @@ interface ProgressInfo {
 export default function TrialAssessmentPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const sessionId = params.sessionId as string;
+  const ref = searchParams.get('ref');
 
   const [assessmentId, setAssessmentId] = useState<string | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
@@ -52,13 +54,14 @@ export default function TrialAssessmentPage() {
       try {
         setLoading(true);
 
-        // 1. Start a new trial assessment
+        // 1. Start a new trial assessment (pass ref if present)
         const startResponse = await fetch('/api/assessment/start', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             sessionId,
             anonymous: true,
+            ...(ref && { refCode: ref }), // Pass refCode from URL param
           }),
         });
 

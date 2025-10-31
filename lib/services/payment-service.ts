@@ -89,6 +89,32 @@ export class PaymentService {
         },
       });
 
+      // Create affiliate attribution and commission using refCode stored on assessment
+      // Works for both logged-in and anonymous users:
+      // - If userId exists: attribute & commission created immediately
+      // - If userId is null (anonymous): commission created with assessment.id as temp referredUserId
+      const refCode = assessment.affiliateRefCode;
+      if (refCode) {
+        console.log(
+          `[PaymentService] Found affiliate refCode on assessment: ${refCode}`
+        );
+        if (assessment.userId) {
+          // Logged-in user: create attribution immediately
+          await this.createAffiliateAttribution(refCode, assessment.userId, tx);
+          await this.createAffiliateCommission(refCode, assessment.userId, 9700, "paid_report", tx);
+          console.log(
+            `[PaymentService] ✅ Affiliate attribution & commission created: ${refCode} → ${assessment.userId}`
+          );
+        } else {
+          // Anonymous user: create commission with assessment.id as temporary referredUserId
+          // This allows commission to be tracked immediately, even before user signs up
+          await this.createAffiliateCommission(refCode, `anon_${assessmentId}`, 9700, "paid_report", tx);
+          console.log(
+            `[PaymentService] ✅ Affiliate commission created for anonymous user: ${refCode} → anon_${assessmentId}`
+          );
+        }
+      }
+
       // Create payment record
       const payment = await tx.payment.create({
         data: {
@@ -105,6 +131,7 @@ export class PaymentService {
             productType: "full_assessment",
             assessmentId,
             source: "trial_conversion",
+            ...(refCode && { refCode }), // Include refCode in metadata for reference
           } as any,
         },
       });
@@ -141,6 +168,13 @@ export class PaymentService {
           enhancedReportPurchasedAt: new Date(),
         } as any,
       });
+
+      // Create affiliate attribution if refCode is present
+      const { refCode } = session.metadata || {};
+      if (refCode && assessment.userId) {
+        await this.createAffiliateAttribution(refCode, assessment.userId, tx);
+        console.log(`[PaymentService] Affiliate attribution created: ${refCode}`);
+      }
 
       // Create payment record
       const payment = await tx.payment.create({
@@ -246,6 +280,13 @@ export class PaymentService {
         userLicense = updatedUserLicense;
       }
 
+      // Create affiliate attribution if refCode is present
+      const { refCode } = session.metadata || {};
+      if (refCode) {
+        await this.createAffiliateAttribution(refCode, userId, tx);
+        console.log(`[PaymentService] Affiliate attribution created: ${refCode}`);
+      }
+
       // Create payment record
       const payment = await tx.payment.create({
         data: {
@@ -292,11 +333,18 @@ export class PaymentService {
         const user = await this.getOrCreateUser(session, tx);
         console.log(`[PaymentService] User resolved: ${user.id}`);
 
-        // 2. Create payment record
+        // 2. Create affiliate attribution if refCode is present
+        const { refCode } = session.metadata || {};
+        if (refCode) {
+          await this.createAffiliateAttribution(refCode, user.id, tx);
+          console.log(`[PaymentService] Affiliate attribution created: ${refCode}`);
+        }
+
+        // 3. Create payment record
         const payment = await this.createPaymentRecord(session, user.id, tx);
         console.log(`[PaymentService] Payment created: ${payment.id}`);
 
-        // 3. Create or update license
+        // 4. Create or update license
         const license = await this.createOrUpdateLicense(user.id, session, tx);
         console.log(`[PaymentService] License created/updated: ${license.id}`);
 
@@ -304,7 +352,7 @@ export class PaymentService {
       }
     );
 
-    // 4. Generate one-time login token for auto-login
+    // 5. Generate one-time login token for auto-login
     const loginToken = await loginTokenService.generateToken(result.user.id);
     console.log(
       `[PaymentService] Login token generated: ${loginToken.substring(0, 8)}...`
@@ -569,7 +617,7 @@ export class PaymentService {
    * ensure the user exists and their Stripe customer ID is stored for later use.
    */
   private async processSubscriptionCheckout(session: Stripe.Checkout.Session) {
-    const { userId } = session.metadata || {};
+    const { userId, refCode } = session.metadata || {};
     if (!userId) {
       throw new Error("User ID required for subscription checkout");
     }
@@ -594,8 +642,121 @@ export class PaymentService {
         );
       }
 
+      // Create affiliate attribution if refCode is present
+      if (refCode) {
+        await this.createAffiliateAttribution(refCode, userId, tx);
+        console.log(`[PaymentService] Affiliate attribution created: ${refCode}`);
+      }
+
       return { user };
     });
+  }
+
+  /**
+   * Create affiliate attribution record for a new user
+   * Called when a user referred by an affiliate completes a purchase
+   */
+  private async createAffiliateAttribution(
+    refCode: string,
+    prospectUserId: string,
+    tx: Prisma.TransactionClient
+  ) {
+    try {
+      // Verify refCode exists
+      const referrer = await tx.affiliateReferrer.findFirst({
+        where: { refCode },
+      });
+
+      if (!referrer) {
+        console.warn(`[PaymentService] Invalid affiliate refCode: ${refCode}`);
+        return;
+      }
+
+      // Check if attribution already exists (idempotent)
+      const existingAttribution = await tx.affiliateAttribution.findUnique({
+        where: { prospectUserId },
+      });
+
+      if (existingAttribution) {
+        console.log(
+          `[PaymentService] Attribution already exists for user: ${prospectUserId}`
+        );
+        return;
+      }
+
+      // Create attribution with 90-day expiry
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 90);
+
+      await tx.affiliateAttribution.create({
+        data: {
+          refCode,
+          prospectUserId,
+          expiresAt,
+          model: "last_non_direct",
+        },
+      });
+
+      console.log(
+        `[PaymentService] ✅ Created affiliate attribution: ${refCode} → ${prospectUserId}`
+      );
+    } catch (error) {
+      console.error(
+        `[PaymentService] Error creating affiliate attribution:`,
+        error
+      );
+      // Don't throw - attribution failure shouldn't block checkout
+    }
+  }
+
+  /**
+   * Create an affiliate commission
+   * Called immediately on payment (for both logged-in and anonymous users)
+   */
+  private async createAffiliateCommission(
+    refCode: string,
+    referredUserId: string, // Can be actual userId or "anon_assessmentId" for anonymous
+    amountCents: number,
+    event: string, // 'paid_report' | 'core_sub' | 'family_sub' | 'annual_sub'
+    tx: Prisma.TransactionClient
+  ) {
+    try {
+      // Verify refCode exists and get referrer ID
+      const referrer = await tx.affiliateReferrer.findFirst({
+        where: { refCode },
+      });
+
+      if (!referrer) {
+        console.warn(`[PaymentService] Invalid affiliate refCode for commission: ${refCode}`);
+        return;
+      }
+
+      // Calculate commission amount (20% of payment)
+      const commissionAmountCents = Math.round(amountCents * 0.2);
+
+      // Create commission record
+      await tx.affiliateCommission.create({
+        data: {
+          refCode,
+          referrerId: referrer.id,
+          referredUserId, // Can be actual userId or anon_assessmentId
+          event,
+          amountCents: commissionAmountCents,
+          status: "pending", // Will become payable after 14 days
+          holdUntil: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days
+        },
+      });
+
+      console.log(
+        `[PaymentService] ✅ Created affiliate commission: ${refCode} → ${referredUserId} ($${(commissionAmountCents / 100).toFixed(2)})`
+      );
+    } catch (error) {
+      console.error(
+        `[PaymentService] Error creating affiliate commission:`,
+        error
+      );
+      // Don't throw - commission failure shouldn't block checkout
+    }
   }
 
   /**

@@ -108,12 +108,10 @@ function MFAVerifyContent() {
       }
 
       toast.success("MFA verification successful");
-      // Refresh to ensure session is established before redirect
+      // Wait for middleware to sync cookies before redirecting
+      await new Promise(resolve => setTimeout(resolve, 300));
       router.refresh();
-      // Wait a moment for refresh to complete, then redirect
-      setTimeout(() => {
-        router.push(redirectTo);
-      }, 100);
+      router.push(redirectTo);
     } catch (err) {
       console.error("MFA verification error:", err);
       setError("Failed to verify MFA code. Please try again.");

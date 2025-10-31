@@ -76,6 +76,8 @@ export default function ContinueAssessmentPage() {
   // Define hook callbacks at top level (before any conditional returns)
   const handleAnswer = useCallback(
     async (value: boolean) => {
+      if (!currentQuestion) return;
+
       try {
         setSubmitting(true);
 

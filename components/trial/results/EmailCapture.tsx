@@ -34,6 +34,7 @@ export function EmailCapture({
   const [consent, setConsent] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [countdownText, setCountdownText] = useState<string>('');
+  const [emailError, setEmailError] = useState<string>('');
 
   // Track when email form first becomes visible
   useEffect(() => {
@@ -94,11 +95,29 @@ export function EmailCapture({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    setEmailError('');
+
+    // Validate email format
+    if (!email) {
+      setEmailError('Email is required');
       return;
     }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailError('Please enter a valid email address');
+      return;
+    }
+
     onSubmit(email, consent);
     setSubmitted(true);
+  };
+
+  // Clear email error when user types
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEmail(e.target.value);
+    if (emailError) {
+      setEmailError('');
+    }
   };
 
   return (
@@ -143,11 +162,21 @@ export function EmailCapture({
               type="email"
               placeholder="you@example.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={handleEmailChange}
               required
               disabled={isLoading}
-              className="w-full"
+              className={`w-full ${emailError ? 'border-red-500 focus:border-red-500' : ''}`}
+              aria-invalid={!!emailError}
+              aria-describedby={emailError ? 'email-error' : undefined}
             />
+            {emailError && (
+              <div className="flex gap-2 items-start p-2 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded">
+                <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                <p id="email-error" className="text-xs text-red-700 dark:text-red-200">
+                  {emailError}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Marketing consent */}

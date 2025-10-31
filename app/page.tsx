@@ -3,7 +3,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useUserData, useSignOut } from "@/lib/hooks/use-supabase-user";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { UnifiedChat } from "@/components/chat/UnifiedChat";
 import { Button } from "@/components/ui/button";
 import {
@@ -50,8 +50,16 @@ function HomeContent() {
   const { userData, isLoading } = useUserData();
   const { signOut } = useSignOut();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("dashboard");
   const { showWelcome, startTour, skipTour } = useOnboarding();
+
+  const handleStartSnapshot = () => {
+    // Preserve affiliate ref parameter if present
+    const ref = searchParams.get("ref");
+    const consentUrl = ref ? `/consent?ref=${encodeURIComponent(ref)}` : "/consent";
+    router.push(consentUrl);
+  };
 
   useEffect(() => {
     // Check URL parameters for tab and upgrade status
@@ -138,7 +146,7 @@ function HomeContent() {
   if (!userData) {
     return (
       <>
-        <LandingPage />
+        <LandingPage onStartSnapshot={handleStartSnapshot} />
       </>
     );
   }

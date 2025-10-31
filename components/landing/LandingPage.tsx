@@ -11,7 +11,7 @@ import { FinalCTA } from "./FinalCTA";
 import { SampleReportModal } from "./SampleReportModal";
 import { Footer } from "./Footer";
 
-export function LandingPage() {
+export function LandingPage({ onStartSnapshot }: { onStartSnapshot?: () => void } = {}) {
   const [sampleOpen, setSampleOpen] = useState(false);
   // TODO: wire up foundersActive/foundersCountdown from config or state
   const foundersActive = false;
@@ -23,7 +23,7 @@ export function LandingPage() {
       id: "cta_start_snapshot_top",
       position: "hero",
     });
-    // TODO: route to snapshot start
+    onStartSnapshot?.();
   };
   const handleSampleReport = () => {
     setSampleOpen(true);

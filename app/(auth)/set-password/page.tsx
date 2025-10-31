@@ -16,6 +16,7 @@ import { Eye, EyeOff, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { checkUserExists } from "@/lib/auth/user-detection";
 
 export default function SetPasswordPage() {
   const router = useRouter();
@@ -43,8 +44,20 @@ export default function SetPasswordPage() {
           return;
         }
 
-        setUserEmail(session.user.email || "");
+        const userEmail = session.user.email || "";
+        setUserEmail(userEmail);
         setUserName(session.user.user_metadata?.name || "");
+
+        // Safety check: If user already exists in database, they shouldn't be here
+        // (This page is only for new users setting their initial password)
+        const userAlreadyExists = await checkUserExists(userEmail);
+        if (userAlreadyExists) {
+          console.log("[set-password] Existing user tried to access set-password page, redirecting to dashboard");
+          toast.info("You already have an account. Redirecting to dashboard...");
+          router.push("/");
+          return;
+        }
+
         setIsCheckingAuth(false);
       } catch (error) {
         console.error("Auth check error:", error);

@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     // If anonymous: only allow assessments with userId: null AND mode: FULL (paid assessments)
     const whereClause = userId
       ? { id: assessmentId, userId }
-      : { id: assessmentId, userId: null, mode: "FULL" };
+      : { id: assessmentId, userId: null, mode: "FULL" as any };
 
     console.log("[Recommendations] Looking up assessment:", {
       assessmentId,
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
     });
 
     const assessment = await prisma.assessment.findFirst({
-      where: whereClause,
+      where: whereClause as any,
     });
 
     console.log("[Recommendations] Assessment lookup result:", {

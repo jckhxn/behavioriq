@@ -141,8 +141,8 @@ export async function GET(
       answeredCount: assessment.responses.length,
       totalCount: totalQuestions,
       // sessionId is required for checkout/lead submission
-      // For new assessments, use assessment ID as fallback
-      sessionId: assessmentId,
+      // Must be set when assessment is created to link to SnapshotSession
+      sessionId: assessment.sessionId || assessmentId,
     };
 
     return NextResponse.json(response);

@@ -20,20 +20,20 @@ $1 per 10k emails (SES)
   - - Progress reports, etc.
 - [] Snapshot Offer Preview
 - [] Trial -> Dashboard Flow.
-- [] Move to react-pdf?
+- [] Move to react-pdf
 - [] react-email <Tailwind> render method -> static HTML
+- [] Handle Stripe Connect stuff from dashboard?
+  - - Display Payout Info, etc
+- [] Incorporate GA4 & Meta analytics on Analytics tab on Super Admin.
 
 # Stashed
 
 - useworkflow.dev for stuff like emails?
-  [ConnectOnboarding] ❌ Error: [Error: Your platform needs approval for accounts to have requested the `transfers` capability without the `card_payments` capability. If you would like to request transfers without card_payments, please contact us via https://support.stripe.com/contact.]
-
 - [] Test Trial - Dashboard Flow
-- [] Link Stripe checkout info (like email) to autofill account creation?
 
 ## Bugs Track
 
--[] There is a broken user flow where I login to my Super Admin account, enter my MFA, and am returned to the login screen. I then go through the same process but am returned to the dashboard. If I refresh the login screen after the first login attempt, the dashboard appears.
+- [] Trial results show the rest of the domains unscored? Fix this or tease domain scores for full assessment?
 
 - [][Fingerprint] Error getting device fingerprint: {}
 
@@ -58,10 +58,13 @@ lib/affiliate/fingerprint.ts (30:13) @ getDeviceFingerprint
 
 ## Features
 
+- [] Ability to rename assessments
+- [] Trial should obey assessment anonyminity or allow for changing assessment name after account creation.
 - [] Anayltics tab should pull from GA4/Meta if possible.
 - [] Make sure Email Capture works.
 - [] Explore modern web design for site but keep copy/user flow based on Hormozi landing page framework
 - [] Send Marketing Emails etc from Super Admin?
+- [] Marketing Hub
 - [] Sentry and Analytics (GA4 and Meta pixel for retargeting.)
   - [] Add Sentry error reporting
     -- https://brightpath-39.sentry.io/onboarding/setup-docs/

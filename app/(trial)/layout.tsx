@@ -5,6 +5,9 @@ export const metadata: Metadata = {
   description: 'Quick behavior assessment tool',
 };
 
+// Skip static prerendering for trial routes that use useSearchParams/useRouter
+export const dynamic = 'force-dynamic';
+
 export default function TrialLayout({
   children,
 }: {

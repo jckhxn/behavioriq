@@ -17,26 +17,52 @@ export class StripeConnectService {
   /**
    * Create a Stripe Connect Express account for a user
    * Returns the account ID for storage
+   *
+   * For affiliates/referrers who don't have business info, we set sensible defaults
    */
   async createConnectAccount(
     email: string,
-    userFullName: string
+    userFullName: string,
+    businessInfo?: {
+      businessName?: string;
+      businessUrl?: string;
+      businessDescription?: string;
+    }
   ): Promise<string> {
     try {
       const account = await stripe.accounts.create({
         type: "express",
         email,
         country: "US", // Default to US; can be made configurable
+        business_type: "individual", // Affiliates are individuals, not businesses
         capabilities: {
           transfers: { requested: true },
+        },
+        // Pre-fill business information if provided, otherwise use defaults
+        business_profile: {
+          // Use provided business name, or fall back to user name with "Affiliate" label
+          name:
+            businessInfo?.businessName ||
+            `${userFullName} - BehaviorIQ Affiliate`,
+          // Optional: use provided URL or empty string
+          url: businessInfo?.businessUrl || "",
+          // Use provided description or a default affiliate description
+          product_description:
+            businessInfo?.businessDescription ||
+            "Affiliate partner for BehaviorIQ - Behavioral assessment and screening tool for parents and educators",
+          // Support email
+          support_email: email,
         },
         metadata: {
           user_email: email,
           user_name: userFullName,
+          account_type: "affiliate_referrer",
         },
       });
 
-      console.log(`[StripeConnect] ✅ Created Express account: ${account.id}`);
+      console.log(
+        `[StripeConnect] ✅ Created Express account for affiliate: ${account.id}`
+      );
 
       return account.id;
     } catch (error) {

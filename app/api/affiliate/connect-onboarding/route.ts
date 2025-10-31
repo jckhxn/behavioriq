@@ -9,6 +9,12 @@ import { prisma } from "@/lib/db/prisma";
 import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { stripeConnectService } from "@/lib/stripe/connect";
 
+interface ConnectOnboardingRequest {
+  businessName?: string;
+  businessUrl?: string;
+  businessDescription?: string;
+}
+
 export async function POST(req: NextRequest) {
   const user = await getCurrentUserWithRole();
 
@@ -17,6 +23,9 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    // Parse optional business info from request body
+    const body = (await req.json().catch(() => ({}))) as ConnectOnboardingRequest;
+
     // Find referrer record
     const referrer = await prisma.affiliateReferrer.findFirst({
       where: { userId: user.id },
@@ -64,10 +73,15 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Create new Stripe Connect Express account
+    // Create new Stripe Connect Express account with optional business info
     const stripeAccountId = await stripeConnectService.createConnectAccount(
       user.email,
-      user.name || "Affiliate User"
+      user.name || "Affiliate User",
+      {
+        businessName: body.businessName,
+        businessUrl: body.businessUrl,
+        businessDescription: body.businessDescription,
+      }
     );
 
     // Store account ID in database

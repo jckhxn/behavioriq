@@ -149,12 +149,14 @@ async function handlePaymentIntentSucceeded(pi: Stripe.PaymentIntent) {
     }
 
     // Create affiliate commission if attributed
-    await affiliateService.createPaidReportCommission(
-      payment.id,
-      payment.userId,
-      payment.amount,
-      pi.id
-    );
+    if (payment.userId) {
+      await affiliateService.createPaidReportCommission(
+        payment.id,
+        payment.userId,
+        payment.amount,
+        pi.id
+      );
+    }
   } catch (error) {
     console.error(`[Webhook] Error handling payment_intent.succeeded:`, error);
   }

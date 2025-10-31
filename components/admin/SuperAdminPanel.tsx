@@ -24,8 +24,10 @@ import {
   Library,
   FileText,
   BarChart3,
+  Mail,
 } from "lucide-react";
 import { UserManagementTab } from "@/components/admin/UserManagementTab";
+import { LeadsManagementTab } from "@/components/admin/LeadsManagementTab";
 import ResourceLibraryManager from "@/components/admin/ResourceLibraryManager";
 import { AssessmentBuilder } from "@/components/admin/AssessmentBuilder";
 import { SystemStats } from "@/components/admin/SystemStats";
@@ -157,7 +159,7 @@ const SuperAdminPanel: React.FC = () => {
     <div className="space-y-4">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList
-          className={`grid w-full mb-3 ${userData?.role === "SUPER_ADMIN" ? "grid-cols-4" : "grid-cols-2"}`}
+          className={`grid w-full mb-3 ${userData?.role === "SUPER_ADMIN" ? "grid-cols-5" : "grid-cols-3"}`}
         >
           <TabsTrigger value="platform" className="text-xs">
             <Settings className="h-3 w-3 mr-1" />
@@ -166,6 +168,10 @@ const SuperAdminPanel: React.FC = () => {
           <TabsTrigger value="users" className="text-xs">
             <Users className="h-3 w-3 mr-1" />
             Users
+          </TabsTrigger>
+          <TabsTrigger value="leads" className="text-xs">
+            <Mail className="h-3 w-3 mr-1" />
+            Leads
           </TabsTrigger>
           {userData?.role === "SUPER_ADMIN" && (
             <>
@@ -388,6 +394,11 @@ const SuperAdminPanel: React.FC = () => {
         {/* Users Tab */}
         <TabsContent value="users" className="space-y-4 mt-0">
           <UserManagementTab />
+        </TabsContent>
+
+        {/* Leads Tab */}
+        <TabsContent value="leads" className="space-y-4 mt-0">
+          <LeadsManagementTab />
         </TabsContent>
 
         {/* Resources Tab - Only for SUPER_ADMIN */}

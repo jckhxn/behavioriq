@@ -59,6 +59,7 @@ import {
   Globe,
   ChevronDown,
   ChevronUp,
+  Edit,
 } from "lucide-react";
 import { format } from "date-fns";
 import Link from "next/link";
@@ -67,6 +68,7 @@ import { toast } from "sonner";
 import ConversationalTrialModule from "@/components/dashboard/ConversationalTrialModule";
 import { formatPrice, PRICING } from "@/lib/config/pricing";
 import { OnboardingChecklist } from "@/components/onboarding/OnboardingChecklist";
+import { RenameAssessmentDialog } from "./RenameAssessmentDialog";
 
 interface Assessment {
   id: string;
@@ -126,6 +128,13 @@ export function AssessmentsView() {
   );
   const [isDeleting, setIsDeleting] = useState(false);
   const [generatingPdfId, setGeneratingPdfId] = useState<string | null>(null);
+
+  // Rename dialog state
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [assessmentToRename, setAssessmentToRename] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   // License state
   const [userLicense, setUserLicense] = useState<{
@@ -551,6 +560,28 @@ export function AssessmentsView() {
       console.error("Error deleting share link:", error);
       toast.error("Failed to delete share link. Please try again.");
     }
+  };
+
+  const handleRenameClick = (assessmentId: string, currentName: string) => {
+    setAssessmentToRename({ id: assessmentId, name: currentName });
+    setRenameDialogOpen(true);
+  };
+
+  const handleRenameSuccess = (newName: string) => {
+    if (assessmentToRename) {
+      // Update the assessment in local state
+      setAssessments((prev) =>
+        prev.map((a) =>
+          a.id === assessmentToRename.id ? { ...a, subjectName: newName } : a
+        )
+      );
+      setFilteredAssessments((prev) =>
+        prev.map((a) =>
+          a.id === assessmentToRename.id ? { ...a, subjectName: newName } : a
+        )
+      );
+    }
+    setAssessmentToRename(null);
   };
 
   const getRiskLevelColor = (riskLevel: string) => {
@@ -1135,6 +1166,15 @@ export function AssessmentsView() {
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem
                                   onClick={() =>
+                                    handleRenameClick(assessment.id, assessment.subjectName)
+                                  }
+                                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-950"
+                                >
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Rename Assessment
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() =>
                                     handleShareClick(assessment.id)
                                   }
                                   className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-950"
@@ -1208,6 +1248,15 @@ export function AssessmentsView() {
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem
                                   onClick={() =>
+                                    handleRenameClick(assessment.id, assessment.subjectName)
+                                  }
+                                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-950"
+                                >
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Rename Assessment
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() =>
                                     handleShareClick(assessment.id)
                                   }
                                   className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-950"
@@ -1236,6 +1285,15 @@ export function AssessmentsView() {
             </div>
           )}
         </div>
+
+        {/* Rename Assessment Dialog */}
+        <RenameAssessmentDialog
+          open={renameDialogOpen}
+          onOpenChange={setRenameDialogOpen}
+          assessmentId={assessmentToRename?.id || ""}
+          currentName={assessmentToRename?.name || ""}
+          onSuccess={handleRenameSuccess}
+        />
 
         {/* Share Assessment Dialog */}
         <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>

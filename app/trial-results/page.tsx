@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
  * Redirects to new nested routes structure (/results/[trialId])
  * Attempts to read trialId from URL params or localStorage
  */
+
 export default function TrialResultsRedirect() {
   const router = useRouter();
   const searchParams = useSearchParams();

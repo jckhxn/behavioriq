@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useUser } from "@/lib/hooks/use-supabase-user";
 import { AssessmentChat } from "@/components/chat/AssessmentChat";
 import { AssessmentCompletion } from "@/components/assessment/AssessmentCompletion";
@@ -12,6 +12,7 @@ import Link from "next/link";
 
 interface Assessment {
   id: string;
+  userId: string | null;
   subjectName: string;
   status: "IN_PROGRESS" | "COMPLETED";
   startedAt: string;
@@ -21,8 +22,7 @@ interface Assessment {
 
 export default function AssessmentPage() {
   const params = useParams();
-  const router = useRouter();
-  const { user, isLoading } = useUser();
+  const { isLoading } = useUser();
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -143,7 +143,7 @@ export default function AssessmentPage() {
           <AssessmentCompletion
             assessmentId={assessmentId}
             subjectName={assessment.subjectName}
-            isAnonymous={!user}
+            isAnonymous={assessment.userId === null}
           />
         </div>
       </div>
@@ -180,7 +180,7 @@ export default function AssessmentPage() {
           <AssessmentCompletion
             assessmentId={assessmentId}
             subjectName={assessment.subjectName}
-            isAnonymous={!user}
+            isAnonymous={assessment.userId === null}
           />
         </div>
       </div>

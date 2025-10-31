@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import bcrypt from "bcryptjs";
+import { Prisma } from "@prisma/client";
 
 /**
  * POST /api/auth/create-user
@@ -20,17 +21,48 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
+    // Check if user already exists by Supabase ID
+    let existingUser = await prisma.user.findUnique({
       where: { id },
     });
 
     if (existingUser) {
-      // User already exists, just return it
+      // User with this Supabase ID already exists
       return NextResponse.json({
         success: true,
         message: "User already exists",
         user: existingUser,
+      });
+    }
+
+    // Also check if email already exists (from failed signup attempt or duplicate)
+    const emailExists = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (emailExists) {
+      // Email is taken but Supabase ID doesn't match
+      // This is unusual - likely a duplicate signup. Link to existing user
+      console.warn(
+        `[auth/create-user] Email ${email} already exists with different ID. Existing: ${emailExists.id}, New: ${id}`
+      );
+
+      // Update the existing user with the new Supabase ID and password
+      const updatedUser = await prisma.user.update({
+        where: { email },
+        data: {
+          id, // Update to match the new Supabase ID
+          name: name || emailExists.name || email.split("@")[0],
+          password: password
+            ? await bcrypt.hash(password, 12)
+            : emailExists.password,
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: "User linked to existing email",
+        user: updatedUser,
       });
     }
 
@@ -50,6 +82,10 @@ export async function POST(request: NextRequest) {
         password: hashedPassword,
       },
     });
+
+    // TODO: Check for anonymous payments with affiliate refCodes matching this email
+    // When found, create AffiliateAttribution linking refCode to new userId
+    // This requires storing customer email in payment metadata from Stripe checkout
 
     return NextResponse.json({
       success: true,

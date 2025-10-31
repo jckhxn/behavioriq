@@ -7,6 +7,7 @@ interface CheckoutCreatePayload {
   assessmentId?: string;  // NEW: assessment ID (preferred)
   trialId?: string;       // LEGACY: trial ID (backwards compat)
   sessionId: string;
+  email?: string;         // Optional: customer email for Stripe
   couponCode?: string;
 }
 
@@ -20,7 +21,7 @@ interface CheckoutCreatePayload {
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as CheckoutCreatePayload;
-    const { product, assessmentId, trialId, sessionId, couponCode } = body;
+    const { product, assessmentId, trialId, sessionId, email, couponCode } = body;
 
     const id = assessmentId || trialId;
 
@@ -105,9 +106,7 @@ export async function POST(request: Request) {
 
     // Create Stripe checkout session
     const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
-    const checkoutSession = await stripe.checkout.sessions.create({
-      // No customer email for anonymous trials
-      ...(isAnonymous ? {} : { customer_email: sessionId }),
+    const checkoutSessionData: any = {
       line_items: lineItems,
       ...(discounts.length > 0 && { discounts }),
       mode: "payment" as any,
@@ -124,7 +123,14 @@ export async function POST(request: Request) {
         source: "trial_conversion",
         anonymous: isAnonymous.toString(),
       },
-    } as any);
+    };
+
+    // Only add customer_email if provided and it's a valid email
+    if (email && email.includes("@")) {
+      checkoutSessionData.customer_email = email;
+    }
+
+    const checkoutSession = await stripe.checkout.sessions.create(checkoutSessionData);
 
     if (!checkoutSession.url) {
       console.error("Stripe checkout URL not generated", checkoutSession);

@@ -280,6 +280,7 @@ model Assessment {
   childResponses            Json?
   enhancedAnalysis          Json?
   childprofileid            String?
+  affiliateRefCode          String?                // Affiliate ref code if assessment came from referral link
   aiReport                  AIReport?
   assessmentTemplate        AssessmentTemplate?    @relation("AssessmentFromTemplate", fields: [assessmentTemplateId], references: [id])
   user                      User?                  @relation(fields: [userId], references: [id], onDelete: Cascade)

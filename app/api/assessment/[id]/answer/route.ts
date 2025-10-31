@@ -206,12 +206,10 @@ export async function POST(
             CONDUCT: "CONDUCT",
           };
 
-          // Use domain.domain if valid, otherwise map domainName to enum
+          // Map domainTemplate.name to enum
           let domainEnum = null;
-          if (domain.domain && validDomains[domain.domain]) {
-            domainEnum = domain.domain;
-          } else if (domainTemplate.name) {
-            // Try to map domainTemplate.name to enum
+          if (domainTemplate.name) {
+            // Map domainTemplate.name to enum
             const nameLower = domainTemplate.name.toLowerCase();
             if (nameLower.includes("emotional")) domainEnum = "EMOTIONAL";
             else if (nameLower.includes("hyperactivity") || nameLower.includes("impulsivity") || nameLower.includes("attention"))
@@ -227,12 +225,12 @@ export async function POST(
 
           scores.push({
             assessmentId,
-            domain: domainEnum,
+            domain: domainEnum as any,
             domainTemplateId: domainTemplate.id || null,
             domainName: domainTemplate.name || "Unknown Domain",
             rawScore,
             totalPossible,
-            riskLevel,
+            riskLevel: riskLevel as any,
             confidence: 0.95, // Default confidence
             questionsAnswered: answeredInDomain,
             wasTerminatedEarly: false,

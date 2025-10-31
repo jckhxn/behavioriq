@@ -27,8 +27,10 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${origin}/auth/reset-password`);
     }
 
-    // Otherwise redirect to dashboard
-    return NextResponse.redirect(`${origin}/dashboard`);
+    // For email confirmations (new signups), redirect to set password page
+    // User needs to set their own password after confirming email
+    // Note: /set-password is in (auth) route group, so no /auth prefix needed
+    return NextResponse.redirect(`${origin}/set-password`);
   }
 
   return NextResponse.redirect(`${origin}/login`);

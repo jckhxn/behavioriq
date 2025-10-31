@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { stripe, PRICING_PLANS, SUBSCRIPTION_PLANS } from "@/lib/stripe/config";
+import { cookies } from "next/headers";
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,7 +22,13 @@ export async function POST(request: NextRequest) {
       fromDashboard = false,
       isUpgrade = false,
       upgradeFrom = null,
+      refCode = null, // Allow refCode in request body
     } = body;
+
+    // Get refCode from request body first, then fall back to biq_ref cookie
+    const cookieStore = await cookies();
+    const refCodeFromCookie = cookieStore.get("biq_ref")?.value;
+    const finalRefCode = refCode || refCodeFromCookie;
 
     const planKey = (plan ?? planId)?.toString();
 
@@ -98,6 +105,7 @@ export async function POST(request: NextRequest) {
         topUp: topUp ? "true" : "false",
         isUpgrade: isUpgrade ? "true" : "false",
         upgradeFrom: upgradeFrom || "",
+        refCode: finalRefCode || "", // Include referral code if present
       },
       // Apply discount coupon ONLY for subscription upgrades from payment success page (post-checkout upsell)
       // Do NOT apply discount for upgrades from dashboard/settings
@@ -121,6 +129,7 @@ export async function POST(request: NextRequest) {
             topUp: topUp ? "true" : "false",
             isUpgrade: isUpgrade ? "true" : "false",
             upgradeFrom: upgradeFrom || "",
+            refCode: finalRefCode || "", // Include referral code if present
           },
         },
       }),
@@ -135,6 +144,7 @@ export async function POST(request: NextRequest) {
             topUp: topUp ? "true" : "false",
             isUpgrade: isUpgrade ? "true" : "false",
             upgradeFrom: upgradeFrom || "",
+            refCode: finalRefCode || "", // Include referral code if present
           },
         },
       }),

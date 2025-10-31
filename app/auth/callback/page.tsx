@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { attributeSignupToAffiliate } from "@/lib/affiliate/onboarding";
+import { checkUserExists } from "@/lib/auth/user-detection";
 import {
   Card,
   CardContent,
@@ -22,10 +23,7 @@ export default function AuthCallbackPage() {
       try {
         const supabase = createClient();
 
-        // Get the code from URL (including hash params)
-        const hashParams = new URLSearchParams(
-          window.location.hash.substring(1)
-        );
+        // Get the code from URL search params
         const searchParams = new URLSearchParams(window.location.search);
 
         // Check for errors first
@@ -34,8 +32,14 @@ export default function AuthCallbackPage() {
 
         if (errorParam) {
           console.error("Auth error:", errorParam, errorDescription);
-          setError(errorDescription || "Authentication failed");
-          setTimeout(() => router.push("/login"), 3000);
+          const errorMsg = errorDescription || "Authentication failed";
+          setError(errorMsg);
+          // If there's a token/code error, suggest going back to sign up
+          if (errorParam.includes("invalid") || errorParam.includes("expired")) {
+            setTimeout(() => router.push("/login?error=expired_link"), 5000);
+          } else {
+            setTimeout(() => router.push("/login?error=" + encodeURIComponent(errorMsg)), 5000);
+          }
           return;
         }
 
@@ -67,9 +71,20 @@ export default function AuthCallbackPage() {
           if (type === "recovery" || type === "invite") {
             router.push("/auth/reset-password");
           } else {
-            // For new signups, redirect to set password page
-            // (User just confirmed their email and needs to set a password)
-            router.push("/auth/set-password");
+            // Check if this is an existing user (magic link login) or new signup
+            const userExists = await checkUserExists(session.user.email || "");
+
+            if (userExists) {
+              // Existing user - redirect to dashboard
+              console.log("[callback] Existing user detected, redirecting to dashboard");
+              router.push("/");
+            } else {
+              // New user - redirect to set password page
+              // (User just confirmed their email and needs to set a password)
+              // Note: /set-password is in (auth) route group, so no /auth prefix needed
+              console.log("[callback] New user detected, redirecting to set password");
+              router.push("/set-password");
+            }
           }
         } else {
           // No session yet, might still be processing
@@ -91,8 +106,18 @@ export default function AuthCallbackPage() {
                 if (type === "recovery" || type === "invite") {
                   router.push("/auth/reset-password");
                 } else {
-                  // For new signups, redirect to set password page
-                  router.push("/auth/set-password");
+                  // Check if this is an existing user (magic link login) or new signup
+                  const userExists = await checkUserExists(newSession.user.email || "");
+
+                  if (userExists) {
+                    // Existing user - redirect to dashboard
+                    console.log("[callback] Existing user detected, redirecting to dashboard");
+                    router.push("/");
+                  } else {
+                    // New user - redirect to set password page
+                    console.log("[callback] New user detected, redirecting to set password");
+                    router.push("/set-password");
+                  }
                 }
               });
             }

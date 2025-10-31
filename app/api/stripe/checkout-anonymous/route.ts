@@ -3,11 +3,17 @@ import { stripe } from "@/lib/stripe/config";
 import { PRICING_PLANS } from "@/lib/stripe/config";
 import { prisma } from "@/lib/db/prisma";
 import bcrypt from "bcryptjs";
+import { cookies } from "next/headers";
 
 export async function POST(request: NextRequest) {
   try {
-    const { userData, plan, planId, childName } = await request.json();
+    const { userData, plan, planId, childName, refCode = null } = await request.json();
     const planKey = (plan ?? planId)?.toString();
+
+    // Get refCode from request body first, then fall back to biq_ref cookie
+    const cookieStore = await cookies();
+    const refCodeFromCookie = cookieStore.get("biq_ref")?.value;
+    const finalRefCode = refCode || refCodeFromCookie;
 
     if (!userData || !planKey) {
       return NextResponse.json(
@@ -76,6 +82,7 @@ export async function POST(request: NextRequest) {
         userName: name,
         userPasswordHash: hashedPassword,
         userSource: "trial",
+        refCode: finalRefCode || "", // Include referral code if present
       },
     });
 
