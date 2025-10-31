@@ -238,10 +238,19 @@ async function fetchGA4Data(
     const deviceBreakdown: GA4Analytics["deviceBreakdown"] = [];
     const dates: GA4Analytics["dates"] = [];
 
-    // Process rows
-    if (data.rows) {
+    // Process rows - GA4 API v1beta uses dimensionValues not dimensions
+    if (data.rows && data.rows.length > 0) {
       for (const row of data.rows) {
-        const [dateStr, deviceCategory] = row.dimensions;
+        // Get dimension values (date and device)
+        const dimensionValues = row.dimensionValues || [];
+        if (dimensionValues.length === 0) continue;
+
+        const dateStr = dimensionValues[0]?.value || "unknown";
+        const deviceCategory = dimensionValues[1]?.value || "unknown";
+
+        if (!row.metricValues || row.metricValues.length === 0) continue;
+
+        // Parse metric values [views, sessions, users, duration, bounceRate]
         const [views, sessions, users, duration, bounceRate] = row.metricValues.map(
           (m: { value: string }) => parseFloat(m.value)
         );
@@ -278,6 +287,11 @@ async function fetchGA4Data(
       deviceBreakdown.forEach((d) => {
         d.percentage = totalDeviceSessions > 0 ? (d.sessions / totalDeviceSessions) * 100 : 0;
       });
+
+      // Calculate averages
+      const rowCount = data.rows.length;
+      totalSessionDuration = rowCount > 0 ? totalSessionDuration / rowCount : 0;
+      totalBounceRate = rowCount > 0 ? totalBounceRate / rowCount : 0;
     }
 
     const rowCount = data.rows?.length || 1;
