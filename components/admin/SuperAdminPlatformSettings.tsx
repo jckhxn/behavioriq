@@ -37,11 +37,11 @@ import {
 } from "lucide-react";
 import ResourceLibraryManager from "@/components/admin/ResourceLibraryManager";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
+import { AdminAnalytics } from "@/components/admin/AdminAnalytics";
 import { SESUsageWidget } from "@/components/admin/SESUsageWidget";
 import { UserManagementTab } from "@/components/admin/UserManagementTab";
 import { LeadsManagementTab } from "@/components/admin/LeadsManagementTab";
 import { AssessmentBuilder } from "@/components/admin/AssessmentBuilder";
-import { SystemStats } from "@/components/admin/SystemStats";
 import TemplatesAndStylesTab from "@/components/admin/TemplatesAndStylesTab";
 
 interface PlatformSettings {
@@ -555,7 +555,7 @@ export function SuperAdminPlatformSettings() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <SystemStats />
+              <AdminAnalytics />
             </CardContent>
           </Card>
         </TabsContent>
