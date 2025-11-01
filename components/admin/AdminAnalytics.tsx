@@ -242,7 +242,13 @@ export function AdminAnalytics() {
     );
   }
 
-  if (!data) {
+  // Check if we have any data to display
+  const hasSystemData = !!data;
+  const hasGA4Data = ga4Data && !ga4Data.error;
+  const hasMetaData = metaData && !metaData.error;
+
+  // If nothing loaded, show error
+  if (!hasSystemData && !hasGA4Data && !hasMetaData) {
     return (
       <div className="text-center py-8">
         <p className="text-muted-foreground">Failed to load analytics data.</p>
@@ -253,18 +259,22 @@ export function AdminAnalytics() {
     );
   }
 
-  const domainChartData = data.avgScoresByDomain.map((d) => ({
-    domain: DOMAIN_LABELS_SHORT[d.domain],
-    avgScore: Number(d.avgScore.toFixed(1)),
-    percentage: Math.round((d.avgScore / d.totalPossible) * 100),
-    count: d.assessmentCount,
-  }));
+  const domainChartData = data
+    ? data.avgScoresByDomain.map((d) => ({
+        domain: DOMAIN_LABELS_SHORT[d.domain],
+        avgScore: Number(d.avgScore.toFixed(1)),
+        percentage: Math.round((d.avgScore / d.totalPossible) * 100),
+        count: d.assessmentCount,
+      }))
+    : [];
 
-  const riskChartData = data.riskDistribution.map((r) => ({
-    name: r.riskLevel,
-    value: r.count,
-    color: RISK_COLORS[r.riskLevel].chart,
-  }));
+  const riskChartData = data
+    ? data.riskDistribution.map((r) => ({
+        name: r.riskLevel,
+        value: r.count,
+        color: RISK_COLORS[r.riskLevel].chart,
+      }))
+    : [];
 
   return (
     <div className="space-y-6">
@@ -295,176 +305,187 @@ export function AdminAnalytics() {
         </div>
       </div>
 
-      {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Assessments
-            </CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data.totalAssessments}</div>
-            <p className="text-xs text-muted-foreground">
-              {data.completedAssessments} completed
-            </p>
-          </CardContent>
-        </Card>
+      {/* Key Metrics - Show only if system data loaded */}
+      {hasSystemData && data && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Total Assessments
+              </CardTitle>
+              <Activity className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{data.totalAssessments}</div>
+              <p className="text-xs text-muted-foreground">
+                {data.completedAssessments} completed
+              </p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Completion Rate
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {data.totalAssessments > 0
-                ? Math.round(
-                    (data.completedAssessments / data.totalAssessments) * 100
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Completion Rate
+              </CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {data.totalAssessments > 0
+                  ? Math.round(
+                      (data.completedAssessments / data.totalAssessments) * 100
+                    )
+                  : 0}
+                %
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Assessment completion
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Users</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{data.activeUsers}</div>
+              <p className="text-xs text-muted-foreground">Recent activity</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                High Risk Cases
+              </CardTitle>
+              <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {data.riskDistribution
+                  .filter(
+                    (r) =>
+                      r.riskLevel === RiskLevel.HIGH ||
+                      r.riskLevel === RiskLevel.VERY_HIGH
                   )
-                : 0}
-              %
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Assessment completion
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Users</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data.activeUsers}</div>
-            <p className="text-xs text-muted-foreground">Recent activity</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              High Risk Cases
-            </CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {data.riskDistribution
-                .filter(
-                  (r) =>
-                    r.riskLevel === RiskLevel.HIGH ||
-                    r.riskLevel === RiskLevel.VERY_HIGH
-                )
-                .reduce((sum, r) => sum + r.count, 0)}
-            </div>
-            <p className="text-xs text-muted-foreground">Requiring attention</p>
-          </CardContent>
-        </Card>
-      </div>
+                  .reduce((sum, r) => sum + r.count, 0)}
+              </div>
+              <p className="text-xs text-muted-foreground">Requiring attention</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Charts */}
-      <Tabs defaultValue="domains" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="domains">Domain Performance</TabsTrigger>
-          <TabsTrigger value="risk">Risk Distribution</TabsTrigger>
-          <TabsTrigger value="trends">Assessment Trends</TabsTrigger>
+      <Tabs defaultValue={hasSystemData ? "domains" : "ga4"} className="w-full">
+        <TabsList className={`grid w-full ${hasSystemData ? "grid-cols-5" : "grid-cols-2"}`}>
+          {hasSystemData && (
+            <>
+              <TabsTrigger value="domains">Domain Performance</TabsTrigger>
+              <TabsTrigger value="risk">Risk Distribution</TabsTrigger>
+              <TabsTrigger value="trends">Assessment Trends</TabsTrigger>
+            </>
+          )}
           <TabsTrigger value="ga4">GA4 Analytics</TabsTrigger>
           <TabsTrigger value="meta">Meta Ads</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="domains" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Average Scores by Domain</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Performance across assessment domains
-              </p>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer config={chartConfig}>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={domainChartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis
-                      dataKey="domain"
-                      tick={{ fontSize: 12 }}
-                      angle={-45}
-                      textAnchor="end"
-                      height={80}
-                    />
-                    <YAxis />
-                    <ChartTooltip
-                      content={<ChartTooltipContent />}
-                      formatter={(value: any, name: string) => [
-                        name === "avgScore" ? `${value} pts` : `${value}%`,
-                        name === "avgScore" ? "Avg Score" : "Percentage",
-                      ]}
-                    />
-                    <Bar
-                      dataKey="avgScore"
-                      fill="hsl(var(--chart-1))"
-                      radius={[4, 4, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-            </CardContent>
-          </Card>
-        </TabsContent>
+        {hasSystemData && (
+          <>
+            <TabsContent value="domains" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Average Scores by Domain</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Performance across assessment domains
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <ChartContainer config={chartConfig}>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={domainChartData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis
+                          dataKey="domain"
+                          tick={{ fontSize: 12 }}
+                          angle={-45}
+                          textAnchor="end"
+                          height={80}
+                        />
+                        <YAxis />
+                        <ChartTooltip
+                          content={<ChartTooltipContent />}
+                          formatter={(value: any, name: string) => [
+                            name === "avgScore" ? `${value} pts` : `${value}%`,
+                            name === "avgScore" ? "Avg Score" : "Percentage",
+                          ]}
+                        />
+                        <Bar
+                          dataKey="avgScore"
+                          fill="hsl(var(--chart-1))"
+                          radius={[4, 4, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-        <TabsContent value="risk" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Risk Level Distribution</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Distribution of risk levels across all assessments
-              </p>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer config={chartConfig}>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={riskChartData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, value, percent }) =>
-                        `${name}: ${value} (${(percent * 100).toFixed(0)}%)`
-                      }
-                      outerRadius={100}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {riskChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-            </CardContent>
-          </Card>
-        </TabsContent>
+            <TabsContent value="risk" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Risk Level Distribution</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Distribution of risk levels across all assessments
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <ChartContainer config={chartConfig}>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={riskChartData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, value, percent }) =>
+                            `${name}: ${value} (${(percent * 100).toFixed(0)}%)`
+                          }
+                          outerRadius={100}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {riskChartData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </>
+        )}
 
-        <TabsContent value="trends" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Assessment Trends</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Assessment volume and completion trends over time
-              </p>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer config={chartConfig}>
-                <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={data.assessmentTrends}>
+        {hasSystemData && (
+          <TabsContent value="trends" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Assessment Trends</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Assessment volume and completion trends over time
+                </p>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer config={chartConfig}>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <AreaChart data={data?.assessmentTrends || []}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis />
@@ -488,9 +509,10 @@ export function AdminAnalytics() {
                   </AreaChart>
                 </ResponsiveContainer>
               </ChartContainer>
-            </CardContent>
-          </Card>
-        </TabsContent>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
 
         <TabsContent value="ga4" className="space-y-4">
           {!ga4Data || ga4Data.error ? (
