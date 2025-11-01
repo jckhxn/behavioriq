@@ -10,7 +10,7 @@ import { Role, AssessmentDomain, RiskLevel } from "@prisma/client";
 export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUserWithRole();
-    if (!user || user.role !== Role.ADMIN) {
+    if (!user || (user.role !== Role.ADMIN && user.role !== Role.SUPER_ADMIN)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
