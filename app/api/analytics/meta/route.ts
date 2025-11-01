@@ -82,9 +82,14 @@ export async function POST(request: NextRequest) {
 
     const dateString = (date: Date) => date.toISOString().split("T")[0];
 
+    // Normalize business account ID (remove 'act_' prefix if present)
+    const normalizedAccountId = businessAccountId.startsWith("act_")
+      ? businessAccountId.substring(4)
+      : businessAccountId;
+
     // Fetch Meta analytics data
     const analyticsData = await fetchMetaAnalytics(
-      businessAccountId,
+      normalizedAccountId,
       accessToken,
       dateString(startDate),
       dateString(endDate)
