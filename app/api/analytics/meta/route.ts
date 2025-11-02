@@ -122,6 +122,54 @@ export async function POST(request: NextRequest) {
 }
 
 /**
+ * Verify that the access token can see the ad account
+ * This preflight check provides better error messages
+ */
+async function ensureAdAccountVisibility(
+  token: string,
+  actId: string
+): Promise<void> {
+  try {
+    const res = await fetch(
+      `https://graph.facebook.com/v19.0/me/adaccounts?limit=500&access_token=${token}`
+    );
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error("[Meta] me/adaccounts failed:", data);
+      throw new Error(
+        `[Meta] me/adaccounts failed: ${res.status} ${JSON.stringify(data.error || data)}`
+      );
+    }
+
+    // Normalize account IDs for comparison (remove act_ prefix if present)
+    const normalizedActId = actId.replace(/^act_?/, "");
+    const visibleAccounts = (data?.data ?? []).map((a: any) =>
+      a.id?.replace(/^act_?/, "")
+    );
+
+    const ok = visibleAccounts.includes(normalizedActId);
+
+    if (!ok) {
+      console.error(
+        `[Meta] Token cannot see ad account ${actId}. Available accounts:`,
+        visibleAccounts.map((id: string) => `act_${id}`)
+      );
+      throw new Error(
+        `[Meta] Token cannot see ad account ${actId}. Visible accounts: ${visibleAccounts.map((id: string) => `act_${id}`).join(", ") || "none"}. Check System User asset assignment and scopes in Meta Ads Manager.`
+      );
+    }
+
+    console.log(`[Meta] ✓ Token can access ad account ${actId}`);
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error(`[Meta] Unexpected error checking ad account visibility: ${error}`);
+  }
+}
+
+/**
  * Fetch analytics data from Meta Marketing API
  */
 async function fetchMetaAnalytics(
@@ -131,6 +179,9 @@ async function fetchMetaAnalytics(
   endDate: string
 ): Promise<MetaAnalytics> {
   try {
+    // Preflight check: ensure token can access the ad account
+    await ensureAdAccountVisibility(accessToken, businessAccountId);
+
     // Fetch account insights (aggregate metrics)
     const insightsResponse = await fetch(
       `https://graph.facebook.com/v18.0/act_${businessAccountId}/insights?` +
