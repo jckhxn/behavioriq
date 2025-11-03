@@ -1,0 +1,97 @@
+{
+  "schema_version": "v1",
+  "name": "BehaviorIQ Assessments",
+  "description": "Take behavioral health assessments through conversational AI. Get personalized insights for ADHD, autism, anxiety, and more. Start with a free trial or take a comprehensive assessment.",
+  "namespace": "behavioriq",
+  "runtime": {
+    "type": "mcp",
+    "url": "https://behavioriq.app/api/mcp"
+  },
+  "icon": {
+    "light": "/icon-light.png",
+    "dark": "/icon-dark.png"
+  },
+  "tools": [
+    {
+      "name": "start_trial",
+      "description": "Start a free trial behavioral assessment to identify potential concerns. This assessment is anonymous and takes 5-10 minutes to complete. Perfect for getting a quick screening.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "anonymous": {
+            "type": "boolean",
+            "description": "Whether to run in anonymous mode (default: true)",
+            "default": true
+          },
+          "region": {
+            "type": "string",
+            "description": "User's region for localization (optional)"
+          }
+        }
+      }
+    },
+    {
+      "name": "start_full_assessment",
+      "description": "Start a comprehensive behavioral assessment with detailed analysis and recommendations. Requires authentication. Takes 20-30 minutes to complete. Provides in-depth insights across multiple behavioral domains.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "templateId": {
+            "type": "string",
+            "description": "Assessment template ID to use (optional, defaults to standard comprehensive template)"
+          },
+          "subjectName": {
+            "type": "string",
+            "description": "Name of the person being assessed (e.g., 'Alex', 'my child')"
+          }
+        },
+        "required": ["subjectName"]
+      }
+    },
+    {
+      "name": "view_results",
+      "description": "View results from a completed assessment. Shows domain scores, risk levels, and personalized recommendations.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "assessmentId": {
+            "type": "string",
+            "description": "The ID of the assessment to view results for"
+          }
+        },
+        "required": ["assessmentId"]
+      }
+    }
+  ],
+  "resources": [
+    {
+      "uri": "widget://trial",
+      "name": "Trial Assessment Widget",
+      "description": "Interactive trial assessment interface",
+      "mimeType": "text/html+skybridge"
+    },
+    {
+      "uri": "widget://assessment",
+      "name": "Full Assessment Widget",
+      "description": "Comprehensive assessment interface with authentication",
+      "mimeType": "text/html+skybridge"
+    },
+    {
+      "uri": "widget://results",
+      "name": "Results Widget",
+      "description": "Assessment results visualization and insights",
+      "mimeType": "text/html+skybridge"
+    }
+  ],
+  "api": {
+    "type": "openapi",
+    "url": "https://behavioriq.app/api/openapi.json"
+  },
+  "auth": {
+    "type": "none"
+  },
+  "legal_info_url": "https://behavioriq.app/terms",
+  "privacy_policy_url": "https://behavioriq.app/privacy",
+  "contact_email": "support@behavioriq.app",
+  "logo_url": "https://behavioriq.app/logo.png"
+}

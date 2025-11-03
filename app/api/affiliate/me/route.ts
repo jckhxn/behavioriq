@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { stripeConnectService } from "@/lib/stripe/connect";
+import { calculateNextPayout } from "@/lib/affiliate/payout-calculator";
+import { calculateDailyAverageEarnings } from "@/lib/affiliate/analytics";
+import { getDefaultPayoutPreferences } from "@/lib/affiliate/preferences-validator";
 
 export async function GET(request: NextRequest) {
   const user = await getCurrentUserWithRole();
@@ -83,6 +86,45 @@ export async function GET(request: NextRequest) {
       stripeStatus.pendingRequirements = accountStatus.requirements;
     }
 
+    // Get payout preferences
+    let preferences = await prisma.affiliatePayoutPreferences.findUnique({
+      where: { referrerId: referrer.id },
+    });
+
+    if (!preferences) {
+      preferences = getDefaultPayoutPreferences() as any;
+    }
+
+    // Get all commissions for daily average calculation
+    const allCommissions = await prisma.affiliateCommission.findMany({
+      where: {
+        referrerId: referrer.id,
+        status: { notIn: ["void", "clawed_back"] },
+      },
+      select: {
+        createdAt: true,
+        amountCents: true,
+      },
+    });
+
+    // Calculate daily average
+    const dailyAverage = calculateDailyAverageEarnings(
+      allCommissions.map((c) => ({
+        ...c,
+        id: "",
+        event: "",
+        status: "paid",
+      })),
+      30
+    );
+
+    // Calculate next payout estimate
+    const nextPayoutEstimate = calculateNextPayout(
+      payableBalance._sum.amountCents || 0,
+      preferences,
+      dailyAverage
+    );
+
     return NextResponse.json({
       refCode: referrer.refCode,
       status: referrer.status,
@@ -97,6 +139,7 @@ export async function GET(request: NextRequest) {
         (payableBalance._sum.amountCents || 0) >= 5000
           ? "Now"
           : "When balance reaches $50",
+      nextPayoutEstimate,
     });
   } catch (error) {
     console.error("[AffiliateMe] ❌ Error:", error);

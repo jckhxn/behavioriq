@@ -1,23 +1,35 @@
 "use client";
 
-import { EmailTemplateEditor } from "@/components/admin/EmailTemplateEditor";
+import { GrapesJSEmailEditor } from "@/components/admin/GrapesJSEmailEditor";
 import { PDFStyleEditor } from "@/components/admin/PDFStyleEditor";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Mail, Palette } from "lucide-react";
 
 export default function TemplatesAndStylesTab() {
   return (
-    <div className="w-full max-w-5xl mx-auto px-4">
+    <div className="w-full px-4">
       <h2 className="text-2xl font-bold mb-6">Templates & Styles</h2>
-      <div
-        className="flex flex-col md:flex-row gap-8 justify-center"
-        style={{ minHeight: 400 }}
-      >
-        <div className="flex-1 min-w-[320px] md:max-w-[50%]">
-          <EmailTemplateEditor />
-        </div>
-        <div className="flex-1 min-w-[320px] md:max-w-[50%]">
+
+      <Tabs defaultValue="email" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsTrigger value="email" className="flex items-center gap-2">
+            <Mail className="w-4 h-4" />
+            Email Templates
+          </TabsTrigger>
+          <TabsTrigger value="pdf" className="flex items-center gap-2">
+            <Palette className="w-4 h-4" />
+            PDF Styles
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="email" className="w-full">
+          <GrapesJSEmailEditor />
+        </TabsContent>
+
+        <TabsContent value="pdf" className="w-full">
           <PDFStyleEditor />
-        </div>
-      </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

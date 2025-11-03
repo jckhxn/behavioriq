@@ -211,6 +211,145 @@ export class StripeConnectService {
       };
     }
   }
+
+  /**
+   * Get bank account info for display (masked)
+   * Returns last 4 digits, bank name, and status
+   */
+  async getBankAccountInfo(stripeAccountId: string): Promise<{
+    last4?: string;
+    bankName?: string;
+    status?: string;
+    routingNumber?: string;
+    accountType?: string;
+  } | null> {
+    try {
+      const account = await stripe.accounts.retrieve(stripeAccountId);
+
+      // Get external account (bank account)
+      if (account.external_accounts && account.external_accounts.data.length > 0) {
+        const bankAccount = account.external_accounts.data[0];
+
+        if (bankAccount.object === 'bank_account') {
+          return {
+            last4: bankAccount.last4,
+            bankName: bankAccount.bank_name || 'Bank',
+            status: bankAccount.status,
+            routingNumber: bankAccount.routing_number?.slice(-4), // Last 4 of routing
+            accountType: bankAccount.account_type,
+          };
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.error(`[StripeConnect] ❌ Error getting bank account info:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Get tax status and SSN information (masked)
+   * Returns whether tax forms are submitted and SSN last 4
+   */
+  async getTaxStatus(stripeAccountId: string): Promise<{
+    taxIdProvided: boolean;
+    taxIdLast4?: string;
+    taxIdType?: string;
+    w9Submitted: boolean;
+    requirements: string[];
+  }> {
+    try {
+      const account = await stripe.accounts.retrieve(stripeAccountId);
+
+      const individual = account.individual;
+      const taxIdProvided = !!individual?.ssn_last_4_provided;
+      const taxIdLast4 = individual?.ssn_last_4 || undefined;
+
+      // Check if tax requirements are pending
+      const taxRequirements = account.requirements?.currently_due?.filter(
+        (req) => req.includes('tax') || req.includes('ssn') || req.includes('id_number')
+      ) || [];
+
+      return {
+        taxIdProvided,
+        taxIdLast4,
+        taxIdType: taxIdProvided ? 'SSN' : undefined,
+        w9Submitted: taxIdProvided && taxRequirements.length === 0,
+        requirements: taxRequirements,
+      };
+    } catch (error) {
+      console.error(`[StripeConnect] ❌ Error getting tax status:`, error);
+      return {
+        taxIdProvided: false,
+        w9Submitted: false,
+        requirements: [],
+      };
+    }
+  }
+
+  /**
+   * Get payout timing information
+   * Returns Stripe's payout schedule and typical delay
+   */
+  async getPayoutTiming(stripeAccountId: string): Promise<{
+    delayDays: number;
+    schedule: string;
+    nextPayoutDate?: Date;
+  }> {
+    try {
+      const account = await stripe.accounts.retrieve(stripeAccountId);
+
+      // Stripe Connect transfers typically arrive in 2-3 business days
+      // This is different from standard Stripe payouts
+      const delayDays = 2;
+      const schedule = 'instant'; // Transfers are instant to connected account
+
+      return {
+        delayDays,
+        schedule,
+        nextPayoutDate: new Date(Date.now() + delayDays * 24 * 60 * 60 * 1000),
+      };
+    } catch (error) {
+      console.error(`[StripeConnect] ❌ Error getting payout timing:`, error);
+      return {
+        delayDays: 3,
+        schedule: 'unknown',
+      };
+    }
+  }
+
+  /**
+   * Get account requirements and verification status
+   * Returns pending KYC items and what's needed
+   */
+  async getAccountRequirements(stripeAccountId: string): Promise<{
+    currentlyDue: string[];
+    eventuallyDue: string[];
+    pastDue: string[];
+    pendingVerification: string[];
+    disabledReason?: string;
+  }> {
+    try {
+      const account = await stripe.accounts.retrieve(stripeAccountId);
+
+      return {
+        currentlyDue: account.requirements?.currently_due || [],
+        eventuallyDue: account.requirements?.eventually_due || [],
+        pastDue: account.requirements?.past_due || [],
+        pendingVerification: account.requirements?.pending_verification || [],
+        disabledReason: account.requirements?.disabled_reason || undefined,
+      };
+    } catch (error) {
+      console.error(`[StripeConnect] ❌ Error getting account requirements:`, error);
+      return {
+        currentlyDue: [],
+        eventuallyDue: [],
+        pastDue: [],
+        pendingVerification: [],
+      };
+    }
+  }
 }
 
 export const stripeConnectService = new StripeConnectService();

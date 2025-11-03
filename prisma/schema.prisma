@@ -21,10 +21,15 @@ model AffiliateReferrer {
   refCode                 String   @unique
   status                  String   @default("active") // 'active' | 'suspended'
   stripeConnectAccountId  String?  // Stripe Connect Express account ID
+  lastPayoutDate          DateTime?
+  lifetimeEarningsCents   Int      @default(0)
+  lifetimePaidOutCents    Int      @default(0)
   createdAt               DateTime @default(now())
   user                    User     @relation(fields: [userId], references: [id])
   commissions             AffiliateCommission[] @relation("ReferrerCommissions")
   payouts                 AffiliatePayout[] @relation("ReferrerPayouts")
+  payoutPreferences       AffiliatePayoutPreferences?
+  notificationPreferences AffiliateNotificationPreferences?
 
   @@index([status])
 }
@@ -77,24 +82,63 @@ model AffiliateCommission {
   @@index([referrerId])
   @@index([status])
   @@index([createdAt])
+  @@index([holdUntil])
+  @@index([referrerId, status])
 }
 
 model AffiliatePayout {
-  id              String   @id @default(cuid())
-  referrerId      String
-  amountCents     Int
-  status          String   @default("pending") // 'pending' | 'sent' | 'failed'
-  provider        String   @default("stripe_connect")
-  transferId      String?  // Stripe Transfer ID
-  failureReason   String?  // Error message if status='failed'
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  referrer        AffiliateReferrer @relation("ReferrerPayouts", fields: [referrerId], references: [id])
+  id                  String   @id @default(cuid())
+  referrerId          String
+  amountCents         Int
+  status              String   @default("pending") // 'pending' | 'sent' | 'failed'
+  provider            String   @default("stripe_connect")
+  transferId          String?  // Stripe Transfer ID
+  failureReason       String?  // Error message if status='failed'
+  payoutMethod        String?  @default("stripe_connect")
+  estimatedArrivalDate DateTime?
+  actualArrivalDate   DateTime?
+  feesCents           Int      @default(0)
+  netAmountCents      Int?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  referrer            AffiliateReferrer @relation("ReferrerPayouts", fields: [referrerId], references: [id])
 
   @@index([referrerId])
   @@index([status])
   @@index([createdAt])
+  @@index([estimatedArrivalDate])
 }
+
+model AffiliatePayoutPreferences {
+  id                      String   @id @default(cuid())
+  referrerId              String   @unique
+  minPayoutThresholdCents Int      @default(5000)
+  payoutFrequency         String   @default("auto") // 'auto' | 'daily' | 'weekly' | 'monthly'
+  autoPayoutEnabled       Boolean  @default(true)
+  payoutDayOfMonth        Int?
+  payoutDayOfWeek         Int?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+  referrer                AffiliateReferrer @relation(fields: [referrerId], references: [id], onDelete: Cascade)
+
+  @@index([referrerId])
+}
+
+model AffiliateNotificationPreferences {
+  id                        String   @id @default(cuid())
+  referrerId                String   @unique
+  emailOnPayout             Boolean  @default(true)
+  emailOnCommissionEarned   Boolean  @default(true)
+  emailOnCommissionPayable  Boolean  @default(true)
+  emailWeeklySummary        Boolean  @default(false)
+  emailMonthlySummary       Boolean  @default(false)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+  referrer                  AffiliateReferrer @relation(fields: [referrerId], references: [id], onDelete: Cascade)
+
+  @@index([referrerId])
+}
+
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["postgresqlExtensions"]
@@ -164,6 +208,8 @@ model User {
   parentUser                                       User?                       @relation("UserSubAccounts", fields: [parentUserId], references: [id])
   subAccounts                                      User[]                      @relation("UserSubAccounts")
   affiliateReferrer                                AffiliateReferrer?
+  createdEmailTemplates                            EmailTemplate[]        @relation("EmailTemplatesCreated")
+  createdEmailTemplateVersions                     EmailTemplateVersion[] @relation("EmailTemplateVersionsCreated")
 
   @@index([organizationId])
   @@index([parentUserId])
@@ -790,22 +836,26 @@ model SESMonthlyTotal {
 }
 
 model EmailLog {
-  id             String   @id @default(cuid())
-  userId         String?
-  recipientEmail String
-  emailType      String
-  subject        String
-  status         String
-  messageId      String?
-  errorMessage   String?
-  sentAt         DateTime @default(now())
-  user           User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              String         @id @default(cuid())
+  userId          String?
+  recipientEmail  String
+  emailType       String
+  subject         String
+  status          String
+  messageId       String?
+  errorMessage    String?
+  templateId      String?
+  templateVersion Int?
+  sentAt          DateTime       @default(now())
+  user            User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template        EmailTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
 
   @@index([userId, sentAt])
   @@index([recipientEmail, sentAt])
   @@index([sentAt])
   @@index([emailType])
   @@index([status])
+  @@index([templateId])
   @@map("email_logs")
 }
 
@@ -1001,11 +1051,57 @@ model ConversationalSubmission {
 }
 
 model EmailTemplate {
-  id        String   @id
-  name      String   @unique
-  subject   String
-  html      String
-  updatedAt DateTime
+  id          String                 @id @default(cuid())
+  name        String                 @unique
+  slug        String                 @unique
+  type        EmailTemplateType
+  category    String?
+  subject     String
+  preheader   String?
+  html        String
+  plainText   String?
+  variables   Json?                  // Variable definitions: { "userName": { "type": "string", "required": true, "default": "User" } }
+  metadata    Json?                  // Tags, description, etc.
+  version     Int                    @default(1)
+  parentId    String?
+  isActive    Boolean                @default(true)
+  createdById String
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  createdBy   User                   @relation("EmailTemplatesCreated", fields: [createdById], references: [id])
+  parent      EmailTemplate?         @relation("EmailTemplateVersions", fields: [parentId], references: [id])
+  versions    EmailTemplate[]        @relation("EmailTemplateVersions")
+  history     EmailTemplateVersion[]
+  emailLogs   EmailLog[]
+
+  @@index([type])
+  @@index([category])
+  @@index([isActive])
+  @@index([createdById])
+  @@map("EmailTemplate")
+}
+
+model EmailTemplateVersion {
+  id                String        @id @default(cuid())
+  templateId        String
+  version           Int
+  name              String
+  subject           String
+  preheader         String?
+  html              String
+  plainText         String?
+  variables         Json?
+  metadata          Json?
+  changeDescription String?
+  createdById       String
+  createdAt         DateTime      @default(now())
+  template          EmailTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  createdBy         User          @relation("EmailTemplateVersionsCreated", fields: [createdById], references: [id])
+
+  @@unique([templateId, version])
+  @@index([templateId])
+  @@index([createdAt])
+  @@map("EmailTemplateVersion")
 }
 
 model PDFStyle {
@@ -1125,4 +1221,21 @@ enum ShareLinkPrivacy {
   PUBLIC
   PRIVATE
   PASSWORD_PROTECTED
+}
+
+enum EmailTemplateType {
+  ASSESSMENT_REPORT
+  LICENSE_NOTIFICATION
+  LICENSE_RENEWED
+  WELCOME
+  PASSWORD_RESET
+  MAGIC_LINK
+  EMAIL_VERIFICATION
+  EMAIL_CHANGE
+  AFFILIATE_WELCOME
+  AFFILIATE_COMMISSION
+  AFFILIATE_PAYOUT
+  AFFILIATE_FRAUD_ALERT
+  SYSTEM_NOTIFICATION
+  GENERIC
 }

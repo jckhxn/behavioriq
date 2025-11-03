@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AffiliateDashboard } from "@/components/affiliate/AffiliateDashboard";
 
 interface AffiliateData {
   refCode: string;
@@ -201,6 +202,17 @@ export default function EarnRewardsPage() {
     return null;
   }
 
+  // Show new comprehensive affiliate dashboard
+  return (
+    <div className="max-w-7xl mx-auto p-8">
+      <AffiliateDashboard />
+    </div>
+  );
+}
+
+/*
+// Legacy dashboard - keeping for reference
+function LegacyDashboard(data: AffiliateData) {
   const payableUSD = (data.balances.payableCents / 100).toFixed(2);
   const totalEarnedUSD = (data.balances.totalEarnedCents / 100).toFixed(2);
   const totalPaidOutUSD = (data.balances.totalPaidOutCents / 100).toFixed(2);
@@ -415,3 +427,4 @@ export default function EarnRewardsPage() {
     </div>
   );
 }
+*/
