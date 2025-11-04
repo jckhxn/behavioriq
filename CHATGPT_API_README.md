@@ -327,6 +327,50 @@ Content-Type: application/json
 
 ---
 
+#### 4.5. GET /api/chatgpt/checkout/success
+Handle post-payment Stripe redirect (automatic)
+
+**Purpose:** Called automatically by Stripe after successful payment. Verifies payment is complete and waits for webhook processing to add credits.
+
+**Query Parameters:**
+```
+session_id=<stripeCheckoutSessionId>  (provided by Stripe)
+```
+
+**Response (200 - Payment Successful):**
+```json
+{
+  "success": true,
+  "userId": "...",
+  "email": "user@example.com",
+  "creditsAdded": 1,
+  "creditsAvailable": 1,
+  "planType": "single_assessment",
+  "message": "Payment successful! Your credits have been added to your account. Return to ChatGPT to continue."
+}
+```
+
+**Response (202 - Still Processing):**
+```json
+{
+  "success": false,
+  "error": "Payment is still being processed. Please check back in a moment or contact support if you have issues.",
+  "code": "WEBHOOK_TIMEOUT",
+  "requestId": "...",
+  "retryAfter": 5,
+  "message": "Your payment was successful, but we're still setting up your account. This usually takes a few seconds."
+}
+```
+
+**Errors:**
+- `400`: Payment not completed or invalid session
+- `404`: Session not found
+- `500`: Internal server error
+
+**Note:** This endpoint is called automatically by Stripe. The response page should display the success message and instruct the user to return to ChatGPT.
+
+---
+
 #### 5. POST /api/assessment/start
 Start a full 75-question assessment (requires credits)
 
@@ -527,6 +571,307 @@ All errors follow this format:
 
 ---
 
+## Post-Trial Payment Flow
+
+The ChatGPT integration supports a complete post-trial payment flow that mirrors the main site's user experience.
+
+### User Journey
+
+```
+1. User completes 15-question trial
+   ↓
+2. ChatGPT presents trial results and asks about full assessment
+   ↓
+3. User says "yes" to upgrade
+   ↓
+4. ChatGPT calls POST /api/chatgpt/checkout
+   ↓
+5. ChatGPT displays: "Click here to purchase: [checkout URL]"
+   ↓
+6. User clicks → Stripe checkout page
+   ↓
+7. User completes payment
+   ↓
+8. Stripe redirects to: /api/chatgpt/checkout/success?session_id=...
+   ↓
+9. Success endpoint verifies payment and waits for webhook
+   ↓
+10. User sees success message, returns to ChatGPT
+    ↓
+11. ChatGPT calls GET /api/user/credits to verify credits added
+    ↓
+12. ChatGPT says: "Great! Let's start your full assessment..."
+    ↓
+13. ChatGPT calls POST /api/assessment/start
+    ↓
+14. User answers 75 questions
+    ↓
+15. ChatGPT calls POST /api/assessment/submit
+    ↓
+16. ChatGPT calls GET /api/assessment/{id}/results
+    ↓
+17. ChatGPT presents full results with recommendations
+```
+
+### Implementation Details
+
+#### Step 1: Present Upgrade Option After Trial
+
+After user completes trial and receives results, ask:
+
+```
+"Based on your trial results, I recommend our full 75-question assessment
+for comprehensive insights. Here are your options:
+
+1. Single Assessment - $97 (1 credit)
+2. Core Plan - $59/month (2 credits/month)
+3. Family Plan - $99/month (5 credits/month)
+
+Would you like to upgrade?"
+```
+
+#### Step 2: Create Stripe Checkout Session
+
+When user selects a plan, call:
+
+```bash
+curl -X POST https://app.behavioriq.com/api/chatgpt/checkout \
+  -H "X-API-Key: sk_test_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "chatgpt-user-id",
+    "planType": "single_assessment"
+  }'
+```
+
+Response:
+```json
+{
+  "sessionId": "cs_test_...",
+  "url": "https://checkout.stripe.com/pay/cs_test_...",
+  "planType": "single_assessment",
+  "amount": 97.0,
+  "currency": "USD"
+}
+```
+
+#### Step 3: Present Checkout URL
+
+Tell user:
+
+```
+"Great! Click here to complete your purchase:
+[checkout URL]
+
+Once you've finished payment, come back here and I'll help you
+start the full assessment."
+```
+
+#### Step 4: User Completes Payment
+
+- User clicks link
+- Stripe payment page loads
+- User enters payment information (or logs in)
+- Payment processes
+
+#### Step 5: Stripe Redirects to Success Endpoint
+
+After payment, Stripe automatically redirects to:
+```
+https://app.behavioriq.com/api/chatgpt/checkout/success?session_id=cs_test_...
+```
+
+This endpoint:
+1. Verifies the Stripe session is paid
+2. Waits for webhook to process (up to 30 seconds)
+3. Returns JSON with credits info
+
+#### Step 6: User Returns to ChatGPT
+
+The success page displays:
+
+```
+✅ Payment Successful!
+
+Your credits have been added to your account.
+Return to ChatGPT to continue your assessment.
+```
+
+#### Step 7: Verify Credits and Start Full Assessment
+
+When user returns to ChatGPT, call:
+
+```bash
+curl -X GET "https://app.behavioriq.com/api/user/credits?user_id=chatgpt-user-id" \
+  -H "X-API-Key: sk_test_..."
+```
+
+Response:
+```json
+{
+  "userId": "...",
+  "credits": 1,
+  "creditsUsed": 0
+}
+```
+
+If `credits >= 1`, proceed with full assessment:
+
+```bash
+curl -X POST https://app.behavioriq.com/api/assessment/start \
+  -H "X-API-Key: sk_test_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "chatgpt-user-id",
+    "childName": "Emma",
+    "childAge": 8,
+    "relationshipType": "parent"
+  }'
+```
+
+#### Step 8: Guide User Through 75 Questions
+
+Present questions one at a time:
+
+```
+"Question 1 of 75:
+
+How often does Emma have difficulty paying attention in class or
+during tasks that require focus?
+
+A) Never
+B) Rarely
+C) Sometimes
+D) Often
+E) Very Often"
+```
+
+Store answers and when user reaches question 75, call:
+
+```bash
+curl -X POST https://app.behavioriq.com/api/assessment/submit \
+  -H "X-API-Key: sk_test_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "assessmentId": "assess_...",
+    "answers": [
+      {"questionId": "q_attention_1", "answer": "sometimes"},
+      ...
+    ]
+  }'
+```
+
+#### Step 9: Present Final Results
+
+Get results:
+
+```bash
+curl -X GET https://app.behavioriq.com/api/assessment/assess_.../results \
+  -H "X-API-Key: sk_test_..."
+```
+
+Response includes:
+```json
+{
+  "assessmentId": "assess_...",
+  "childName": "Emma",
+  "childAge": 8,
+  "completedAt": "2024-01-15T10:30:00Z",
+  "domainScores": [...],
+  "overall": {...},
+  "recommendations": [...],
+  "nextSteps": [...]
+}
+```
+
+Present results and recommendations to user.
+
+### Testing the Payment Flow Locally
+
+#### 1. Setup Test Data
+
+```bash
+# Create test user in database
+INSERT INTO "User" (id, email, name, "stripeCustomerId")
+VALUES ('chatgpt-test-user', 'test@example.com', 'Test User', NULL);
+
+# Create API key
+INSERT INTO "MagicLinkToken" (email, token, "userId", "expiresAt", "createdAt")
+VALUES ('test@example.com', 'sk_test_abc123...', 'chatgpt-test-user', '2099-12-31', NOW());
+```
+
+#### 2. Test Checkout Creation
+
+```bash
+curl -X POST http://localhost:3000/api/chatgpt/checkout \
+  -H "X-API-Key: sk_test_abc123..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "chatgpt-test-user",
+    "planType": "single_assessment"
+  }' | jq
+```
+
+Save the `url` from response.
+
+#### 3. Complete Stripe Test Payment
+
+1. Open the `url` from previous step
+2. Use Stripe test card: `4242 4242 4242 4242`
+3. Use any future expiry date, any CVC
+4. Enter any email and name
+5. Click "Pay"
+
+#### 4. Check Success Redirect
+
+Browser will redirect to:
+```
+/api/chatgpt/checkout/success?session_id=cs_test_...
+```
+
+You should see JSON response:
+```json
+{
+  "success": true,
+  "userId": "chatgpt-test-user",
+  "email": "test@example.com",
+  "creditsAdded": 1,
+  "creditsAvailable": 1,
+  "planType": "single_assessment",
+  "message": "Payment successful! Return to ChatGPT to continue."
+}
+```
+
+#### 5. Verify Credits Updated
+
+```bash
+curl -X GET "http://localhost:3000/api/user/credits?user_id=chatgpt-test-user" \
+  -H "X-API-Key: sk_test_abc123..." | jq
+```
+
+Should show `"credits": 1`.
+
+#### 6. Test Full Assessment Flow
+
+Now test the full assessment:
+
+```bash
+# Start assessment
+curl -X POST http://localhost:3000/api/assessment/start \
+  -H "X-API-Key: sk_test_abc123..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "chatgpt-test-user",
+    "childName": "Test Child",
+    "childAge": 8,
+    "relationshipType": "parent"
+  }' | jq
+```
+
+Should return 75 questions without 402 (insufficient credits) error.
+
+---
+
 ## Uploading to ChatGPT Builder
 
 ### Step 1: Get the OpenAPI Schema
@@ -688,7 +1033,8 @@ LOG_LEVEL=debug
   ├── user/
   │   └── credits/route.ts      # GET /api/user/credits
   ├── chatgpt/
-  │   └── checkout/route.ts     # POST /api/chatgpt/checkout
+  │   ├── checkout/route.ts             # POST /api/chatgpt/checkout
+  │   └── checkout/success/route.ts     # GET /api/chatgpt/checkout/success
   └── assessment/
       ├── start/route.ts        # POST /api/assessment/start
       ├── submit/route.ts       # POST /api/assessment/submit
