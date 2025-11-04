@@ -174,7 +174,7 @@ export function OverviewTab() {
                 `${window.location.origin}?ref=${data.refCode}`}
             </code>
             <CopyButton
-              text={
+              value={
                 typeof window !== "undefined"
                   ? `${window.location.origin}?ref=${data.refCode}`
                   : ""

@@ -8,13 +8,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { stripeConnectService } from "@/lib/stripe/connect";
-import { calculateNextPayout } from "@/lib/affiliate/payout-calculator";
-import { getDefaultPayoutPreferences } from "@/lib/affiliate/preferences-validator";
-import Stripe from "stripe";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-08-27.basil",
-});
 
 const DEFAULT_PAYOUT_THRESHOLD_CENTS = 5000; // $50
 
@@ -36,7 +29,6 @@ export async function GET(req: NextRequest) {
       },
       include: {
         user: true,
-        payoutPreferences: true,
       },
     });
 
@@ -50,18 +42,6 @@ export async function GET(req: NextRequest) {
 
     for (const referrer of referrers) {
       try {
-        // Get or use default preferences
-        const preferences = referrer.payoutPreferences || getDefaultPayoutPreferences();
-
-        // Skip if auto-payout is disabled
-        if (!preferences.autoPayoutEnabled) {
-          skipCount++;
-          console.log(
-            `[Cron] Referrer ${referrer.id} has auto-payout disabled, skipping`
-          );
-          continue;
-        }
-
         // Calculate payable balance
         const payableBalance = await prisma.affiliateCommission.aggregate({
           where: {
@@ -73,33 +53,11 @@ export async function GET(req: NextRequest) {
 
         const balanceCents = payableBalance._sum.amountCents || 0;
 
-        // Check minimum threshold from preferences
-        const thresholdCents = preferences.minPayoutThresholdCents || DEFAULT_PAYOUT_THRESHOLD_CENTS;
-
-        if (balanceCents < thresholdCents) {
+        // Check minimum threshold
+        if (balanceCents < DEFAULT_PAYOUT_THRESHOLD_CENTS) {
           skipCount++;
           console.log(
-            `[Cron] Referrer ${referrer.id} balance ${balanceCents} < threshold ${thresholdCents}, skipping`
-          );
-          continue;
-        }
-
-        // Check payout frequency and schedule
-        const nextPayout = calculateNextPayout(balanceCents, preferences);
-
-        if (!nextPayout.eligible) {
-          skipCount++;
-          console.log(
-            `[Cron] Referrer ${referrer.id} not eligible for payout yet: ${nextPayout.reason}`
-          );
-          continue;
-        }
-
-        // If estimatedDate is in the future, skip for now
-        if (nextPayout.estimatedDate && nextPayout.estimatedDate > new Date()) {
-          skipCount++;
-          console.log(
-            `[Cron] Referrer ${referrer.id} payout scheduled for ${nextPayout.estimatedDate.toISOString()}, skipping`
+            `[Cron] Referrer ${referrer.id} balance ${balanceCents} < threshold ${DEFAULT_PAYOUT_THRESHOLD_CENTS}, skipping`
           );
           continue;
         }

@@ -236,7 +236,7 @@ export class StripeConnectService {
             bankName: bankAccount.bank_name || 'Bank',
             status: bankAccount.status,
             routingNumber: bankAccount.routing_number?.slice(-4), // Last 4 of routing
-            accountType: bankAccount.account_type,
+            accountType: bankAccount.account_type || undefined,
           };
         }
       }
@@ -262,7 +262,7 @@ export class StripeConnectService {
     try {
       const account = await stripe.accounts.retrieve(stripeAccountId);
 
-      const individual = account.individual;
+      const individual = account.individual as any;
       const taxIdProvided = !!individual?.ssn_last_4_provided;
       const taxIdLast4 = individual?.ssn_last_4 || undefined;
 

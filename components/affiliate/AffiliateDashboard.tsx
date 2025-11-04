@@ -6,11 +6,9 @@ import { OverviewTab } from "@/components/affiliate/tabs/OverviewTab";
 import { CommissionsTab } from "@/components/affiliate/tabs/CommissionsTab";
 import { PayoutsTab } from "@/components/affiliate/tabs/PayoutsTab";
 import { AnalyticsTab } from "@/components/affiliate/tabs/AnalyticsTab";
-import { SettingsTab } from "@/components/affiliate/tabs/SettingsTab";
 import {
   BarChart3,
   DollarSign,
-  Settings,
   TrendingUp,
   Zap,
 } from "lucide-react";
@@ -28,7 +26,7 @@ export function AffiliateDashboard() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 gap-2 h-auto p-2 bg-gray-100">
+        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 gap-2 h-auto p-2 bg-gray-100">
           <TabsTrigger value="overview" className="flex flex-col items-center gap-1">
             <Zap className="w-4 h-4" />
             <span className="hidden sm:inline text-xs">Overview</span>
@@ -49,11 +47,6 @@ export function AffiliateDashboard() {
             <span className="hidden sm:inline text-xs">Analytics</span>
             <span className="sm:hidden text-xs">A</span>
           </TabsTrigger>
-          <TabsTrigger value="settings" className="flex flex-col items-center gap-1">
-            <Settings className="w-4 h-4" />
-            <span className="hidden sm:inline text-xs">Settings</span>
-            <span className="sm:hidden text-xs">S</span>
-          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-6">
@@ -70,10 +63,6 @@ export function AffiliateDashboard() {
 
         <TabsContent value="analytics" className="mt-6">
           <AnalyticsTab />
-        </TabsContent>
-
-        <TabsContent value="settings" className="mt-6">
-          <SettingsTab />
         </TabsContent>
       </Tabs>
     </div>

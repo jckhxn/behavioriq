@@ -74,7 +74,7 @@ export function sanitizeEmailHTML(
   }
 
   // Sanitize HTML
-  let sanitized = DOMPurify.sanitize(html, config);
+  let sanitized = DOMPurify.sanitize(html, config) as unknown as string;
 
   // Additional cleaning for email compatibility
   sanitized = cleanForEmail(sanitized, allowedStyles);

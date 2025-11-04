@@ -86,16 +86,7 @@ export function GrapesJSEmailEditor({ templateId }: EmailTemplateEditorProps) {
         fromElement: true,
         height: "600px",
         width: "auto",
-        plugins: [
-          {
-            id: "grapesjs-preset-webpage",
-            plugin: grapesjsWebPreset.default,
-          },
-          {
-            id: "grapesjs-blocks-basic",
-            plugin: grapesjsBlocksBasic.default,
-          },
-        ],
+        plugins: [grapesjsWebPreset.default, grapesjsBlocksBasic.default],
         pluginsOpts: {
           "grapesjs-preset-webpage": {},
           "grapesjs-blocks-basic": {},
@@ -146,6 +137,11 @@ export function GrapesJSEmailEditor({ templateId }: EmailTemplateEditorProps) {
 
   const handleSave = async () => {
     try {
+      if (!templateName.trim()) {
+        setError("Template name is required");
+        return;
+      }
+
       setLoading(true);
       setError(null);
 
@@ -156,23 +152,20 @@ export function GrapesJSEmailEditor({ templateId }: EmailTemplateEditorProps) {
         html = selectedTemplate?.html || "";
       }
 
+      if (!html.trim()) {
+        setError("Template content is required");
+        setLoading(false);
+        return;
+      }
+
       const payload = {
         name: templateName,
-        type: templateType,
         subject,
-        preheader,
         html,
-        variables,
       };
 
-      const url = selectedTemplate
-        ? `/api/admin/email-templates/${selectedTemplate.id}`
-        : "/api/admin/email-templates";
-
-      const method = selectedTemplate ? "PUT" : "POST";
-
-      const res = await fetch(url, {
-        method,
+      const res = await fetch("/api/admin/email-templates", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
@@ -213,40 +206,7 @@ export function GrapesJSEmailEditor({ templateId }: EmailTemplateEditorProps) {
     }
   };
 
-  const handleTestEmail = async () => {
-    if (!selectedTemplate) {
-      setError("Select a template first");
-      return;
-    }
-
-    try {
-      const testEmail = prompt("Enter test email address:");
-      if (!testEmail) return;
-
-      setLoading(true);
-      const res = await fetch(
-        `/api/admin/email-templates/${selectedTemplate.id}/test`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            testEmail,
-            variables: {},
-          }),
-        }
-      );
-
-      if (res.ok) {
-        setSuccess(`Test email sent to ${testEmail}`);
-      } else {
-        throw new Error("Failed to send test email");
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Test email failed");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Test email functionality removed - use rendered output for testing
 
   return (
     <Card className="w-full">
@@ -362,14 +322,6 @@ export function GrapesJSEmailEditor({ templateId }: EmailTemplateEditorProps) {
                 disabled={loading}
               >
                 Import Canva HTML
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleTestEmail}
-                disabled={!selectedTemplate || loading}
-              >
-                Send Test Email
               </Button>
             </div>
             <div

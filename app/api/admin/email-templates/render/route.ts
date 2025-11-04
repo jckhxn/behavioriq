@@ -43,6 +43,7 @@ export async function POST(req: Request) {
       update: {
         subject: payload.subject,
         html,
+        type: "GENERIC",
         updatedAt: new Date(),
       },
       create: {
@@ -50,6 +51,9 @@ export async function POST(req: Request) {
         name,
         subject: payload.subject,
         html,
+        type: "GENERIC",
+        slug: name.toLowerCase().replace(/\s+/g, "-"),
+        createdBy: { connect: { id: user.id } },
         updatedAt: new Date(),
       },
     });

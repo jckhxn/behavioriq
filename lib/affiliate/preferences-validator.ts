@@ -54,13 +54,13 @@ export function validatePayoutPreferences(preferences: Partial<PayoutPreferences
     }
 
     // Validate related fields based on frequency
-    if (preferences.payoutFrequency === 'weekly' && preferences.payoutDayOfWeek !== undefined) {
+    if (preferences.payoutFrequency === 'weekly' && preferences.payoutDayOfWeek !== undefined && preferences.payoutDayOfWeek !== null) {
       if (preferences.payoutDayOfWeek < 0 || preferences.payoutDayOfWeek > 6) {
         errors.push('Payout day of week must be between 0 (Sunday) and 6 (Saturday)');
       }
     }
 
-    if (preferences.payoutFrequency === 'monthly' && preferences.payoutDayOfMonth !== undefined) {
+    if (preferences.payoutFrequency === 'monthly' && preferences.payoutDayOfMonth !== undefined && preferences.payoutDayOfMonth !== null) {
       if (preferences.payoutDayOfMonth < 1 || preferences.payoutDayOfMonth > 28) {
         errors.push('Payout day of month must be between 1 and 28');
       }

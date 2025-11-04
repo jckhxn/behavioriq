@@ -119,9 +119,14 @@ export async function GET(request: NextRequest) {
     );
 
     // Calculate next payout estimate
+    const defaultPreferences = {
+      minPayoutThresholdCents: 5000,
+      payoutFrequency: "auto" as const,
+      autoPayoutEnabled: true,
+    };
     const nextPayoutEstimate = calculateNextPayout(
       payableBalance._sum.amountCents || 0,
-      preferences,
+      (preferences || defaultPreferences) as any,
       dailyAverage
     );
 

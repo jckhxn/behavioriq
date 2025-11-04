@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db/prisma";
 import { NextResponse } from "next/server";
 import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
+import { randomUUID } from "crypto";
 
 /**
  * GET /api/admin/email-templates
@@ -51,17 +52,21 @@ export async function POST(req: Request) {
 
     // Upsert the email template
     const template = await prisma.emailTemplate.upsert({
-      where: { id: name },
+      where: { name },
       update: {
         subject,
         html,
+        type: "GENERIC",
         updatedAt: new Date(),
       },
       create: {
-        id: name,
+        id: randomUUID(),
         name,
         subject,
         html,
+        type: "GENERIC",
+        slug: name.toLowerCase().replace(/\s+/g, "-"),
+        createdBy: { connect: { id: user.id } },
         updatedAt: new Date(),
       },
     });
