@@ -176,13 +176,13 @@ paths:
       tags:
         - User
 
-  /api/checkout:
+  /api/chatgpt/checkout:
     post:
       operationId: createCheckoutSession
       summary: Create Stripe checkout session
       description: |
         Creates a Stripe Checkout session for purchasing assessment credits or upgrading to a paid plan.
-        Requires API key authentication.
+        Requires API key authentication via X-API-Key header.
       requestBody:
         required: true
         content:
@@ -202,14 +202,6 @@ paths:
                     - core_annual
                     - family_annual
                   description: Type of plan or credits to purchase
-                successUrl:
-                  type: string
-                  description: URL to redirect to after successful payment
-                  default: https://app.behavioriq.com/dashboard
-                cancelUrl:
-                  type: string
-                  description: URL to redirect to if payment is cancelled
-                  default: https://app.behavioriq.com/pricing
               required:
                 - userId
                 - planType
@@ -240,6 +232,56 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
       tags:
         - Billing
+
+  /api/chatgpt/checkout/success:
+    get:
+      operationId: checkoutSuccess
+      summary: Handle post-payment Stripe redirect
+      description: |
+        Called automatically by Stripe after successful payment.
+        Verifies payment completion and waits for webhook processing (up to 30 seconds).
+        Returns user credits and confirmation message.
+      parameters:
+        - name: session_id
+          in: query
+          required: true
+          description: Stripe checkout session ID from Stripe redirect
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Payment successful, credits added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckoutSuccessResponse"
+        "202":
+          description: Payment received but webhook still processing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckoutPendingResponse"
+        "400":
+          description: Payment not completed or invalid session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - Billing
+      security: []
 
   /api/assessment/start:
     post:
@@ -571,6 +613,78 @@ components:
         - success
         - checkoutUrl
         - sessionId
+
+    CheckoutSuccessResponse:
+      type: object
+      description: Successful payment confirmation with credits added
+      properties:
+        success:
+          type: boolean
+          example: true
+        userId:
+          type: string
+          description: User ID
+          example: "user_123abc"
+        email:
+          type: string
+          format: email
+          description: User email address
+          example: "user@example.com"
+        creditsAdded:
+          type: integer
+          description: Number of credits added from this purchase
+          example: 1
+        creditsAvailable:
+          type: integer
+          description: Total credits available after purchase
+          example: 5
+        planType:
+          type: string
+          description: Type of plan purchased
+          example: "single_assessment"
+        message:
+          type: string
+          description: Success message for user
+          example: "Payment successful! Your credits have been added to your account. Return to ChatGPT to continue."
+      required:
+        - success
+        - userId
+        - creditsAdded
+        - creditsAvailable
+        - message
+
+    CheckoutPendingResponse:
+      type: object
+      description: Payment received but webhook still processing credits
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          description: Error message
+          example: "Payment is still being processed. Please check back in a moment or contact support if you have issues."
+        code:
+          type: string
+          description: Error code
+          example: "WEBHOOK_TIMEOUT"
+        requestId:
+          type: string
+          description: Request ID for tracking
+          example: "req_123abc"
+        retryAfter:
+          type: integer
+          description: Seconds to wait before retrying
+          example: 5
+        message:
+          type: string
+          description: User-friendly message
+          example: "Your payment was successful, but we're still setting up your account. This usually takes a few seconds."
+      required:
+        - success
+        - error
+        - code
+        - message
 
     AssessmentStartResponse:
       type: object
