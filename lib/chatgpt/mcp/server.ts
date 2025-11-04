@@ -14,6 +14,8 @@ import {
 import { startTrial } from "./tools/start-trial";
 import { startFullAssessment } from "./tools/start-full-assessment";
 import { viewResults } from "./tools/view-results";
+import { readFileSync } from "fs";
+import { join } from "path";
 
 export interface MCPServerConfig {
   name: string;
@@ -164,29 +166,35 @@ export function initializeMCPServer(config: MCPServerConfig) {
 
   /**
    * Handle ReadResource requests
-   * Returns widget HTML and other resources referenced by tools
+   * Returns compiled React widget bundles as JavaScript
    */
   server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
     const { uri } = request.params;
 
-    // Parse resource type from URI (e.g., ui://widget/trial-assessment.html)
+    // Parse resource type from URI (e.g., ui://widget/trial-assessment)
     if (uri.startsWith("ui://widget/")) {
-      const widgetName = uri.replace("ui://widget/", "").replace(".html", "");
+      const widgetName = uri.replace("ui://widget/", "");
 
-      // Dynamically import and return widget HTML
-      const widgetPath = `./widgets/${widgetName}`;
       try {
-        const widgetContent = await import(widgetPath).then((m) => m.default);
+        // Read compiled widget bundle from dist directory
+        const widgetPath = join(
+          __dirname,
+          "widgets/dist",
+          `${widgetName}.js`
+        );
+        const widgetContent = readFileSync(widgetPath, "utf-8");
+
         return {
           uri,
-          mimeType: "text/html+skybridge",
+          mimeType: "application/javascript",
           contents: widgetContent,
         };
       } catch (error) {
+        console.error(`Failed to load widget ${widgetName}:`, error);
         return {
           uri,
           mimeType: "text/plain",
-          contents: `Widget not found: ${widgetName}`,
+          contents: `Widget not found or failed to load: ${widgetName}`,
         };
       }
     }
