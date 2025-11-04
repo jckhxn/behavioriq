@@ -54,9 +54,9 @@ Using database storage instead of .env is better because:
 3. Copy the entire block below:
 
 ```sql
--- Create ChatGPT App user
-INSERT INTO "users" (id, email, name, role, "createdAt", "updatedAt")
-VALUES ('chatgpt-app-user', 'chatgpt-app@behavioriq.local', 'ChatGPT App', 'USER', NOW(), NOW())
+-- Create ChatGPT App user (includes required password field)
+INSERT INTO "users" (id, email, name, password, role, "createdAt", "updatedAt")
+VALUES ('chatgpt-app-user', 'chatgpt-app@behavioriq.local', 'ChatGPT App', '$2b$12$placeholder-for-chatgpt-api-user-no-password-login-needed', 'USER', NOW(), NOW())
 ON CONFLICT (id) DO NOTHING;
 
 -- Register the API Key
@@ -74,6 +74,8 @@ SELECT email, token, "userId" FROM "MagicLinkToken" WHERE email = 'chatgpt-app@b
 
 4. Click "Run"
 5. Done! ✅
+
+**Note about the password field:** The users table requires a password column. Since ChatGPT authenticates via X-API-Key header (not password), we use a placeholder. This account will never be able to log in with a password, which is correct.
 
 ### Option 2: File Location
 

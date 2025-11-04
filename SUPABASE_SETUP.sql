@@ -11,10 +11,13 @@
 
 -- Step 1: Create the ChatGPT App user
 -- ============================================================================
+-- NOTE: Password is required field. Using a secure placeholder that ChatGPT will never use
+-- (ChatGPT authenticates via X-API-Key header, not password)
 INSERT INTO "users" (
   id,
   email,
   name,
+  password,
   role,
   "createdAt",
   "updatedAt"
@@ -23,6 +26,7 @@ VALUES (
   'chatgpt-app-user',
   'chatgpt-app@behavioriq.local',
   'ChatGPT App',
+  '$2b$12$placeholder-for-chatgpt-api-user-no-password-login-needed',
   'USER',
   NOW(),
   NOW()

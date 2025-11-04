@@ -22,9 +22,9 @@ This guide will get your API key registered in Supabase in 5 minutes.
 Copy all the SQL below and paste it into the Supabase SQL editor:
 
 ```sql
--- Create ChatGPT App user
-INSERT INTO "users" (id, email, name, role, "createdAt", "updatedAt")
-VALUES ('chatgpt-app-user', 'chatgpt-app@behavioriq.local', 'ChatGPT App', 'USER', NOW(), NOW())
+-- Create ChatGPT App user (requires password field)
+INSERT INTO "users" (id, email, name, password, role, "createdAt", "updatedAt")
+VALUES ('chatgpt-app-user', 'chatgpt-app@behavioriq.local', 'ChatGPT App', '$2b$12$placeholder-for-chatgpt-api-user-no-password-login-needed', 'USER', NOW(), NOW())
 ON CONFLICT (id) DO NOTHING;
 
 -- Register the API Key
@@ -66,6 +66,17 @@ If you see results, you're done! The setup is complete:
 ---
 
 ## If Something Goes Wrong
+
+### Error: "null value in column \"password\" violates not-null constraint"
+
+**This was the issue in the previous attempt!** The users table requires a password field.
+
+**The fix:** Add the password field to the INSERT statement:
+```sql
+password, '$2b$12$placeholder-for-chatgpt-api-user-no-password-login-needed',
+```
+
+The SQL above already includes this. The password is a placeholder because ChatGPT authenticates via the **X-API-Key header**, not by password login.
 
 ### Error: "duplicate key value violates unique constraint"
 
