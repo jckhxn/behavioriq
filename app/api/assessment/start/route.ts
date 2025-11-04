@@ -206,7 +206,7 @@ export async function POST(request: NextRequest) {
           status: "IN_PROGRESS",
           mode: "FULL",
           startedAt: new Date(),
-          currentDomain: "attention", // Start with attention domain
+          currentDomain: "ATTENTION", // Start with attention domain
           currentQuestionOrder: 1,
         },
       });
