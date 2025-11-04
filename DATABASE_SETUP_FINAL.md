@@ -67,8 +67,10 @@ ON CONFLICT (token) DO NOTHING;
 -- Add 100 credits
 UPDATE "users" SET credits = 100 WHERE id = 'chatgpt-app-user';
 
--- Verify it worked
+-- Verify it worked - User created
 SELECT id, email, credits FROM "users" WHERE id = 'chatgpt-app-user';
+
+-- Verify it worked - API key registered
 SELECT email, token, "userId" FROM "MagicLinkToken" WHERE email = 'chatgpt-app@behavioriq.local';
 ```
 

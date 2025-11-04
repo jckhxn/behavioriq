@@ -36,9 +36,8 @@ ON CONFLICT (token) DO NOTHING;
 UPDATE "users" SET credits = 100 WHERE id = 'chatgpt-app-user';
 
 -- Verify everything was created
-SELECT 'User Created' as status, id, email, credits FROM "users" WHERE id = 'chatgpt-app-user'
-UNION ALL
-SELECT 'API Key Created' as status, email, token, "userId" FROM "MagicLinkToken" WHERE email = 'chatgpt-app@behavioriq.local';
+SELECT 'User Created' as status, id, email FROM "users" WHERE id = 'chatgpt-app-user';
+SELECT 'API Key Created' as status, email, token FROM "MagicLinkToken" WHERE email = 'chatgpt-app@behavioriq.local';
 ```
 
 ---

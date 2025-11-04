@@ -79,5 +79,10 @@ SELECT id, email, credits FROM "users" WHERE id = 'chatgpt-app-user';
 -- User ID: chatgpt-app-user
 -- Credits: 100
 --
+-- Verification Results Expected:
+-- - Query 1: User Created (id, email, name, credits)
+-- - Query 2: API Key Created (email, token, userId, expiresAt)
+-- - Query 3: Credits Added (id, email, credits)
+--
 -- Next: Test with curl or upload to ChatGPT Builder
 -- ============================================================================
