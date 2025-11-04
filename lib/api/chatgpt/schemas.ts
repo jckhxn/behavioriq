@@ -196,7 +196,7 @@ export const InsufficientCreditsResponseSchema = z.object({
   message: z.string(),
   creditsRequired: z.number().int().positive(),
   creditsAvailable: z.number().int().nonnegative(),
-  checkoutUrl: z.string().url(),
+  checkoutUrl: z.string().url().optional(),
 });
 
 export type InsufficientCreditsResponse = z.infer<
