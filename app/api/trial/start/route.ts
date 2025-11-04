@@ -1,76 +1,122 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
+import {
+  TrialStartRequestSchema,
+  TrialStartResponseSchema,
+} from "@/lib/api/chatgpt/schemas";
+import {
+  publicEndpointMiddleware,
+  createErrorResponse,
+} from "@/lib/api/chatgpt/middleware";
+import questions from "@/lib/api/chatgpt/questions.json";
+import { v4 as uuidv4 } from "uuid";
 
-interface StartTrialPayload {
-  anonymous?: boolean;
-  region?: string;
-  utm?: Record<string, unknown>;
-}
+/**
+ * POST /api/trial/start
+ * Start a trial assessment session (public, no auth required)
+ */
+export async function POST(request: NextRequest) {
+  const requestId = uuidv4();
 
-export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as StartTrialPayload;
-
-    // Debug logging
-    const refCode = body.utm?.ref as string | undefined;
-    if (refCode) {
-      console.log('[trial/start] 📥 Received ref from request body:', refCode);
-    } else {
-      console.log('[trial/start] ⚠️ No ref in request body');
+    // Parse request body
+    let body;
+    try {
+      body = await request.json();
+    } catch (e) {
+      return createErrorResponse(
+        "Invalid JSON in request body",
+        "INVALID_REQUEST",
+        requestId,
+        400
+      );
     }
 
-    const session = await prisma.snapshotSession.create({
-      data: {
-        anonymous: Boolean(body.anonymous),
-        consented: true,
-        region: body.region ?? null,
-        utm: body.utm ? JSON.stringify(body.utm) : undefined,
-      },
+    // Validate request against schema
+    const validationResult = TrialStartRequestSchema.safeParse(body);
+    if (!validationResult.success) {
+      const errors = validationResult.error.errors
+        .map((e) => `${e.path.join(".")}: ${e.message}`)
+        .join("; ");
+
+      return createErrorResponse(
+        `Validation failed: ${errors}`,
+        "VALIDATION_ERROR",
+        requestId,
+        400
+      );
+    }
+
+    const { childAge, relationshipType } = validationResult.data;
+
+    // Generate session ID
+    const sessionId = `trial_${uuidv4()}`;
+
+    // Get trial questions (15 total: 3 per domain)
+    const trialQuestions = questions.trial;
+
+    if (!trialQuestions || trialQuestions.length !== 15) {
+      console.error(
+        "Trial questions configuration error: expected 15 questions"
+      );
+      return createErrorResponse(
+        "Internal server error",
+        "INTERNAL_ERROR",
+        requestId,
+        500
+      );
+    }
+
+    // Create TrialSession in database
+    try {
+      await prisma.trialSession.create({
+        data: {
+          id: sessionId,
+          childAge,
+          relationshipType,
+          status: "started",
+          questions: JSON.stringify(trialQuestions.map((q) => q.id)),
+          answers: JSON.stringify([]),
+        },
+      });
+    } catch (error) {
+      console.error("[Trial Start] Database error:", error);
+      return createErrorResponse(
+        "Failed to create trial session",
+        "DATABASE_ERROR",
+        requestId,
+        500
+      );
+    }
+
+    // Format response
+    const responseBody = TrialStartResponseSchema.parse({
+      sessionId,
+      questions: trialQuestions.map((q) => ({
+        questionId: q.id,
+        text: q.text,
+        domain: q.domain,
+      })),
+      totalQuestions: 15,
     });
 
-    // Extract refCode from utm if present
-    let refCodeToReturn: string | null = null;
-    if (body.utm && typeof body.utm === 'object' && 'ref' in body.utm) {
-      const refCode = (body.utm as Record<string, unknown>).ref;
-      if (typeof refCode === 'string' && refCode.trim()) {
-        refCodeToReturn = refCode;
-      }
-    }
-
-    // ✅ CRITICAL: Set affiliate cookie from utm.ref if present
-    // This ensures the cookie persists for assessment/start and checkout APIs
-    // Also return refCode to client as fallback (in case cookie fails)
-    const responseData: any = { sessionId: session.id };
-    if (refCodeToReturn) {
-      responseData.refCode = refCodeToReturn;
-    }
-
-    const response = NextResponse.json(responseData);
-
-    if (refCodeToReturn) {
-      const cookieOptions: any = {
-        maxAge: 30 * 24 * 60 * 60, // 30 days
-        httpOnly: true,
-        sameSite: 'lax' as const,
-        secure: process.env.NODE_ENV === 'production',
-      };
-
-      // Only set domain if explicitly configured (don't set for localhost)
-      const domain = process.env.AFFILIATE_COOKIE_DOMAIN;
-      if (domain && domain.trim()) {
-        cookieOptions.domain = domain;
-      }
-
-      response.cookies.set('biq_ref', refCodeToReturn, cookieOptions);
-      console.log(`[trial/start] ✅ Set affiliate cookie: ref=${refCodeToReturn}`);
-    }
-
-    return response;
+    return NextResponse.json(responseBody, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "X-Request-Id": requestId,
+      },
+    });
   } catch (error) {
-    console.error("[trial/start] failed", error);
-    return NextResponse.json(
-      { error: "Unable to start trial session" },
-      { status: 500 }
+    const errorMessage =
+      error instanceof Error ? error.message : String(error);
+    console.error("[Trial Start] Unexpected error:", errorMessage);
+
+    return createErrorResponse(
+      "Internal server error",
+      "INTERNAL_ERROR",
+      requestId,
+      500
     );
   }
 }

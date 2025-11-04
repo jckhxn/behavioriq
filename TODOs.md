@@ -14,6 +14,8 @@ $1 per 10k emails (SES)
 
 # Pending Implementations.
 
+- [] the email GrapesJS thing ugly af.
+  - - Maybe I just hand code the emails/pdf and add them to the codebase lol
 - [] Trial Results Look.
 - [] Work on Lead Magnet Offer and Core Offer.
 - [] Work on Monthly Offer for subscriber retention

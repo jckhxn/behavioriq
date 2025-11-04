@@ -1,0 +1,456 @@
+{
+  "trial": [
+    {
+      "id": "trial_attention_1",
+      "text": "Does your child have difficulty paying attention in class or during focused activities?",
+      "domain": "attention"
+    },
+    {
+      "id": "trial_attention_2",
+      "text": "Does your child get easily distracted by environmental stimuli?",
+      "domain": "attention"
+    },
+    {
+      "id": "trial_attention_3",
+      "text": "Does your child struggle to follow multi-step instructions?",
+      "domain": "attention"
+    },
+    {
+      "id": "trial_emotional_1",
+      "text": "Does your child have difficulty managing frustration or anger?",
+      "domain": "emotional"
+    },
+    {
+      "id": "trial_emotional_2",
+      "text": "Does your child experience frequent mood swings or emotional outbursts?",
+      "domain": "emotional"
+    },
+    {
+      "id": "trial_emotional_3",
+      "text": "Does your child seem anxious or worried often?",
+      "domain": "emotional"
+    },
+    {
+      "id": "trial_social_1",
+      "text": "Does your child have difficulty making or maintaining friendships?",
+      "domain": "social"
+    },
+    {
+      "id": "trial_social_2",
+      "text": "Does your child struggle to understand social cues or take turns in conversations?",
+      "domain": "social"
+    },
+    {
+      "id": "trial_social_3",
+      "text": "Does your child prefer playing alone rather than with peers?",
+      "domain": "social"
+    },
+    {
+      "id": "trial_behavioral_1",
+      "text": "Does your child have difficulty following rules or respecting authority?",
+      "domain": "behavioral"
+    },
+    {
+      "id": "trial_behavioral_2",
+      "text": "Does your child engage in impulsive or reckless behavior?",
+      "domain": "behavioral"
+    },
+    {
+      "id": "trial_behavioral_3",
+      "text": "Does your child have trouble sitting still or staying in one place?",
+      "domain": "behavioral"
+    },
+    {
+      "id": "trial_learning_1",
+      "text": "Does your child struggle with academic skills like reading or math?",
+      "domain": "learning"
+    },
+    {
+      "id": "trial_learning_2",
+      "text": "Does your child have difficulty organizing thoughts or expressing ideas?",
+      "domain": "learning"
+    },
+    {
+      "id": "trial_learning_3",
+      "text": "Does your child require extra support or accommodations at school?",
+      "domain": "learning"
+    }
+  ],
+  "full": [
+    {
+      "id": "q_attention_1",
+      "text": "Difficulty sustaining attention during tasks or play",
+      "domain": "attention"
+    },
+    {
+      "id": "q_attention_2",
+      "text": "Frequently loses necessary items (toys, assignments, pencils)",
+      "domain": "attention"
+    },
+    {
+      "id": "q_attention_3",
+      "text": "Easily distracted by extraneous stimuli or noises",
+      "domain": "attention"
+    },
+    {
+      "id": "q_attention_4",
+      "text": "Has difficulty organizing tasks and activities",
+      "domain": "attention"
+    },
+    {
+      "id": "q_attention_5",
+      "text": "Avoids or dislikes tasks that require sustained mental effort",
+      "domain": "attention"
+    },
+    {
+      "id": "q_attention_6",
+      "text": "Doesn't seem to listen when spoken to directly",
+      "domain": "attention"
+    },
+    {
+      "id": "q_attention_7",
+      "text": "Fails to give close attention to details or makes careless mistakes",
+      "domain": "attention"
+    },
+    {
+      "id": "q_attention_8",
+      "text": "Forgetful in daily activities",
+      "domain": "attention"
+    },
+    {
+      "id": "q_attention_9",
+      "text": "Difficulty following instructions or completing tasks",
+      "domain": "attention"
+    },
+    {
+      "id": "q_attention_10",
+      "text": "Mind seems to wander easily",
+      "domain": "attention"
+    },
+    {
+      "id": "q_attention_11",
+      "text": "Takes longer than peers to complete work",
+      "domain": "attention"
+    },
+    {
+      "id": "q_attention_12",
+      "text": "Rushes through work without checking answers",
+      "domain": "attention"
+    },
+    {
+      "id": "q_attention_13",
+      "text": "Has trouble remembering information just heard",
+      "domain": "attention"
+    },
+    {
+      "id": "q_attention_14",
+      "text": "Difficulty transitioning between activities",
+      "domain": "attention"
+    },
+    {
+      "id": "q_attention_15",
+      "text": "Requires frequent reminders or prompts to complete tasks",
+      "domain": "attention"
+    },
+    {
+      "id": "q_emotional_1",
+      "text": "Difficulty controlling emotions or emotional reactions",
+      "domain": "emotional"
+    },
+    {
+      "id": "q_emotional_2",
+      "text": "Frequent mood swings or emotional volatility",
+      "domain": "emotional"
+    },
+    {
+      "id": "q_emotional_3",
+      "text": "Excessive worry or anxiety about future events",
+      "domain": "emotional"
+    },
+    {
+      "id": "q_emotional_4",
+      "text": "Appears to be in a sad or depressed mood",
+      "domain": "emotional"
+    },
+    {
+      "id": "q_emotional_5",
+      "text": "Loses temper easily or has angry outbursts",
+      "domain": "emotional"
+    },
+    {
+      "id": "q_emotional_6",
+      "text": "Difficulty recovering from emotional upsets",
+      "domain": "emotional"
+    },
+    {
+      "id": "q_emotional_7",
+      "text": "Shows fear or anxiety in new situations",
+      "domain": "emotional"
+    },
+    {
+      "id": "q_emotional_8",
+      "text": "Complains of physical symptoms when anxious (stomachaches, headaches)",
+      "domain": "emotional"
+    },
+    {
+      "id": "q_emotional_9",
+      "text": "Difficulty accepting mistakes or constructive criticism",
+      "domain": "emotional"
+    },
+    {
+      "id": "q_emotional_10",
+      "text": "Excessive emotional reactions to minor frustrations",
+      "domain": "emotional"
+    },
+    {
+      "id": "q_emotional_11",
+      "text": "Cries easily or becomes upset over small issues",
+      "domain": "emotional"
+    },
+    {
+      "id": "q_emotional_12",
+      "text": "Shows difficulty with transitions or changes in routine",
+      "domain": "emotional"
+    },
+    {
+      "id": "q_emotional_13",
+      "text": "Expresses negative self-talk or low self-esteem",
+      "domain": "emotional"
+    },
+    {
+      "id": "q_emotional_14",
+      "text": "Difficulty expressing feelings or emotions appropriately",
+      "domain": "emotional"
+    },
+    {
+      "id": "q_emotional_15",
+      "text": "Emotional responses seem inappropriate for the situation",
+      "domain": "emotional"
+    },
+    {
+      "id": "q_social_1",
+      "text": "Difficulty initiating or maintaining conversations",
+      "domain": "social"
+    },
+    {
+      "id": "q_social_2",
+      "text": "Doesn't pick up on or understand social cues",
+      "domain": "social"
+    },
+    {
+      "id": "q_social_3",
+      "text": "Difficulty forming appropriate relationships with peers",
+      "domain": "social"
+    },
+    {
+      "id": "q_social_4",
+      "text": "Doesn't seem interested in what others think or feel",
+      "domain": "social"
+    },
+    {
+      "id": "q_social_5",
+      "text": "Difficulty sharing or taking turns",
+      "domain": "social"
+    },
+    {
+      "id": "q_social_6",
+      "text": "Appears socially withdrawn or isolated",
+      "domain": "social"
+    },
+    {
+      "id": "q_social_7",
+      "text": "Difficulty understanding jokes, sarcasm, or figurative language",
+      "domain": "social"
+    },
+    {
+      "id": "q_social_8",
+      "text": "Prefers activities or interests different from age peers",
+      "domain": "social"
+    },
+    {
+      "id": "q_social_9",
+      "text": "Seems bothered by or avoids physical contact",
+      "domain": "social"
+    },
+    {
+      "id": "q_social_10",
+      "text": "Difficulty cooperating or working in groups",
+      "domain": "social"
+    },
+    {
+      "id": "q_social_11",
+      "text": "Often plays alone rather than with peers",
+      "domain": "social"
+    },
+    {
+      "id": "q_social_12",
+      "text": "Difficulty maintaining eye contact or shows unusual gaze patterns",
+      "domain": "social"
+    },
+    {
+      "id": "q_social_13",
+      "text": "Talks excessively about specific topics others aren't interested in",
+      "domain": "social"
+    },
+    {
+      "id": "q_social_14",
+      "text": "Difficulty interpreting facial expressions or body language",
+      "domain": "social"
+    },
+    {
+      "id": "q_social_15",
+      "text": "Seems to dominate conversations or interrupt frequently",
+      "domain": "social"
+    },
+    {
+      "id": "q_behavioral_1",
+      "text": "Acts without thinking or impulsively acts out",
+      "domain": "behavioral"
+    },
+    {
+      "id": "q_behavioral_2",
+      "text": "Difficulty following rules or responding to discipline",
+      "domain": "behavioral"
+    },
+    {
+      "id": "q_behavioral_3",
+      "text": "Engages in dangerous, aggressive, or destructive behavior",
+      "domain": "behavioral"
+    },
+    {
+      "id": "q_behavioral_4",
+      "text": "Cannot sit still or is always 'on the go'",
+      "domain": "behavioral"
+    },
+    {
+      "id": "q_behavioral_5",
+      "text": "Fidgets, squirms, or has excessive restless movements",
+      "domain": "behavioral"
+    },
+    {
+      "id": "q_behavioral_6",
+      "text": "Deliberately annoys, teases, or bothers others",
+      "domain": "behavioral"
+    },
+    {
+      "id": "q_behavioral_7",
+      "text": "Difficulty accepting 'no' or authority figures",
+      "domain": "behavioral"
+    },
+    {
+      "id": "q_behavioral_8",
+      "text": "Engages in lying, stealing, or other rule-breaking behavior",
+      "domain": "behavioral"
+    },
+    {
+      "id": "q_behavioral_9",
+      "text": "Deliberately breaks things or damages property",
+      "domain": "behavioral"
+    },
+    {
+      "id": "q_behavioral_10",
+      "text": "Difficulty controlling physical aggression toward others",
+      "domain": "behavioral"
+    },
+    {
+      "id": "q_behavioral_11",
+      "text": "Excessive energy or hyperactivity levels",
+      "domain": "behavioral"
+    },
+    {
+      "id": "q_behavioral_12",
+      "text": "Frequently argues or talks back to authority figures",
+      "domain": "behavioral"
+    },
+    {
+      "id": "q_behavioral_13",
+      "text": "Engages in risky or thrill-seeking behavior",
+      "domain": "behavioral"
+    },
+    {
+      "id": "q_behavioral_14",
+      "text": "Difficulty waiting turns or standing in line",
+      "domain": "behavioral"
+    },
+    {
+      "id": "q_behavioral_15",
+      "text": "Often blurts out answers, comments, or interrupts others",
+      "domain": "behavioral"
+    },
+    {
+      "id": "q_learning_1",
+      "text": "Difficulty with reading comprehension or decoding",
+      "domain": "learning"
+    },
+    {
+      "id": "q_learning_2",
+      "text": "Difficulty with writing, spelling, or written expression",
+      "domain": "learning"
+    },
+    {
+      "id": "q_learning_3",
+      "text": "Difficulty with math concepts or calculation",
+      "domain": "learning"
+    },
+    {
+      "id": "q_learning_4",
+      "text": "Difficulty with memory or retention of information",
+      "domain": "learning"
+    },
+    {
+      "id": "q_learning_5",
+      "text": "Slow processing speed or takes longer to understand concepts",
+      "domain": "learning"
+    },
+    {
+      "id": "q_learning_6",
+      "text": "Difficulty organizing thoughts for communication",
+      "domain": "learning"
+    },
+    {
+      "id": "q_learning_7",
+      "text": "Difficulty understanding or following complex directions",
+      "domain": "learning"
+    },
+    {
+      "id": "q_learning_8",
+      "text": "Requires repetition or re-teaching of concepts",
+      "domain": "learning"
+    },
+    {
+      "id": "q_learning_9",
+      "text": "Struggles with vocabulary development or word retrieval",
+      "domain": "learning"
+    },
+    {
+      "id": "q_learning_10",
+      "text": "Has difficulty with phonics or letter-sound associations",
+      "domain": "learning"
+    },
+    {
+      "id": "q_learning_11",
+      "text": "Difficulty with sequencing or understanding cause and effect",
+      "domain": "learning"
+    },
+    {
+      "id": "q_learning_12",
+      "text": "Struggles with abstract concepts or problem-solving",
+      "domain": "learning"
+    },
+    {
+      "id": "q_learning_13",
+      "text": "Often asks for clarification or seems confused",
+      "domain": "learning"
+    },
+    {
+      "id": "q_learning_14",
+      "text": "Receives special education services or accommodations",
+      "domain": "learning"
+    },
+    {
+      "id": "q_learning_15",
+      "text": "Academic performance is below grade level expectations",
+      "domain": "learning"
+    }
+  ]
+}

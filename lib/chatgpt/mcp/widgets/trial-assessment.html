@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trial Assessment</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 600px;
+      width: 100%;
+      padding: 32px;
+    }
+
+    .header {
+      margin-bottom: 24px;
+    }
+
+    .progress-bar {
+      background: #e5e7eb;
+      height: 8px;
+      border-radius: 4px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      height: 100%;
+      transition: width 0.3s ease;
+    }
+
+    .progress-text {
+      font-size: 13px;
+      color: #6b7280;
+      font-weight: 500;
+    }
+
+    .question-number {
+      font-size: 14px;
+      color: #667eea;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .question-text {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 20px;
+      line-height: 1.4;
+    }
+
+    .options {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .option {
+      padding: 12px 16px;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      background: white;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: left;
+      font-size: 15px;
+      color: #374151;
+      font-weight: 500;
+    }
+
+    .option:hover {
+      border-color: #667eea;
+      background: #f3f4f6;
+    }
+
+    .option.selected {
+      border-color: #667eea;
+      background: #eef2ff;
+      color: #667eea;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 28px;
+      justify-content: space-between;
+    }
+
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-secondary {
+      background: #f3f4f6;
+      color: #374151;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: #e5e7eb;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      flex: 1;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .completion-screen {
+      text-align: center;
+      display: none;
+    }
+
+    .completion-screen.show {
+      display: block;
+    }
+
+    .completion-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .completion-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: #1f2937;
+      margin-bottom: 12px;
+    }
+
+    .completion-text {
+      font-size: 15px;
+      color: #6b7280;
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+
+    .summary {
+      background: #f9fafb;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 20px;
+      text-align: left;
+    }
+
+    .summary-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      font-size: 14px;
+      color: #6b7280;
+    }
+
+    .summary-item:not(:last-child) {
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .summary-value {
+      font-weight: 600;
+      color: #1f2937;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="assessment-screen">
+      <div class="header">
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="progress-text" id="progressText">Question 1 of 15</div>
+      </div>
+
+      <div class="question-number" id="questionNumber">Question 1</div>
+      <div class="question-text" id="questionText"></div>
+
+      <div class="options" id="options"></div>
+
+      <div class="actions">
+        <button class="btn-secondary" id="prevBtn" style="display: none;">← Back</button>
+        <button class="btn-primary" id="nextBtn">Continue</button>
+      </div>
+    </div>
+
+    <div class="completion-screen" id="completionScreen">
+      <div class="completion-icon">✅</div>
+      <div class="completion-title">Assessment Complete!</div>
+      <div class="completion-text">
+        Your trial assessment has been submitted. Your responses have been recorded anonymously.
+      </div>
+
+      <div class="summary">
+        <div class="summary-item">
+          <span>Questions Completed:</span>
+          <span class="summary-value">15 of 15</span>
+        </div>
+        <div class="summary-item">
+          <span>Child Age:</span>
+          <span class="summary-value" id="summaryAge"></span>
+        </div>
+        <div class="summary-item">
+          <span>Relationship:</span>
+          <span class="summary-value" id="summaryRelationship"></span>
+        </div>
+        <div class="summary-item">
+          <span>Session ID:</span>
+          <span class="summary-value" style="font-size: 12px; font-family: monospace;" id="summarySessionId"></span>
+        </div>
+      </div>
+
+      <div style="font-size: 13px; color: #6b7280; line-height: 1.6; margin-bottom: 20px;">
+        <p>You can now:</p>
+        <ul style="margin-left: 20px; margin-top: 8px;">
+          <li>Create an account to access full assessments</li>
+          <li>Upgrade to get detailed insights and recommendations</li>
+          <li>Track your child's development over time</li>
+        </ul>
+      </div>
+
+      <button class="btn-primary" id="createAccountBtn">Create My Account</button>
+    </div>
+  </div>
+
+  <script>
+    let currentQuestion = 0;
+    let selectedAnswers = {};
+    let questions = [];
+    let sessionData = {};
+
+    // Initialize widget state from OpenAI
+    window.addEventListener("message", (event) => {
+      if (event.data.type === "widgetState") {
+        const state = event.data.state;
+        questions = state.questions || [];
+        sessionData = {
+          sessionId: state.sessionId,
+          childAge: state.childAge,
+          relationshipType: state.relationshipType,
+        };
+        renderQuestion();
+      }
+    });
+
+    // Request initial state from OpenAI
+    if (window.openai && window.openai.widgetState) {
+      sessionData = window.openai.widgetState;
+      questions = sessionData.questions || [];
+      renderQuestion();
+    }
+
+    function renderQuestion() {
+      if (currentQuestion >= questions.length) {
+        showCompletion();
+        return;
+      }
+
+      const question = questions[currentQuestion];
+      document.getElementById("questionNumber").textContent = `Question ${currentQuestion + 1}`;
+      document.getElementById("questionText").textContent = question.text;
+      document.getElementById("progressText").textContent = `Question ${currentQuestion + 1} of ${questions.length}`;
+      document.getElementById("progressFill").style.width = `${((currentQuestion + 1) / questions.length) * 100}%`;
+
+      const optionsContainer = document.getElementById("options");
+      optionsContainer.innerHTML = "";
+
+      question.options.forEach((option, index) => {
+        const div = document.createElement("div");
+        div.className = "option";
+        if (selectedAnswers[currentQuestion] === index) {
+          div.classList.add("selected");
+        }
+        div.textContent = option;
+        div.onclick = () => {
+          selectedAnswers[currentQuestion] = index;
+          renderQuestion();
+        };
+        optionsContainer.appendChild(div);
+      });
+
+      // Update button states
+      const prevBtn = document.getElementById("prevBtn");
+      const nextBtn = document.getElementById("nextBtn");
+
+      if (currentQuestion > 0) {
+        prevBtn.style.display = "block";
+      } else {
+        prevBtn.style.display = "none";
+      }
+
+      nextBtn.disabled = selectedAnswers[currentQuestion] === undefined;
+      nextBtn.textContent = currentQuestion === questions.length - 1 ? "Submit" : "Continue";
+    }
+
+    function showCompletion() {
+      document.querySelector(".assessment-screen").style.display = "none";
+      const completionScreen = document.getElementById("completionScreen");
+      completionScreen.classList.add("show");
+
+      // Populate summary
+      document.getElementById("summaryAge").textContent = `${sessionData.childAge} years old`;
+      document.getElementById("summaryRelationship").textContent = capitalizeFirst(sessionData.relationshipType);
+      document.getElementById("summarySessionId").textContent = sessionData.sessionId;
+    }
+
+    function capitalizeFirst(str) {
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    document.getElementById("prevBtn").onclick = () => {
+      if (currentQuestion > 0) {
+        currentQuestion--;
+        renderQuestion();
+        window.scrollTo(0, 0);
+      }
+    };
+
+    document.getElementById("nextBtn").onclick = () => {
+      if (selectedAnswers[currentQuestion] !== undefined) {
+        currentQuestion++;
+        renderQuestion();
+        window.scrollTo(0, 0);
+      }
+    };
+
+    document.getElementById("createAccountBtn").onclick = () => {
+      if (window.openai && window.openai.toolOutput) {
+        window.openai.toolOutput({
+          content: [{
+            type: "text",
+            text: `Trial assessment completed with session ${sessionData.sessionId}. User wants to create an account.`
+          }],
+          structuredContent: {
+            sessionId: sessionData.sessionId,
+            action: "createAccount"
+          }
+        });
+      }
+    };
+  </script>
+</body>
+</html>

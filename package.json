@@ -26,6 +26,7 @@
     "@auth/prisma-adapter": "^2.10.0",
     "@aws-sdk/client-ses": "^3.908.0",
     "@hookform/resolvers": "^5.2.2",
+    "@modelcontextprotocol/sdk": "^1.21.0",
     "@monaco-editor/react": "^4.7.0",
     "@prisma/client": "^6.18.0",
     "@radix-ui/react-avatar": "^1.1.10",

@@ -1,127 +1,272 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { prisma } from "@/lib/db/prisma";
-import { cookies } from "next/headers";
-
-interface StartAssessmentPayload {
-  sessionId: string;
-  templateId?: string;
-  anonymous: boolean;
-  refCode?: string; // Optional affiliate refCode passed from client as fallback to cookie
-}
+import { stripe } from "@/lib/stripe/client";
+import {
+  AssessmentStartRequestSchema,
+  AssessmentStartResponseSchema,
+  InsufficientCreditsResponseSchema,
+} from "@/lib/api/chatgpt/schemas";
+import {
+  authenticatedEndpointMiddleware,
+  createErrorResponse,
+} from "@/lib/api/chatgpt/middleware";
+import questions from "@/lib/api/chatgpt/questions.json";
+import { v4 as uuidv4 } from "uuid";
 
 /**
  * POST /api/assessment/start
- * Starts a new trial or full assessment
- * For anonymous users: creates Assessment with mode=TRIAL, no userId, linked by sessionId
- * For logged-in users: creates Assessment with mode=TRIAL, userId set, sessionId optional
- * Captures affiliate refCode from biq_ref cookie if present
+ * Start a full 75-question assessment (requires X-API-Key authentication)
  */
 export async function POST(request: NextRequest) {
+  const requestId = uuidv4();
+
   try {
-    const body = (await request.json()) as StartAssessmentPayload;
-    const { sessionId, templateId, anonymous } = body;
+    // Apply authentication middleware
+    const { context, error } = await authenticatedEndpointMiddleware(request);
 
-    if (!sessionId) {
-      return NextResponse.json(
-        { error: "sessionId is required" },
-        { status: 400 }
+    if (error) {
+      return error;
+    }
+
+    if (!context.userId) {
+      return createErrorResponse(
+        "User context missing",
+        "AUTH_ERROR",
+        requestId,
+        401
       );
     }
 
-    let userId: string | null = null;
-    let user = null;
+    // Parse request body
+    let body;
+    try {
+      body = await request.json();
+    } catch (e) {
+      return createErrorResponse(
+        "Invalid JSON in request body",
+        "INVALID_REQUEST",
+        requestId,
+        400
+      );
+    }
 
-    // Check if user is logged in
-    if (!anonymous) {
-      user = await getCurrentUserWithRole();
-      if (user) {
-        userId = user.id;
+    // Validate request against schema
+    const validationResult = AssessmentStartRequestSchema.safeParse(body);
+    if (!validationResult.success) {
+      const errors = validationResult.error.errors
+        .map((e) => `${e.path.join(".")}: ${e.message}`)
+        .join("; ");
+
+      return createErrorResponse(
+        `Validation failed: ${errors}`,
+        "VALIDATION_ERROR",
+        requestId,
+        400
+      );
+    }
+
+    const { userId, childName, childAge, relationshipType } =
+      validationResult.data;
+
+    // Verify userId matches authenticated user
+    if (userId !== context.userId) {
+      return createErrorResponse(
+        "User ID does not match authenticated user",
+        "AUTH_MISMATCH",
+        requestId,
+        403
+      );
+    }
+
+    // Fetch user and check credits
+    let user;
+    try {
+      user = await prisma.user.findUnique({
+        where: { id: context.userId },
+        select: {
+          id: true,
+          credits: true,
+          email: true,
+          stripeCustomerId: true,
+        },
+      });
+    } catch (error) {
+      console.error("[Assessment Start] User fetch error:", error);
+      return createErrorResponse(
+        "Failed to fetch user",
+        "DATABASE_ERROR",
+        requestId,
+        500
+      );
+    }
+
+    if (!user) {
+      return createErrorResponse("User not found", "USER_NOT_FOUND", requestId, 404);
+    }
+
+    const creditsAvailable = user.credits || 0;
+
+    // Check if user has sufficient credits
+    if (creditsAvailable < 1) {
+      // Create Stripe customer if needed for checkout
+      let stripeCustomerId = user.stripeCustomerId;
+      if (!stripeCustomerId) {
+        try {
+          const customer = await stripe.customers.create({
+            email: user.email,
+            metadata: { userId: user.id },
+          });
+          stripeCustomerId = customer.id;
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { stripeCustomerId },
+          });
+        } catch (error) {
+          console.error("[Assessment Start] Stripe customer error:", error);
+        }
       }
-    }
 
-    // Get affiliate refCode from multiple sources (in priority order):
-    // 1. From request body (passed explicitly by client)
-    // 2. From biq_ref cookie (set by middleware or trial/start API)
-    const cookieStore = await cookies();
-    const cookieRefCode = cookieStore.get("biq_ref")?.value || null;
-    const requestRefCode = body.refCode || null;
-
-    const affiliateRefCode = requestRefCode || cookieRefCode;
-
-    if (affiliateRefCode) {
-      console.log(`[assessment/start] ✅ Found affiliate refCode: ${affiliateRefCode} (${requestRefCode ? 'from request' : 'from cookie'})`);
-    } else {
-      console.log(`[assessment/start] ⚠️ No affiliate refCode found (no request refCode, no cookie)`);
-    }
-
-    // Get the assessment template (default to global regular assessment if not specified)
-    let template = null;
-    if (templateId) {
-      template = await prisma.assessmentTemplate.findUnique({
-        where: { id: templateId },
-        include: {
-          domains: {
-            include: {
-              domainTemplate: true,
-            },
-            orderBy: { order: "asc" },
-          },
-        },
-      });
-    } else {
-      // Get global regular assessment from platform settings
-      // Both trial and full assessments use the same template
-      // The difference is:
-      // - TRIAL mode: filters to show only questions marked isTrial=true
-      // - FULL mode: shows all questions (both trial and full)
-      const platformSettings = await prisma.platformSettings.findFirst({
-        include: {
-          globalRegularAssessment: {
-            include: {
-              domains: {
-                include: {
-                  domainTemplate: true,
+      // Create a checkout session for credit purchase
+      let checkoutUrl = "";
+      try {
+        if (stripeCustomerId) {
+          const session = await stripe.checkout.sessions.create({
+            mode: "payment",
+            customer: stripeCustomerId,
+            line_items: [
+              {
+                price_data: {
+                  currency: "usd",
+                  product_data: {
+                    name: "Single Assessment",
+                    description: "1 credit for behavioral assessment",
+                  },
+                  unit_amount: 9700,
                 },
-                orderBy: { order: "asc" },
+                quantity: 1,
               },
+            ],
+            success_url: `${process.env.NEXT_PUBLIC_SITE_URL || "https://app.behavioriq.com"}/api/chatgpt/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL || "https://app.behavioriq.com"}/pricing`,
+            metadata: {
+              planType: "single_assessment",
+              userId: user.id,
+              credits: "1",
             },
-          },
+          });
+          checkoutUrl = session.url || "";
+        }
+      } catch (error) {
+        console.error("[Assessment Start] Checkout session error:", error);
+      }
+
+      const insufficientCreditsResponse =
+        InsufficientCreditsResponseSchema.parse({
+          error: "insufficient_credits",
+          message: "You do not have enough credits for this assessment",
+          creditsRequired: 1,
+          creditsAvailable,
+          checkoutUrl,
+        });
+
+      return NextResponse.json(insufficientCreditsResponse, {
+        status: 402,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Request-Id": requestId,
         },
       });
-      template = platformSettings?.globalRegularAssessment;
     }
 
-    if (!template) {
-      return NextResponse.json(
-        { error: "Assessment template not found" },
-        { status: 404 }
+    // Generate assessment ID
+    const assessmentId = `assess_${uuidv4()}`;
+
+    // Get full questions (75 total)
+    const fullQuestions = questions.full;
+
+    if (!fullQuestions || fullQuestions.length !== 75) {
+      console.error(
+        "Full assessment questions configuration error: expected 75 questions"
+      );
+      return createErrorResponse(
+        "Internal server error",
+        "INTERNAL_ERROR",
+        requestId,
+        500
       );
     }
 
-    // Create the assessment record with affiliate refCode if present
-    const assessment = await prisma.assessment.create({
-      data: {
-        ...(userId && { userId }),
-        subjectName: "Trial Assessment",
-        mode: "TRIAL",
-        sessionId: sessionId, // Always set sessionId for trial linking to SnapshotSession
-        assessmentTemplateId: template.id,
-        status: "IN_PROGRESS",
-        ...(affiliateRefCode && { affiliateRefCode }), // Store refCode for later attribution
-      },
+    // Create Assessment in database
+    try {
+      await prisma.assessment.create({
+        data: {
+          id: assessmentId,
+          userId: context.userId,
+          subjectName: childName,
+          status: "IN_PROGRESS",
+          mode: "FULL",
+          startedAt: new Date(),
+          currentDomain: "attention", // Start with attention domain
+          currentQuestionOrder: 1,
+        },
+      });
+
+      // Deduct credit and log transaction
+      const newBalance = creditsAvailable - 1;
+      await prisma.user.update({
+        where: { id: context.userId },
+        data: { credits: newBalance },
+      });
+
+      await prisma.creditTransaction.create({
+        data: {
+          id: uuidv4(),
+          userId: context.userId,
+          amount: -1,
+          type: "ASSESSMENT_STARTED",
+          reference: assessmentId,
+          balanceAfter: newBalance,
+        },
+      });
+    } catch (error) {
+      console.error("[Assessment Start] Database error:", error);
+      return createErrorResponse(
+        "Failed to create assessment",
+        "DATABASE_ERROR",
+        requestId,
+        500
+      );
+    }
+
+    // Format response
+    const responseBody = AssessmentStartResponseSchema.parse({
+      assessmentId,
+      questions: fullQuestions.map((q) => ({
+        questionId: q.id,
+        text: q.text,
+        domain: q.domain,
+      })),
+      totalQuestions: 75,
+      creditsRemaining: creditsAvailable - 1,
     });
 
-    if (affiliateRefCode) {
-      console.log(`[AssessmentStart] ✅ Assessment created with affiliate refCode: ${affiliateRefCode}`);
-    }
-
-    return NextResponse.json({ assessmentId: assessment.id });
+    return NextResponse.json(responseBody, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "X-Request-Id": requestId,
+      },
+    });
   } catch (error) {
-    console.error("[assessment/start] failed", error);
-    return NextResponse.json(
-      { error: "Failed to start assessment" },
-      { status: 500 }
+    const errorMessage =
+      error instanceof Error ? error.message : String(error);
+    console.error("[Assessment Start] Unexpected error:", errorMessage);
+
+    return createErrorResponse(
+      "Internal server error",
+      "INTERNAL_ERROR",
+      requestId,
+      500
     );
   }
 }

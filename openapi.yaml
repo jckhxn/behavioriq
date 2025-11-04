@@ -1,0 +1,861 @@
+openapi: 3.1.0
+info:
+  title: BehaviorIQ Assessment API
+  description: |
+    API for behavioral assessment trials and full assessments with Stripe payment integration.
+    This API powers the BehaviorIQ ChatGPT App for taking behavioral assessments directly in ChatGPT.
+  version: 1.0.0
+  contact:
+    name: BehaviorIQ Support
+    url: https://behavioriq.com/support
+    email: support@behavioriq.com
+  x-logo:
+    url: https://behavioriq.com/logo.png
+
+servers:
+  - url: https://app.behavioriq.com
+    description: Production API
+  - url: http://localhost:3000
+    description: Development API
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /api/trial/start:
+    post:
+      operationId: startTrialAssessment
+      summary: Start a trial assessment
+      description: |
+        Initiates an anonymous 15-question trial assessment.
+        No authentication required. Returns 15 yes/no questions about child behavior.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                childAge:
+                  type: integer
+                  minimum: 3
+                  maximum: 18
+                  description: Age of the child being assessed
+                relationshipType:
+                  type: string
+                  enum:
+                    - parent
+                    - educator
+                    - other
+                  description: Relationship of respondent to child
+              required:
+                - childAge
+                - relationshipType
+      responses:
+        "200":
+          description: Trial assessment started successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrialStartResponse"
+        "400":
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - Trial Assessment
+
+  /api/trial/submit:
+    post:
+      operationId: submitTrialAssessment
+      summary: Submit trial assessment answers
+      description: |
+        Submits answers for the 15-question trial assessment.
+        Returns domain scores and a summary of the assessment.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sessionId:
+                  type: string
+                  description: Session ID from trial/start response
+                answers:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      questionId:
+                        type: string
+                      answer:
+                        type: string
+                        enum:
+                          - "yes"
+                          - "no"
+                    required:
+                      - questionId
+                      - answer
+                  minItems: 15
+                  maxItems: 15
+              required:
+                - sessionId
+                - answers
+      responses:
+        "200":
+          description: Trial assessment submitted and scored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrialSubmitResponse"
+        "400":
+          description: Invalid session or answers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - Trial Assessment
+
+  /api/user/credits:
+    get:
+      operationId: getUserCredits
+      summary: Get user's remaining credits
+      description: |
+        Returns the number of remaining assessment credits for the authenticated user.
+        Requires API key authentication.
+      parameters:
+        - name: user_id
+          in: query
+          description: User ID to check credits for
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User credits retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreditsResponse"
+        "401":
+          description: Unauthorized - invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - User
+
+  /api/checkout:
+    post:
+      operationId: createCheckoutSession
+      summary: Create Stripe checkout session
+      description: |
+        Creates a Stripe Checkout session for purchasing assessment credits or upgrading to a paid plan.
+        Requires API key authentication.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: string
+                  description: User ID creating the checkout
+                planType:
+                  type: string
+                  enum:
+                    - single_assessment
+                    - core_monthly
+                    - family_monthly
+                    - core_annual
+                    - family_annual
+                  description: Type of plan or credits to purchase
+                successUrl:
+                  type: string
+                  description: URL to redirect to after successful payment
+                  default: https://app.behavioriq.com/dashboard
+                cancelUrl:
+                  type: string
+                  description: URL to redirect to if payment is cancelled
+                  default: https://app.behavioriq.com/pricing
+              required:
+                - userId
+                - planType
+      responses:
+        "200":
+          description: Checkout session created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckoutResponse"
+        "400":
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized - invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - Billing
+
+  /api/assessment/start:
+    post:
+      operationId: startFullAssessment
+      summary: Start a full assessment
+      description: |
+        Initiates a full 75-question assessment. Requires at least 1 credit.
+        If user has no credits, returns checkout URL for purchasing credits.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: string
+                  description: Authenticated user ID
+                childName:
+                  type: string
+                  description: Name of the child being assessed
+                childAge:
+                  type: integer
+                  minimum: 3
+                  maximum: 18
+                  description: Age of the child
+                relationshipType:
+                  type: string
+                  enum:
+                    - parent
+                    - educator
+                    - other
+                  description: Relationship of respondent to child
+              required:
+                - userId
+                - childName
+                - childAge
+                - relationshipType
+      responses:
+        "200":
+          description: Full assessment started successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssessmentStartResponse"
+        "402":
+          description: Insufficient credits - checkout required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InsufficientCreditsResponse"
+        "400":
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized - user not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - Full Assessment
+
+  /api/assessment/submit:
+    post:
+      operationId: submitFullAssessment
+      summary: Submit full assessment answers
+      description: |
+        Submits all 75 answers for a full assessment.
+        Returns the assessment ID which can be used to fetch results.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                assessmentId:
+                  type: string
+                  description: Assessment ID from assessment/start response
+                answers:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      questionId:
+                        type: string
+                      answer:
+                        type: string
+                        enum:
+                          - "never"
+                          - "rarely"
+                          - "sometimes"
+                          - "often"
+                          - "very_often"
+                    required:
+                      - questionId
+                      - answer
+                  minItems: 75
+                  maxItems: 75
+                  description: Array of 75 question-answer pairs
+              required:
+                - assessmentId
+                - answers
+      responses:
+        "200":
+          description: Full assessment submitted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssessmentSubmitResponse"
+        "400":
+          description: Invalid assessment ID or answers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Assessment not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - Full Assessment
+
+  /api/assessment/{assessmentId}/results:
+    get:
+      operationId: getAssessmentResults
+      summary: Get assessment results
+      description: |
+        Retrieves scored results for a completed assessment including domain scores,
+        percentiles, severity ratings, and AI-generated recommendations.
+      parameters:
+        - name: assessmentId
+          in: path
+          description: Assessment ID to fetch results for
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Assessment results retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultsResponse"
+        "404":
+          description: Assessment not found or not yet scored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - Results
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for authentication. Get yours from the dashboard.
+
+  schemas:
+    # Request/Response Schemas
+    TrialStartResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        sessionId:
+          type: string
+          description: Session ID to use for submitting answers
+          example: "trial_sess_abc123xyz"
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Question"
+          description: Array of 15 yes/no questions
+        totalQuestions:
+          type: integer
+          example: 15
+        estimatedTime:
+          type: string
+          example: "5-10 minutes"
+      required:
+        - success
+        - sessionId
+        - questions
+        - totalQuestions
+
+    TrialSubmitResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        assessmentId:
+          type: string
+          example: "trial_123abc"
+        score:
+          type: number
+          minimum: 0
+          maximum: 100
+          example: 72
+        summary:
+          type: string
+          example: "Your child shows some behaviors that may benefit from attention and support."
+        domainScores:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              score:
+                type: number
+              severity:
+                type: string
+                enum:
+                  - minimal
+                  - mild
+                  - moderate
+                  - significant
+                  - severe
+            required:
+              - score
+              - severity
+          example:
+            attention:
+              score: 65
+              severity: moderate
+            behavior:
+              score: 58
+              severity: mild
+        recommendations:
+          type: array
+          items:
+            type: string
+          example:
+            - "Consider implementing structured routines"
+            - "Use positive reinforcement for desired behaviors"
+        nextSteps:
+          type: string
+          example: "Take the full assessment for detailed insights and personalized recommendations"
+
+    CreditsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        userId:
+          type: string
+        credits:
+          type: integer
+          minimum: 0
+          example: 3
+        plan:
+          type: string
+          enum:
+            - free
+            - core_monthly
+            - family_monthly
+            - core_annual
+            - family_annual
+          example: "core_monthly"
+        nextCreditDate:
+          type: string
+          format: date-time
+          description: Date when next credit batch will be granted
+          example: "2025-12-03T00:00:00Z"
+        creditsCap:
+          type: integer
+          description: Maximum credits that can roll over
+          example: 6
+      required:
+        - success
+        - userId
+        - credits
+        - plan
+
+    CheckoutResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        checkoutUrl:
+          type: string
+          format: uri
+          description: URL to redirect user to for payment
+          example: "https://checkout.stripe.com/pay/cs_live_abc123xyz"
+        sessionId:
+          type: string
+          description: Stripe session ID
+          example: "cs_live_abc123xyz"
+        planType:
+          type: string
+          example: "core_monthly"
+        price:
+          type: number
+          example: 59.99
+        currency:
+          type: string
+          example: "usd"
+      required:
+        - success
+        - checkoutUrl
+        - sessionId
+
+    AssessmentStartResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        assessmentId:
+          type: string
+          description: ID for this assessment session
+          example: "assess_123abc"
+        childName:
+          type: string
+          example: "Emma"
+        childAge:
+          type: integer
+          example: 8
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssessmentQuestion"
+          description: Array of 75 assessment questions
+        totalQuestions:
+          type: integer
+          example: 75
+        estimatedTime:
+          type: string
+          example: "20-30 minutes"
+        creditDeducted:
+          type: integer
+          example: 1
+        creditsRemaining:
+          type: integer
+          example: 2
+      required:
+        - success
+        - assessmentId
+        - questions
+        - totalQuestions
+
+    AssessmentSubmitResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        assessmentId:
+          type: string
+          example: "assess_123abc"
+        status:
+          type: string
+          enum:
+            - submitted
+            - processing
+            - completed
+          example: "submitted"
+        message:
+          type: string
+          example: "Assessment submitted successfully. Results will be available within 1 minute."
+
+    ResultsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        assessmentId:
+          type: string
+        childName:
+          type: string
+          example: "Emma"
+        childAge:
+          type: integer
+          example: 8
+        completedAt:
+          type: string
+          format: date-time
+          example: "2025-11-03T15:30:00Z"
+        overallScore:
+          type: number
+          minimum: 0
+          maximum: 100
+          example: 72
+        riskLevel:
+          type: string
+          enum:
+            - low
+            - moderate
+            - elevated
+            - high
+          example: "moderate"
+        percentile:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 65
+        domainScores:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/DomainScore"
+          example:
+            attention:
+              score: 75
+              percentile: 70
+              severity: moderate
+              interpretation: "Some difficulty with sustained attention"
+            behavior:
+              score: 68
+              percentile: 60
+              severity: mild
+              interpretation: "Occasional behavior challenges"
+        recommendations:
+          type: array
+          items:
+            type: string
+          example:
+            - "Implement structured routines and clear expectations"
+            - "Use positive reinforcement and reward systems"
+            - "Consider consultation with educational specialist"
+        nextSteps:
+          type: array
+          items:
+            type: string
+          example:
+            - "Schedule consultation with school counselor"
+            - "Implement suggested behavior strategies at home"
+            - "Monitor progress over next 4 weeks"
+        disclaimer:
+          type: string
+          example: "These results are based on observation-based responses and should not be considered a clinical diagnosis. Please consult with a qualified healthcare professional for clinical assessment and diagnosis."
+      required:
+        - success
+        - assessmentId
+        - overallScore
+        - riskLevel
+        - domainScores
+        - recommendations
+
+    InsufficientCreditsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: "insufficient_credits"
+        message:
+          type: string
+          example: "You need 1 credit to start an assessment. Purchase credits to continue."
+        creditsNeeded:
+          type: integer
+          example: 1
+        creditsAvailable:
+          type: integer
+          example: 0
+        checkoutUrl:
+          type: string
+          format: uri
+          description: Checkout URL to purchase credits
+          example: "https://checkout.stripe.com/pay/cs_live_abc123xyz"
+      required:
+        - success
+        - error
+        - message
+        - checkoutUrl
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          description: Error code/type
+          example: "invalid_parameters"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Invalid child age. Must be between 3 and 18."
+      required:
+        - success
+        - error
+        - message
+
+    # Supporting Schemas
+    Question:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "q_1"
+        text:
+          type: string
+          example: "Does your child struggle to pay attention in school?"
+        domain:
+          type: string
+          example: "attention"
+        required:
+          type: boolean
+          example: true
+      required:
+        - id
+        - text
+        - domain
+
+    AssessmentQuestion:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "q_1"
+        text:
+          type: string
+          example: "Difficulty sustaining attention to tasks or play"
+        domain:
+          type: string
+          example: "attention"
+        category:
+          type: string
+          example: "Attention & Focus"
+        options:
+          type: array
+          items:
+            type: string
+          example:
+            - never
+            - rarely
+            - sometimes
+            - often
+            - very_often
+      required:
+        - id
+        - text
+        - domain
+        - category
+        - options
+
+    DomainScore:
+      type: object
+      properties:
+        score:
+          type: number
+          example: 75
+        percentile:
+          type: integer
+          example: 70
+        severity:
+          type: string
+          enum:
+            - minimal
+            - mild
+            - moderate
+            - significant
+            - severe
+          example: moderate
+        interpretation:
+          type: string
+          example: "Some difficulty with sustained attention"
+      required:
+        - score
+        - percentile
+        - severity
+        - interpretation
+
+tags:
+  - name: Trial Assessment
+    description: Endpoints for 15-question trial assessments (no auth required)
+  - name: Full Assessment
+    description: Endpoints for 75-question full assessments (requires credits)
+  - name: User
+    description: User account and credit information
+  - name: Billing
+    description: Payment and checkout endpoints
+  - name: Results
+    description: Assessment results and scoring endpoints
+
+x-tagGroups:
+  - name: Assessment Flow
+    tags:
+      - Trial Assessment
+      - Full Assessment
+      - Results
+  - name: Account & Billing
+    tags:
+      - User
+      - Billing

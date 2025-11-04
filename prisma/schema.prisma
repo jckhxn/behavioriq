@@ -175,6 +175,10 @@ model User {
   emailVerificationToken                           String?                     @unique
   emailVerificationTokenExpiresAt                  DateTime?
   pendingEmail                                     String?                     // For email change flow
+  // ChatGPT Integration
+  credits                                          Int                         @default(0)     // Available credits for assessments
+  magicLinkTokens                                  MagicLinkToken[]
+  creditTransactions                               CreditTransaction[]
   // Account status
   isDeactivated                                    Boolean                     @default(false)
   deactivatedAt                                    DateTime?
@@ -1238,4 +1242,98 @@ enum EmailTemplateType {
   AFFILIATE_FRAUD_ALERT
   SYSTEM_NOTIFICATION
   GENERIC
+}
+
+// ChatGPT MCP Integration Models
+
+// Magic Link Tokens for passwordless authentication
+model MagicLinkToken {
+  email       String      @id
+  token       String      @unique
+  userId      String
+  expiresAt   DateTime
+  createdAt   DateTime    @default(now())
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// Trial Assessment Sessions (anonymous)
+model TrialSession {
+  id            String      @id @default(cuid())
+  childAge      Int
+  relationshipType String   // 'parent' | 'educator' | 'other'
+  status        String      @default("started") // 'started' | 'in_progress' | 'completed'
+  questions     Json        // Array of question IDs answered
+  answers       Json        // Array of answers { questionId, answer }
+  startedAt     DateTime    @default(now())
+  completedAt   DateTime?
+  createdAt     DateTime    @default(now())
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ChatGPT Assessment Results
+model ChatGPTAssessmentResult {
+  id              String      @id @default(cuid())
+  assessmentId    String      // Reference to existing Assessment model
+  overallScore    Int         // 0-100 composite score
+  percentile      Int         // 0-100 percentile rank
+  scores          Json        // { attention, behavior, social, emotion, academic }
+  categoryScores  Json        // Detailed scores by category with interpretations
+  recommendations Json        // Array of personalized recommendations
+  createdAt       DateTime    @default(now())
+
+  @@index([assessmentId])
+  @@index([percentile])
+}
+
+// Credit Transactions for auditing and billing
+model CreditTransaction {
+  id              String      @id @default(cuid())
+  userId          String
+  amount          Int         // Positive for additions, negative for usage
+  type            String      // 'PURCHASE' | 'RENEWAL' | 'ASSESSMENT_STARTED' | 'REFUND' | 'ADJUSTMENT'
+  reference       String?     // Foreign key to relevant transaction (Stripe session ID, assessment ID, etc)
+  balanceAfter    Int         // Balance after transaction
+  createdAt       DateTime    @default(now())
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+// OAuth Authorization Codes (PKCE flow)
+model AuthorizationCode {
+  code                String      @id
+  clientId            String
+  redirectUri         String
+  scope               String
+  nonce               String?
+  state               String
+  codeChallenge       String?     // For PKCE
+  codeChallengeMethod String?     // 'S256' or 'plain'
+  expiresAt           DateTime
+  createdAt           DateTime    @default(now())
+
+  @@index([clientId])
+  @@index([expiresAt])
+}
+
+// OAuth Tokens
+model OAuthToken {
+  id              String      @id @default(cuid())
+  clientId        String
+  accessToken     String      @unique
+  refreshToken    String      @unique
+  expiresAt       DateTime
+  createdAt       DateTime    @default(now())
+
+  @@index([clientId])
+  @@index([accessToken])
+  @@index([refreshToken])
+  @@index([expiresAt])
 }
