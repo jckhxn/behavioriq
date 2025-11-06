@@ -515,8 +515,9 @@ export async function generateMetadata({
   };
 }
 
-export default function Page({ params }: { params: { slug: string } }) {
-  const page = readGeneratedPage(params.slug);
+export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const page = readGeneratedPage(slug);
   if (!page) {
     notFound();
   }

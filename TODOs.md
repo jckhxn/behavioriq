@@ -73,7 +73,7 @@ $1 per 10k emails (SES)
     ::contentReference[oaicite:0]{index=0}
 
 # Pending Implementations.
-
+ - [] Conversational AI Consulting (Talk with the AI naturally to get recommendations versus taking an assessment.)
 - [] Prompt users to setup MFA or passkey somewhere in the login flow
 - [] chatgpt integration.
 - [] the email GrapesJS thing ugly af.

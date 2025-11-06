@@ -54,41 +54,25 @@ export default function TrialAssessmentPage() {
       try {
         setLoading(true);
 
-        // 1. Start a new trial assessment (pass ref if present)
-        const startResponse = await fetch('/api/assessment/start', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionId,
-            anonymous: true,
-            ...(ref && { refCode: ref }), // Pass refCode from URL param
-          }),
-        });
+        // Load trial session data and questions
+        const sessionResponse = await fetch(
+          `/api/trial/session?sessionId=${sessionId}`
+        );
 
-        if (!startResponse.ok) {
-          throw new Error('Failed to start assessment');
+        if (!sessionResponse.ok) {
+          throw new Error('Failed to load trial session');
         }
 
-        const startData = await startResponse.json();
-        const assessId = startData.assessmentId;
-        setAssessmentId(assessId);
+        const sessionData = await sessionResponse.json();
+        setAssessmentId(sessionId); // Use session ID as assessment ID for trial
+        setProgress(sessionData.progress);
 
-        // 2. Load first question
-        const nextResponse = await fetch(`/api/assessment/${assessId}/next`);
-        if (!nextResponse.ok) {
-          throw new Error('Failed to load first question');
-        }
-
-        const nextData = await nextResponse.json();
-        setProgress(nextData.progress);
-
-        if (nextData.next) {
-          setCurrentQuestion(nextData.next);
+        if (sessionData.next) {
+          setCurrentQuestion(sessionData.next);
         }
 
         trackTelemetry('trial.assessment_started', {
           sessionId,
-          assessmentId: assessId,
         });
       } catch (error) {
         console.error('Failed to start assessment:', error);
@@ -106,13 +90,15 @@ export default function TrialAssessmentPage() {
       try {
         setSubmitting(true);
 
-        // Save answer
-        const response = await fetch(`/api/assessment/${assessmentId}/answer`, {
+        // Save answer to trial session
+        const answerValue = value ? 3 : 0; // Convert boolean to Likert scale
+        const response = await fetch('/api/trial/answer', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            qid: currentQuestion.qid,
-            value,
+            sessionId: assessmentId,
+            questionId: currentQuestion.qid,
+            answer: answerValue,
           }),
         });
 
@@ -123,7 +109,6 @@ export default function TrialAssessmentPage() {
 
         const data = await response.json();
         setAnswers({ ...answers, [currentQuestion.qid]: value });
-        setProgress(data.progress);
 
         trackTelemetry('trial.question_answered', {
           sessionId,
@@ -132,35 +117,43 @@ export default function TrialAssessmentPage() {
           value: value ? 'yes' : 'no',
         });
 
-        // Check if trial is complete
-        if (data.isDone) {
-          trackTelemetry('trial.completed', {
-            sessionId,
-            assessmentId,
-            questionCount: data.progress.required,
-          });
-
-          // Redirect to results
-          router.push(`/results/${assessmentId}`);
-        } else {
-          // Load next question with error handling
-          try {
-            const nextResponse = await fetch(`/api/assessment/${assessmentId}/next`);
-            if (!nextResponse.ok) {
-              throw new Error('Failed to load next question');
-            }
-
-            const nextData = await nextResponse.json();
-            setProgress(nextData.progress);
-            setQuestionLoadError(null);
-
-            if (nextData.next) {
-              setCurrentQuestion(nextData.next);
-            }
-          } catch (loadError) {
-            console.error('Error loading next question:', loadError);
-            setQuestionLoadError('Unable to load the next question. Please try again.');
+        // Load next question
+        try {
+          const nextResponse = await fetch(
+            `/api/trial/session?sessionId=${assessmentId}`
+          );
+          if (!nextResponse.ok) {
+            throw new Error('Failed to load next question');
           }
+
+          const nextData = await nextResponse.json();
+          setProgress(nextData.progress);
+          setQuestionLoadError(null);
+
+          if (nextData.next) {
+            setCurrentQuestion(nextData.next);
+          } else {
+            // Trial is complete - calculate scores and redirect
+            trackTelemetry('trial.completed', {
+              sessionId,
+              assessmentId,
+              questionCount: nextData.progress.required,
+            });
+
+            // Calculate scores
+            const scoreResponse = await fetch('/api/trial/score', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ sessionId: assessmentId }),
+            });
+
+            const scoreData = await scoreResponse.json();
+            // Redirect to results
+            router.push(`/results/${assessmentId}`);
+          }
+        } catch (loadError) {
+          console.error('Error loading next question:', loadError);
+          setQuestionLoadError('Unable to load the next question. Please try again.');
         }
       } catch (err) {
         console.error('Error submitting answer:', err);
