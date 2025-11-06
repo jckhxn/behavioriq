@@ -73,11 +73,10 @@ $1 per 10k emails (SES)
     ::contentReference[oaicite:0]{index=0}
 
 # Pending Implementations.
- - [] Conversational AI Consulting (Talk with the AI naturally to get recommendations versus taking an assessment.)
+
+- [] Conversational AI Consulting (Talk with the AI naturally to get recommendations versus taking an assessment.)
 - [] Prompt users to setup MFA or passkey somewhere in the login flow
 - [] chatgpt integration.
-- [] the email GrapesJS thing ugly af.
-  - - Maybe I just hand code the emails/pdf and add them to the codebase lol
 - [] Trial Results Look.
 - [] Work on Lead Magnet Offer and Core Offer.
 - [] Work on Monthly Offer for subscriber retention
@@ -93,7 +92,7 @@ $1 per 10k emails (SES)
 # Stashed
 
 - useworkflow.dev for stuff like emails?
-- [] Test Trial - Dashboard Flow
+
 
 ## Bugs Track
 
