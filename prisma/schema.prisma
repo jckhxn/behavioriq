@@ -654,7 +654,8 @@ model QuestionResponse {
   id           String     @id @default(cuid())
   assessmentId String
   questionId   String
-  response     Boolean
+  response     String
+  score        Int        @default(0)
   timestamp    DateTime   @default(now())
   assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
 

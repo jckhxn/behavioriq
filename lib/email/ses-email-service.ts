@@ -7,6 +7,11 @@
 import { SESClient, SendRawEmailCommand } from "@aws-sdk/client-ses";
 import nodemailer from "nodemailer";
 import {
+  renderAssessmentReportEmail,
+  renderWelcomeEmail,
+  renderLicenseNotificationEmail,
+} from "./render-templates";
+import {
   checkBudgetAvailable,
   logEmailSent,
 } from "@/lib/services/email-budget-service";
@@ -287,62 +292,11 @@ export class SESEmailService {
   static async sendAssessmentReport(
     data: AssessmentReportEmail
   ): Promise<{ success: boolean; messageId?: string; error?: string }> {
-    const html = `
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f8fafc; }
-      .container { max-width: 600px; margin: 0 auto; background: white; }
-      .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; }
-      .header h1 { margin: 0; font-size: 28px; font-weight: 700; }
-      .content { padding: 40px 30px; background: #ffffff; }
-      .content h2 { color: #333; font-size: 20px; margin-top: 0; }
-      .content ul { padding-left: 20px; }
-      .content li { margin-bottom: 10px; color: #555; }
-      .button { display: inline-block; padding: 14px 28px; background: #667eea; color: white; text-decoration: none; border-radius: 8px; margin-top: 20px; font-weight: 600; }
-      .footer { text-align: center; padding: 20px; font-size: 12px; color: #6b7280; background: #f8fafc; }
-      .highlight { background: #f0f9ff; border-left: 4px solid #667eea; padding: 15px; margin: 20px 0; border-radius: 4px; }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <div class="header">
-        <h1>📊 Your Assessment Report is Ready!</h1>
-      </div>
-      <div class="content">
-        <h2>Hi ${data.userName},</h2>
-        <p>Your <strong>${data.assessmentName}</strong> assessment report has been generated and is attached to this email as a PDF.</p>
-
-        <div class="highlight">
-          <p style="margin: 0;"><strong>📄 Report Contents:</strong></p>
-        </div>
-
-        <ul>
-          <li>Comprehensive behavioral analysis across all domains</li>
-          <li>AI-generated personalized recommendations</li>
-          <li>Visual score representations and risk assessments</li>
-          <li>Actionable next steps for development</li>
-        </ul>
-
-        <p>You can also view your assessment online anytime from your dashboard.</p>
-
-        <a href="${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/assessment/${data.assessmentId}" class="button">View Assessment Online</a>
-
-        <p style="margin-top: 30px; color: #666; font-size: 14px;">
-          If you have any questions about your assessment results, please don't hesitate to contact our support team.
-        </p>
-      </div>
-      <div class="footer">
-        <p>© ${new Date().getFullYear()} ${process.env.NEXT_PUBLIC_SITE_NAME || "AI Diagnostic"}. All rights reserved.</p>
-        <p style="margin-top: 10px;">This is an automated message, please do not reply to this email.</p>
-      </div>
-    </div>
-  </body>
-</html>
-    `;
+    const html = await renderAssessmentReportEmail(
+      data.userName,
+      data.assessmentName,
+      data.assessmentId
+    );
 
     const attachments = data.pdfBuffer
       ? [
@@ -374,64 +328,12 @@ export class SESEmailService {
       (new Date(data.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
     );
 
-    const urgencyColor = daysUntilExpiry <= 7 ? "#ef4444" : "#f97316";
-
-    const html = `
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f8fafc; }
-      .container { max-width: 600px; margin: 0 auto; background: white; }
-      .header { background: ${urgencyColor}; color: white; padding: 40px 30px; text-align: center; }
-      .header h1 { margin: 0; font-size: 28px; font-weight: 700; }
-      .content { padding: 40px 30px; background: #ffffff; }
-      .warning { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; border-radius: 6px; margin: 20px 0; }
-      .button { display: inline-block; padding: 14px 28px; background: #f59e0b; color: white; text-decoration: none; border-radius: 8px; margin-top: 20px; font-weight: 600; }
-      .footer { text-align: center; padding: 20px; font-size: 12px; color: #6b7280; background: #f8fafc; }
-      ul { padding-left: 20px; }
-      li { margin-bottom: 8px; color: #555; }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <div class="header">
-        <h1>⚠️ License Expiration Notice</h1>
-        <p style="margin: 10px 0 0 0; font-size: 18px;">${daysUntilExpiry} days remaining</p>
-      </div>
-      <div class="content">
-        <h2>Hi ${data.userName},</h2>
-
-        <div class="warning">
-          <p style="margin: 0;"><strong>Your ${data.licenseType} license will expire in ${daysUntilExpiry} days.</strong></p>
-          <p style="margin: 10px 0 0 0;">Expiration Date: ${new Date(data.expiryDate).toLocaleDateString()}</p>
-        </div>
-
-        <p>To avoid service interruption and continue accessing your assessments, please renew your license before the expiration date.</p>
-
-        <h3>What happens when your license expires?</h3>
-        <ul>
-          <li>Access to assessment tools will be restricted</li>
-          <li>PDF report generation will be disabled</li>
-          <li>AI-generated recommendations will be unavailable</li>
-          <li>Historical assessment data will be preserved</li>
-        </ul>
-
-        <a href="${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/dashboard?action=renew" class="button">Renew License Now</a>
-
-        <p style="margin-top: 30px; color: #666; font-size: 14px;">
-          If you have any questions about license renewal, please contact our support team.
-        </p>
-      </div>
-      <div class="footer">
-        <p>© ${new Date().getFullYear()} ${process.env.NEXT_PUBLIC_SITE_NAME || "AI Diagnostic"}. All rights reserved.</p>
-      </div>
-    </div>
-  </body>
-</html>
-    `;
+    const html = await renderLicenseNotificationEmail(
+      data.userName,
+      data.licenseType,
+      data.expiryDate,
+      daysUntilExpiry
+    );
 
     return this.sendEmail({
       to: data.to,
@@ -450,64 +352,7 @@ export class SESEmailService {
     userName: string;
     userId?: string;
   }): Promise<{ success: boolean; messageId?: string; error?: string }> {
-    const html = `
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f8fafc; }
-      .container { max-width: 600px; margin: 0 auto; background: white; }
-      .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; }
-      .header h1 { margin: 0; font-size: 28px; font-weight: 700; }
-      .content { padding: 40px 30px; background: #ffffff; }
-      .feature { background: #f8fafc; padding: 20px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #667eea; }
-      .button { display: inline-block; padding: 14px 28px; background: #667eea; color: white; text-decoration: none; border-radius: 8px; margin-top: 20px; font-weight: 600; }
-      .footer { text-align: center; padding: 20px; font-size: 12px; color: #6b7280; background: #f8fafc; }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <div class="header">
-        <h1>🎉 Welcome to ${process.env.NEXT_PUBLIC_SITE_NAME || "AI Diagnostic"}!</h1>
-      </div>
-      <div class="content">
-        <h2>Hi ${data.userName},</h2>
-        <p>Welcome aboard! We're excited to help you gain valuable insights into behavioral patterns and development.</p>
-
-        <h3>Get Started:</h3>
-
-        <div class="feature">
-          <strong>📋 Create Assessments</strong>
-          <p style="margin: 8px 0 0 0; color: #555;">Conduct comprehensive behavioral assessments with our intuitive question flow.</p>
-        </div>
-
-        <div class="feature">
-          <strong>🤖 AI-Powered Analysis</strong>
-          <p style="margin: 8px 0 0 0; color: #555;">Get personalized, AI-generated recommendations based on assessment results.</p>
-        </div>
-
-        <div class="feature">
-          <strong>📊 Professional Reports</strong>
-          <p style="margin: 8px 0 0 0; color: #555;">Download beautifully designed PDF reports with visual score representations.</p>
-        </div>
-
-        <p style="text-align: center;">
-          <a href="${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/dashboard" class="button">Go to Dashboard</a>
-        </p>
-
-        <p style="margin-top: 30px; color: #666; font-size: 14px;">
-          If you need any assistance getting started, our support team is here to help!
-        </p>
-      </div>
-      <div class="footer">
-        <p>© ${new Date().getFullYear()} ${process.env.NEXT_PUBLIC_SITE_NAME || "AI Diagnostic"}. All rights reserved.</p>
-      </div>
-    </div>
-  </body>
-</html>
-    `;
+    const html = await renderWelcomeEmail(data.userName);
 
     return this.sendEmail({
       to: data.to,

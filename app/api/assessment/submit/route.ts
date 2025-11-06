@@ -148,11 +148,6 @@ export async function POST(request: NextRequest) {
       // Group answers by domain and calculate sums
       const responses = await prisma.questionResponse.findMany({
         where: { assessmentId },
-        include: {
-          question: {
-            select: { text: true }, // We'll extract domain from questionId pattern
-          },
-        },
       });
 
       // Map questionId to domain (e.g., q_attention_1 -> attention)
@@ -178,9 +173,13 @@ export async function POST(request: NextRequest) {
             data: {
               id: uuidv4(),
               assessmentId,
-              domain,
-              score: rawScore,
-              percentile,
+              domain: null, // Domain is nullable; extract from domainName if needed
+              domainName: domain,
+              rawScore,
+              riskLevel: "LOW", // Default risk level
+              confidence: 0.95,
+              questionsAnswered: scores.count,
+              totalPossible: 15, // Assuming 15 questions per domain
             },
           });
         }

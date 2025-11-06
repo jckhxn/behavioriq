@@ -51,8 +51,8 @@ export async function GET(
       );
     }
 
-    // Build map of responses
-    const responseMap = new Map<string, boolean>();
+    // Build map of responses (response is now a string)
+    const responseMap = new Map<string, string>();
     assessment.responses.forEach((r) => {
       responseMap.set(r.questionId, r.response);
     });
@@ -87,7 +87,13 @@ export async function GET(
         const response = responseMap.get(q.id);
         if (response !== undefined) {
           answeredCount++;
-          if (response === true) {
+          // Check if response is yes/true
+          const responseStr = String(response).toLowerCase();
+          const isYes = responseStr === "true" ||
+             responseStr === "yes" ||
+             responseStr === "1" ||
+             responseStr === "y";
+          if (isYes) {
             yesCount++;
           }
         }

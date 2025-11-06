@@ -67,14 +67,20 @@ export async function POST(
       );
     }
 
-    // Convert to boolean response
+    // Convert value to string response
+    let stringValue = String(value);
+    let scoreValue = 0;
+
+    // If it's a boolean/number, convert to numeric score
     let boolValue = false;
     if (typeof value === "boolean") {
       boolValue = value;
     } else if (typeof value === "number") {
       boolValue = value !== 0;
+      scoreValue = value !== 0 ? 1 : 0;
     } else if (typeof value === "string") {
       boolValue = value.toLowerCase() === "y" || value.toLowerCase() === "yes" || value === "1" || value === "true";
+      scoreValue = boolValue ? 1 : 0;
     }
 
     // Save the response (upsert to handle rapid submissions)
@@ -87,12 +93,14 @@ export async function POST(
         },
       },
       update: {
-        response: boolValue,
+        response: stringValue,
+        score: scoreValue,
       },
       create: {
         assessmentId,
         questionId: qid,
-        response: boolValue,
+        response: stringValue,
+        score: scoreValue,
       },
     });
 
@@ -174,7 +182,13 @@ export async function POST(
           );
           if (response) {
             answeredInDomain++;
-            if (response.response === true) {
+            // Check if response is yes/true (response is now a string)
+            const responseStr = String(response.response).toLowerCase();
+            const isYes = responseStr === "true" ||
+               responseStr === "yes" ||
+               responseStr === "1" ||
+               responseStr === "y";
+            if (isYes) {
               yesCount++;
             }
           }

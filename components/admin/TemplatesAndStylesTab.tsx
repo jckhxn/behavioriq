@@ -1,9 +1,10 @@
 "use client";
 
-import { GrapesJSEmailEditor } from "@/components/admin/GrapesJSEmailEditor";
 import { PDFStyleEditor } from "@/components/admin/PDFStyleEditor";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Mail, Palette } from "lucide-react";
+import { Mail, Palette, ExternalLink } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function TemplatesAndStylesTab() {
   return (
@@ -23,7 +24,37 @@ export default function TemplatesAndStylesTab() {
         </TabsList>
 
         <TabsContent value="email" className="w-full">
-          <GrapesJSEmailEditor />
+          <Card>
+            <CardHeader>
+              <CardTitle>Email Templates</CardTitle>
+              <CardDescription>
+                Email templates are now managed as React components in the codebase
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Email templates are defined using React Email components for type safety and maintainability.
+                To preview and test templates during development, use:
+              </p>
+              <div className="bg-muted p-4 rounded font-mono text-sm">
+                npm run email:preview
+              </div>
+              <p className="text-sm text-muted-foreground">
+                This opens a live preview dashboard where you can see all email templates with hot reload.
+              </p>
+              <Button variant="outline" asChild>
+                <a
+                  href="https://react.email"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2"
+                >
+                  React Email Documentation
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              </Button>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="pdf" className="w-full">

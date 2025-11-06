@@ -12,8 +12,70 @@ $1 per 10k emails (SES)
 
 ---
 
+# Trial Results Magnet
+
+> Render actionable steps dynamically based on **top flagged domain(s)**. Use prewritten templates per domain with a **universal fallback** when no domain is flagged.
+
+## On-Page (Trial Results)
+
+- [ ] **Risk Summary (chips)**
+  - Example: `Anxiety — Elevated`, `Mood — Typical`, `Self-Harm — Low`, `Eating — Borderline`.
+
+- [ ] **Scores at a Glance (table)**
+  - Format: **Domain | Your Score | Screener | Diagnostic | Status**
+  - Example:
+
+    | Domain          | Your Score | Screener | Diagnostic | Status       |
+    | --------------- | ---------: | -------: | ---------: | ------------ |
+    | Depression      |         35 |       60 |         80 | Typical      |
+    | **Anxiety**     |     **72** |       60 |         80 | **Elevated** |
+    | Self-Harm       |         12 |       60 |         80 | Low          |
+    | Eating Behavior |         40 |       60 |         80 | Borderline   |
+
+- [ ] **Your 24-Hour Starter Plan** (three cards with checkboxes)
+  - **Card 1: Send teacher email**
+    - Button: **Copy text** → toast: **Copied!**
+  - **Card 2: Log 3 moments today (ABC micro-log)**
+    - Inline inputs x3 rows: `Time | Antecedent | Behavior | Consequence`
+  - **Card 3: Run today’s 10-minute routine**
+    - Single checkbox → shows **Done** timestamp
+  - Persistence: save progress **locally and server-side**
+  - Metrics chip: **Starter Plan Progress** `0/3 • 1/3 • 2/3 • 3/3`
+  - Nudge: if **0/3 after 6 hours**, show banner:  
+    _“Finish one step in 2 minutes—start with the teacher email.”_
+  - Events:
+    - `starter.email_copied`
+    - `starter.abc_saved`
+    - `starter.action_done`
+    - `starter.complete_3of3`
+
+- [ ] **Upgrade Placement**
+  - Primary CTA (beneath the three cards):  
+    **Finish the full assessment — $97 (Instant PDF)**
+    - Subtext: _Get full report + AI recommendations with cited sources (CDC/APA)._
+  - Secondary actions: **Download Snapshot (PDF)**, **Email Snapshot**
+
+- [ ] **Privacy Line (small text)**
+  - _AI stores no data • Anonymous mode available • Encrypted • Designed to support FERPA/HIPAA_
+
+---
+
+## Provisional Snapshot PDF (Lead Magnet)
+
+**Page 1 — Decision Page**
+
+- [ ] **Risk Chips**
+- [ ] **What this means** (2 sentences, plain English; screening, not diagnosis)
+- [ ] **3 Things You Can Do Today** (domain-aware; fallback if no flags)
+- [ ] **Upgrade (boxed)**
+  - **Finish Full Assessment — $97 (Instant PDF)**
+  - Bu
+    ::contentReference[oaicite:0]{index=0}
+
 # Pending Implementations.
 
+- [] Prompt users to setup MFA or passkey somewhere in the login flow
+- [] chatgpt integration.
 - [] the email GrapesJS thing ugly af.
   - - Maybe I just hand code the emails/pdf and add them to the codebase lol
 - [] Trial Results Look.
@@ -62,19 +124,11 @@ lib/affiliate/fingerprint.ts (30:13) @ getDeviceFingerprint
 
 - [] Ability to rename assessments
 - [] Trial should obey assessment anonyminity or allow for changing assessment name after account creation.
-- [] Anayltics tab should pull from GA4/Meta if possible.
-- [] Make sure Email Capture works.
 - [] Explore modern web design for site but keep copy/user flow based on Hormozi landing page framework
 - [] Send Marketing Emails etc from Super Admin?
 - [] Marketing Hub
-- [] Sentry and Analytics (GA4 and Meta pixel for retargeting.)
-  - [] Add Sentry error reporting
-    -- https://brightpath-39.sentry.io/onboarding/setup-docs/
-    -- https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
-- [] Verify Analytics setup on web, integrate IDs on app properly.
 - [] Make sure Stripe Connect is setup for Afiliate.
 
-- [] Redesign look of trial assessment, email capture,
 - [] Refine AI Prompt for Conversational Assessment
 - [] Add trial taking, full assessment taking as a ChatGPT App ( Refer to this repo as a guide. The API needs to be setup to provide the trial questions and full assessment questions and assessment taking https://chatgpt.com/c/68e861c5-9f8c-8320-9d58-94114bc55ab8)
 - - chatgpt app example https://vercel.com/templates/next.js/chatgpt-app-with-next-js

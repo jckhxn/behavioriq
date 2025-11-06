@@ -14,7 +14,7 @@ import { DynamicScoringCalculator } from "./scoring-dynamic";
 
 export interface QuestionResponse {
   questionId: string;
-  response: boolean;
+  response: string | boolean; // Can be string from DB or boolean from code
   timestamp?: Date;
 }
 

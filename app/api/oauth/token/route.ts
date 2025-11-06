@@ -131,7 +131,7 @@ async function handleAuthorizationCodeGrant(
   const expiresIn = 3600; // 1 hour
 
   // Store tokens
-  const oauthToken = await prisma.oauthToken.create({
+  const oAuthToken = await prisma.oAuthToken.create({
     data: {
       clientId,
       accessToken,
@@ -186,11 +186,11 @@ async function handleRefreshTokenGrant(
   }
 
   // Retrieve refresh token
-  const oauthToken = await prisma.oauthToken.findUnique({
+  const oAuthToken = await prisma.oAuthToken.findUnique({
     where: { refreshToken },
   });
 
-  if (!oauthToken || oauthToken.clientId !== clientId) {
+  if (!oAuthToken || oAuthToken.clientId !== clientId) {
     return NextResponse.json(
       { error: "invalid_grant" },
       { status: 400 }
@@ -202,7 +202,7 @@ async function handleRefreshTokenGrant(
   const expiresIn = 3600; // 1 hour
 
   // Update token
-  await prisma.oauthToken.update({
+  await prisma.oAuthToken.update({
     where: { refreshToken },
     data: {
       accessToken: newAccessToken,

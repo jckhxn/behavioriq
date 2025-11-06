@@ -52,7 +52,7 @@ export interface AssessmentResponse {
 
 export interface StructuredQuestionResponse {
   questionId: string;
-  response: boolean;
+  response: string | boolean; // Can be string from DB or boolean from code
   timestamp?: Date;
 }
 
@@ -717,7 +717,7 @@ ${JSON.stringify(topDomains, null, 2)}`;
   }
 
   private generateResponseMessage(
-    userResponse: boolean,
+    userResponse: string | boolean,
     nextQuestion: any,
     isComplete: boolean,
     aiRecommendations?: string
@@ -818,6 +818,11 @@ ${JSON.stringify(topDomains, null, 2)}`;
     questionResponse: StructuredQuestionResponse
   ) {
     try {
+      // Convert response to string if it's a boolean
+      const responseStr = typeof questionResponse.response === 'string'
+        ? questionResponse.response
+        : String(questionResponse.response);
+
       await prisma.questionResponse.upsert({
         where: {
           assessmentId_questionId: {
@@ -826,13 +831,13 @@ ${JSON.stringify(topDomains, null, 2)}`;
           },
         },
         update: {
-          response: questionResponse.response,
+          response: responseStr,
           timestamp: new Date(),
         },
         create: {
           assessmentId: this.assessmentId,
           questionId: questionResponse.questionId,
-          response: questionResponse.response,
+          response: responseStr,
           timestamp: new Date(),
         },
       });

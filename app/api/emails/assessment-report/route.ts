@@ -9,7 +9,10 @@ import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { EmailService } from "@/lib/email/email-service";
 import prisma from "@/lib/db/prisma";
 import { getAssessmentByIdentifier } from "@/lib/utils/assessmentResolver";
-import { generateAssessmentPDF } from "@/lib/pdf/generator";
+import {
+  generateAssessmentReportBuffer,
+  generateReportFileName,
+} from "@/lib/reports/react-pdf-generator";
 
 export const runtime = "nodejs"; // Force Node.js runtime for Prisma
 
@@ -63,6 +66,9 @@ export async function POST(request: NextRequest) {
           select: { name: true, email: true },
         },
         scores: true,
+        assessmentTemplate: {
+          select: { name: true },
+        },
       },
     });
 
@@ -86,7 +92,7 @@ export async function POST(request: NextRequest) {
     const scoresCount = assessmentWithDetails?.scores.length || 0;
     const summary = `Based on the assessment analysis, the overall risk level has been determined as ${riskLevel}. The assessment evaluated ${scoresCount} categories with an average score of ${overallScore.toFixed(1)}.`;
 
-    // Generate PDF if requested
+    // Generate PDF if requested using react-pdf
     let reportPdf: Buffer | undefined;
     if (includePdf) {
       try {
@@ -95,32 +101,45 @@ export async function POST(request: NextRequest) {
           assessmentId
         );
 
-        // Prepare assessment data for PDF generation
-        const assessmentData = {
-          id: assessment.id,
-          subjectName: assessment.subjectName,
-          startedAt: assessment.startedAt.toISOString(),
-          completedAt: assessment.completedAt?.toISOString() || null,
-          status: assessment.status,
-          scores:
-            assessmentWithDetails?.scores.map((score: any) => ({
-              domain: score.domain || "Unknown",
-              domainName: score.domainName || score.domain || "Unknown",
-              rawScore: score.rawScore,
-              totalPossible: score.totalPossible,
-              riskLevel: score.riskLevel,
-            })) || [],
-          user:
-            assessmentWithDetails?.user &&
-            assessmentWithDetails.user.email != null
-              ? {
-                  name: assessmentWithDetails.user.name,
-                  email: assessmentWithDetails.user.email,
-                }
-              : { name: assessment.subjectName, email: "" },
-        };
+        // Fetch AI recommendations if available
+        const aiReport = await prisma.aIReport.findUnique({
+          where: { assessmentId: assessment.id },
+          select: {
+            content: true,
+          },
+        });
 
-        reportPdf = await generateAssessmentPDF(assessmentData);
+        const aiRecommendations =
+          aiReport?.content || "No AI recommendations available";
+
+        // Generate PDF using react-pdf
+        reportPdf = await generateAssessmentReportBuffer(
+          {
+            assessment: {
+              ...(assessmentWithDetails || assessment),
+              scores: assessmentWithDetails?.scores || [],
+              user: assessmentWithDetails?.user
+                ? {
+                    name: assessmentWithDetails.user.name,
+                    email: assessmentWithDetails.user.email,
+                  }
+                : {
+                    name: assessment.subjectName || "",
+                    email: "",
+                  },
+              assessmentTemplate: assessmentWithDetails?.assessmentTemplate,
+            } as any,
+            aiRecommendations,
+            generatedAt: new Date(),
+          },
+          {
+            includeCharts: true,
+            includeRecommendations: true,
+            includeDetailedResponses: false,
+            includeTrends: false,
+          }
+        );
+
         console.log(
           "[Email Report] PDF generated successfully, size:",
           reportPdf.length,

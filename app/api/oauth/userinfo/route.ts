@@ -21,11 +21,11 @@ export async function POST(request: NextRequest) {
     const accessToken = authHeader.substring(7);
 
     // Look up access token
-    const oauthToken = await prisma.oauthToken.findUnique({
+    const oAuthToken = await prisma.oAuthToken.findUnique({
       where: { accessToken },
     });
 
-    if (!oauthToken) {
+    if (!oAuthToken) {
       return NextResponse.json(
         { error: "invalid_token" },
         { status: 401 }
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if token has expired
-    if (oauthToken.expiresAt < new Date()) {
+    if (oAuthToken.expiresAt < new Date()) {
       return NextResponse.json(
         { error: "expired_token" },
         { status: 401 }
@@ -43,10 +43,10 @@ export async function POST(request: NextRequest) {
     // For ChatGPT integration, we return minimal user info
     // since we don't have a direct user association with OAuth tokens
     const userInfo = {
-      sub: oauthToken.clientId, // Subject (client ID)
-      aud: oauthToken.clientId, // Audience
+      sub: oAuthToken.clientId, // Subject (client ID)
+      aud: oAuthToken.clientId, // Audience
       iss: process.env.NEXT_PUBLIC_SITE_URL || "https://app.behavioriq.com",
-      iat: Math.floor(oauthToken.createdAt.getTime() / 1000),
+      iat: Math.floor(oAuthToken.createdAt.getTime() / 1000),
       // Additional claims for ChatGPT
       scope: "openid profile email",
     };
