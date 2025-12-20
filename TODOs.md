@@ -6,6 +6,10 @@
 
 ---
 
+## Features TODO
+
+- - ChatGPT app with Stripe Instant Checkout integration
+
 ## 📌 1. Overview
 
 This document tracks everything required to launch the AI Diagnostic platform — including trial experience, backend tasks, launch blockers, and post-MVP roadmap.
@@ -21,7 +25,6 @@ This document tracks everything required to launch the AI Diagnostic platform �
 | AWS SES Email                     | $1 per 10,000 emails |
 
 ---
-
 
 ## 🧲 3. Trial Results Lead Magnet (Website Experience)
 

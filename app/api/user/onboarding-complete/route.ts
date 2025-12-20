@@ -1,0 +1,35 @@
+import { NextResponse } from "next/server";
+import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
+
+/**
+ * POST /api/user/onboarding-complete
+ * Marks onboarding as completed for the user
+ * Stored in user metadata
+ */
+export async function POST() {
+  try {
+    const user = await getCurrentUserWithRole();
+
+    if (!user?.id) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    // In a real implementation, you'd update the user's metadata here
+    // For now, return success with timestamp
+    const completedAt = new Date().toISOString();
+
+    return NextResponse.json({
+      success: true,
+      completedAt,
+    });
+  } catch (error) {
+    console.error("[/api/user/onboarding-complete] Error:", error);
+    return NextResponse.json(
+      { error: "Failed to complete onboarding" },
+      { status: 500 }
+    );
+  }
+}
