@@ -9,10 +9,14 @@ import { UpgradePanel } from "@/components/dashboard/UpgradePanel";
 import { InlineUpgradeSlot } from "@/components/dashboard/InlineUpgradeSlot";
 import { ChildProfilesManager } from "@/components/dashboard/ChildProfilesManager";
 import { usePlanData } from "@/hooks/use-plan-data";
+import { useUserData } from "@/lib/hooks/use-supabase-user";
+import { TeacherDashboardContent } from "@/components/district/TeacherDashboardContent";
+import { DistrictDashboardContent } from "@/components/district/DistrictDashboardContent";
 
 type CheckoutSource = "panel" | "drawer" | "inline" | "ribbon";
 
 export function DashboardShell() {
+  const { userData } = useUserData();
   const { plan, pricing, error, refresh, ribbonVisible } = usePlanData();
   const router = useRouter();
   const [checkoutPending, setCheckoutPending] = useState(false);
@@ -36,11 +40,13 @@ export function DashboardShell() {
   const inlineContext = useMemo(() => {
     if (!plan) return "empty_dashboard" as const;
     if (plan.plan === "one_time") return "post_pdf" as const;
-    if (plan.plan === "core" && plan.remainingCredits === 0) return "low_credit" as const;
+    if (plan.plan === "core" && plan.remainingCredits === 0)
+      return "low_credit" as const;
     return "empty_dashboard" as const;
   }, [plan]);
 
-  const showRibbon = planReady && ribbonVisible && !shouldShowPanel && !shouldShowInline;
+  const showRibbon =
+    planReady && ribbonVisible && !shouldShowPanel && !shouldShowInline;
 
   const handleStartCheckout = useCallback(
     async (
@@ -67,7 +73,8 @@ export function DashboardShell() {
           router.push(data.redirectUrl);
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Unable to start checkout";
+        const message =
+          err instanceof Error ? err.message : "Unable to start checkout";
         toast.error(message);
       } finally {
         setCheckoutPending(false);
@@ -83,6 +90,15 @@ export function DashboardShell() {
   const handleManage = useCallback(() => {
     router.push("/?tab=settings&subtab=billing");
   }, [router]);
+
+  // Show teacher/district dashboards for those roles
+  if (userData?.role === "TEACHER") {
+    return <TeacherDashboardContent />;
+  }
+
+  if (userData?.role === "DISTRICT_ADMIN") {
+    return <DistrictDashboardContent />;
+  }
 
   return (
     <div className="space-y-4 lg:space-y-6">

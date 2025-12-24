@@ -57,7 +57,9 @@ function HomeContent() {
   const handleStartSnapshot = () => {
     // Preserve affiliate ref parameter if present
     const ref = searchParams.get("ref");
-    const consentUrl = ref ? `/consent?ref=${encodeURIComponent(ref)}` : "/consent";
+    const consentUrl = ref
+      ? `/consent?ref=${encodeURIComponent(ref)}`
+      : "/consent";
     router.push(consentUrl);
   };
 

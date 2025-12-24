@@ -1,144 +1,3 @@
-model BannedDevice {
-  deviceId String @id
-  reason   String?
-  createdAt DateTime @default(now())
-}
-
-model BannedUser {
-  userId   String @id
-  reason   String?
-  createdAt DateTime @default(now())
-}
-
-model BannedEmail {
-  email    String @id
-  reason   String?
-  createdAt DateTime @default(now())
-}
-model AffiliateReferrer {
-  id                      String   @id @default(cuid())
-  userId                  String   @unique
-  refCode                 String   @unique
-  status                  String   @default("active") // 'active' | 'suspended'
-  stripeConnectAccountId  String?  // Stripe Connect Express account ID
-  lastPayoutDate          DateTime?
-  lifetimeEarningsCents   Int      @default(0)
-  lifetimePaidOutCents    Int      @default(0)
-  createdAt               DateTime @default(now())
-  user                    User     @relation(fields: [userId], references: [id])
-  commissions             AffiliateCommission[] @relation("ReferrerCommissions")
-  payouts                 AffiliatePayout[] @relation("ReferrerPayouts")
-  payoutPreferences       AffiliatePayoutPreferences?
-  notificationPreferences AffiliateNotificationPreferences?
-
-  @@index([status])
-}
-
-model AffiliateClick {
-  id         String   @id @default(cuid())
-  refCode    String
-  sessionId  String
-  ip         String?
-  ua         String?
-  utm        Json?    // UTM parameters: { source, medium, campaign, content, term }
-  createdAt  DateTime @default(now())
-
-  @@index([refCode])
-  @@index([sessionId])
-  @@index([createdAt])
-}
-
-model AffiliateAttribution {
-  id              String   @id @default(cuid())
-  refCode         String
-  prospectUserId  String
-  clickId         String?
-  deviceId        String?  // FingerprintJS visitor ID for household detection
-  ip              String?  // IP address for /24 subnet matching
-  utm             Json?    // UTM parameters captured at attribution time
-  model           String   @default("last_non_direct")
-  expiresAt       DateTime
-  createdAt       DateTime @default(now())
-
-  @@unique([prospectUserId])
-  @@index([refCode])
-  @@index([createdAt])
-}
-
-model AffiliateCommission {
-  id              String   @id @default(cuid())
-  refCode         String
-  referrerId      String
-  referredUserId  String
-  event           String   // 'paid_report' | 'core_sub' | 'family_sub' | 'annual_sub'
-  amountCents     Int
-  status          String   @default("pending") // 'pending' | 'payable' | 'paid' | 'void' | 'clawed_back'
-  voidReason      String?  // 'refund' | 'dispute' | 'household' | 'manual' | 'clawback'
-  holdUntil       DateTime?
-  orderId         String?  @unique
-  createdAt       DateTime @default(now())
-  referrer        AffiliateReferrer @relation("ReferrerCommissions", fields: [referrerId], references: [id])
-
-  @@index([referrerId])
-  @@index([status])
-  @@index([createdAt])
-  @@index([holdUntil])
-  @@index([referrerId, status])
-}
-
-model AffiliatePayout {
-  id                  String   @id @default(cuid())
-  referrerId          String
-  amountCents         Int
-  status              String   @default("pending") // 'pending' | 'sent' | 'failed'
-  provider            String   @default("stripe_connect")
-  transferId          String?  // Stripe Transfer ID
-  failureReason       String?  // Error message if status='failed'
-  payoutMethod        String?  @default("stripe_connect")
-  estimatedArrivalDate DateTime?
-  actualArrivalDate   DateTime?
-  feesCents           Int      @default(0)
-  netAmountCents      Int?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-  referrer            AffiliateReferrer @relation("ReferrerPayouts", fields: [referrerId], references: [id])
-
-  @@index([referrerId])
-  @@index([status])
-  @@index([createdAt])
-  @@index([estimatedArrivalDate])
-}
-
-model AffiliatePayoutPreferences {
-  id                      String   @id @default(cuid())
-  referrerId              String   @unique
-  minPayoutThresholdCents Int      @default(5000)
-  payoutFrequency         String   @default("auto") // 'auto' | 'daily' | 'weekly' | 'monthly'
-  autoPayoutEnabled       Boolean  @default(true)
-  payoutDayOfMonth        Int?
-  payoutDayOfWeek         Int?
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
-  referrer                AffiliateReferrer @relation(fields: [referrerId], references: [id], onDelete: Cascade)
-
-  @@index([referrerId])
-}
-
-model AffiliateNotificationPreferences {
-  id                        String   @id @default(cuid())
-  referrerId                String   @unique
-  emailOnPayout             Boolean  @default(true)
-  emailOnCommissionEarned   Boolean  @default(true)
-  emailOnCommissionPayable  Boolean  @default(true)
-  emailWeeklySummary        Boolean  @default(false)
-  emailMonthlySummary       Boolean  @default(false)
-  createdAt                 DateTime @default(now())
-  updatedAt                 DateTime @updatedAt
-  referrer                  AffiliateReferrer @relation(fields: [referrerId], references: [id], onDelete: Cascade)
-
-  @@index([referrerId])
-}
-
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["postgresqlExtensions"]
@@ -152,6 +11,147 @@ datasource db {
   extensions        = [uuid_ossp(map: "uuid-ossp", schema: "extensions"), vector]
 }
 
+model BannedDevice {
+  deviceId  String   @id
+  reason    String?
+  createdAt DateTime @default(now())
+}
+
+model BannedUser {
+  userId    String   @id
+  reason    String?
+  createdAt DateTime @default(now())
+}
+
+model BannedEmail {
+  email     String   @id
+  reason    String?
+  createdAt DateTime @default(now())
+}
+
+model AffiliateReferrer {
+  id                      String                            @id @default(cuid())
+  userId                  String                            @unique
+  refCode                 String                            @unique
+  status                  String                            @default("active")
+  stripeConnectAccountId  String?
+  lastPayoutDate          DateTime?
+  lifetimeEarningsCents   Int                               @default(0)
+  lifetimePaidOutCents    Int                               @default(0)
+  createdAt               DateTime                          @default(now())
+  commissions             AffiliateCommission[]             @relation("ReferrerCommissions")
+  notificationPreferences AffiliateNotificationPreferences?
+  payouts                 AffiliatePayout[]                 @relation("ReferrerPayouts")
+  payoutPreferences       AffiliatePayoutPreferences?
+  user                    User                              @relation(fields: [userId], references: [id])
+
+  @@index([status])
+}
+
+model AffiliateClick {
+  id        String   @id @default(cuid())
+  refCode   String
+  sessionId String
+  ip        String?
+  ua        String?
+  utm       Json?
+  createdAt DateTime @default(now())
+
+  @@index([refCode])
+  @@index([sessionId])
+  @@index([createdAt])
+}
+
+model AffiliateAttribution {
+  id             String   @id @default(cuid())
+  refCode        String
+  prospectUserId String   @unique
+  clickId        String?
+  deviceId       String?
+  ip             String?
+  utm            Json?
+  model          String   @default("last_non_direct")
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+
+  @@index([refCode])
+  @@index([createdAt])
+}
+
+model AffiliateCommission {
+  id             String            @id @default(cuid())
+  refCode        String
+  referrerId     String
+  referredUserId String
+  event          String
+  amountCents    Int
+  status         String            @default("pending")
+  voidReason     String?
+  holdUntil      DateTime?
+  orderId        String?           @unique
+  createdAt      DateTime          @default(now())
+  referrer       AffiliateReferrer @relation("ReferrerCommissions", fields: [referrerId], references: [id])
+
+  @@index([referrerId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([holdUntil])
+  @@index([referrerId, status])
+}
+
+model AffiliatePayout {
+  id                   String            @id @default(cuid())
+  referrerId           String
+  amountCents          Int
+  status               String            @default("pending")
+  provider             String            @default("stripe_connect")
+  transferId           String?
+  failureReason        String?
+  payoutMethod         String?           @default("stripe_connect")
+  estimatedArrivalDate DateTime?
+  actualArrivalDate    DateTime?
+  feesCents            Int               @default(0)
+  netAmountCents       Int?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  referrer             AffiliateReferrer @relation("ReferrerPayouts", fields: [referrerId], references: [id])
+
+  @@index([referrerId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([estimatedArrivalDate])
+}
+
+model AffiliatePayoutPreferences {
+  id                      String            @id @default(cuid())
+  referrerId              String            @unique
+  minPayoutThresholdCents Int               @default(5000)
+  payoutFrequency         String            @default("auto")
+  autoPayoutEnabled       Boolean           @default(true)
+  payoutDayOfMonth        Int?
+  payoutDayOfWeek         Int?
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+  referrer                AffiliateReferrer @relation(fields: [referrerId], references: [id], onDelete: Cascade)
+
+  @@index([referrerId])
+}
+
+model AffiliateNotificationPreferences {
+  id                       String            @id @default(cuid())
+  referrerId               String            @unique
+  emailOnPayout            Boolean           @default(true)
+  emailOnCommissionEarned  Boolean           @default(true)
+  emailOnCommissionPayable Boolean           @default(true)
+  emailWeeklySummary       Boolean           @default(false)
+  emailMonthlySummary      Boolean           @default(false)
+  createdAt                DateTime          @default(now())
+  updatedAt                DateTime          @updatedAt
+  referrer                 AffiliateReferrer @relation(fields: [referrerId], references: [id], onDelete: Cascade)
+
+  @@index([referrerId])
+}
+
 model User {
   id                                               String                      @id @default(cuid())
   email                                            String                      @unique
@@ -162,27 +162,27 @@ model User {
   updatedAt                                        DateTime                    @updatedAt
   isActive                                         Boolean                     @default(true)
   lastLoginAt                                      DateTime?
-  firstPaidReportAt                                DateTime?                   // Tracks first paid purchase for affiliate bonus window
+  firstPaidReportAt                                DateTime?
   organizationId                                   String?
   parentUserId                                     String?
   onboardingCompleted                              Boolean                     @default(false)
   onboardingStep                                   Int                         @default(0)
   onboardingSkipped                                Boolean                     @default(false)
   stripeCustomerId                                 String?                     @unique @db.VarChar
-  // Profile enhancements
-  avatarUrl                                        String?                     // User profile picture URL
+  avatarUrl                                        String?
   emailVerified                                    Boolean                     @default(false)
   emailVerificationToken                           String?                     @unique
   emailVerificationTokenExpiresAt                  DateTime?
-  pendingEmail                                     String?                     // For email change flow
-  // ChatGPT Integration
-  credits                                          Int                         @default(0)     // Available credits for assessments
-  magicLinkTokens                                  MagicLinkToken[]
-  creditTransactions                               CreditTransaction[]
-  // Account status
+  pendingEmail                                     String?
+  credits                                          Int                         @default(0)
   isDeactivated                                    Boolean                     @default(false)
   deactivatedAt                                    DateTime?
-  deletionRequestedAt                              DateTime?                   // Soft delete tracking
+  deletionRequestedAt                              DateTime?
+  affiliateReferrer                                AffiliateReferrer?
+  creditTransactions                               CreditTransaction[]
+  createdEmailTemplates                            EmailTemplate[]             @relation("EmailTemplatesCreated")
+  createdEmailTemplateVersions                     EmailTemplateVersion[]      @relation("EmailTemplateVersionsCreated")
+  magicLinkTokens                                  MagicLinkToken[]
   generatedAIReports                               AIReport[]
   createdAssessmentVersions                        AssessmentTemplateVersion[] @relation("AssessmentVersionsCreated")
   createdAssessmentTemplates                       AssessmentTemplate[]        @relation("AssessmentTemplatesCreated")
@@ -203,6 +203,7 @@ model User {
   shareLinks                                       ShareableLink[]             @relation("ShareLinksCreated")
   managedSubAccounts                               SubAccount[]                @relation("ManagedBy")
   subAccountProfile                                SubAccount?                 @relation("SubAccountUser")
+  teacherProfile                                   Teacher?
   telemetry_events_telemetry_events_user_idTousers TelemetryEvent[]            @relation("telemetry_events_user_idTousers")
   telemetryEvents                                  TelemetryEvent[]
   usageMetrics                                     UsageMetrics[]
@@ -211,9 +212,6 @@ model User {
   organization                                     Organization?               @relation(fields: [organizationId], references: [id])
   parentUser                                       User?                       @relation("UserSubAccounts", fields: [parentUserId], references: [id])
   subAccounts                                      User[]                      @relation("UserSubAccounts")
-  affiliateReferrer                                AffiliateReferrer?
-  createdEmailTemplates                            EmailTemplate[]        @relation("EmailTemplatesCreated")
-  createdEmailTemplateVersions                     EmailTemplateVersion[] @relation("EmailTemplateVersionsCreated")
 
   @@index([organizationId])
   @@index([parentUserId])
@@ -330,7 +328,7 @@ model Assessment {
   childResponses            Json?
   enhancedAnalysis          Json?
   childprofileid            String?
-  affiliateRefCode          String?                // Affiliate ref code if assessment came from referral link
+  affiliateRefCode          String?
   aiReport                  AIReport?
   assessmentTemplate        AssessmentTemplate?    @relation("AssessmentFromTemplate", fields: [assessmentTemplateId], references: [id])
   user                      User?                  @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -341,6 +339,8 @@ model Assessment {
   recommendations           Recommendation[]
   scores                    Score[]
   shareableLinks            ShareableLink[]
+  studentAssessment         StudentAssessment?
+  domainIndicators          DomainIndicator[]
 
   @@index([userId])
   @@index([status])
@@ -351,9 +351,6 @@ model Assessment {
   @@index([sessionId])
   @@map("assessments")
 }
-
-// AssessmentMode enum must match the database migration
-// DO NOT modify this without updating the migration SQL
 
 model AIReport {
   id                String     @id @default(cuid())
@@ -381,14 +378,14 @@ model AIReport {
 model AssessmentTemplate {
   id                    String                      @id @default(cuid())
   name                  String
-  slug                  String                      @unique
   description           String?
-  instructions          String?
-  isActive              Boolean                     @default(true)
-  version               Int                         @default(1)
   createdById           String
   createdAt             DateTime                    @default(now())
   updatedAt             DateTime                    @updatedAt
+  instructions          String?
+  isActive              Boolean                     @default(true)
+  slug                  String                      @unique
+  version               Int                         @default(1)
   domains               AssessmentTemplateDomain[]
   versions              AssessmentTemplateVersion[]
   createdBy             User                        @relation("AssessmentTemplatesCreated", fields: [createdById], references: [id])
@@ -410,10 +407,10 @@ model DomainTemplate {
   questions           Json
   resources           Json?
   scoringConfig       Json
-  version             Int                        @default(1)
   createdById         String
   createdAt           DateTime                   @default(now())
   updatedAt           DateTime                   @updatedAt
+  version             Int                        @default(1)
   assessmentTemplates AssessmentTemplateDomain[]
   versions            DomainTemplateVersion[]
   createdBy           User                       @relation("DomainTemplatesCreated", fields: [createdById], references: [id])
@@ -482,19 +479,20 @@ model DomainTemplateVersion {
 }
 
 model ShareableLink {
-  id           String           @id @default(cuid())
-  shareCode    String           @unique
-  assessmentId String
-  createdById  String
-  privacy      ShareLinkPrivacy @default(PRIVATE)
-  password     String?
-  expiresAt    DateTime?
-  isActive     Boolean          @default(true)
-  viewCount    Int              @default(0)
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
-  assessment   Assessment       @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
-  createdBy    User             @relation("ShareLinksCreated", fields: [createdById], references: [id])
+  id                 String              @id @default(cuid())
+  shareCode          String              @unique
+  assessmentId       String
+  createdById        String
+  privacy            ShareLinkPrivacy    @default(PRIVATE)
+  password           String?
+  expiresAt          DateTime?
+  isActive           Boolean             @default(true)
+  viewCount          Int                 @default(0)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  assessment         Assessment          @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  createdBy          User                @relation("ShareLinksCreated", fields: [createdById], references: [id])
+  studentAssessments StudentAssessment[]
 
   @@index([shareCode])
   @@index([assessmentId])
@@ -538,8 +536,6 @@ model Score {
   id                 String            @id @default(cuid())
   assessmentId       String
   domain             AssessmentDomain?
-  domainTemplateId   String?
-  domainName         String?
   rawScore           Float
   riskLevel          RiskLevel
   confidence         Float
@@ -547,6 +543,8 @@ model Score {
   questionsAnswered  Int
   totalPossible      Int
   wasTerminatedEarly Boolean           @default(false)
+  domainName         String?
+  domainTemplateId   String?
   assessment         Assessment        @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
   domainTemplate     DomainTemplate?   @relation(fields: [domainTemplateId], references: [id])
 
@@ -558,7 +556,7 @@ model Score {
 model Recommendation {
   id           String     @id @default(cuid())
   assessmentId String
-  userId       String?    // Optional: null for anonymous assessments
+  userId       String?
   title        String
   content      String
   category     String?
@@ -624,9 +622,9 @@ model Question {
   isGatingQuestion Boolean     @default(false)
   weight           Int         @default(1)
   isActive         Boolean     @default(true)
-  isTrial          Boolean     @default(false)
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
+  isTrial          Boolean     @default(false)
   questionSet      QuestionSet @relation(fields: [questionSetId], references: [id], onDelete: Cascade)
 
   @@unique([questionSetId, order])
@@ -655,8 +653,8 @@ model QuestionResponse {
   assessmentId String
   questionId   String
   response     String
-  score        Int        @default(0)
   timestamp    DateTime   @default(now())
+  score        Int        @default(0)
   assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
 
   @@unique([assessmentId, questionId])
@@ -705,6 +703,7 @@ model Organization {
   secondaryColor String?
   headerTitle    String?
   footerText     String?
+  districts      District[]
   licenses       License[]
   subAccounts    SubAccount[]
   subscriptions  Subscription[]
@@ -807,9 +806,9 @@ model PlatformSettings {
   createdAt                        DateTime            @default(now())
   updatedAt                        DateTime            @updatedAt
   updatedBy                        String
+  maxConversationalSessionsPerUser Int                 @default(10)
   emailSendingEnabled              Boolean             @default(true)
   sesMonthlyBudget                 Decimal             @default(5.00)
-  maxConversationalSessionsPerUser Int                 @default(10)
   globalRegularAssessment          AssessmentTemplate? @relation("GlobalRegularAssessment", fields: [globalRegularAssessmentId], references: [id])
   globalTrialAssessment            AssessmentTemplate? @relation("GlobalTrialAssessment", fields: [globalTrialAssessmentId], references: [id])
 
@@ -852,8 +851,8 @@ model EmailLog {
   templateId      String?
   templateVersion Int?
   sentAt          DateTime       @default(now())
+  template        EmailTemplate? @relation(fields: [templateId], references: [id])
   user            User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  template        EmailTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
 
   @@index([userId, sentAt])
   @@index([recipientEmail, sentAt])
@@ -1065,8 +1064,8 @@ model EmailTemplate {
   preheader   String?
   html        String
   plainText   String?
-  variables   Json?                  // Variable definitions: { "userName": { "type": "string", "required": true, "default": "User" } }
-  metadata    Json?                  // Tags, description, etc.
+  variables   Json?
+  metadata    Json?
   version     Int                    @default(1)
   parentId    String?
   isActive    Boolean                @default(true)
@@ -1100,8 +1099,8 @@ model EmailTemplateVersion {
   changeDescription String?
   createdById       String
   createdAt         DateTime      @default(now())
-  template          EmailTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
   createdBy         User          @relation("EmailTemplateVersionsCreated", fields: [createdById], references: [id])
+  template          EmailTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
 
   @@unique([templateId, version])
   @@index([templateId])
@@ -1130,10 +1129,311 @@ model ChildProfile {
   @@map("child_profiles")
 }
 
+model MagicLinkToken {
+  email     String   @id
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model TrialSession {
+  id               String    @id @default(cuid())
+  childAge         Int
+  relationshipType String
+  status           String    @default("started")
+  questions        Json
+  answers          Json
+  startedAt        DateTime  @default(now())
+  completedAt      DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ChatGPTAssessmentResult {
+  id              String   @id @default(cuid())
+  assessmentId    String
+  overallScore    Int
+  percentile      Int
+  scores          Json
+  categoryScores  Json
+  recommendations Json
+  createdAt       DateTime @default(now())
+
+  @@index([assessmentId])
+  @@index([percentile])
+}
+
+model CreditTransaction {
+  id           String   @id @default(cuid())
+  userId       String
+  amount       Int
+  type         String
+  reference    String?
+  balanceAfter Int
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model AuthorizationCode {
+  code                String   @id
+  clientId            String
+  redirectUri         String
+  scope               String
+  nonce               String?
+  state               String
+  codeChallenge       String?
+  codeChallengeMethod String?
+  expiresAt           DateTime
+  createdAt           DateTime @default(now())
+
+  @@index([clientId])
+  @@index([expiresAt])
+}
+
+model OAuthToken {
+  id           String   @id @default(cuid())
+  clientId     String
+  accessToken  String   @unique
+  refreshToken String   @unique
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([clientId])
+  @@index([accessToken])
+  @@index([refreshToken])
+  @@index([expiresAt])
+}
+
+model District {
+  id                  String             @id @default(cuid())
+  name                String
+  code                String             @unique
+  organizationId      String?
+  isActive            Boolean            @default(true)
+  ferpaComplianceDate DateTime?
+  settings            Json?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  auditLogs           DistrictAuditLog[]
+  organization        Organization?      @relation(fields: [organizationId], references: [id])
+  schools             School[]
+  students            Student[]
+  teachers            Teacher[]
+
+  @@index([organizationId])
+  @@index([code])
+  @@map("districts")
+}
+
+model School {
+  id         String      @id @default(cuid())
+  districtId String
+  name       String
+  code       String
+  isActive   Boolean     @default(true)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  classrooms Classroom[]
+  district   District    @relation(fields: [districtId], references: [id], onDelete: Cascade)
+  students   Student[]
+
+  @@unique([districtId, code])
+  @@index([districtId])
+  @@map("schools")
+}
+
+model Classroom {
+  id         String             @id @default(cuid())
+  schoolId   String
+  name       String
+  gradeLevel String?
+  isActive   Boolean            @default(true)
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+  school     School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  students   StudentClassroom[]
+  teachers   TeacherClassroom[]
+
+  @@index([schoolId])
+  @@map("classrooms")
+}
+
+model Teacher {
+  id           String              @id @default(cuid())
+  userId       String              @unique
+  districtId   String
+  employeeId   String?
+  isActive     Boolean             @default(true)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  classrooms   TeacherClassroom[]
+  observations TeacherObservation[]
+  district     District            @relation(fields: [districtId], references: [id], onDelete: Cascade)
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([districtId])
+  @@map("teachers")
+}
+
+model TeacherClassroom {
+  id          String    @id @default(cuid())
+  teacherId   String
+  classroomId String
+  isPrimary   Boolean   @default(false)
+  assignedAt  DateTime  @default(now())
+  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  teacher     Teacher   @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, classroomId])
+  @@index([teacherId])
+  @@index([classroomId])
+  @@map("teacher_classrooms")
+}
+
+model Student {
+  id                     String                   @id @default(cuid())
+  districtId             String
+  schoolId               String?
+  anonymousId            String                   @unique
+  firstName              String?
+  lastName               String?
+  gradeLevel             String?
+  birthDate              DateTime?
+  consentGiven           Boolean                  @default(false)
+  consentDate            DateTime?
+  isAnonymous            Boolean                  @default(true)
+  isActive               Boolean                  @default(true)
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+  auditLogs              DistrictAuditLog[]
+  assessments            StudentAssessment[]
+  classrooms             StudentClassroom[]
+  recommendations        StudentRecommendation[]
+  teacherObservations    TeacherObservation[]
+  intentAcknowledgments  IntentAcknowledgment[]
+  district               District                 @relation(fields: [districtId], references: [id], onDelete: Cascade)
+  school                 School?                  @relation(fields: [schoolId], references: [id])
+
+  @@index([districtId])
+  @@index([schoolId])
+  @@index([anonymousId])
+  @@map("students")
+}
+
+model StudentClassroom {
+  id          String    @id @default(cuid())
+  studentId   String
+  classroomId String
+  enrolledAt  DateTime  @default(now())
+  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  student     Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, classroomId])
+  @@index([studentId])
+  @@index([classroomId])
+  @@map("student_classrooms")
+}
+
+model StudentAssessment {
+  id               String         @id @default(cuid())
+  studentId        String
+  assessmentId     String         @unique
+  isTrial          Boolean        @default(true)
+  trialCompletedAt DateTime?
+  fullCompletedAt  DateTime?
+  pdfUrl           String?
+  shareLinkId      String?
+  reviewedAt       DateTime?
+  reviewedBy       String?
+  flaggedDomains   String[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  assessment       Assessment     @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  shareLink        ShareableLink? @relation(fields: [shareLinkId], references: [id])
+  student          Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([assessmentId])
+  @@index([isTrial])
+  @@map("student_assessments")
+}
+
+model StudentRecommendation {
+  id                      String   @id @default(cuid())
+  studentId               String
+  assessmentId            String
+  summary                 String
+  schoolStrategies        Json
+  classroomAccommodations Json
+  parentNextSteps         Json
+  referralGuidance        String?
+  generatedAt             DateTime @default(now())
+  generatedBy             String?
+  student                 Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, assessmentId])
+  @@index([studentId])
+  @@index([assessmentId])
+  @@map("student_recommendations")
+}
+
+model DistrictAuditLog {
+  id         String    @id @default(cuid())
+  districtId String?
+  studentId  String?
+  userId     String
+  action     String
+  resourceId String?
+  metadata   Json?
+  ipAddress  String?
+  createdAt  DateTime  @default(now())
+  district   District? @relation(fields: [districtId], references: [id])
+  student    Student?  @relation(fields: [studentId], references: [id])
+
+  @@index([districtId])
+  @@index([studentId])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("district_audit_logs")
+}
+
+model FeatureFlag {
+  id              String   @id @default(cuid())
+  key             String   @unique
+  displayName     String
+  description     String?
+  scope           String   @default("global")
+  isEnabled       Boolean  @default(false)
+  enabledForRoles String[] @default([])
+  enabledForOrgs  String[] @default([])
+  metadata        Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([key])
+  @@index([isEnabled])
+  @@index([scope])
+  @@map("feature_flags")
+}
+
 enum Role {
   USER
   ADMIN
   DISTRICT_ADMIN
+  TEACHER
   SUB_ACCOUNT
   SUPER_ADMIN
 }
@@ -1177,9 +1477,11 @@ enum AssessmentDomain {
 
 enum LicenseType {
   TRIAL
+  BASIC
+  PROFESSIONAL
+  ENTERPRISE
   FREE_TRIAL
   FREE
-  BASIC
   MONTHLY_LITE
   CORE
   ANNUAL_CORE
@@ -1191,8 +1493,6 @@ enum LicenseType {
   DISTRICT_STANDARD
   DISTRICT_PROFESSIONAL
   DISTRICT_ENTERPRISE
-  PROFESSIONAL
-  ENTERPRISE
 }
 
 enum LicenseStatus {
@@ -1245,96 +1545,52 @@ enum EmailTemplateType {
   GENERIC
 }
 
-// ChatGPT MCP Integration Models
-
-// Magic Link Tokens for passwordless authentication
-model MagicLinkToken {
-  email       String      @id
-  token       String      @unique
-  userId      String
-  expiresAt   DateTime
-  createdAt   DateTime    @default(now())
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([expiresAt])
-}
-
-// Trial Assessment Sessions (anonymous)
-model TrialSession {
-  id            String      @id @default(cuid())
-  childAge      Int
-  relationshipType String   // 'parent' | 'educator' | 'other'
-  status        String      @default("started") // 'started' | 'in_progress' | 'completed'
-  questions     Json        // Array of question IDs answered
-  answers       Json        // Array of answers { questionId, answer }
-  startedAt     DateTime    @default(now())
-  completedAt   DateTime?
-  createdAt     DateTime    @default(now())
-
-  @@index([status])
-  @@index([createdAt])
-}
-
-// ChatGPT Assessment Results
-model ChatGPTAssessmentResult {
-  id              String      @id @default(cuid())
-  assessmentId    String      // Reference to existing Assessment model
-  overallScore    Int         // 0-100 composite score
-  percentile      Int         // 0-100 percentile rank
-  scores          Json        // { attention, behavior, social, emotion, academic }
-  categoryScores  Json        // Detailed scores by category with interpretations
-  recommendations Json        // Array of personalized recommendations
-  createdAt       DateTime    @default(now())
-
+model DomainIndicator {
+  id           String     @id @default(cuid())
+  assessmentId String
+  domainName   String     // "Anxiety", "Mood", "Behavior", etc.
+  flagged      Boolean    // true = "May warrant follow-up"
+  rawScore     Float?     // Hidden unless feature flag enabled
+  percentile   Float?     // Hidden unless feature flag enabled
+  createdAt    DateTime   @default(now())
+  
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  
   @@index([assessmentId])
-  @@index([percentile])
+  @@index([domainName])
+  @@map("domain_indicators")
 }
 
-// Credit Transactions for auditing and billing
-model CreditTransaction {
-  id              String      @id @default(cuid())
-  userId          String
-  amount          Int         // Positive for additions, negative for usage
-  type            String      // 'PURCHASE' | 'RENEWAL' | 'ASSESSMENT_STARTED' | 'REFUND' | 'ADJUSTMENT'
-  reference       String?     // Foreign key to relevant transaction (Stripe session ID, assessment ID, etc)
-  balanceAfter    Int         // Balance after transaction
-  createdAt       DateTime    @default(now())
-  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([type])
+model TeacherObservation {
+  id         String   @id @default(cuid())
+  teacherId  String
+  studentId  String
+  content    String   // Free text observation
+  structured Json?    // Optional structured fields
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  teacher    Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  
+  @@index([teacherId])
+  @@index([studentId])
   @@index([createdAt])
+  @@map("teacher_observations")
 }
 
-// OAuth Authorization Codes (PKCE flow)
-model AuthorizationCode {
-  code                String      @id
-  clientId            String
-  redirectUri         String
-  scope               String
-  nonce               String?
-  state               String
-  codeChallenge       String?     // For PKCE
-  codeChallengeMethod String?     // 'S256' or 'plain'
-  expiresAt           DateTime
-  createdAt           DateTime    @default(now())
-
-  @@index([clientId])
-  @@index([expiresAt])
-}
-
-// OAuth Tokens
-model OAuthToken {
-  id              String      @id @default(cuid())
-  clientId        String
-  accessToken     String      @unique
-  refreshToken    String      @unique
-  expiresAt       DateTime
-  createdAt       DateTime    @default(now())
-
-  @@index([clientId])
-  @@index([accessToken])
-  @@index([refreshToken])
-  @@index([expiresAt])
+model IntentAcknowledgment {
+  id        String   @id @default(cuid())
+  userId    String
+  studentId String
+  action    String   // "VIEW_STUDENT_DETAIL" | "VIEW_SCREENING_SUMMARY"
+  ipAddress String?
+  createdAt DateTime @default(now())
+  
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([studentId])
+  @@index([action])
+  @@map("intent_acknowledgments")
 }

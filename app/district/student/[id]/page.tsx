@@ -1,17 +1,16 @@
 import { redirect } from "next/navigation";
 import { getDistrictUser } from "@/lib/district/access-control";
-import { DistrictDashboard } from "@/components/district/DistrictDashboard";
+import { StudentDetailsView } from "@/components/district/StudentDetailsView";
 
-export const metadata = {
-  title: "District Dashboard | BehaviorIQ",
-  description: "Population-level mental health insights for K-12 districts",
-};
-
-export default async function DistrictPage() {
+export default async function StudentDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const user = await getDistrictUser();
 
   if (!user) {
-    redirect("/login");
+    redirect("/auth/signin");
   }
 
   if (
@@ -20,9 +19,11 @@ export default async function DistrictPage() {
     redirect("/dashboard");
   }
 
+  const { id } = await params;
+
   return (
     <div className="container mx-auto py-8 px-4">
-      <DistrictDashboard user={user} />
+      <StudentDetailsView studentId={id} user={user} />
     </div>
   );
 }

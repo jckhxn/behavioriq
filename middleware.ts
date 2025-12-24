@@ -24,7 +24,7 @@ export async function middleware(req: NextRequest) {
   try {
     response = await updateSession(req);
   } catch (error) {
-    console.error('[Middleware] updateSession failed:', error);
+    console.error("[Middleware] updateSession failed:", error);
     // Fall back to basic next response if updateSession fails
     response = NextResponse.next({ request: req });
   }
@@ -98,6 +98,7 @@ export async function middleware(req: NextRequest) {
   const protectedPrefixes = [
     "dashboard",
     "admin",
+    "district",
     "login",
     "register",
     "api",
@@ -232,44 +233,33 @@ type BrandingResponse = {
   footerText?: string | null;
 } | null;
 
-const SUPABASE_AUTH_COOKIE_NAME = getSupabaseAuthCookieName();
-
-function getSupabaseAuthCookieName(): string | null {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!supabaseUrl) return null;
-
-  const match = supabaseUrl.match(/^https:\/\/([a-zA-Z0-9-]+)\.supabase\.co/);
-  if (!match) return null;
-
-  return `sb-${match[1]}-auth-token`;
-}
-
 function isSupabaseAuthenticated(req: NextRequest): boolean {
-  if (!SUPABASE_AUTH_COOKIE_NAME) {
-    console.warn('[Middleware] SUPABASE_AUTH_COOKIE_NAME not found');
-    return false;
-  }
-
-  // Supabase SSR library splits large tokens into multiple cookies with suffixes (.0, .1, etc.)
-  // Check for either the base cookie name OR any cookie that starts with the base name
+  // Check for any Supabase auth token cookie
+  // Can be: sb-auth-token (default) or sb-{projectId}-auth-token (custom)
   const allCookies = req.cookies.getAll();
-  const cookieNames = allCookies.map(c => c.name);
+  const cookieNames = allCookies.map((c) => c.name);
 
-  const hasCookie =
-    req.cookies.has(SUPABASE_AUTH_COOKIE_NAME) ||
-    cookieNames.some(name => name.startsWith(SUPABASE_AUTH_COOKIE_NAME));
+  // Look for any cookie that matches Supabase auth pattern
+  const hasAuthCookie = cookieNames.some(
+    (name) =>
+      name === "sb-auth-token" ||
+      (name.startsWith("sb-") && name.includes("-auth-token"))
+  );
 
   // Debug logging
-  if (!hasCookie) {
+  if (!hasAuthCookie) {
     const authCookies = allCookies
-      .filter(c => c.name.includes('auth') || c.name.includes('sb-'))
-      .map(c => c.name);
+      .filter((c) => c.name.includes("auth") || c.name.includes("sb-"))
+      .map((c) => c.name);
     if (authCookies.length > 0) {
-      console.warn(`[Middleware] Expected cookie "${SUPABASE_AUTH_COOKIE_NAME}" or split variants not found. Available auth cookies:`, authCookies);
+      console.warn(
+        `[Middleware] No Supabase auth cookie found. Available auth cookies:`,
+        authCookies
+      );
     }
   }
 
-  return hasCookie;
+  return hasAuthCookie;
 }
 
 async function fetchMaintenanceMode(req: NextRequest): Promise<boolean> {
@@ -363,7 +353,8 @@ function applyBrandingHeaders(
 async function trackAffiliateClick(refCode: string, req: NextRequest) {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-    const sessionId = req.cookies.get("sessionId")?.value || generateSessionId();
+    const sessionId =
+      req.cookies.get("sessionId")?.value || generateSessionId();
 
     // Extract UTM parameters
     const utm = {

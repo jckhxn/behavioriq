@@ -97,7 +97,7 @@ export async function getCurrentUserWithRole() {
     // Use Prisma instead of Supabase query builder to avoid RLS issues
     const { prisma } = await import("@/lib/db/prisma");
 
-    const dbUser = await prisma.user.findUnique({
+    let dbUser = await prisma.user.findUnique({
       where: { id: user.id },
       include: {
         licenses: {
@@ -108,9 +108,30 @@ export async function getCurrentUserWithRole() {
       },
     });
 
+    // If user doesn't exist in database, create them
     if (!dbUser) {
-      console.error("Error fetching user from database: User not found");
-      return null;
+      console.log(`Creating new user in database: ${user.email}`);
+
+      dbUser = await prisma.user.create({
+        data: {
+          id: user.id,
+          email: user.email!,
+          name: user.user_metadata?.name || user.email?.split("@")[0] || null,
+          password: "managed_by_supabase",
+          role: "USER", // Default role, can be updated later
+          emailVerified: user.email_confirmed_at ? true : false,
+          isActive: true,
+        },
+        include: {
+          licenses: {
+            include: {
+              license: true,
+            },
+          },
+        },
+      });
+
+      console.log(`Created user in database: ${dbUser.email} (${dbUser.role})`);
     }
 
     return dbUser as any;
