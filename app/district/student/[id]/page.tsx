@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getDistrictUser } from "@/lib/district/access-control";
-import { StudentDetailsView } from "@/components/district/StudentDetailsView";
+import { StudentProfilePage } from "@/components/district/StudentProfilePage";
 
 export default async function StudentDetailPage({
   params,
@@ -28,9 +28,19 @@ export default async function StudentDetailPage({
 
   const { id } = await params;
 
+  // Determine back URL based on role
+  const backUrl =
+    user.role === "TEACHER"
+      ? "/teacher"
+      : user.role === "COUNSELOR"
+        ? "/counselor"
+        : user.role === "PRINCIPAL"
+          ? "/principal"
+          : "/district";
+
   return (
     <div className="container mx-auto py-8 px-4">
-      <StudentDetailsView studentId={id} user={user} />
+      <StudentProfilePage studentId={id} user={user} backUrl={backUrl} />
     </div>
   );
 }

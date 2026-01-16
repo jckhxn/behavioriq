@@ -216,7 +216,7 @@ function CounselorDashboardContent() {
                   "cursor-pointer hover:shadow-md transition-shadow",
                   student.riskLevel === "VERY_HIGH" && "border-red-500/50"
                 )}
-                onClick={() => router.push(`/student/${student.id}`)}
+                onClick={() => router.push(`/district/student/${student.id}`)}
               >
                 <CardContent className="py-4">
                   <div className="flex items-center justify-between">
@@ -322,7 +322,7 @@ function CounselorDashboardContent() {
                 <Card
                   key={student.id}
                   className="cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => router.push(`/student/${student.id}`)}
+                  onClick={() => router.push(`/district/student/${student.id}`)}
                 >
                   <CardContent className="py-4">
                     <div className="flex items-center justify-between">
@@ -422,7 +422,9 @@ function CounselorDashboardContent() {
                     <div
                       key={student.id}
                       className="flex items-center justify-between p-3 bg-background rounded-xl cursor-pointer hover:bg-muted transition-colors"
-                      onClick={() => router.push(`/student/${student.id}`)}
+                      onClick={() =>
+                        router.push(`/district/student/${student.id}`)
+                      }
                     >
                       <div>
                         <p className="font-medium">

@@ -21,6 +21,15 @@ import {
   PlayCircle,
   BarChart3,
   Loader2,
+  Link2,
+  Copy,
+  Check,
+  ArrowLeft,
+  X,
+  Share2,
+  Download,
+  Lock,
+  Send,
 } from "lucide-react";
 import {
   DashboardLayout,
@@ -30,6 +39,25 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge, RiskBadge, StatusBadge } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { StudentProfilePage } from "@/components/district/StudentProfilePage";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import UserResourceLibrary from "@/components/resources/UserResourceLibrary";
@@ -78,6 +106,20 @@ interface DashboardData {
   recentlyCompleted: number;
 }
 
+interface AssessmentTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  slug: string;
+}
+
+interface HomeAssessmentLink {
+  studentId: string;
+  templateId: string;
+  linkCode: string;
+  createdAt: string;
+}
+
 export function TeacherDashboardContentNew() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -93,6 +135,115 @@ export function TeacherDashboardContentNew() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
+  const [copiedStudentId, setCopiedStudentId] = useState<string | null>(null);
+
+  // State for inline student profile view
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  
+  // State for home assessment creation modal
+  const [homeAssessmentModal, setHomeAssessmentModal] = useState<{
+    open: boolean;
+    studentId: string | null;
+    studentName: string;
+  }>({ open: false, studentId: null, studentName: "" });
+  const [assessmentTemplates, setAssessmentTemplates] = useState<AssessmentTemplate[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [creatingLink, setCreatingLink] = useState(false);
+  const [homeAssessmentLinks, setHomeAssessmentLinks] = useState<Map<string, HomeAssessmentLink>>(new Map());
+  
+  // State for share/export modal
+  const [shareModal, setShareModal] = useState<{
+    open: boolean;
+    studentId: string | null;
+    studentName: string;
+  }>({ open: false, studentId: null, studentName: "" });
+  const [shareSettings, setShareSettings] = useState({
+    includeScores: true,
+    includeRecommendations: true,
+    includeProgress: true,
+    anonymize: false,
+    expiresInDays: 7,
+  });
+
+  // Fetch assessment templates
+  useEffect(() => {
+    async function loadTemplates() {
+      try {
+        const res = await fetch("/api/assessment-templates");
+        if (res.ok) {
+          const data = await res.json();
+          setAssessmentTemplates(data.templates || []);
+        }
+      } catch (err) {
+        console.error("Failed to load templates:", err);
+      }
+    }
+    loadTemplates();
+  }, []);
+
+  // Create home assessment link
+  const createHomeAssessmentLink = async () => {
+    if (!homeAssessmentModal.studentId || !selectedTemplateId) return;
+    
+    setCreatingLink(true);
+    try {
+      const res = await fetch("/api/teacher/home-assessment-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentId: homeAssessmentModal.studentId,
+          templateId: selectedTemplateId,
+        }),
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setHomeAssessmentLinks(prev => new Map(prev).set(
+          homeAssessmentModal.studentId!,
+          {
+            studentId: homeAssessmentModal.studentId!,
+            templateId: selectedTemplateId,
+            linkCode: data.linkCode,
+            createdAt: new Date().toISOString(),
+          }
+        ));
+        setHomeAssessmentModal({ open: false, studentId: null, studentName: "" });
+        setSelectedTemplateId("");
+        
+        // Copy link to clipboard
+        const link = `${window.location.origin}/assessment/home?code=${data.linkCode}`;
+        await navigator.clipboard.writeText(link);
+        setCopiedStudentId(homeAssessmentModal.studentId);
+        setTimeout(() => setCopiedStudentId(null), 2000);
+      }
+    } catch (err) {
+      console.error("Failed to create link:", err);
+    } finally {
+      setCreatingLink(false);
+    }
+  };
+
+  // Copy existing assessment link
+  const copyAssessmentLink = async (studentId: string, studentName: string) => {
+    const existingLink = homeAssessmentLinks.get(studentId);
+    if (existingLink) {
+      const link = `${window.location.origin}/assessment/home?code=${existingLink.linkCode}`;
+      await navigator.clipboard.writeText(link);
+      setCopiedStudentId(studentId);
+      setTimeout(() => setCopiedStudentId(null), 2000);
+    }
+  };
+
+  // Open home assessment modal for students without a link
+  const openHomeAssessmentModal = (studentId: string, studentName: string) => {
+    setHomeAssessmentModal({ open: true, studentId, studentName });
+  };
+
+  // Check if student has assessment link
+  const hasAssessmentLink = (studentId: string) => homeAssessmentLinks.has(studentId);
+  
+  // Check if student has started/completed assessment
+  const hasAssessment = (student: Student) => student._count.assessments > 0;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -115,25 +266,30 @@ export function TeacherDashboardContentNew() {
   }, []);
 
   const fetchStudents = async () => {
-    if (!selectedClassroom) return;
     setStudentsLoading(true);
     try {
-      const res = await fetch(
-        `/api/teacher/classroom/${selectedClassroom}/students`
-      );
+      // Fetch all students or students for a specific classroom
+      const url = selectedClassroom
+        ? `/api/teacher/classroom/${selectedClassroom}/students`
+        : `/api/teacher/students`;
+      const res = await fetch(url);
       if (!res.ok) throw new Error("Failed to fetch students");
       const data = await res.json();
       setStudents(data.students || []);
     } catch (err) {
       console.error("Failed to load students:", err);
+      setStudents([]);
     } finally {
       setStudentsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchStudents();
-  }, [selectedClassroom]);
+    // Fetch students when classroom selection changes OR on initial load
+    if (data) {
+      fetchStudents();
+    }
+  }, [selectedClassroom, data]);
 
   const filteredStudents = students.filter((student) => {
     const matchesSearch =
@@ -326,6 +482,32 @@ export function TeacherDashboardContentNew() {
 
   // Students Tab View
   if (currentTab === "students") {
+    // If a student is selected, show their profile inline
+    if (selectedStudentId) {
+      return (
+        <DashboardLayout
+          userRole="TEACHER"
+          title="Student Profile"
+          description="View student details and assessment history"
+          actions={
+            <Button 
+              variant="outline" 
+              onClick={() => setSelectedStudentId(null)}
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Students
+            </Button>
+          }
+        >
+          <StudentProfilePage
+            studentId={selectedStudentId}
+            user={{ id: "", role: "TEACHER" }}
+            backUrl="/teacher?tab=students"
+          />
+        </DashboardLayout>
+      );
+    }
+
     return (
       <DashboardLayout
         userRole="TEACHER"
@@ -338,6 +520,168 @@ export function TeacherDashboardContentNew() {
           </Button>
         }
       >
+        {/* Home Assessment Modal */}
+        <Dialog 
+          open={homeAssessmentModal.open} 
+          onOpenChange={(open) => !open && setHomeAssessmentModal({ open: false, studentId: null, studentName: "" })}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create Home Assessment Link</DialogTitle>
+              <DialogDescription>
+                Select an assessment domain for {homeAssessmentModal.studentName} to complete at home.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Assessment Type</Label>
+                <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select assessment domain..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {assessmentTemplates.length > 0 ? (
+                      assessmentTemplates.map((template) => (
+                        <SelectItem key={template.id} value={template.id}>
+                          {template.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="default">Behavioral Wellness Assessment</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Alert>
+                <Lock className="h-4 w-4" />
+                <p className="text-sm">
+                  This link will be unique to {homeAssessmentModal.studentName} and can only be used once.
+                  Parents will need to consent before starting.
+                </p>
+              </Alert>
+            </div>
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => setHomeAssessmentModal({ open: false, studentId: null, studentName: "" })}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={createHomeAssessmentLink}
+                disabled={creatingLink || (!selectedTemplateId && assessmentTemplates.length > 0)}
+              >
+                {creatingLink ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    Create & Copy Link
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Share/Export Modal */}
+        <Dialog 
+          open={shareModal.open} 
+          onOpenChange={(open) => !open && setShareModal({ open: false, studentId: null, studentName: "" })}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Share Student Report</DialogTitle>
+              <DialogDescription>
+                Configure privacy settings for sharing {shareModal.studentName}&apos;s report.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-3">
+                <Label>Include in Report</Label>
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="includeScores"
+                      checked={shareSettings.includeScores}
+                      onCheckedChange={(checked) => 
+                        setShareSettings(prev => ({ ...prev, includeScores: checked === true }))
+                      }
+                    />
+                    <Label htmlFor="includeScores" className="font-normal">Assessment scores</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="includeRecommendations"
+                      checked={shareSettings.includeRecommendations}
+                      onCheckedChange={(checked) => 
+                        setShareSettings(prev => ({ ...prev, includeRecommendations: checked === true }))
+                      }
+                    />
+                    <Label htmlFor="includeRecommendations" className="font-normal">Recommendations</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="includeProgress"
+                      checked={shareSettings.includeProgress}
+                      onCheckedChange={(checked) => 
+                        setShareSettings(prev => ({ ...prev, includeProgress: checked === true }))
+                      }
+                    />
+                    <Label htmlFor="includeProgress" className="font-normal">Progress history</Label>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Privacy Options</Label>
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="anonymize"
+                    checked={shareSettings.anonymize}
+                    onCheckedChange={(checked) => 
+                      setShareSettings(prev => ({ ...prev, anonymize: checked === true }))
+                    }
+                  />
+                  <Label htmlFor="anonymize" className="font-normal">Anonymize student identity</Label>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Link Expiration</Label>
+                <Select 
+                  value={String(shareSettings.expiresInDays)} 
+                  onValueChange={(val) => setShareSettings(prev => ({ ...prev, expiresInDays: parseInt(val) }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1 day</SelectItem>
+                    <SelectItem value="7">7 days</SelectItem>
+                    <SelectItem value="30">30 days</SelectItem>
+                    <SelectItem value="90">90 days</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter className="flex gap-2">
+              <Button variant="outline" onClick={() => setShareModal({ open: false, studentId: null, studentName: "" })}>
+                Cancel
+              </Button>
+              <Button variant="outline">
+                <Download className="h-4 w-4 mr-2" />
+                Export PDF
+              </Button>
+              <Button>
+                <Share2 className="h-4 w-4 mr-2" />
+                Create Share Link
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* Classroom Filter */}
         <div className="mb-6">
           <div className="flex items-center gap-2 overflow-x-auto pb-2">
@@ -467,26 +811,79 @@ export function TeacherDashboardContentNew() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-end gap-2">
+                            {/* View Profile */}
                             <button
-                              onClick={() =>
-                                router.push(`/teacher/student/${student.id}`)
-                              }
+                              onClick={() => setSelectedStudentId(student.id)}
                               className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
-                              title="View"
+                              title="View Profile"
                             >
                               <Eye className="h-4 w-4" />
                             </button>
-                            <button
-                              onClick={() =>
-                                router.push(
-                                  `/teacher/assessment/new?student=${student.id}`
-                                )
-                              }
-                              className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
-                              title="Start Assessment"
-                            >
-                              <PlayCircle className="h-4 w-4" />
-                            </button>
+                            
+                            {/* Start Assessment - only if no assessment yet */}
+                            {!hasAssessment(student) && (
+                              <button
+                                onClick={() =>
+                                  router.push(
+                                    `/teacher/assessment/new?student=${student.id}`
+                                  )
+                                }
+                                className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                                title="Start Assessment"
+                              >
+                                <PlayCircle className="h-4 w-4" />
+                              </button>
+                            )}
+                            
+                            {/* Home Assessment Link - Create or Copy */}
+                            {hasAssessmentLink(student.id) ? (
+                              <button
+                                onClick={() =>
+                                  copyAssessmentLink(
+                                    student.id,
+                                    student.firstName || student.anonymousId
+                                  )
+                                }
+                                className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                                title="Copy Home Assessment Link"
+                              >
+                                {copiedStudentId === student.id ? (
+                                  <Check className="h-4 w-4 text-green-500" />
+                                ) : (
+                                  <Link2 className="h-4 w-4" />
+                                )}
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() =>
+                                  openHomeAssessmentModal(
+                                    student.id,
+                                    student.firstName || student.anonymousId
+                                  )
+                                }
+                                className="p-2 text-muted-foreground hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
+                                title="Create Home Assessment Link"
+                              >
+                                <Send className="h-4 w-4" />
+                              </button>
+                            )}
+                            
+                            {/* Share/Export - only if has completed assessment */}
+                            {hasAssessment(student) && student.assessmentStatus === "completed" && (
+                              <button
+                                onClick={() =>
+                                  setShareModal({
+                                    open: true,
+                                    studentId: student.id,
+                                    studentName: student.firstName || student.anonymousId,
+                                  })
+                                }
+                                className="p-2 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                                title="Share/Export Report"
+                              >
+                                <Share2 className="h-4 w-4" />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -604,6 +1001,167 @@ export function TeacherDashboardContentNew() {
         </button>
       }
     >
+      {/* Home Assessment Modal (shared with default dashboard) */}
+      <Dialog 
+        open={homeAssessmentModal.open} 
+        onOpenChange={(open) => !open && setHomeAssessmentModal({ open: false, studentId: null, studentName: "" })}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Home Assessment Link</DialogTitle>
+            <DialogDescription>
+              Select an assessment domain for {homeAssessmentModal.studentName} to complete at home.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Assessment Type</Label>
+              <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select assessment domain..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {assessmentTemplates.length > 0 ? (
+                    assessmentTemplates.map((template) => (
+                      <SelectItem key={template.id} value={template.id}>
+                        {template.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="default">Behavioral Wellness Assessment</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            <Alert>
+              <Lock className="h-4 w-4" />
+              <p className="text-sm">
+                This link will be unique to {homeAssessmentModal.studentName} and can only be used once.
+              </p>
+            </Alert>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setHomeAssessmentModal({ open: false, studentId: null, studentName: "" })}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={createHomeAssessmentLink}
+              disabled={creatingLink || (!selectedTemplateId && assessmentTemplates.length > 0)}
+            >
+              {creatingLink ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Create & Copy Link
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Share/Export Modal (shared with default dashboard) */}
+      <Dialog 
+        open={shareModal.open} 
+        onOpenChange={(open) => !open && setShareModal({ open: false, studentId: null, studentName: "" })}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Share Student Report</DialogTitle>
+            <DialogDescription>
+              Configure privacy settings for sharing {shareModal.studentName}&apos;s report.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-3">
+              <Label>Include in Report</Label>
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="includeScores2"
+                    checked={shareSettings.includeScores}
+                    onCheckedChange={(checked) => 
+                      setShareSettings(prev => ({ ...prev, includeScores: checked === true }))
+                    }
+                  />
+                  <Label htmlFor="includeScores2" className="font-normal">Assessment scores</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="includeRecommendations2"
+                    checked={shareSettings.includeRecommendations}
+                    onCheckedChange={(checked) => 
+                      setShareSettings(prev => ({ ...prev, includeRecommendations: checked === true }))
+                    }
+                  />
+                  <Label htmlFor="includeRecommendations2" className="font-normal">Recommendations</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="includeProgress2"
+                    checked={shareSettings.includeProgress}
+                    onCheckedChange={(checked) => 
+                      setShareSettings(prev => ({ ...prev, includeProgress: checked === true }))
+                    }
+                  />
+                  <Label htmlFor="includeProgress2" className="font-normal">Progress history</Label>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Privacy Options</Label>
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="anonymize2"
+                  checked={shareSettings.anonymize}
+                  onCheckedChange={(checked) => 
+                    setShareSettings(prev => ({ ...prev, anonymize: checked === true }))
+                  }
+                />
+                <Label htmlFor="anonymize2" className="font-normal">Anonymize student identity</Label>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Link Expiration</Label>
+              <Select 
+                value={String(shareSettings.expiresInDays)} 
+                onValueChange={(val) => setShareSettings(prev => ({ ...prev, expiresInDays: parseInt(val) }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1 day</SelectItem>
+                  <SelectItem value="7">7 days</SelectItem>
+                  <SelectItem value="30">30 days</SelectItem>
+                  <SelectItem value="90">90 days</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter className="flex gap-2">
+            <Button variant="outline" onClick={() => setShareModal({ open: false, studentId: null, studentName: "" })}>
+              Cancel
+            </Button>
+            <Button variant="outline">
+              <Download className="h-4 w-4 mr-2" />
+              Export PDF
+            </Button>
+            <Button>
+              <Share2 className="h-4 w-4 mr-2" />
+              Create Share Link
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Stats Grid */}
       <StatsGrid
         stats={[
@@ -864,27 +1422,83 @@ export function TeacherDashboardContentNew() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-end gap-2">
+                          {/* View Profile */}
                           <button
-                            onClick={() =>
-                              router.push(`/teacher/student/${student.id}`)
-                            }
+                            onClick={() => {
+                              // Navigate to students tab and select this student
+                              router.push(`/teacher?tab=students`);
+                              setTimeout(() => setSelectedStudentId(student.id), 100);
+                            }}
                             className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
-                            title="View Details"
+                            title="View Profile"
                           >
                             <Eye className="h-4 w-4" />
                           </button>
-                          <button
-                            className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                            title="Edit"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-                          <button
-                            className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          
+                          {/* Start Assessment - only if no assessment yet */}
+                          {!hasAssessment(student) && (
+                            <button
+                              onClick={() =>
+                                router.push(
+                                  `/teacher/assessment/new?student=${student.id}`
+                                )
+                              }
+                              className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                              title="Start Assessment"
+                            >
+                              <PlayCircle className="h-4 w-4" />
+                            </button>
+                          )}
+                          
+                          {/* Home Assessment Link - Create or Copy */}
+                          {hasAssessmentLink(student.id) ? (
+                            <button
+                              onClick={() =>
+                                copyAssessmentLink(
+                                  student.id,
+                                  student.firstName || student.anonymousId
+                                )
+                              }
+                              className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                              title="Copy Home Assessment Link"
+                            >
+                              {copiedStudentId === student.id ? (
+                                <Check className="h-4 w-4 text-green-500" />
+                              ) : (
+                                <Link2 className="h-4 w-4" />
+                              )}
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() =>
+                                openHomeAssessmentModal(
+                                  student.id,
+                                  student.firstName || student.anonymousId
+                                )
+                              }
+                              className="p-2 text-muted-foreground hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
+                              title="Create Home Assessment Link"
+                            >
+                              <Send className="h-4 w-4" />
+                            </button>
+                          )}
+                          
+                          {/* Share/Export - only if has completed assessment */}
+                          {hasAssessment(student) && student.assessmentStatus === "completed" && (
+                            <button
+                              onClick={() =>
+                                setShareModal({
+                                  open: true,
+                                  studentId: student.id,
+                                  studentName: student.firstName || student.anonymousId,
+                                })
+                              }
+                              className="p-2 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                              title="Share/Export Report"
+                            >
+                              <Share2 className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </motion.tr>
