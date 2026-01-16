@@ -39,8 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 
-# scripts
+# scripts (allow build scripts needed for deployment)
 /scripts/
+!/scripts/build-widgets.js
+!/scripts/generateAll.js
 
 # docs
 /docs/
