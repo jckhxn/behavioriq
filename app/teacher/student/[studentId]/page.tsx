@@ -3,7 +3,13 @@ import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/db/prisma";
 import { IntentGate } from "@/components/district/IntentGate";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -40,13 +46,13 @@ async function getStudentData(studentId: string, teacherId: string) {
               id: true,
               status: true,
               completedAt: true,
-              createdAt: true,
+              startedAt: true,
               scores: true,
             },
           },
         },
         orderBy: {
-          createdAt: 'desc',
+          createdAt: "desc",
         },
       },
     },
@@ -59,15 +65,20 @@ async function getStudentData(studentId: string, teacherId: string) {
   // Transform assessments to match expected format
   const assessmentsWithFlags = student.assessments.map((studentAssessment) => {
     const assessment = studentAssessment.assessment;
-    const scores = assessment.scores && assessment.scores.length > 0 ? assessment.scores[0] : null;
+    const scores =
+      assessment.scores && assessment.scores.length > 0
+        ? assessment.scores[0]
+        : null;
     const domainScores = (scores as any)?.domainScores || [];
-    const flaggedDomains = domainScores.filter((d: any) => d.riskLevel === 'ELEVATED' || d.riskLevel === 'HIGH');
-    
+    const flaggedDomains = domainScores.filter(
+      (d: any) => d.riskLevel === "ELEVATED" || d.riskLevel === "HIGH"
+    );
+
     return {
       id: assessment.id,
       status: assessment.status,
       completedAt: assessment.completedAt,
-      assignedAt: assessment.createdAt,
+      assignedAt: assessment.startedAt,
       hasFlaggedDomains: flaggedDomains.length > 0,
       flaggedDomainCount: flaggedDomains.length,
     };
@@ -104,10 +115,7 @@ export default async function TeacherStudentDetailPage({
   }
 
   return (
-    <IntentGate
-      studentId={studentId}
-      action="VIEW_STUDENT_DETAIL"
-    >
+    <IntentGate studentId={studentId} action="VIEW_STUDENT_DETAIL">
       <Suspense fallback={<div>Loading...</div>}>
         <StudentDetailContent studentId={studentId} teacherId={teacher.id} />
       </Suspense>
@@ -115,10 +123,10 @@ export default async function TeacherStudentDetailPage({
   );
 }
 
-async function StudentDetailContent({ 
-  studentId, 
-  teacherId 
-}: { 
+async function StudentDetailContent({
+  studentId,
+  teacherId,
+}: {
   studentId: string;
   teacherId: string;
 }) {
@@ -140,8 +148,9 @@ async function StudentDetailContent({
       <Alert>
         <AlertTriangle className="h-4 w-4" />
         <AlertDescription>
-          <strong>Not a diagnosis:</strong> This data represents early warning indicators only.
-          Professional evaluation is required for any flagged domains.
+          <strong>Not a diagnosis:</strong> This data represents early warning
+          indicators only. Professional evaluation is required for any flagged
+          domains.
         </AlertDescription>
       </Alert>
 
@@ -149,7 +158,9 @@ async function StudentDetailContent({
       <Card>
         <CardHeader>
           <CardTitle>Student Profile</CardTitle>
-          <CardDescription>Basic information and identification</CardDescription>
+          <CardDescription>
+            Basic information and identification
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid grid-cols-2 gap-4">
@@ -160,9 +171,13 @@ async function StudentDetailContent({
             <div>
               <span className="text-sm text-muted-foreground">Name</span>
               <p className="font-semibold">
-                {student.firstName && student.lastName
-                  ? `${student.firstName} ${student.lastName}`
-                  : <span className="text-muted-foreground italic">No name on file</span>}
+                {student.firstName && student.lastName ? (
+                  `${student.firstName} ${student.lastName}`
+                ) : (
+                  <span className="text-muted-foreground italic">
+                    No name on file
+                  </span>
+                )}
               </p>
             </div>
             <div>
@@ -183,7 +198,9 @@ async function StudentDetailContent({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Assessment History</CardTitle>
-              <CardDescription>Screening assessments assigned to this student</CardDescription>
+              <CardDescription>
+                Screening assessments assigned to this student
+              </CardDescription>
             </div>
             <Link href={`/teacher/student/${studentId}/assign-assessment`}>
               <Button>
@@ -209,13 +226,17 @@ async function StudentDetailContent({
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm text-muted-foreground">
-                        Assigned: {new Date(assessment.assignedAt).toLocaleDateString()}
+                        Assigned:{" "}
+                        {new Date(assessment.assignedAt).toLocaleDateString()}
                       </span>
                       {assessment.completedAt && (
                         <>
                           <span className="text-muted-foreground">•</span>
                           <span className="text-sm text-muted-foreground">
-                            Completed: {new Date(assessment.completedAt).toLocaleDateString()}
+                            Completed:{" "}
+                            {new Date(
+                              assessment.completedAt
+                            ).toLocaleDateString()}
                           </span>
                         </>
                       )}
@@ -226,8 +247,8 @@ async function StudentDetailContent({
                           assessment.status === "COMPLETED"
                             ? "default"
                             : assessment.status === "IN_PROGRESS"
-                            ? "secondary"
-                            : "outline"
+                              ? "secondary"
+                              : "outline"
                         }
                       >
                         {assessment.status}
@@ -259,7 +280,9 @@ async function StudentDetailContent({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Teacher Observations</CardTitle>
-              <CardDescription>Your notes and observations (non-diagnostic)</CardDescription>
+              <CardDescription>
+                Your notes and observations (non-diagnostic)
+              </CardDescription>
             </div>
             <Link href={`/teacher/student/${studentId}/notes`}>
               <Button variant="outline">

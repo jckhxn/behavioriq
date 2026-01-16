@@ -77,7 +77,7 @@ export async function GET(
             },
           },
           orderBy: {
-            assignedAt: "desc",
+            createdAt: "desc",
           },
         },
       },
@@ -104,7 +104,7 @@ export async function GET(
           startedAt: sa.assessment.startedAt,
           completedAt: sa.assessment.completedAt,
           mode: sa.assessment.mode,
-          assignedAt: sa.assignedAt,
+          createdAt: sa.createdAt,
           hasFlaggedDomains: sa.assessment.domainIndicators.some(
             (d) => d.flagged
           ),

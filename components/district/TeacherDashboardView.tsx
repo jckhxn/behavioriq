@@ -14,7 +14,15 @@ import {
   FeatureGate,
   DisabledFeatureOverlay,
 } from "@/components/district/FeatureGate";
-import { PlusCircle, Users, BookOpen, AlertCircle } from "lucide-react";
+import AssessmentStatusBadge from "@/components/district/AssessmentStatusBadge";
+import {
+  PlusCircle,
+  Users,
+  BookOpen,
+  AlertCircle,
+  FileText,
+  Eye,
+} from "lucide-react";
 import type {
   Teacher,
   Classroom,
@@ -253,66 +261,91 @@ export function TeacherDashboardView({
                 <div className="space-y-2">
                   {currentClassroom.students.map((studentClassroom) => {
                     const student = studentClassroom.student;
+                    const latestAssessment = student.assessments[0]?.assessment;
+                    const status = latestAssessment?.status || "NOT_STARTED";
+
                     return (
                       <div
                         key={student.id}
-                        className="flex items-center justify-between rounded-lg border p-4"
+                        className="flex items-center justify-between rounded-lg border p-4 hover:bg-muted/50 transition-colors"
                       >
-                        <div>
-                          <p className="font-medium">
-                            Student {student.anonymousId}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            Grade {student.gradeLevel}
-                            {student.assessments.length > 0 && (
-                              <span className="ml-2 text-xs text-green-600 dark:text-green-400">
-                                ✓ Assessment:{" "}
-                                {student.assessments[0].assessment.status}
-                              </span>
-                            )}
-                          </p>
+                        <div className="flex items-center gap-4">
+                          <div>
+                            <p className="font-medium">
+                              {student.firstName && student.lastName
+                                ? `${student.firstName} ${student.lastName}`
+                                : `Student ${student.anonymousId}`}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              Grade {student.gradeLevel} • ID:{" "}
+                              {student.anonymousId}
+                            </p>
+                          </div>
+                          <AssessmentStatusBadge
+                            status={status}
+                            mode={
+                              latestAssessment?.status === "COMPLETED"
+                                ? "FULL"
+                                : undefined
+                            }
+                          />
                         </div>
                         <div className="flex gap-2">
-                          <FeatureGate
-                            flagKey="assessment_assignment"
-                            isEnabled={
-                              featureFlags.assessment_assignment || false
-                            }
-                            hideWhenDisabled={false}
-                          >
-                            <Button
-                              variant="default"
-                              size="sm"
-                              onClick={() =>
-                                router.push(
-                                  `/teacher/student/${student.id}/assign-assessment`
-                                )
+                          {status === "NOT_STARTED" && (
+                            <FeatureGate
+                              flagKey="assessment_assignment"
+                              isEnabled={
+                                featureFlags.assessment_assignment || false
+                              }
+                              hideWhenDisabled={false}
+                            >
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() =>
+                                  router.push(
+                                    `/teacher/student/${student.id}/assign-assessment`
+                                  )
+                                }
+                              >
+                                <FileText className="mr-1 h-3 w-3" />
+                                Assign
+                              </Button>
+                            </FeatureGate>
+                          )}
+                          {status === "COMPLETED" && (
+                            <FeatureGate
+                              flagKey="student_detail_view"
+                              isEnabled={
+                                featureFlags.student_detail_view || false
+                              }
+                              fallback={
+                                <span className="text-xs text-muted-foreground">
+                                  View unavailable
+                                </span>
                               }
                             >
-                              Assign Assessment
-                            </Button>
-                          </FeatureGate>
-                          <FeatureGate
-                            flagKey="student_detail_view"
-                            isEnabled={
-                              featureFlags.student_detail_view || false
-                            }
-                            fallback={
-                              <span className="text-xs text-muted-foreground">
-                                Details unavailable
-                              </span>
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() =>
+                                  router.push(`/teacher/student/${student.id}`)
+                                }
+                              >
+                                <Eye className="mr-1 h-3 w-3" />
+                                View Report
+                              </Button>
+                            </FeatureGate>
+                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              router.push(`/teacher/student/${student.id}`)
                             }
                           >
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                router.push(`/teacher/student/${student.id}`)
-                              }
-                            >
-                              View Details
-                            </Button>
-                          </FeatureGate>
+                            Details
+                          </Button>
                         </div>
                       </div>
                     );

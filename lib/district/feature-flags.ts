@@ -103,6 +103,10 @@ export const FeatureFlags = {
   DISTRICT_DASHBOARD: "district_dashboard",
   TEACHER_DASHBOARD: "teacher_dashboard",
 
+  // Role-specific features
+  COUNSELOR_CASELOAD: "counselor_caseload",
+  PRINCIPAL_SCHOOL_VIEW: "principal_school_view",
+
   // AI & Recommendations
   AI_RECOMMENDATIONS: "ai_recommendations",
   AI_CHAT: "ai_chat",

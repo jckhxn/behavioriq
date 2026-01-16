@@ -100,9 +100,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           districtId: studentClassroom.classroom.school.districtId,
           userId: user.id,
           action: "UPDATE_STUDENT",
-          resourceType: "STUDENT",
           resourceId: studentId,
-          details: {
+          metadata: {
             anonymousId: updatedStudent.anonymousId,
             updates: { firstName, lastName, gradeLevel },
           },

@@ -54,6 +54,21 @@ function HomeContent() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const { showWelcome, startTour, skipTour } = useOnboarding();
 
+  // Redirect district roles to their respective dashboards
+  useEffect(() => {
+    if (!isLoading && userData) {
+      if (userData.role === "TEACHER") {
+        router.replace("/teacher");
+      } else if (userData.role === "COUNSELOR") {
+        router.replace("/counselor");
+      } else if (userData.role === "PRINCIPAL") {
+        router.replace("/principal");
+      } else if (userData.role === "DISTRICT_ADMIN") {
+        router.replace("/district");
+      }
+    }
+  }, [isLoading, userData, router]);
+
   const handleStartSnapshot = () => {
     // Preserve affiliate ref parameter if present
     const ref = searchParams.get("ref");

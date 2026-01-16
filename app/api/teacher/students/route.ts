@@ -5,6 +5,178 @@ import { withFeatureFlag } from "@/lib/district/feature-flag-middleware";
 import { FeatureFlags } from "@/lib/district/feature-flags";
 
 /**
+ * GET /api/teacher/students
+ * List students assigned to the current teacher
+ */
+export async function GET(request: NextRequest) {
+  const user = await getDistrictUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (
+    ![
+      "TEACHER",
+      "COUNSELOR",
+      "PRINCIPAL",
+      "DISTRICT_ADMIN",
+      "ADMIN",
+      "SUPER_ADMIN",
+    ].includes(user.role)
+  ) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  try {
+    const { searchParams } = new URL(request.url);
+    const classroomId = searchParams.get("classroomId");
+    const gradeLevel = searchParams.get("gradeLevel");
+    const status = searchParams.get("status"); // not_started, in_progress, completed
+
+    // Get teacher's classrooms
+    const teacher = await prisma.teacher.findUnique({
+      where: { userId: user.id },
+      include: {
+        classrooms: {
+          include: {
+            classroom: true,
+          },
+        },
+      },
+    });
+
+    if (!teacher && user.role === "TEACHER") {
+      return NextResponse.json(
+        { error: "Teacher profile not found" },
+        { status: 404 }
+      );
+    }
+
+    // Build student filter
+    const classroomIds = teacher?.classrooms.map((tc) => tc.classroomId) || [];
+
+    // For non-teachers (admins), get students from their district
+    const whereClause: any =
+      user.role === "TEACHER"
+        ? {
+            classrooms: {
+              some: {
+                classroomId: classroomId || { in: classroomIds },
+              },
+            },
+            isActive: true,
+          }
+        : {
+            districtId: user.districtId,
+            isActive: true,
+          };
+
+    // Add grade filter
+    if (gradeLevel) {
+      whereClause.gradeLevel = gradeLevel;
+    }
+
+    // Fetch students with assessment data
+    const students = await prisma.student.findMany({
+      where: whereClause,
+      include: {
+        classrooms: {
+          include: {
+            classroom: {
+              select: {
+                id: true,
+                name: true,
+                gradeLevel: true,
+              },
+            },
+          },
+        },
+        assessments: {
+          include: {
+            assessment: {
+              select: {
+                id: true,
+                status: true,
+                mode: true,
+                completedAt: true,
+                domainIndicators: {
+                  select: {
+                    domainName: true,
+                    flagged: true,
+                  },
+                },
+              },
+            },
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    // Transform for frontend
+    const transformedStudents = students.map((student) => {
+      const latestAssessment = student.assessments[0]?.assessment;
+      const assessmentStatus: string =
+        latestAssessment?.status || "NOT_STARTED";
+      const flaggedDomains =
+        latestAssessment?.domainIndicators
+          .filter((di) => di.flagged)
+          .map((di) => di.domainName) || [];
+
+      return {
+        id: student.id,
+        anonymousId: student.anonymousId,
+        firstName: student.consentGiven ? student.firstName : null,
+        lastName: student.consentGiven ? student.lastName : null,
+        gradeLevel: student.gradeLevel,
+        isAnonymous: student.isAnonymous,
+        consentGiven: student.consentGiven,
+        createdAt: student.createdAt,
+        classrooms: student.classrooms.map((sc) => sc.classroom),
+        assessmentStatus,
+        latestAssessmentId: latestAssessment?.id || null,
+        completedAt: latestAssessment?.completedAt || null,
+        flaggedDomains,
+        hasFlaggedDomains: flaggedDomains.length > 0,
+      };
+    });
+
+    // Filter by status if requested
+    let filteredStudents = transformedStudents;
+    if (status === "not_started") {
+      filteredStudents = transformedStudents.filter(
+        (s) => s.assessmentStatus === "NOT_STARTED"
+      );
+    } else if (status === "in_progress") {
+      filteredStudents = transformedStudents.filter(
+        (s) => s.assessmentStatus === "IN_PROGRESS"
+      );
+    } else if (status === "completed") {
+      filteredStudents = transformedStudents.filter(
+        (s) => s.assessmentStatus === "COMPLETED"
+      );
+    }
+
+    return NextResponse.json({
+      students: filteredStudents,
+      total: filteredStudents.length,
+    });
+  } catch (error) {
+    console.error("Error fetching students:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch students" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
  * POST /api/teacher/students
  * Create a new student with anonymous ID
  */

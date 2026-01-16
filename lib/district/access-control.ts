@@ -6,14 +6,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/db/prisma";
+import { Role } from "@prisma/client";
+
+// District roles that are allowed to access district features
+export type DistrictRole = Extract<
+  Role,
+  | "DISTRICT_ADMIN"
+  | "TEACHER"
+  | "COUNSELOR"
+  | "PRINCIPAL"
+  | "ADMIN"
+  | "SUPER_ADMIN"
+>;
 
 export interface DistrictUser {
   id: string;
   email: string;
   name: string | null;
-  role: "DISTRICT_ADMIN" | "TEACHER" | "ADMIN" | "SUPER_ADMIN";
+  role: DistrictRole;
   districtId?: string;
   teacherId?: string;
+  schoolId?: string;
   organizationId?: string;
 }
 
@@ -46,9 +59,22 @@ export async function getDistrictUser(): Promise<DistrictUser | null> {
 
     // Only allow district-related roles
     if (
-      !["DISTRICT_ADMIN", "TEACHER", "ADMIN", "SUPER_ADMIN"].includes(user.role)
+      ![
+        "DISTRICT_ADMIN",
+        "TEACHER",
+        "COUNSELOR",
+        "PRINCIPAL",
+        "ADMIN",
+        "SUPER_ADMIN",
+      ].includes(user.role)
     ) {
       return null;
+    }
+
+    // Get school ID for principals
+    let schoolId: string | undefined;
+    if (user.role === "PRINCIPAL" && user.teacherProfile?.schoolId) {
+      schoolId = user.teacherProfile.schoolId;
     }
 
     return {
@@ -58,6 +84,7 @@ export async function getDistrictUser(): Promise<DistrictUser | null> {
       role: user.role as any,
       districtId: user.teacherProfile?.districtId,
       teacherId: user.teacherProfile?.id,
+      schoolId,
       organizationId: user.organizationId || undefined,
     };
   } catch (error: any) {
@@ -84,7 +111,7 @@ export async function requireDistrictAdmin(): Promise<DistrictUser> {
 }
 
 /**
- * Require teacher or higher
+ * Require teacher or higher (includes COUNSELOR and PRINCIPAL)
  */
 export async function requireTeacher(): Promise<DistrictUser> {
   const user = await getDistrictUser();
@@ -94,7 +121,14 @@ export async function requireTeacher(): Promise<DistrictUser> {
   }
 
   if (
-    !["TEACHER", "DISTRICT_ADMIN", "ADMIN", "SUPER_ADMIN"].includes(user.role)
+    ![
+      "TEACHER",
+      "COUNSELOR",
+      "PRINCIPAL",
+      "DISTRICT_ADMIN",
+      "ADMIN",
+      "SUPER_ADMIN",
+    ].includes(user.role)
   ) {
     throw new Error("Forbidden: Teacher access required");
   }
@@ -137,6 +171,30 @@ export async function canAccessStudent(
     return true;
   }
 
+  // Principals can access all students in their school
+  if (user.role === "PRINCIPAL" && user.teacherProfile?.schoolId) {
+    const studentInSchool = await prisma.student.findFirst({
+      where: {
+        id: studentId,
+        schoolId: user.teacherProfile.schoolId,
+      },
+    });
+    return !!studentInSchool;
+  }
+
+  // Counselors can access students in their caseload
+  if (user.role === "COUNSELOR") {
+    const counselor = await prisma.counselor.findFirst({
+      where: { userId: user.id },
+      include: {
+        caseload: {
+          where: { studentId },
+        },
+      },
+    });
+    return (counselor?.caseload?.length ?? 0) > 0;
+  }
+
   // Teachers can only access students in their classrooms
   if (user.role === "TEACHER" && user.teacherProfile) {
     return user.teacherProfile.classrooms.some((tc) =>
@@ -148,13 +206,25 @@ export async function canAccessStudent(
 }
 
 /**
+ * Route context for dynamic routes
+ */
+interface RouteContext {
+  params: Promise<Record<string, string>>;
+}
+
+/**
  * Middleware wrapper for API routes
+ * Supports both static routes (no params) and dynamic routes (with params)
  */
 export function withDistrictAuth(
-  handler: (req: NextRequest, user: DistrictUser) => Promise<Response>,
-  requiredRole?: "DISTRICT_ADMIN" | "TEACHER"
+  handler: (
+    req: NextRequest,
+    user: DistrictUser,
+    context?: RouteContext
+  ) => Promise<Response>,
+  requiredRole?: "DISTRICT_ADMIN" | "PRINCIPAL" | "COUNSELOR" | "TEACHER"
 ) {
-  return async (req: NextRequest) => {
+  return async (req: NextRequest, context?: RouteContext) => {
     try {
       const user = await getDistrictUser();
 
@@ -162,27 +232,27 @@ export function withDistrictAuth(
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
 
-      if (requiredRole === "DISTRICT_ADMIN") {
-        if (!["DISTRICT_ADMIN", "ADMIN", "SUPER_ADMIN"].includes(user.role)) {
-          return NextResponse.json(
-            { error: "Forbidden: District Admin required" },
-            { status: 403 }
-          );
-        }
-      } else if (requiredRole === "TEACHER") {
-        if (
-          !["TEACHER", "DISTRICT_ADMIN", "ADMIN", "SUPER_ADMIN"].includes(
-            user.role
-          )
-        ) {
-          return NextResponse.json(
-            { error: "Forbidden: Teacher access required" },
-            { status: 403 }
-          );
-        }
+      // Role hierarchy: SUPER_ADMIN > ADMIN > DISTRICT_ADMIN > PRINCIPAL > COUNSELOR > TEACHER
+      const roleHierarchy: Record<string, number> = {
+        SUPER_ADMIN: 100,
+        ADMIN: 90,
+        DISTRICT_ADMIN: 80,
+        PRINCIPAL: 70,
+        COUNSELOR: 60,
+        TEACHER: 50,
+      };
+
+      const userLevel = roleHierarchy[user.role] || 0;
+      const requiredLevel = requiredRole ? roleHierarchy[requiredRole] || 0 : 0;
+
+      if (userLevel < requiredLevel) {
+        return NextResponse.json(
+          { error: `Forbidden: ${requiredRole} access required` },
+          { status: 403 }
+        );
       }
 
-      return handler(req, user);
+      return handler(req, user, context);
     } catch (error: any) {
       console.error("Auth error:", error);
       return NextResponse.json(

@@ -31,17 +31,34 @@ export class AuditLogService {
    */
   static async log(input: AuditLogInput): Promise<void> {
     try {
-      await prisma.districtAuditLog.create({
-        data: {
-          districtId: input.districtId,
-          studentId: input.studentId,
-          userId: input.userId,
-          action: input.action,
-          resourceId: input.resourceId,
-          metadata: input.metadata || {},
-          ipAddress: input.ipAddress,
-        },
-      });
+      // Skip logging if no valid districtId - don't break the flow
+      // districtId is optional but if provided, must be valid FK
+      const data: any = {
+        userId: input.userId,
+        action: input.action,
+        resourceId: input.resourceId || null,
+        metadata: input.metadata || {},
+        ipAddress: input.ipAddress || null,
+      };
+
+      // Only include districtId if provided and valid
+      if (input.districtId) {
+        // Verify district exists before trying to create log
+        const district = await prisma.district.findUnique({
+          where: { id: input.districtId },
+          select: { id: true },
+        });
+        if (district) {
+          data.districtId = input.districtId;
+        }
+      }
+
+      // Only include studentId if provided
+      if (input.studentId) {
+        data.studentId = input.studentId;
+      }
+
+      await prisma.districtAuditLog.create({ data });
     } catch (error) {
       console.error("Failed to create audit log:", error);
       // Don't throw - audit logging should not break the main flow

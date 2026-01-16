@@ -39,15 +39,15 @@ export async function GET(
     }
 
     // Check feature flags
-    const showScores = await isFeatureEnabled("teacher_numeric_scores", {
-      userId: user.id,
-      role: "TEACHER",
-    });
+    const showScores = await isFeatureEnabled(
+      "teacher_numeric_scores",
+      "TEACHER"
+    );
 
-    const showAIRecommendations = await isFeatureEnabled("ai_recommendations", {
-      userId: user.id,
-      role: "TEACHER",
-    });
+    const showAIRecommendations = await isFeatureEnabled(
+      "ai_recommendations",
+      "TEACHER"
+    );
 
     // Get assessment with domain indicators
     const assessment = await prisma.assessment.findFirst({

@@ -204,6 +204,7 @@ model User {
   managedSubAccounts                               SubAccount[]                @relation("ManagedBy")
   subAccountProfile                                SubAccount?                 @relation("SubAccountUser")
   teacherProfile                                   Teacher?
+  counselorProfile                                 Counselor?
   telemetry_events_telemetry_events_user_idTousers TelemetryEvent[]            @relation("telemetry_events_user_idTousers")
   telemetryEvents                                  TelemetryEvent[]
   usageMetrics                                     UsageMetrics[]
@@ -1230,6 +1231,7 @@ model District {
   schools             School[]
   students            Student[]
   teachers            Teacher[]
+  counselors          Counselor[]
 
   @@index([organizationId])
   @@index([code])
@@ -1247,6 +1249,8 @@ model School {
   classrooms Classroom[]
   district   District    @relation(fields: [districtId], references: [id], onDelete: Cascade)
   students   Student[]
+  counselors Counselor[]
+  teachers   Teacher[]   // Teachers/Principals assigned to this school
 
   @@unique([districtId, code])
   @@index([districtId])
@@ -1273,6 +1277,7 @@ model Teacher {
   id           String              @id @default(cuid())
   userId       String              @unique
   districtId   String
+  schoolId     String?             // For PRINCIPAL role - their assigned school
   employeeId   String?
   isActive     Boolean             @default(true)
   createdAt    DateTime            @default(now())
@@ -1280,10 +1285,12 @@ model Teacher {
   classrooms   TeacherClassroom[]
   observations TeacherObservation[]
   district     District            @relation(fields: [districtId], references: [id], onDelete: Cascade)
+  school       School?             @relation(fields: [schoolId], references: [id], onDelete: SetNull)
   user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([districtId])
+  @@index([schoolId])
   @@map("teachers")
 }
 
@@ -1300,6 +1307,41 @@ model TeacherClassroom {
   @@index([teacherId])
   @@index([classroomId])
   @@map("teacher_classrooms")
+}
+
+model Counselor {
+  id          String            @id @default(cuid())
+  userId      String            @unique
+  districtId  String
+  schoolId    String?
+  employeeId  String?
+  isActive    Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  caseload    CounselorCaseload[]
+  district    District          @relation(fields: [districtId], references: [id], onDelete: Cascade)
+  school      School?           @relation(fields: [schoolId], references: [id])
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([districtId])
+  @@index([schoolId])
+  @@map("counselors")
+}
+
+model CounselorCaseload {
+  id          String    @id @default(cuid())
+  counselorId String
+  studentId   String
+  assignedAt  DateTime  @default(now())
+  notes       String?
+  counselor   Counselor @relation(fields: [counselorId], references: [id], onDelete: Cascade)
+  student     Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([counselorId, studentId])
+  @@index([counselorId])
+  @@index([studentId])
+  @@map("counselor_caseloads")
 }
 
 model Student {
@@ -1323,6 +1365,7 @@ model Student {
   recommendations        StudentRecommendation[]
   teacherObservations    TeacherObservation[]
   intentAcknowledgments  IntentAcknowledgment[]
+  counselorCaseloads     CounselorCaseload[]
   district               District                 @relation(fields: [districtId], references: [id], onDelete: Cascade)
   school                 School?                  @relation(fields: [schoolId], references: [id])
 
@@ -1434,6 +1477,8 @@ enum Role {
   ADMIN
   DISTRICT_ADMIN
   TEACHER
+  COUNSELOR
+  PRINCIPAL
   SUB_ACCOUNT
   SUPER_ADMIN
 }

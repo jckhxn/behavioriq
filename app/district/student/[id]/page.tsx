@@ -14,7 +14,14 @@ export default async function StudentDetailPage({
   }
 
   if (
-    !["DISTRICT_ADMIN", "TEACHER", "ADMIN", "SUPER_ADMIN"].includes(user.role)
+    ![
+      "DISTRICT_ADMIN",
+      "PRINCIPAL",
+      "COUNSELOR",
+      "TEACHER",
+      "ADMIN",
+      "SUPER_ADMIN",
+    ].includes(user.role)
   ) {
     redirect("/dashboard");
   }

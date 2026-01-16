@@ -3,10 +3,11 @@ import { prisma } from "@/lib/db/prisma";
 import { getDistrictUser } from "@/lib/district/access-control";
 import { withFeatureFlag } from "@/lib/district/feature-flag-middleware";
 import { FeatureFlags } from "@/lib/district/feature-flags";
+import { v4 as uuidv4 } from "uuid";
 
 /**
  * POST /api/teacher/assessments/assign
- * Assign an assessment to a student
+ * Create and assign a new assessment to a student
  */
 export async function POST(request: NextRequest) {
   const user = await getDistrictUser();
@@ -22,11 +23,11 @@ export async function POST(request: NextRequest) {
     async () => {
       try {
         const body = await request.json();
-        const { studentId, assessmentId } = body;
+        const { studentId, assessmentTemplateId } = body;
 
-        if (!studentId || !assessmentId) {
+        if (!studentId) {
           return NextResponse.json(
-            { error: "Missing required fields" },
+            { error: "Missing required field: studentId" },
             { status: 400 }
           );
         }
@@ -40,7 +41,9 @@ export async function POST(request: NextRequest) {
                 classroom: {
                   teachers: {
                     some: {
-                      userId: user.id,
+                      teacher: {
+                        userId: user.id,
+                      },
                     },
                   },
                 },
@@ -63,40 +66,42 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        // Verify assessment exists and is published
-        const assessment = await prisma.assessment.findUnique({
-          where: { id: assessmentId },
-        });
-
-        if (!assessment) {
-          return NextResponse.json(
-            { error: "Assessment not found" },
-            { status: 404 }
-          );
+        // Get assessment template (use global or provided)
+        let templateId = assessmentTemplateId;
+        if (!templateId) {
+          // Get global assessment template
+          const platformSettings = await prisma.platformSettings.findFirst();
+          templateId = platformSettings?.globalRegularAssessmentId;
         }
 
-        // Check if assessment already assigned
-        const existing = await prisma.studentAssessment.findUnique({
-          where: {
-            studentId_assessmentId: {
-              studentId,
-              assessmentId,
-            },
+        const template = templateId
+          ? await prisma.assessmentTemplate.findUnique({
+              where: { id: templateId },
+            })
+          : null;
+
+        // Generate unique short ID
+        const shortId = `A${uuidv4().split("-")[0].toUpperCase()}`;
+
+        // Create new assessment for this student
+        const assessment = await prisma.assessment.create({
+          data: {
+            subjectName: student.firstName
+              ? `${student.firstName} ${student.lastName || ""}`.trim()
+              : student.anonymousId,
+            status: "IN_PROGRESS",
+            mode: "FULL",
+            startedAt: new Date(),
+            shortId,
+            assessmentTemplateId: templateId || null,
           },
         });
 
-        if (existing) {
-          return NextResponse.json(
-            { error: "Assessment already assigned to this student" },
-            { status: 400 }
-          );
-        }
-
-        // Create assignment
+        // Create student-assessment link
         const studentAssessment = await prisma.studentAssessment.create({
           data: {
             studentId,
-            assessmentId,
+            assessmentId: assessment.id,
             isTrial: false,
           },
         });
@@ -110,8 +115,9 @@ export async function POST(request: NextRequest) {
             action: "ASSIGN_ASSESSMENT",
             resourceId: studentAssessment.id,
             metadata: {
-              assessmentId,
-              assessmentSubject: assessment.subjectName,
+              assessmentId: assessment.id,
+              templateId: templateId || null,
+              templateName: template?.name || "Default",
             },
           },
         });
@@ -121,7 +127,8 @@ export async function POST(request: NextRequest) {
           assignment: {
             id: studentAssessment.id,
             studentId: studentAssessment.studentId,
-            assessmentId: studentAssessment.assessmentId,
+            assessmentId: assessment.id,
+            shortId: assessment.shortId,
           },
         });
       } catch (error) {

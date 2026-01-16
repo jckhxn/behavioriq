@@ -1,8 +1,15 @@
--- CreateEnum for TEACHER role (if not exists)
+-- CreateEnum for district roles (add new values if not exists)
 DO $$ BEGIN
- CREATE TYPE "Role" AS ENUM ('USER', 'ADMIN', 'DISTRICT_ADMIN', 'TEACHER', 'SUB_ACCOUNT', 'SUPER_ADMIN');
+ CREATE TYPE "Role" AS ENUM ('USER', 'ADMIN', 'DISTRICT_ADMIN', 'TEACHER', 'COUNSELOR', 'PRINCIPAL', 'SUB_ACCOUNT', 'SUPER_ADMIN');
 EXCEPTION
- WHEN duplicate_object THEN null;
+ WHEN duplicate_object THEN 
+    -- If Role type exists, add missing values
+    BEGIN
+        ALTER TYPE "Role" ADD VALUE IF NOT EXISTS 'COUNSELOR';
+        ALTER TYPE "Role" ADD VALUE IF NOT EXISTS 'PRINCIPAL';
+    EXCEPTION
+        WHEN others THEN null;
+    END;
 END $$;
 
 -- District Management Tables
@@ -207,3 +214,64 @@ ALTER TABLE "student_recommendations" ADD CONSTRAINT "student_recommendations_st
 ALTER TABLE "district_audit_logs" ADD CONSTRAINT "district_audit_logs_districtId_fkey" FOREIGN KEY ("districtId") REFERENCES "districts"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 ALTER TABLE "district_audit_logs" ADD CONSTRAINT "district_audit_logs_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "students"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- Counselor tables
+
+CREATE TABLE IF NOT EXISTS "counselors" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "districtId" TEXT NOT NULL,
+    "schoolId" TEXT,
+    "employeeId" TEXT,
+    "specializations" TEXT[],
+    "maxCaseload" INTEGER NOT NULL DEFAULT 50,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    CONSTRAINT "counselors_pkey" PRIMARY KEY ("id")
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "counselors_userId_key" ON "counselors"("userId");
+CREATE INDEX IF NOT EXISTS "counselors_districtId_idx" ON "counselors"("districtId");
+CREATE INDEX IF NOT EXISTS "counselors_schoolId_idx" ON "counselors"("schoolId");
+
+CREATE TABLE IF NOT EXISTS "counselor_caseloads" (
+    "id" TEXT NOT NULL,
+    "counselorId" TEXT NOT NULL,
+    "studentId" TEXT NOT NULL,
+    "reason" TEXT,
+    "priority" TEXT DEFAULT 'NORMAL',
+    "assignedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "notes" TEXT,
+    CONSTRAINT "counselor_caseloads_pkey" PRIMARY KEY ("id")
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "counselor_caseloads_counselorId_studentId_key" ON "counselor_caseloads"("counselorId", "studentId");
+CREATE INDEX IF NOT EXISTS "counselor_caseloads_counselorId_idx" ON "counselor_caseloads"("counselorId");
+CREATE INDEX IF NOT EXISTS "counselor_caseloads_studentId_idx" ON "counselor_caseloads"("studentId");
+
+-- Counselor foreign keys
+
+ALTER TABLE "counselors" ADD CONSTRAINT "counselors_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE "counselors" ADD CONSTRAINT "counselors_districtId_fkey" FOREIGN KEY ("districtId") REFERENCES "districts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE "counselors" ADD CONSTRAINT "counselors_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "schools"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+ALTER TABLE "counselor_caseloads" ADD CONSTRAINT "counselor_caseloads_counselorId_fkey" FOREIGN KEY ("counselorId") REFERENCES "counselors"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE "counselor_caseloads" ADD CONSTRAINT "counselor_caseloads_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "students"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- Add schoolId to teachers if it doesn't exist (for PRINCIPAL role)
+DO $$ BEGIN
+    ALTER TABLE "teachers" ADD COLUMN "schoolId" TEXT;
+EXCEPTION
+    WHEN duplicate_column THEN null;
+END $$;
+
+-- Add foreign key for teacher schoolId
+DO $$ BEGIN
+    ALTER TABLE "teachers" ADD CONSTRAINT "teachers_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "schools"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;

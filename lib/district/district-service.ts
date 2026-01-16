@@ -347,7 +347,11 @@ export class DistrictService {
         },
         classrooms: {
           include: {
-            classroom: true,
+            classroom: {
+              include: {
+                teachers: true,
+              },
+            },
           },
         },
       },

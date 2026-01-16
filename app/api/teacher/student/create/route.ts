@@ -29,11 +29,24 @@ export async function POST(request: NextRequest) {
     // Get teacher record
     const teacher = await prisma.teacher.findUnique({
       where: { userId: user.id },
+      include: {
+        classrooms: {
+          include: {
+            classroom: {
+              include: {
+                school: true,
+              },
+            },
+          },
+        },
+      },
     });
 
-    if (!teacher) {
+    if (!teacher || !teacher.districtId) {
       return NextResponse.json(
-        { error: "Teacher profile not found" },
+        {
+          error: "Teacher profile not found or not associated with a district",
+        },
         { status: 404 }
       );
     }
@@ -49,11 +62,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify teacher has access to this classroom
+    // Verify teacher has access to this classroom and get school info
     const teacherClassroom = await prisma.teacherClassroom.findFirst({
       where: {
         teacherId: teacher.id,
         classroomId: classroomId,
+      },
+      include: {
+        classroom: {
+          include: {
+            school: true,
+          },
+        },
       },
     });
 
@@ -70,6 +90,8 @@ export async function POST(request: NextRequest) {
     // Create student
     const student = await prisma.student.create({
       data: {
+        districtId: teacher.districtId,
+        schoolId: teacherClassroom.classroom.schoolId,
         anonymousId,
         firstName: firstName || null,
         lastName: lastName || null,
@@ -77,7 +99,6 @@ export async function POST(request: NextRequest) {
         classrooms: {
           create: {
             classroomId,
-            assignedAt: new Date(),
           },
         },
       },
@@ -102,9 +123,8 @@ export async function POST(request: NextRequest) {
           districtId: classroom.school.districtId,
           userId: user.id,
           action: "CREATE_STUDENT",
-          resourceType: "STUDENT",
           resourceId: student.id,
-          details: {
+          metadata: {
             anonymousId: student.anonymousId,
             classroomId,
             gradeLevel,

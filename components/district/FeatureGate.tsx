@@ -126,9 +126,9 @@ export function DisabledFeatureOverlay({
   return (
     <div className="relative">
       <div className="pointer-events-none opacity-50">{children}</div>
-      <div className="absolute inset-0 flex items-center justify-center bg-gray-900/10">
-        <div className="rounded-lg bg-white px-4 py-2 shadow-lg">
-          <p className="text-sm font-medium text-gray-700">{message}</p>
+      <div className="absolute inset-0 flex items-center justify-center bg-background/50">
+        <div className="rounded-lg bg-card px-4 py-2 shadow-lg border border-border">
+          <p className="text-sm font-medium text-foreground">{message}</p>
         </div>
       </div>
     </div>

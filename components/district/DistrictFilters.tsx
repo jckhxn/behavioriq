@@ -13,7 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 
-interface Filters {
+export interface Filters {
   gradeLevel?: string;
   classroomId?: string;
   dateFrom?: string;

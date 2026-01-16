@@ -50,9 +50,7 @@ function LoginForm() {
               SUPABASE_STORAGE_PREFERENCE_KEY,
               "local"
             );
-            window.sessionStorage.removeItem(
-              SUPABASE_STORAGE_PREFERENCE_KEY
-            );
+            window.sessionStorage.removeItem(SUPABASE_STORAGE_PREFERENCE_KEY);
             // Clear sessionStorage auth token since we're using localStorage
             try {
               window.sessionStorage.removeItem("sb-auth-token");
@@ -64,9 +62,7 @@ function LoginForm() {
               SUPABASE_STORAGE_PREFERENCE_KEY,
               "session"
             );
-            window.localStorage.removeItem(
-              SUPABASE_STORAGE_PREFERENCE_KEY
-            );
+            window.localStorage.removeItem(SUPABASE_STORAGE_PREFERENCE_KEY);
             // Clear localStorage auth token since we're using sessionStorage
             try {
               window.localStorage.removeItem("sb-auth-token");
@@ -92,7 +88,9 @@ function LoginForm() {
 
       // CRITICAL: Verify session is available before navigating
       // This ensures tokens are synced to localStorage/sessionStorage before server receives the request
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) {
         toast.error("Session not established. Please try again.");
         console.error("[Login] No session after signin");
@@ -108,9 +106,12 @@ function LoginForm() {
       if (hasMFA) {
         // Redirect to MFA verification page
         toast.info("Please verify your two-factor authentication code");
-        console.log("[Login] MFA required, redirecting to:", `/mfa-verify?redirect=${encodeURIComponent(from)}`);
+        console.log(
+          "[Login] MFA required, redirecting to:",
+          `/mfa-verify?redirect=${encodeURIComponent(from)}`
+        );
         // Wait a moment for middleware to sync cookies before redirecting
-        await new Promise(resolve => setTimeout(resolve, 300));
+        await new Promise((resolve) => setTimeout(resolve, 300));
         router.refresh();
         router.push(`/mfa-verify?redirect=${encodeURIComponent(from)}`);
       } else {
@@ -118,7 +119,7 @@ function LoginForm() {
         console.log("[Login] No MFA, redirecting to:", from);
         // Wait a moment for middleware to sync cookies before redirecting
         // This ensures the auth cookie is set before the next page loads
-        await new Promise(resolve => setTimeout(resolve, 300));
+        await new Promise((resolve) => setTimeout(resolve, 300));
         router.refresh();
         // Ensure we go to dashboard if from parameter is missing or is login page
         const redirectTo = from && from !== "/login" ? from : "/dashboard";
@@ -287,11 +288,11 @@ function LoginForm() {
                 id="rememberMe"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                className="h-4 w-4 rounded border-border bg-background text-primary focus:ring-primary focus:ring-offset-background"
               />
               <label
                 htmlFor="rememberMe"
-                className="ml-2 text-sm text-gray-700"
+                className="ml-2 text-sm text-muted-foreground"
               >
                 Remember me for 90 days
               </label>

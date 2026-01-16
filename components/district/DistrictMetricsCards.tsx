@@ -1,166 +1,254 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, AlertTriangle, TrendingUp, Activity } from "lucide-react";
+import {
+  Users,
+  AlertTriangle,
+  TrendingUp,
+  Activity,
+  CheckCircle,
+  Clock,
+} from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 
-interface DomainBreakdown {
-  count: number;
+interface DomainData {
+  domain: string;
+  flagged: number;
+  total: number;
   percentage: number;
 }
 
-interface DistrictMetrics {
+interface Summary {
   totalStudents: number;
+  studentsNotStarted: number;
+  studentsInProgress: number;
+  studentsCompleted: number;
   studentsScreened: number;
-  flaggedStudents: number;
+  studentsFlagged: number;
   flaggedPercentage: number;
-  averageRiskScore: number;
-  domainBreakdown: {
-    anxiety: DomainBreakdown;
-    depression: DomainBreakdown;
-    attention: DomainBreakdown;
-    conduct: DomainBreakdown;
-    antisocial: DomainBreakdown;
-  };
+  completionRate: number;
+}
+
+interface DistrictMetrics {
+  summary: Summary;
+  domainBreakdown: DomainData[];
+  schoolBreakdown?: {
+    id: string;
+    name: string;
+    total: number;
+    screened: number;
+    flagged: number;
+    flaggedPercentage: number;
+  }[];
+  gradeBreakdown?: {
+    grade: string;
+    total: number;
+    screened: number;
+    flagged: number;
+    flaggedPercentage: number;
+  }[];
 }
 
 interface DistrictMetricsCardsProps {
   metrics: DistrictMetrics;
 }
 
+const DOMAIN_COLORS: Record<string, string> = {
+  Anxiety: "bg-purple-500",
+  Mood: "bg-blue-500",
+  Attention: "bg-orange-500",
+  Conduct: "bg-red-500",
+  Social: "bg-green-500",
+  Depression: "bg-indigo-500",
+  Antisocial: "bg-gray-500",
+};
+
 export function DistrictMetricsCards({ metrics }: DistrictMetricsCardsProps) {
-  const screeningRate =
-    metrics.totalStudents > 0
-      ? Math.round((metrics.studentsScreened / metrics.totalStudents) * 100)
-      : 0;
+  const { summary, domainBreakdown, schoolBreakdown, gradeBreakdown } = metrics;
+
+  // Find the top flagged domain
+  const topDomain =
+    domainBreakdown.length > 0
+      ? domainBreakdown.sort((a, b) => b.flagged - a.flagged)[0]
+      : null;
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Students</CardTitle>
-          <Users className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{metrics.totalStudents}</div>
-          <p className="text-xs text-muted-foreground">
-            {metrics.studentsScreened} screened ({screeningRate}%)
-          </p>
-        </CardContent>
-      </Card>
+    <div className="space-y-6">
+      {/* Summary Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Total Students
+            </CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{summary.totalStudents}</div>
+            <p className="text-xs text-muted-foreground">
+              {summary.studentsScreened} screened ({summary.completionRate}%)
+            </p>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">
-            Flagged Students
-          </CardTitle>
-          <AlertTriangle className="h-4 w-4 text-yellow-600" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{metrics.flaggedStudents}</div>
-          <p className="text-xs text-muted-foreground">
-            {metrics.flaggedPercentage}% above screener threshold
-          </p>
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Completion Status
+            </CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {summary.studentsCompleted}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {summary.studentsInProgress} in progress •{" "}
+              {summary.studentsNotStarted} not started
+            </p>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Avg Risk Score</CardTitle>
-          <TrendingUp className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{metrics.averageRiskScore}</div>
-          <p className="text-xs text-muted-foreground">
-            Out of 100 (population average)
-          </p>
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Flagged for Follow-up
+            </CardTitle>
+            <AlertTriangle className="h-4 w-4 text-yellow-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{summary.studentsFlagged}</div>
+            <p className="text-xs text-muted-foreground">
+              {summary.flaggedPercentage}% of screened students
+            </p>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Top Domain</CardTitle>
-          <Activity className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          {(() => {
-            const domains = [
-              { name: "Anxiety", ...metrics.domainBreakdown.anxiety },
-              { name: "Depression", ...metrics.domainBreakdown.depression },
-              { name: "Attention", ...metrics.domainBreakdown.attention },
-              { name: "Conduct", ...metrics.domainBreakdown.conduct },
-              { name: "Antisocial", ...metrics.domainBreakdown.antisocial },
-            ];
-            const topDomain = domains.sort((a, b) => b.count - a.count)[0];
-
-            return (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Top Concern Area
+            </CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {topDomain ? (
               <>
-                <div className="text-2xl font-bold">{topDomain.name}</div>
+                <div className="text-2xl font-bold">{topDomain.domain}</div>
                 <p className="text-xs text-muted-foreground">
-                  {topDomain.count} students ({topDomain.percentage}%)
+                  {topDomain.flagged} students ({topDomain.percentage}%)
                 </p>
               </>
-            );
-          })()}
-        </CardContent>
-      </Card>
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-muted-foreground">
+                  —
+                </div>
+                <p className="text-xs text-muted-foreground">No data yet</p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
-      <Card className="md:col-span-2 lg:col-span-4">
-        <CardHeader>
-          <CardTitle className="text-base">Domain Breakdown</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {[
-              {
-                name: "Anxiety",
-                data: metrics.domainBreakdown.anxiety,
-                color: "bg-purple-500",
-              },
-              {
-                name: "Depression",
-                data: metrics.domainBreakdown.depression,
-                color: "bg-blue-500",
-              },
-              {
-                name: "Attention",
-                data: metrics.domainBreakdown.attention,
-                color: "bg-orange-500",
-              },
-              {
-                name: "Conduct",
-                data: metrics.domainBreakdown.conduct,
-                color: "bg-red-500",
-              },
-              {
-                name: "Antisocial",
-                data: metrics.domainBreakdown.antisocial,
-                color: "bg-gray-500",
-              },
-            ].map((domain) => (
-              <div key={domain.name} className="flex items-center gap-3">
-                <div className="w-32 text-sm font-medium">{domain.name}</div>
-                <div className="flex-1 h-8 bg-muted rounded-lg overflow-hidden">
-                  <div
-                    className={`h-full ${domain.color} flex items-center justify-end pr-3 text-white text-xs font-medium transition-all`}
-                    style={{
-                      width: `${Math.min(domain.data.percentage, 100)}%`,
-                    }}
-                  >
-                    {domain.data.percentage > 10 &&
-                      `${domain.data.percentage}%`}
+      {/* Domain Breakdown */}
+      {domainBreakdown.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Domain Breakdown</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Students flagged in each screening domain
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {domainBreakdown.map((domain) => (
+                <div key={domain.domain} className="flex items-center gap-3">
+                  <div className="w-32 text-sm font-medium">
+                    {domain.domain}
+                  </div>
+                  <div className="flex-1 h-8 bg-muted rounded-lg overflow-hidden">
+                    <div
+                      className={`h-full ${DOMAIN_COLORS[domain.domain] || "bg-gray-500"} flex items-center justify-end pr-3 text-white text-xs font-medium transition-all`}
+                      style={{
+                        width: `${Math.max(Math.min(domain.percentage, 100), domain.percentage > 0 ? 8 : 0)}%`,
+                      }}
+                    >
+                      {domain.percentage > 15 && `${domain.percentage}%`}
+                    </div>
+                  </div>
+                  <div className="w-24 text-sm text-muted-foreground text-right">
+                    {domain.flagged} / {domain.total}
                   </div>
                 </div>
-                <div className="w-20 text-sm text-muted-foreground text-right">
-                  {domain.data.count} students
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground mt-4">
+              * Students may be flagged in multiple domains. This is a screening
+              tool, not a diagnosis.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* School Breakdown */}
+      {schoolBreakdown && schoolBreakdown.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">By School</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {schoolBreakdown.map((school) => (
+                <div
+                  key={school.id}
+                  className="flex items-center justify-between p-3 border rounded-lg"
+                >
+                  <div>
+                    <p className="font-medium">{school.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {school.total} students • {school.screened} screened
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-medium text-yellow-600">
+                      {school.flagged} flagged
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {school.flaggedPercentage}% of screened
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground mt-4">
-            * Students may be flagged in multiple domains
-          </p>
-        </CardContent>
-      </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Grade Breakdown */}
+      {gradeBreakdown && gradeBreakdown.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">By Grade Level</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              {gradeBreakdown.map((grade) => (
+                <div
+                  key={grade.grade}
+                  className="p-3 border rounded-lg text-center"
+                >
+                  <p className="font-medium">Grade {grade.grade}</p>
+                  <p className="text-2xl font-bold">{grade.total}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {grade.flagged} flagged ({grade.flaggedPercentage}%)
+                  </p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

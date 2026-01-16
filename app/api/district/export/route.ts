@@ -1,84 +1,77 @@
-import { NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { NextRequest, NextResponse } from "next/server";
+import { getDistrictUser } from "@/lib/district/access-control";
 import { prisma } from "@/lib/db/prisma";
 import { isFeatureEnabled } from "@/lib/district/feature-flags";
 
-export async function GET(request: Request) {
+/**
+ * GET /api/district/export
+ * Export district data as CSV or prepare for PDF generation
+ */
+export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const format = searchParams.get("format") || "csv";
     const scope = searchParams.get("scope") || "district";
     const schoolId = searchParams.get("schoolId");
 
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    const user = await getDistrictUser();
 
-    if (authError || !user) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Verify district admin role
-    const dbUser = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: { role: true },
-    });
-
-    if (dbUser?.role !== "DISTRICT_ADMIN") {
+    // Check authorization
+    if (
+      !["DISTRICT_ADMIN", "PRINCIPAL", "ADMIN", "SUPER_ADMIN"].includes(
+        user.role
+      )
+    ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     // Check feature flag
-    const canExport = await isFeatureEnabled("csv_export", {
-      userId: user.id,
-      role: dbUser.role,
-    });
+    const canExport = await isFeatureEnabled("csv_export", user.role);
 
-    if (!canExport && format === "csv") {
+    if (!canExport.enabled && format === "csv") {
       return NextResponse.json(
         { error: "CSV export is disabled" },
         { status: 403 }
       );
     }
 
-    const canExportPDF = await isFeatureEnabled("pdf_export", {
-      userId: user.id,
-      role: dbUser.role,
-    });
+    const canExportPDF = await isFeatureEnabled("pdf_export", user.role);
 
-    if (!canExportPDF && format === "pdf") {
+    if (!canExportPDF.enabled && format === "pdf") {
       return NextResponse.json(
         { error: "PDF export is disabled" },
         { status: 403 }
       );
     }
 
-    // Get district admin
-    const districtAdmin = await prisma.districtUser.findUnique({
-      where: { userId: user.id },
+    // Get district ID
+    const districtId = user.districtId;
+    if (!districtId) {
+      return NextResponse.json({ error: "No district found" }, { status: 404 });
+    }
+
+    // Get schools in the district
+    const schools = await prisma.school.findMany({
+      where: {
+        districtId,
+        ...(schoolId ? { id: schoolId } : {}),
+      },
       include: {
-        district: {
+        classrooms: {
           include: {
-            schools: {
-              where: schoolId ? { id: schoolId } : {},
+            students: {
               include: {
-                classrooms: {
+                student: {
                   include: {
-                    students: {
+                    assessments: {
                       include: {
-                        student: {
+                        assessment: {
                           include: {
-                            assessments: {
-                              include: {
-                                assessment: {
-                                  include: {
-                                    domainIndicators: true,
-                                  },
-                                },
-                              },
-                            },
+                            domainIndicators: true,
                           },
                         },
                       },
@@ -91,13 +84,6 @@ export async function GET(request: Request) {
         },
       },
     });
-
-    if (!districtAdmin) {
-      return NextResponse.json(
-        { error: "Not a district admin" },
-        { status: 403 }
-      );
-    }
 
     // Build aggregate data (no individual student names)
     const rows: string[][] = [
@@ -123,7 +109,7 @@ export async function GET(request: Request) {
       >
     > = {};
 
-    districtAdmin.district.schools.forEach((school) => {
+    schools.forEach((school) => {
       if (!schoolAggregates[school.name]) {
         schoolAggregates[school.name] = {};
       }
@@ -181,7 +167,7 @@ export async function GET(request: Request) {
     await prisma.districtAuditLog.create({
       data: {
         userId: user.id,
-        districtId: districtAdmin.districtId,
+        districtId,
         action: "EXPORT_REPORT",
         metadata: {
           format,

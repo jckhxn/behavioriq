@@ -1,35 +1,38 @@
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
+import { Loader2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all duration-200 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive hover:transform hover:scale-[1.02] active:scale-[0.98]",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
         default:
-          "bg-gradient-to-r from-primary to-primary/90 text-primary-foreground shadow-lg hover:shadow-xl hover:from-primary/90 hover:to-primary/80",
+          "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 active:scale-[0.98]",
         destructive:
-          "bg-gradient-to-r from-destructive to-destructive/90 text-white shadow-lg hover:shadow-xl hover:from-destructive/90 hover:to-destructive/80 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40",
+          "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 active:scale-[0.98]",
         outline:
-          "border-2 bg-background/80 backdrop-blur-sm shadow-md hover:bg-gradient-to-r hover:from-accent/10 hover:to-primary/10 hover:text-accent-foreground hover:border-primary/50 dark:bg-input/30 dark:border-input dark:hover:bg-input/50",
+          "border border-input bg-background hover:bg-accent hover:text-accent-foreground active:scale-[0.98]",
         secondary:
-          "bg-gradient-to-r from-secondary to-secondary/90 text-secondary-foreground shadow-md hover:shadow-lg hover:from-secondary/90 hover:to-secondary/80",
-        ghost:
-          "hover:bg-gradient-to-r hover:from-accent/20 hover:to-primary/20 hover:text-accent-foreground dark:hover:bg-accent/50",
-        link: "text-primary underline-offset-4 hover:underline hover:text-accent transition-colors",
-        gradient:
-          "bg-gradient-to-r from-primary via-accent to-primary text-white shadow-lg hover:shadow-xl hover:from-primary/90 hover:via-accent/90 hover:to-primary/90",
-        accent:
-          "bg-gradient-to-r from-accent to-accent/90 text-white shadow-lg hover:shadow-xl hover:from-accent/90 hover:to-accent/80",
+          "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80 active:scale-[0.98]",
+        ghost: "hover:bg-accent hover:text-accent-foreground",
+        link: "text-primary underline-offset-4 hover:underline",
+        success:
+          "bg-success text-success-foreground shadow-sm hover:bg-success/90 active:scale-[0.98]",
+        warning:
+          "bg-warning text-warning-foreground shadow-sm hover:bg-warning/90 active:scale-[0.98]",
       },
       size: {
-        default: "h-10 px-4 py-2 has-[>svg]:px-3",
-        sm: "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
-        lg: "h-12 rounded-lg px-6 has-[>svg]:px-4 text-base",
-        icon: "size-10",
+        default: "h-10 px-4 py-2",
+        sm: "h-8 rounded-md px-3 text-xs",
+        lg: "h-12 rounded-lg px-6 text-base",
+        xl: "h-14 rounded-xl px-8 text-lg",
+        icon: "h-10 w-10",
+        "icon-sm": "h-8 w-8",
+        "icon-lg": "h-12 w-12",
       },
     },
     defaultVariants: {
@@ -39,25 +42,56 @@ const buttonVariants = cva(
   }
 );
 
-function Button({
-  className,
-  variant,
-  size,
-  asChild = false,
-  ...props
-}: React.ComponentProps<"button"> &
-  VariantProps<typeof buttonVariants> & {
-    asChild?: boolean;
-  }) {
-  const Comp = asChild ? Slot : "button";
-
-  return (
-    <Comp
-      data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
-      {...props}
-    />
-  );
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+  asChild?: boolean;
+  loading?: boolean;
+  leftIcon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
 }
+
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  (
+    {
+      className,
+      variant,
+      size,
+      asChild = false,
+      loading = false,
+      leftIcon,
+      rightIcon,
+      children,
+      disabled,
+      ...props
+    },
+    ref
+  ) => {
+    const Comp = asChild ? Slot : "button";
+
+    return (
+      <Comp
+        className={cn(buttonVariants({ variant, size, className }))}
+        ref={ref}
+        disabled={disabled || loading}
+        {...props}
+      >
+        {loading ? (
+          <>
+            <Loader2 className="animate-spin" />
+            {children}
+          </>
+        ) : (
+          <>
+            {leftIcon}
+            {children}
+            {rightIcon}
+          </>
+        )}
+      </Comp>
+    );
+  }
+);
+Button.displayName = "Button";
 
 export { Button, buttonVariants };

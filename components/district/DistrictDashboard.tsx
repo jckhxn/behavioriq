@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DistrictMetricsCards } from "./DistrictMetricsCards";
-import { DistrictFilters } from "./DistrictFilters";
+import { DistrictFilters, type Filters } from "./DistrictFilters";
 import { StudentListView } from "./StudentListView";
 import { Loader2 } from "lucide-react";
 
@@ -18,7 +18,13 @@ interface DistrictUser {
   id: string;
   email: string;
   name: string | null;
-  role: "DISTRICT_ADMIN" | "TEACHER" | "ADMIN" | "SUPER_ADMIN";
+  role:
+    | "DISTRICT_ADMIN"
+    | "PRINCIPAL"
+    | "COUNSELOR"
+    | "TEACHER"
+    | "ADMIN"
+    | "SUPER_ADMIN";
   districtId?: string;
   teacherId?: string;
 }
@@ -30,11 +36,7 @@ interface DistrictDashboardProps {
 export function DistrictDashboard({ user }: DistrictDashboardProps) {
   const [metrics, setMetrics] = useState<any>(null);
   const [students, setStudents] = useState<any[]>([]);
-  const [filters, setFilters] = useState({
-    gradeLevel: undefined,
-    classroomId: undefined,
-    dateFrom: undefined,
-    dateTo: undefined,
+  const [filters, setFilters] = useState<Filters>({
     flaggedOnly: false,
   });
   const [loading, setLoading] = useState(true);

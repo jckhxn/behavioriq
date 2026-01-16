@@ -34,6 +34,7 @@ import {
   BarChart3,
   FileText,
   Wrench,
+  Flag,
 } from "lucide-react";
 import ResourceLibraryManager from "@/components/admin/ResourceLibraryManager";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
@@ -43,6 +44,7 @@ import { UserManagementTab } from "@/components/admin/UserManagementTab";
 import { LeadsManagementTab } from "@/components/admin/LeadsManagementTab";
 import { AssessmentBuilder } from "@/components/admin/AssessmentBuilder";
 import TemplatesAndStylesTab from "@/components/admin/TemplatesAndStylesTab";
+import { FeatureFlagsManager } from "@/components/admin/FeatureFlagsManager";
 
 interface PlatformSettings {
   id: string;
@@ -250,6 +252,10 @@ export function SuperAdminPlatformSettings() {
             <Wrench className="h-4 w-4 mr-2" />
             Tools
           </TabsTrigger>
+          <TabsTrigger value="feature-flags" className="whitespace-nowrap">
+            <Flag className="h-4 w-4 mr-2" />
+            Feature Flags
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="platform" className="space-y-6 mt-6">
@@ -269,7 +275,12 @@ export function SuperAdminPlatformSettings() {
               <div className="space-y-4">
                 <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-lg">
                   <p className="text-xs text-amber-800 dark:text-amber-100">
-                    <strong>Trial Assessment (DEPRECATED):</strong> Trial questions are now configured at the question level within the regular assessment. Use the "Configure Trial" button in Domain Templates to mark which questions appear in the trial. The global trial assessment selector below is deprecated and will be removed in a future version.
+                    <strong>Trial Assessment (DEPRECATED):</strong> Trial
+                    questions are now configured at the question level within
+                    the regular assessment. Use the "Configure Trial" button in
+                    Domain Templates to mark which questions appear in the
+                    trial. The global trial assessment selector below is
+                    deprecated and will be removed in a future version.
                   </p>
                 </div>
 
@@ -278,7 +289,13 @@ export function SuperAdminPlatformSettings() {
                     Regular Assessment (Source for Trial & Full)
                   </Label>
                   <p className="text-xs text-muted-foreground mb-2">
-                    This assessment is the source of truth for both trial and full assessments. Questions marked with <code className="bg-muted px-1 rounded text-[10px]">isTrial: true</code> appear in the trial; all questions appear in the full assessment.
+                    This assessment is the source of truth for both trial and
+                    full assessments. Questions marked with{" "}
+                    <code className="bg-muted px-1 rounded text-[10px]">
+                      isTrial: true
+                    </code>{" "}
+                    appear in the trial; all questions appear in the full
+                    assessment.
                   </p>
                   <Select
                     value={settings.globalRegularAssessmentId || "none"}
@@ -609,6 +626,10 @@ export function SuperAdminPlatformSettings() {
 
         <TabsContent value="tools" className="mt-6">
           <AdminDashboard />
+        </TabsContent>
+
+        <TabsContent value="feature-flags" className="mt-6">
+          <FeatureFlagsManager />
         </TabsContent>
       </Tabs>
     </div>

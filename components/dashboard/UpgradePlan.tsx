@@ -85,7 +85,9 @@ export default function UpgradePlan({
   );
 
   const effectiveRolloverCap =
-    rolloverCap || currentPlan?.rolloverCap || DASHBOARD_PLAN_OPTIONS[0].rolloverCap;
+    rolloverCap ||
+    currentPlan?.rolloverCap ||
+    DASHBOARD_PLAN_OPTIONS[0].rolloverCap;
   const creditFillPercent =
     effectiveRolloverCap > 0
       ? Math.min(
@@ -110,7 +112,12 @@ export default function UpgradePlan({
       credits: creditsAvailable,
       rollover_cap: effectiveRolloverCap,
     });
-  }, [normalizedCurrentPlanId, currentPlanId, creditsAvailable, effectiveRolloverCap]);
+  }, [
+    normalizedCurrentPlanId,
+    currentPlanId,
+    creditsAvailable,
+    effectiveRolloverCap,
+  ]);
 
   const handlePlanSelect = (plan: SubscriptionPlanDefinition) => {
     setSelectedPlanId(plan.id);
@@ -187,7 +194,8 @@ export default function UpgradePlan({
             className="bg-gray-900 text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-800"
             onClick={async () => {
               trackEvent("add_report_click", {
-                plan_current: normalizedCurrentPlanId ?? currentPlanId ?? "UNKNOWN",
+                plan_current:
+                  normalizedCurrentPlanId ?? currentPlanId ?? "UNKNOWN",
                 price_cents: 9700,
               });
               router.push("/checkout/single?source=dashboard&type=payment");
@@ -243,29 +251,31 @@ export default function UpgradePlan({
           <div
             key={plan.id}
             className={`relative rounded-2xl border p-6 transition hover:shadow-md ${
-              isCurrent ? "opacity-60 pointer-events-none" : "border-gray-200"
+              isCurrent ? "opacity-60 pointer-events-none" : "border-border"
             }`}
           >
             {badge && (
               <div
                 className={`absolute -top-3 left-4 text-xs px-3 py-1 rounded-full ${
                   plan.badgeVariant === "secondary"
-                    ? "bg-green-100 text-green-800"
-                    : "bg-indigo-600 text-white"
+                    ? "bg-emerald-500/10 text-emerald-500"
+                    : "bg-primary text-primary-foreground"
                 }`}
                 aria-label={plan.badgeAriaLabel ?? badge}
               >
                 {badge}
               </div>
             )}
-            <h3 className="text-lg font-semibold">{plan.label}</h3>
-            <p className="text-sm text-gray-600">{plan.priceLabel}</p>
+            <h3 className="text-lg font-semibold text-foreground">
+              {plan.label}
+            </h3>
+            <p className="text-sm text-muted-foreground">{plan.priceLabel}</p>
             {plan.savingsLabel && (
-              <p className="text-xs text-green-700 font-medium mt-1">
+              <p className="text-xs text-emerald-500 font-medium mt-1">
                 {plan.savingsLabel}
               </p>
             )}
-            <ul className="mt-3 text-sm text-gray-700 space-y-1">
+            <ul className="mt-3 text-sm text-muted-foreground space-y-1">
               {highlights.map((item) => (
                 <li key={item}>{item}</li>
               ))}
@@ -286,8 +296,8 @@ export default function UpgradePlan({
       </div>
 
       {selectedPlan && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-xl">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+          <div className="bg-card rounded-2xl p-8 max-w-md w-full shadow-xl border border-border">
             <h2 className="text-xl font-bold mb-4">
               Confirm Upgrade to {selectedPlan.label}
             </h2>
@@ -299,8 +309,8 @@ export default function UpgradePlan({
               applied).
             </p>
             <p className="mb-2">
-              You’ll get: immediate credit top-up to the new rollover cap (if you
-              toggle top-up), {selectedPlan.conversationalAI.description},{" "}
+              You’ll get: immediate credit top-up to the new rollover cap (if
+              you toggle top-up), {selectedPlan.conversationalAI.description},{" "}
               rollover cap {selectedPlan.rolloverCap}.
             </p>
             <p className="text-xs text-gray-500">
@@ -324,7 +334,8 @@ export default function UpgradePlan({
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700"
                 onClick={async () => {
                   trackEvent("upgrade_confirm", {
-                    plan_from: normalizedCurrentPlanId ?? currentPlanId ?? "UNKNOWN",
+                    plan_from:
+                      normalizedCurrentPlanId ?? currentPlanId ?? "UNKNOWN",
                     plan_to: selectedPlan.id,
                     billing: selectedPlan.billingInterval,
                     price_cents: selectedPlan.priceCents,

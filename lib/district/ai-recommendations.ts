@@ -88,16 +88,10 @@ Guidelines:
 
 Cite frameworks where appropriate (e.g., MTSS, PBIS, SEL competencies)`;
 
-  const response = await getChatCompletion(
-    [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ],
-    {
-      temperature: 0.3, // Low temperature for consistency
-      max_tokens: 1500,
-    }
-  );
+  const response = await getChatCompletion([
+    { role: "system", content: systemPrompt },
+    { role: "user", content: userPrompt },
+  ]);
 
   let parsedResponse: RecommendationOutput;
   try {

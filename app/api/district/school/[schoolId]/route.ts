@@ -24,18 +24,22 @@ export async function GET(
       select: { role: true },
     });
 
-    if (dbUser?.role !== "DISTRICT_ADMIN") {
+    if (
+      !["DISTRICT_ADMIN", "PRINCIPAL", "ADMIN", "SUPER_ADMIN"].includes(
+        dbUser?.role || ""
+      )
+    ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Get district admin to verify access
-    const districtAdmin = await prisma.districtUser.findUnique({
+    // Get teacher record to verify district access
+    const teacher = await prisma.teacher.findUnique({
       where: { userId: user.id },
     });
 
-    if (!districtAdmin) {
+    if (!teacher) {
       return NextResponse.json(
-        { error: "Not a district admin" },
+        { error: "Not associated with a district" },
         { status: 403 }
       );
     }
@@ -44,7 +48,7 @@ export async function GET(
     const school = await prisma.school.findFirst({
       where: {
         id: schoolId,
-        districtId: districtAdmin.districtId,
+        districtId: teacher.districtId,
       },
       include: {
         classrooms: {
@@ -127,7 +131,6 @@ export async function GET(
       school: {
         id: school.id,
         name: school.name,
-        address: school.address,
       },
       metrics: {
         totalStudents,

@@ -75,7 +75,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     // Check if student has any assessments
-    const assessmentCount = await prisma.assessment.count({
+    const assessmentCount = await prisma.studentAssessment.count({
       where: { studentId },
     });
 
@@ -101,9 +101,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
           districtId: studentClassroom.classroom.school.districtId,
           userId: user.id,
           action: "DELETE_STUDENT",
-          resourceType: "STUDENT",
           resourceId: studentId,
-          details: {
+          metadata: {
             anonymousId: studentClassroom.student.anonymousId,
             assessmentCount: 0,
           },

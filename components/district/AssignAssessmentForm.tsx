@@ -25,7 +25,7 @@ interface Assessment {
 interface Student {
   id: string;
   anonymousId: string;
-  gradeLevel: string;
+  gradeLevel: string | null;
 }
 
 interface AssignAssessmentFormProps {
