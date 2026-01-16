@@ -1,23 +1,26 @@
 import { NextResponse } from "next/server";
-import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 /**
  * GET /api/user/onboarding-status
  * Returns whether the user needs to complete onboarding
- * Stored in user metadata
+ * Stored in Supabase auth user metadata
  */
 export async function GET() {
   try {
-    const user = await getCurrentUserWithRole();
+    // Get the Supabase auth user directly (not the database user)
+    // because onboarding state is stored in Supabase user_metadata
+    const supabase = await createServerSupabaseClient();
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
 
-    if (!user?.id) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+    if (error || !user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Check user metadata for onboarding status
+    // Check user metadata for onboarding status (from Supabase auth user)
     const metadata = user.user_metadata || {};
     const completedAt = metadata.onboarding_completed_at;
     const currentStep = metadata.onboarding_current_step || 0;

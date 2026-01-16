@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getDistrictUser } from "@/lib/district/access-control";
-import { DistrictDashboard } from "@/components/district/DistrictDashboard";
+import { DistrictAdminDashboard } from "@/components/district/DistrictAdminDashboard";
 
 export const metadata = {
   title: "District Dashboard | BehaviorIQ",
@@ -14,22 +14,13 @@ export default async function DistrictPage() {
     redirect("/login");
   }
 
-  if (
-    ![
-      "DISTRICT_ADMIN",
-      "PRINCIPAL",
-      "COUNSELOR",
-      "TEACHER",
-      "ADMIN",
-      "SUPER_ADMIN",
-    ].includes(user.role)
-  ) {
+  if (!["DISTRICT_ADMIN", "ADMIN", "SUPER_ADMIN"].includes(user.role)) {
+    // Redirect non-district-admin roles to their proper dashboards
+    if (user.role === "TEACHER") redirect("/teacher");
+    if (user.role === "COUNSELOR") redirect("/counselor");
+    if (user.role === "PRINCIPAL") redirect("/principal");
     redirect("/dashboard");
   }
 
-  return (
-    <div className="container mx-auto py-8 px-4">
-      <DistrictDashboard user={user} />
-    </div>
-  );
+  return <DistrictAdminDashboard user={user} />;
 }

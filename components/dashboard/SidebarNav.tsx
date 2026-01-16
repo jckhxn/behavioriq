@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
+import { useSignOut } from "@/lib/hooks/use-supabase-user";
 import {
   LayoutDashboard,
   FileText,
@@ -26,7 +27,10 @@ import {
   Moon,
   Sun,
   Library,
+  GraduationCap,
+  Lightbulb,
 } from "lucide-react";
+import { CompactRecommendationsWithModal } from "@/components/recommendations/CompactRecommendationsWithModal";
 
 interface NavItem {
   label: string;
@@ -113,12 +117,16 @@ const roleNavItems: Record<string, NavItem[]> = {
       label: "Risk Alerts",
       href: "/counselor?tab=alerts",
       icon: <Bell className="h-5 w-5" />,
-      badge: "3",
     },
     {
       label: "Reports",
       href: "/counselor?tab=reports",
       icon: <BarChart3 className="h-5 w-5" />,
+    },
+    {
+      label: "Library",
+      href: "/counselor?tab=library",
+      icon: <Library className="h-5 w-5" />,
     },
   ],
   PRINCIPAL: [
@@ -126,11 +134,6 @@ const roleNavItems: Record<string, NavItem[]> = {
       label: "Dashboard",
       href: "/principal",
       icon: <LayoutDashboard className="h-5 w-5" />,
-    },
-    {
-      label: "School Overview",
-      href: "/principal?tab=overview",
-      icon: <School className="h-5 w-5" />,
     },
     {
       label: "Staff",
@@ -141,6 +144,16 @@ const roleNavItems: Record<string, NavItem[]> = {
       label: "Analytics",
       href: "/principal?tab=analytics",
       icon: <BarChart3 className="h-5 w-5" />,
+    },
+    {
+      label: "Reports",
+      href: "/principal?tab=reports",
+      icon: <FileText className="h-5 w-5" />,
+    },
+    {
+      label: "Library",
+      href: "/principal?tab=library",
+      icon: <Library className="h-5 w-5" />,
     },
   ],
   DISTRICT_ADMIN: [
@@ -163,6 +176,16 @@ const roleNavItems: Record<string, NavItem[]> = {
       label: "Users",
       href: "/district?tab=users",
       icon: <Users className="h-5 w-5" />,
+    },
+    {
+      label: "Students",
+      href: "/district?tab=students",
+      icon: <GraduationCap className="h-5 w-5" />,
+    },
+    {
+      label: "Library",
+      href: "/district?tab=library",
+      icon: <Library className="h-5 w-5" />,
     },
   ],
   ADMIN: [
@@ -226,6 +249,10 @@ export function SidebarNav({
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { theme, setTheme } = useTheme();
+  const { signOut: supabaseSignOut } = useSignOut();
+
+  // Use provided onSignOut or default to supabase signOut
+  const handleSignOut = onSignOut || supabaseSignOut;
 
   const navItems = roleNavItems[userRole] || roleNavItems.PARENT;
 
@@ -292,11 +319,33 @@ export function SidebarNav({
       </div>
 
       {/* Main Navigation */}
-      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+      <nav className="p-4 space-y-1">
         {navItems.map((item) => (
           <NavLink key={item.href} item={item} />
         ))}
       </nav>
+
+      {/* Recommendations Section */}
+      <AnimatePresence>
+        {!collapsed && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="flex-1 border-t border-border px-4 py-3 overflow-hidden"
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <Lightbulb className="h-4 w-4 text-muted-foreground" />
+              <h3 className="text-sm font-medium text-muted-foreground">
+                Recommendations
+              </h3>
+            </div>
+            <div className="max-h-[200px] overflow-y-auto">
+              <CompactRecommendationsWithModal />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Bottom Navigation */}
       <div className="p-4 border-t border-border space-y-1">
@@ -329,7 +378,7 @@ export function SidebarNav({
         </button>
 
         <button
-          onClick={onSignOut}
+          onClick={handleSignOut}
           className={cn(
             "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200",
             "text-muted-foreground hover:bg-destructive/10 hover:text-destructive"

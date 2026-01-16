@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 /**
  * POST /api/user/onboarding-complete
@@ -11,15 +12,27 @@ export async function POST() {
     const user = await getCurrentUserWithRole();
 
     if (!user?.id) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // In a real implementation, you'd update the user's metadata here
-    // For now, return success with timestamp
     const completedAt = new Date().toISOString();
+
+    // Update user metadata to mark onboarding as completed
+    const supabase = await createServerSupabaseClient();
+    const { error } = await supabase.auth.updateUser({
+      data: {
+        onboarding_completed_at: completedAt,
+        onboarding_skipped: false,
+      },
+    });
+
+    if (error) {
+      console.error("[/api/user/onboarding-complete] Supabase error:", error);
+      return NextResponse.json(
+        { error: "Failed to update user metadata" },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,

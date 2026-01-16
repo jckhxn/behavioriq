@@ -53,17 +53,23 @@ function HomeContent() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("dashboard");
   const { showWelcome, startTour, skipTour } = useOnboarding();
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   // Redirect district roles to their respective dashboards
   useEffect(() => {
     if (!isLoading && userData) {
-      if (userData.role === "TEACHER") {
+      const role = userData.role;
+      if (role === "TEACHER") {
+        setIsRedirecting(true);
         router.replace("/teacher");
-      } else if (userData.role === "COUNSELOR") {
+      } else if (role === "COUNSELOR") {
+        setIsRedirecting(true);
         router.replace("/counselor");
-      } else if (userData.role === "PRINCIPAL") {
+      } else if (role === "PRINCIPAL") {
+        setIsRedirecting(true);
         router.replace("/principal");
-      } else if (userData.role === "DISTRICT_ADMIN") {
+      } else if (role === "DISTRICT_ADMIN") {
+        setIsRedirecting(true);
         router.replace("/district");
       }
     }
@@ -146,7 +152,8 @@ function HomeContent() {
     }
   }, [searchParams]);
 
-  if (isLoading) {
+  // Show loading while checking auth or redirecting
+  if (isLoading || isRedirecting) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4">
@@ -158,6 +165,32 @@ function HomeContent() {
         </div>
       </div>
     );
+  }
+
+  // Check if user should be redirected (prevents flash of old dashboard)
+  if (userData) {
+    const role = userData.role;
+    if (
+      role === "TEACHER" ||
+      role === "COUNSELOR" ||
+      role === "PRINCIPAL" ||
+      role === "DISTRICT_ADMIN"
+    ) {
+      // Still waiting for redirect to happen
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <Brain className="h-12 w-12 animate-pulse mx-auto text-primary" />
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-muted-foreground">
+                Redirecting to your dashboard...
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
   }
 
   if (!userData) {
