@@ -43,10 +43,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!teacher) {
-      return NextResponse.json(
-        { error: "Teacher not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Teacher not found" }, { status: 404 });
     }
 
     const hasAccess = teacher.classrooms.some((tc) =>

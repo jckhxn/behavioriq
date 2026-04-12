@@ -177,23 +177,28 @@ export function StudentProfilePage({
         ) {
           studentData.recommendations = [responseData.recommendations];
         }
-        
+
         // Parse JSON fields in recommendations
         if (studentData.recommendations) {
-          studentData.recommendations = studentData.recommendations.map((rec: any) => ({
-            ...rec,
-            schoolStrategies: typeof rec.schoolStrategies === 'string' 
-              ? JSON.parse(rec.schoolStrategies) 
-              : rec.schoolStrategies,
-            classroomAccommodations: typeof rec.classroomAccommodations === 'string'
-              ? JSON.parse(rec.classroomAccommodations)
-              : rec.classroomAccommodations,
-            parentNextSteps: typeof rec.parentNextSteps === 'string'
-              ? JSON.parse(rec.parentNextSteps)
-              : rec.parentNextSteps,
-          }));
+          studentData.recommendations = studentData.recommendations.map(
+            (rec: any) => ({
+              ...rec,
+              schoolStrategies:
+                typeof rec.schoolStrategies === "string"
+                  ? JSON.parse(rec.schoolStrategies)
+                  : rec.schoolStrategies,
+              classroomAccommodations:
+                typeof rec.classroomAccommodations === "string"
+                  ? JSON.parse(rec.classroomAccommodations)
+                  : rec.classroomAccommodations,
+              parentNextSteps:
+                typeof rec.parentNextSteps === "string"
+                  ? JSON.parse(rec.parentNextSteps)
+                  : rec.parentNextSteps,
+            })
+          );
         }
-        
+
         console.log("[StudentProfilePage] Data loaded:", studentData);
         setData(studentData);
       } else {

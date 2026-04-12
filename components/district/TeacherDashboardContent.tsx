@@ -138,19 +138,25 @@ export function TeacherDashboardContentNew() {
   const [copiedStudentId, setCopiedStudentId] = useState<string | null>(null);
 
   // State for inline student profile view
-  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
-  
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(
+    null
+  );
+
   // State for home assessment creation modal
   const [homeAssessmentModal, setHomeAssessmentModal] = useState<{
     open: boolean;
     studentId: string | null;
     studentName: string;
   }>({ open: false, studentId: null, studentName: "" });
-  const [assessmentTemplates, setAssessmentTemplates] = useState<AssessmentTemplate[]>([]);
+  const [assessmentTemplates, setAssessmentTemplates] = useState<
+    AssessmentTemplate[]
+  >([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [creatingLink, setCreatingLink] = useState(false);
-  const [homeAssessmentLinks, setHomeAssessmentLinks] = useState<Map<string, HomeAssessmentLink>>(new Map());
-  
+  const [homeAssessmentLinks, setHomeAssessmentLinks] = useState<
+    Map<string, HomeAssessmentLink>
+  >(new Map());
+
   // State for share/export modal
   const [shareModal, setShareModal] = useState<{
     open: boolean;
@@ -184,7 +190,7 @@ export function TeacherDashboardContentNew() {
   // Create home assessment link
   const createHomeAssessmentLink = async () => {
     if (!homeAssessmentModal.studentId || !selectedTemplateId) return;
-    
+
     setCreatingLink(true);
     try {
       const res = await fetch("/api/teacher/home-assessment-link", {
@@ -195,21 +201,24 @@ export function TeacherDashboardContentNew() {
           templateId: selectedTemplateId,
         }),
       });
-      
+
       if (res.ok) {
         const data = await res.json();
-        setHomeAssessmentLinks(prev => new Map(prev).set(
-          homeAssessmentModal.studentId!,
-          {
+        setHomeAssessmentLinks((prev) =>
+          new Map(prev).set(homeAssessmentModal.studentId!, {
             studentId: homeAssessmentModal.studentId!,
             templateId: selectedTemplateId,
             linkCode: data.linkCode,
             createdAt: new Date().toISOString(),
-          }
-        ));
-        setHomeAssessmentModal({ open: false, studentId: null, studentName: "" });
+          })
+        );
+        setHomeAssessmentModal({
+          open: false,
+          studentId: null,
+          studentName: "",
+        });
         setSelectedTemplateId("");
-        
+
         // Copy link to clipboard
         const link = `${window.location.origin}/assessment/home?code=${data.linkCode}`;
         await navigator.clipboard.writeText(link);
@@ -240,8 +249,9 @@ export function TeacherDashboardContentNew() {
   };
 
   // Check if student has assessment link
-  const hasAssessmentLink = (studentId: string) => homeAssessmentLinks.has(studentId);
-  
+  const hasAssessmentLink = (studentId: string) =>
+    homeAssessmentLinks.has(studentId);
+
   // Check if student has started/completed assessment
   const hasAssessment = (student: Student) => student._count.assessments > 0;
 
@@ -490,8 +500,8 @@ export function TeacherDashboardContentNew() {
           title="Student Profile"
           description="View student details and assessment history"
           actions={
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setSelectedStudentId(null)}
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -521,21 +531,32 @@ export function TeacherDashboardContentNew() {
         }
       >
         {/* Home Assessment Modal */}
-        <Dialog 
-          open={homeAssessmentModal.open} 
-          onOpenChange={(open) => !open && setHomeAssessmentModal({ open: false, studentId: null, studentName: "" })}
+        <Dialog
+          open={homeAssessmentModal.open}
+          onOpenChange={(open) =>
+            !open &&
+            setHomeAssessmentModal({
+              open: false,
+              studentId: null,
+              studentName: "",
+            })
+          }
         >
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Create Home Assessment Link</DialogTitle>
               <DialogDescription>
-                Select an assessment domain for {homeAssessmentModal.studentName} to complete at home.
+                Select an assessment domain for{" "}
+                {homeAssessmentModal.studentName} to complete at home.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label>Assessment Type</Label>
-                <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                <Select
+                  value={selectedTemplateId}
+                  onValueChange={setSelectedTemplateId}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select assessment domain..." />
                   </SelectTrigger>
@@ -547,7 +568,9 @@ export function TeacherDashboardContentNew() {
                         </SelectItem>
                       ))
                     ) : (
-                      <SelectItem value="default">Behavioral Wellness Assessment</SelectItem>
+                      <SelectItem value="default">
+                        Behavioral Wellness Assessment
+                      </SelectItem>
                     )}
                   </SelectContent>
                 </Select>
@@ -555,21 +578,31 @@ export function TeacherDashboardContentNew() {
               <Alert>
                 <Lock className="h-4 w-4" />
                 <p className="text-sm">
-                  This link will be unique to {homeAssessmentModal.studentName} and can only be used once.
-                  Parents will need to consent before starting.
+                  This link will be unique to {homeAssessmentModal.studentName}{" "}
+                  and can only be used once. Parents will need to consent before
+                  starting.
                 </p>
               </Alert>
             </div>
             <DialogFooter>
-              <Button 
-                variant="outline" 
-                onClick={() => setHomeAssessmentModal({ open: false, studentId: null, studentName: "" })}
+              <Button
+                variant="outline"
+                onClick={() =>
+                  setHomeAssessmentModal({
+                    open: false,
+                    studentId: null,
+                    studentName: "",
+                  })
+                }
               >
                 Cancel
               </Button>
-              <Button 
+              <Button
                 onClick={createHomeAssessmentLink}
-                disabled={creatingLink || (!selectedTemplateId && assessmentTemplates.length > 0)}
+                disabled={
+                  creatingLink ||
+                  (!selectedTemplateId && assessmentTemplates.length > 0)
+                }
               >
                 {creatingLink ? (
                   <>
@@ -588,15 +621,19 @@ export function TeacherDashboardContentNew() {
         </Dialog>
 
         {/* Share/Export Modal */}
-        <Dialog 
-          open={shareModal.open} 
-          onOpenChange={(open) => !open && setShareModal({ open: false, studentId: null, studentName: "" })}
+        <Dialog
+          open={shareModal.open}
+          onOpenChange={(open) =>
+            !open &&
+            setShareModal({ open: false, studentId: null, studentName: "" })
+          }
         >
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Share Student Report</DialogTitle>
               <DialogDescription>
-                Configure privacy settings for sharing {shareModal.studentName}&apos;s report.
+                Configure privacy settings for sharing {shareModal.studentName}
+                &apos;s report.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -604,55 +641,83 @@ export function TeacherDashboardContentNew() {
                 <Label>Include in Report</Label>
                 <div className="space-y-2">
                   <div className="flex items-center space-x-2">
-                    <Checkbox 
+                    <Checkbox
                       id="includeScores"
                       checked={shareSettings.includeScores}
-                      onCheckedChange={(checked) => 
-                        setShareSettings(prev => ({ ...prev, includeScores: checked === true }))
+                      onCheckedChange={(checked) =>
+                        setShareSettings((prev) => ({
+                          ...prev,
+                          includeScores: checked === true,
+                        }))
                       }
                     />
-                    <Label htmlFor="includeScores" className="font-normal">Assessment scores</Label>
+                    <Label htmlFor="includeScores" className="font-normal">
+                      Assessment scores
+                    </Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Checkbox 
+                    <Checkbox
                       id="includeRecommendations"
                       checked={shareSettings.includeRecommendations}
-                      onCheckedChange={(checked) => 
-                        setShareSettings(prev => ({ ...prev, includeRecommendations: checked === true }))
+                      onCheckedChange={(checked) =>
+                        setShareSettings((prev) => ({
+                          ...prev,
+                          includeRecommendations: checked === true,
+                        }))
                       }
                     />
-                    <Label htmlFor="includeRecommendations" className="font-normal">Recommendations</Label>
+                    <Label
+                      htmlFor="includeRecommendations"
+                      className="font-normal"
+                    >
+                      Recommendations
+                    </Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Checkbox 
+                    <Checkbox
                       id="includeProgress"
                       checked={shareSettings.includeProgress}
-                      onCheckedChange={(checked) => 
-                        setShareSettings(prev => ({ ...prev, includeProgress: checked === true }))
+                      onCheckedChange={(checked) =>
+                        setShareSettings((prev) => ({
+                          ...prev,
+                          includeProgress: checked === true,
+                        }))
                       }
                     />
-                    <Label htmlFor="includeProgress" className="font-normal">Progress history</Label>
+                    <Label htmlFor="includeProgress" className="font-normal">
+                      Progress history
+                    </Label>
                   </div>
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>Privacy Options</Label>
                 <div className="flex items-center space-x-2">
-                  <Checkbox 
+                  <Checkbox
                     id="anonymize"
                     checked={shareSettings.anonymize}
-                    onCheckedChange={(checked) => 
-                      setShareSettings(prev => ({ ...prev, anonymize: checked === true }))
+                    onCheckedChange={(checked) =>
+                      setShareSettings((prev) => ({
+                        ...prev,
+                        anonymize: checked === true,
+                      }))
                     }
                   />
-                  <Label htmlFor="anonymize" className="font-normal">Anonymize student identity</Label>
+                  <Label htmlFor="anonymize" className="font-normal">
+                    Anonymize student identity
+                  </Label>
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>Link Expiration</Label>
-                <Select 
-                  value={String(shareSettings.expiresInDays)} 
-                  onValueChange={(val) => setShareSettings(prev => ({ ...prev, expiresInDays: parseInt(val) }))}
+                <Select
+                  value={String(shareSettings.expiresInDays)}
+                  onValueChange={(val) =>
+                    setShareSettings((prev) => ({
+                      ...prev,
+                      expiresInDays: parseInt(val),
+                    }))
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -667,7 +732,16 @@ export function TeacherDashboardContentNew() {
               </div>
             </div>
             <DialogFooter className="flex gap-2">
-              <Button variant="outline" onClick={() => setShareModal({ open: false, studentId: null, studentName: "" })}>
+              <Button
+                variant="outline"
+                onClick={() =>
+                  setShareModal({
+                    open: false,
+                    studentId: null,
+                    studentName: "",
+                  })
+                }
+              >
                 Cancel
               </Button>
               <Button variant="outline">
@@ -819,7 +893,7 @@ export function TeacherDashboardContentNew() {
                             >
                               <Eye className="h-4 w-4" />
                             </button>
-                            
+
                             {/* Start Assessment - only if no assessment yet */}
                             {!hasAssessment(student) && (
                               <button
@@ -834,7 +908,7 @@ export function TeacherDashboardContentNew() {
                                 <PlayCircle className="h-4 w-4" />
                               </button>
                             )}
-                            
+
                             {/* Home Assessment Link - Create or Copy */}
                             {hasAssessmentLink(student.id) ? (
                               <button
@@ -867,23 +941,26 @@ export function TeacherDashboardContentNew() {
                                 <Send className="h-4 w-4" />
                               </button>
                             )}
-                            
+
                             {/* Share/Export - only if has completed assessment */}
-                            {hasAssessment(student) && student.assessmentStatus === "completed" && (
-                              <button
-                                onClick={() =>
-                                  setShareModal({
-                                    open: true,
-                                    studentId: student.id,
-                                    studentName: student.firstName || student.anonymousId,
-                                  })
-                                }
-                                className="p-2 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                                title="Share/Export Report"
-                              >
-                                <Share2 className="h-4 w-4" />
-                              </button>
-                            )}
+                            {hasAssessment(student) &&
+                              student.assessmentStatus === "completed" && (
+                                <button
+                                  onClick={() =>
+                                    setShareModal({
+                                      open: true,
+                                      studentId: student.id,
+                                      studentName:
+                                        student.firstName ||
+                                        student.anonymousId,
+                                    })
+                                  }
+                                  className="p-2 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                                  title="Share/Export Report"
+                                >
+                                  <Share2 className="h-4 w-4" />
+                                </button>
+                              )}
                           </div>
                         </td>
                       </tr>
@@ -1002,21 +1079,32 @@ export function TeacherDashboardContentNew() {
       }
     >
       {/* Home Assessment Modal (shared with default dashboard) */}
-      <Dialog 
-        open={homeAssessmentModal.open} 
-        onOpenChange={(open) => !open && setHomeAssessmentModal({ open: false, studentId: null, studentName: "" })}
+      <Dialog
+        open={homeAssessmentModal.open}
+        onOpenChange={(open) =>
+          !open &&
+          setHomeAssessmentModal({
+            open: false,
+            studentId: null,
+            studentName: "",
+          })
+        }
       >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create Home Assessment Link</DialogTitle>
             <DialogDescription>
-              Select an assessment domain for {homeAssessmentModal.studentName} to complete at home.
+              Select an assessment domain for {homeAssessmentModal.studentName}{" "}
+              to complete at home.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Assessment Type</Label>
-              <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+              <Select
+                value={selectedTemplateId}
+                onValueChange={setSelectedTemplateId}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select assessment domain..." />
                 </SelectTrigger>
@@ -1028,7 +1116,9 @@ export function TeacherDashboardContentNew() {
                       </SelectItem>
                     ))
                   ) : (
-                    <SelectItem value="default">Behavioral Wellness Assessment</SelectItem>
+                    <SelectItem value="default">
+                      Behavioral Wellness Assessment
+                    </SelectItem>
                   )}
                 </SelectContent>
               </Select>
@@ -1036,20 +1126,30 @@ export function TeacherDashboardContentNew() {
             <Alert>
               <Lock className="h-4 w-4" />
               <p className="text-sm">
-                This link will be unique to {homeAssessmentModal.studentName} and can only be used once.
+                This link will be unique to {homeAssessmentModal.studentName}{" "}
+                and can only be used once.
               </p>
             </Alert>
           </div>
           <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setHomeAssessmentModal({ open: false, studentId: null, studentName: "" })}
+            <Button
+              variant="outline"
+              onClick={() =>
+                setHomeAssessmentModal({
+                  open: false,
+                  studentId: null,
+                  studentName: "",
+                })
+              }
             >
               Cancel
             </Button>
-            <Button 
+            <Button
               onClick={createHomeAssessmentLink}
-              disabled={creatingLink || (!selectedTemplateId && assessmentTemplates.length > 0)}
+              disabled={
+                creatingLink ||
+                (!selectedTemplateId && assessmentTemplates.length > 0)
+              }
             >
               {creatingLink ? (
                 <>
@@ -1068,15 +1168,19 @@ export function TeacherDashboardContentNew() {
       </Dialog>
 
       {/* Share/Export Modal (shared with default dashboard) */}
-      <Dialog 
-        open={shareModal.open} 
-        onOpenChange={(open) => !open && setShareModal({ open: false, studentId: null, studentName: "" })}
+      <Dialog
+        open={shareModal.open}
+        onOpenChange={(open) =>
+          !open &&
+          setShareModal({ open: false, studentId: null, studentName: "" })
+        }
       >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Share Student Report</DialogTitle>
             <DialogDescription>
-              Configure privacy settings for sharing {shareModal.studentName}&apos;s report.
+              Configure privacy settings for sharing {shareModal.studentName}
+              &apos;s report.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -1084,55 +1188,83 @@ export function TeacherDashboardContentNew() {
               <Label>Include in Report</Label>
               <div className="space-y-2">
                 <div className="flex items-center space-x-2">
-                  <Checkbox 
+                  <Checkbox
                     id="includeScores2"
                     checked={shareSettings.includeScores}
-                    onCheckedChange={(checked) => 
-                      setShareSettings(prev => ({ ...prev, includeScores: checked === true }))
+                    onCheckedChange={(checked) =>
+                      setShareSettings((prev) => ({
+                        ...prev,
+                        includeScores: checked === true,
+                      }))
                     }
                   />
-                  <Label htmlFor="includeScores2" className="font-normal">Assessment scores</Label>
+                  <Label htmlFor="includeScores2" className="font-normal">
+                    Assessment scores
+                  </Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Checkbox 
+                  <Checkbox
                     id="includeRecommendations2"
                     checked={shareSettings.includeRecommendations}
-                    onCheckedChange={(checked) => 
-                      setShareSettings(prev => ({ ...prev, includeRecommendations: checked === true }))
+                    onCheckedChange={(checked) =>
+                      setShareSettings((prev) => ({
+                        ...prev,
+                        includeRecommendations: checked === true,
+                      }))
                     }
                   />
-                  <Label htmlFor="includeRecommendations2" className="font-normal">Recommendations</Label>
+                  <Label
+                    htmlFor="includeRecommendations2"
+                    className="font-normal"
+                  >
+                    Recommendations
+                  </Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Checkbox 
+                  <Checkbox
                     id="includeProgress2"
                     checked={shareSettings.includeProgress}
-                    onCheckedChange={(checked) => 
-                      setShareSettings(prev => ({ ...prev, includeProgress: checked === true }))
+                    onCheckedChange={(checked) =>
+                      setShareSettings((prev) => ({
+                        ...prev,
+                        includeProgress: checked === true,
+                      }))
                     }
                   />
-                  <Label htmlFor="includeProgress2" className="font-normal">Progress history</Label>
+                  <Label htmlFor="includeProgress2" className="font-normal">
+                    Progress history
+                  </Label>
                 </div>
               </div>
             </div>
             <div className="space-y-2">
               <Label>Privacy Options</Label>
               <div className="flex items-center space-x-2">
-                <Checkbox 
+                <Checkbox
                   id="anonymize2"
                   checked={shareSettings.anonymize}
-                  onCheckedChange={(checked) => 
-                    setShareSettings(prev => ({ ...prev, anonymize: checked === true }))
+                  onCheckedChange={(checked) =>
+                    setShareSettings((prev) => ({
+                      ...prev,
+                      anonymize: checked === true,
+                    }))
                   }
                 />
-                <Label htmlFor="anonymize2" className="font-normal">Anonymize student identity</Label>
+                <Label htmlFor="anonymize2" className="font-normal">
+                  Anonymize student identity
+                </Label>
               </div>
             </div>
             <div className="space-y-2">
               <Label>Link Expiration</Label>
-              <Select 
-                value={String(shareSettings.expiresInDays)} 
-                onValueChange={(val) => setShareSettings(prev => ({ ...prev, expiresInDays: parseInt(val) }))}
+              <Select
+                value={String(shareSettings.expiresInDays)}
+                onValueChange={(val) =>
+                  setShareSettings((prev) => ({
+                    ...prev,
+                    expiresInDays: parseInt(val),
+                  }))
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -1147,7 +1279,12 @@ export function TeacherDashboardContentNew() {
             </div>
           </div>
           <DialogFooter className="flex gap-2">
-            <Button variant="outline" onClick={() => setShareModal({ open: false, studentId: null, studentName: "" })}>
+            <Button
+              variant="outline"
+              onClick={() =>
+                setShareModal({ open: false, studentId: null, studentName: "" })
+              }
+            >
               Cancel
             </Button>
             <Button variant="outline">
@@ -1427,14 +1564,17 @@ export function TeacherDashboardContentNew() {
                             onClick={() => {
                               // Navigate to students tab and select this student
                               router.push(`/teacher?tab=students`);
-                              setTimeout(() => setSelectedStudentId(student.id), 100);
+                              setTimeout(
+                                () => setSelectedStudentId(student.id),
+                                100
+                              );
                             }}
                             className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
                             title="View Profile"
                           >
                             <Eye className="h-4 w-4" />
                           </button>
-                          
+
                           {/* Start Assessment - only if no assessment yet */}
                           {!hasAssessment(student) && (
                             <button
@@ -1449,7 +1589,7 @@ export function TeacherDashboardContentNew() {
                               <PlayCircle className="h-4 w-4" />
                             </button>
                           )}
-                          
+
                           {/* Home Assessment Link - Create or Copy */}
                           {hasAssessmentLink(student.id) ? (
                             <button
@@ -1482,23 +1622,25 @@ export function TeacherDashboardContentNew() {
                               <Send className="h-4 w-4" />
                             </button>
                           )}
-                          
+
                           {/* Share/Export - only if has completed assessment */}
-                          {hasAssessment(student) && student.assessmentStatus === "completed" && (
-                            <button
-                              onClick={() =>
-                                setShareModal({
-                                  open: true,
-                                  studentId: student.id,
-                                  studentName: student.firstName || student.anonymousId,
-                                })
-                              }
-                              className="p-2 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                              title="Share/Export Report"
-                            >
-                              <Share2 className="h-4 w-4" />
-                            </button>
-                          )}
+                          {hasAssessment(student) &&
+                            student.assessmentStatus === "completed" && (
+                              <button
+                                onClick={() =>
+                                  setShareModal({
+                                    open: true,
+                                    studentId: student.id,
+                                    studentName:
+                                      student.firstName || student.anonymousId,
+                                  })
+                                }
+                                className="p-2 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                                title="Share/Export Report"
+                              >
+                                <Share2 className="h-4 w-4" />
+                              </button>
+                            )}
                         </div>
                       </td>
                     </motion.tr>

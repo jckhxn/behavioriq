@@ -44,12 +44,18 @@ export async function GET(request: NextRequest) {
 
       if (!assessment) {
         return NextResponse.json(
-          { error: "Invalid link. Please contact your teacher for a valid link." },
+          {
+            error:
+              "Invalid link. Please contact your teacher for a valid link.",
+          },
           { status: 404 }
         );
       }
 
-      if (assessment.status === "COMPLETED" || assessment.status === "ABANDONED") {
+      if (
+        assessment.status === "COMPLETED" ||
+        assessment.status === "ABANDONED"
+      ) {
         return NextResponse.json(
           { error: "This assessment has already been completed." },
           { status: 400 }
@@ -61,18 +67,26 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.json({
         assessmentId: assessment.id,
-        student: student ? {
-          anonymousId: student.anonymousId,
-          gradeLevel: student.gradeLevel,
-          schoolName: classroom?.school?.name || "School",
-          classroomName: classroom?.name || "Class",
-        } : null,
-        assessmentTemplates: assessment.assessmentTemplate ? [{
-          id: assessment.assessmentTemplate.id,
-          name: assessment.assessmentTemplate.name,
-          description: assessment.assessmentTemplate.description || "Behavioral wellness assessment",
-          estimatedTime: 15,
-        }] : [],
+        student: student
+          ? {
+              anonymousId: student.anonymousId,
+              gradeLevel: student.gradeLevel,
+              schoolName: classroom?.school?.name || "School",
+              classroomName: classroom?.name || "Class",
+            }
+          : null,
+        assessmentTemplates: assessment.assessmentTemplate
+          ? [
+              {
+                id: assessment.assessmentTemplate.id,
+                name: assessment.assessmentTemplate.name,
+                description:
+                  assessment.assessmentTemplate.description ||
+                  "Behavioral wellness assessment",
+                estimatedTime: 15,
+              },
+            ]
+          : [],
       });
     } catch (error) {
       console.error("Error verifying link code:", error);
@@ -85,10 +99,7 @@ export async function GET(request: NextRequest) {
 
   // Handle student ID verification (legacy method)
   if (!studentId) {
-    return NextResponse.json(
-      { error: "Invalid request" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
   try {

@@ -58,8 +58,6 @@ export const pseoConfig: PSEOConfig = {
             name: true,
             description: true,
             // grade: true, // removed grade level logic
-            subject: true,
-            category: true,
             isActive: true,
             createdAt: true,
             updatedAt: true,

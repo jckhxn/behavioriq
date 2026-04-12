@@ -70,7 +70,9 @@ function HomeAssessmentContent() {
       // Verify by student ID (legacy method)
       fetchStudentInfo();
     } else {
-      setError("Invalid assessment link. Please contact your teacher for a valid link.");
+      setError(
+        "Invalid assessment link. Please contact your teacher for a valid link."
+      );
       setLoading(false);
     }
   }, [studentId, linkCode]);
@@ -83,7 +85,9 @@ function HomeAssessmentContent() {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || "Unable to verify link. It may be invalid or expired.");
+        setError(
+          data.error || "Unable to verify link. It may be invalid or expired."
+        );
         setLoading(false);
         return;
       }
@@ -108,7 +112,9 @@ function HomeAssessmentContent() {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || "Unable to verify student. Link may be invalid.");
+        setError(
+          data.error || "Unable to verify student. Link may be invalid."
+        );
         setLoading(false);
         return;
       }
@@ -152,7 +158,9 @@ function HomeAssessmentContent() {
       // Redirect to the assessment
       router.push(`/assessment/${data.assessmentId}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to start assessment");
+      setError(
+        err instanceof Error ? err.message : "Failed to start assessment"
+      );
       setSubmitting(false);
     }
   };
@@ -163,7 +171,9 @@ function HomeAssessmentContent() {
         <Card className="w-full max-w-md">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-            <p className="text-muted-foreground">Verifying assessment link...</p>
+            <p className="text-muted-foreground">
+              Verifying assessment link...
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -191,7 +201,8 @@ function HomeAssessmentContent() {
           </CardContent>
           <CardFooter>
             <p className="text-sm text-muted-foreground text-center w-full">
-              Please contact your child&apos;s teacher for a new assessment link.
+              Please contact your child&apos;s teacher for a new assessment
+              link.
             </p>
           </CardFooter>
         </Card>
@@ -228,10 +239,13 @@ function HomeAssessmentContent() {
                   <User className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <p className="font-medium">Student {studentInfo.anonymousId}</p>
+                  <p className="font-medium">
+                    Student {studentInfo.anonymousId}
+                  </p>
                   <p className="text-sm text-muted-foreground">
                     {studentInfo.classroomName} • {studentInfo.schoolName}
-                    {studentInfo.gradeLevel && ` • Grade ${studentInfo.gradeLevel}`}
+                    {studentInfo.gradeLevel &&
+                      ` • Grade ${studentInfo.gradeLevel}`}
                   </p>
                 </div>
               </div>
@@ -241,7 +255,9 @@ function HomeAssessmentContent() {
           {step === "verify" && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="guardianName">Your Name (Parent/Guardian) *</Label>
+                <Label htmlFor="guardianName">
+                  Your Name (Parent/Guardian) *
+                </Label>
                 <Input
                   id="guardianName"
                   placeholder="Enter your full name"
