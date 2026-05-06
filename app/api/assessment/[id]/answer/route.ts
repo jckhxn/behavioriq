@@ -1,10 +1,98 @@
 import { NextRequest, NextResponse } from "next/server";
+import { RiskLevel } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 
 interface AnswerPayload {
   qid: string;
   value: number | string | boolean;
 }
+
+const normalizeNumeric = (v: unknown): number | null => {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string") {
+    const parsed = Number(v);
+    if (!Number.isNaN(parsed) && Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+};
+
+const DEFAULT_RISK_THRESHOLDS = {
+  VERY_HIGH: 75,
+  HIGH: 50,
+  MODERATE: 25,
+} as const;
+
+const defaultRiskLevel = (percentage: number): RiskLevel => {
+  if (percentage >= DEFAULT_RISK_THRESHOLDS.VERY_HIGH) return "VERY_HIGH";
+  if (percentage >= DEFAULT_RISK_THRESHOLDS.HIGH) return "HIGH";
+  if (percentage >= DEFAULT_RISK_THRESHOLDS.MODERATE) return "MODERATE";
+  return "LOW";
+};
+
+const determineRiskLevel = (
+  rawScore: number,
+  percentage: number,
+  scoringConfig?: any
+): RiskLevel => {
+  const parseValue = (value: unknown): number | null => {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : null;
+  };
+
+  if (scoringConfig && typeof scoringConfig === "object") {
+    const thresholdsSource =
+      scoringConfig.riskThresholds || scoringConfig.thresholds || undefined;
+
+    if (thresholdsSource && typeof thresholdsSource === "object") {
+      const thresholds = Object.entries(thresholdsSource).reduce<Record<string, number>>(
+        (acc, [key, value]) => {
+          const numeric = parseValue(value);
+          if (numeric !== null) {
+            acc[key.toLowerCase()] = numeric;
+          }
+          return acc;
+        },
+        {}
+      );
+
+      if (
+        thresholds["very_high"] !== undefined &&
+        rawScore >= thresholds["very_high"]
+      ) {
+        return "VERY_HIGH";
+      }
+      if (
+        thresholds["veryhigh"] !== undefined &&
+        rawScore >= thresholds["veryhigh"]
+      ) {
+        return "VERY_HIGH";
+      }
+      if (thresholds["severe"] !== undefined && rawScore >= thresholds["severe"]) {
+        return "VERY_HIGH";
+      }
+      if (thresholds["high"] !== undefined && rawScore >= thresholds["high"]) {
+        return "HIGH";
+      }
+      if (
+        thresholds["elevated"] !== undefined &&
+        rawScore >= thresholds["elevated"]
+      ) {
+        return "HIGH";
+      }
+      if (
+        thresholds["moderate"] !== undefined &&
+        rawScore >= thresholds["moderate"]
+      ) {
+        return "MODERATE";
+      }
+      if (thresholds["watch"] !== undefined && rawScore >= thresholds["watch"]) {
+        return "MODERATE";
+      }
+    }
+  }
+
+  return defaultRiskLevel(percentage);
+};
 
 /**
  * POST /api/assessment/:id/answer
@@ -40,6 +128,7 @@ export async function POST(
                     id: true,
                     name: true,
                     questions: true, // Make sure questions are loaded
+                    scoringConfig: true,
                   },
                 },
               },
@@ -67,20 +156,37 @@ export async function POST(
       );
     }
 
-    // Convert value to string response
-    let stringValue = String(value);
+    // Convert value to persisted response and score (supports Likert and custom option values)
+    const stringValue = String(value);
     let scoreValue = 0;
 
-    // If it's a boolean/number, convert to numeric score
-    let boolValue = false;
-    if (typeof value === "boolean") {
-      boolValue = value;
-    } else if (typeof value === "number") {
-      boolValue = value !== 0;
-      scoreValue = value !== 0 ? 1 : 0;
+    const allTemplateQuestions = assessment.assessmentTemplate.domains.flatMap(
+      (d: any) => (Array.isArray(d?.domainTemplate?.questions) ? d.domainTemplate.questions : [])
+    );
+    const currentQuestion = allTemplateQuestions.find((q: any) => q?.id === qid);
+
+    const directNumeric = normalizeNumeric(value);
+    if (directNumeric !== null) {
+      scoreValue = directNumeric;
+    } else if (typeof value === "boolean") {
+      scoreValue = value ? 1 : 0;
     } else if (typeof value === "string") {
-      boolValue = value.toLowerCase() === "y" || value.toLowerCase() === "yes" || value === "1" || value === "true";
-      scoreValue = boolValue ? 1 : 0;
+      const lower = value.toLowerCase();
+      const byYesNo =
+        lower === "y" || lower === "yes" || lower === "true" ? 1 :
+        lower === "n" || lower === "no" || lower === "false" ? 0 :
+        null;
+
+      if (byYesNo !== null) {
+        scoreValue = byYesNo;
+      } else if (Array.isArray(currentQuestion?.options)) {
+        const matchedOption = currentQuestion.options.find((opt: any) =>
+          String(opt?.label ?? "").toLowerCase() === lower ||
+          String(opt?.value ?? "") === value
+        );
+        const optionNumeric = normalizeNumeric(matchedOption?.value);
+        scoreValue = optionNumeric ?? 0;
+      }
     }
 
     // Save the response (upsert to handle rapid submissions)
@@ -173,43 +279,53 @@ export async function POST(
           domainQuestions = domainQuestions.filter((q: any) => q.isTrial);
         }
 
-        // Count yes responses for this domain
-        let yesCount = 0;
+        // Sum numeric response scores for this domain
+        const responseMap = new Map(
+          assessment.responses.map((r: any) => [r.questionId, r])
+        );
+        responseMap.set(qid, {
+          questionId: qid,
+          response: stringValue,
+          score: scoreValue,
+        });
+
+        let domainScoreSum = 0;
         let answeredInDomain = 0;
+        let totalPossible = 0;
         for (const question of domainQuestions) {
-          const response = assessment.responses.find(
-            (r) => r.questionId === question.id
-          );
+          const response = responseMap.get(question.id as string) as any;
+
+          const questionMax = Array.isArray(question.options)
+            ? Math.max(
+                ...question.options
+                  .map((opt: any) => normalizeNumeric(opt?.value))
+                  .filter((v: number | null): v is number => v !== null),
+                1
+              )
+            : 1;
+          totalPossible += questionMax;
+
           if (response) {
             answeredInDomain++;
-            // Check if response is yes/true (response is now a string)
-            const responseStr = String(response.response).toLowerCase();
-            const isYes = responseStr === "true" ||
-               responseStr === "yes" ||
-               responseStr === "1" ||
-               responseStr === "y";
-            if (isYes) {
-              yesCount++;
-            }
+            domainScoreSum += Number(response.score || 0);
           }
         }
 
         // Only create score if there are questions in this domain
         if (domainQuestions.length > 0) {
-          const rawScore = yesCount;
-          const totalPossible = domainQuestions.length;
+          const rawScore = domainScoreSum;
+          if (totalPossible <= 0) {
+            totalPossible = domainQuestions.length;
+          }
 
           // Calculate risk level based on percentage
           // Valid RiskLevel enum values: LOW, MODERATE, HIGH, VERY_HIGH
-          const percentage = (yesCount / totalPossible) * 100;
-          let riskLevel = "LOW";
-          if (percentage >= 75) {
-            riskLevel = "VERY_HIGH";
-          } else if (percentage >= 50) {
-            riskLevel = "HIGH";
-          } else if (percentage >= 25) {
-            riskLevel = "MODERATE";
-          }
+          const percentage = totalPossible > 0 ? (rawScore / totalPossible) * 100 : 0;
+          const riskLevel = determineRiskLevel(
+            rawScore,
+            percentage,
+            domainTemplate.scoringConfig
+          );
 
           // Map valid AssessmentDomain enums
           const validDomains: { [key: string]: string } = {
@@ -244,7 +360,7 @@ export async function POST(
             domainName: domainTemplate.name || "Unknown Domain",
             rawScore,
             totalPossible,
-            riskLevel: riskLevel as any,
+            riskLevel,
             confidence: 0.95, // Default confidence
             questionsAnswered: answeredInDomain,
             wasTerminatedEarly: false,

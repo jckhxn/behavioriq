@@ -85,6 +85,33 @@ interface DomainTemplate {
   _count: { assessmentTemplates: number };
 }
 
+type Comparator = ">=" | ">" | "<=" | "<" | "=";
+type SkipWhen = "met" | "not_met";
+type Aggregation = "sum" | "any" | "all";
+
+interface DomainThresholdRule {
+  enabled: boolean;
+  comparator: Comparator;
+  threshold: number;
+  skipWhen: SkipWhen;
+}
+
+interface QuestionSubsetRule {
+  enabled: boolean;
+  questionIndexes: number[];
+  questionIds?: string[];
+  aggregation: Aggregation;
+  comparator: Comparator;
+  threshold: number;
+  skipWhen: SkipWhen;
+}
+
+interface RiskThresholdConfig {
+  moderate?: number;
+  high?: number;
+  very_high?: number;
+}
+
 // ─── Default response options per question type ───────────────────────────────
 
 const QUESTION_TYPE_OPTIONS: Record<QuestionType, QuestionOption[]> = {
@@ -326,14 +353,21 @@ const jsonToQuestions = (json: any): Question[] | null => {
   if (!Array.isArray(json)) return null;
   try {
     return json.map((q: any) => ({
+      constType: (q.type as QuestionType) || "likert4",
       id: q.id || generateId(),
       text: q.text || q.title || "",
-      type: (q.type as QuestionType) || "likert4",
+      type: ((q.type as QuestionType) || "likert4") as QuestionType,
       options: Array.isArray(q.options)
         ? q.options
-        : QUESTION_TYPE_OPTIONS["likert4"],
+        : QUESTION_TYPE_OPTIONS[((q.type as QuestionType) || "likert4") as QuestionType],
       isTrial: q.isTrial,
-    }));
+    })).map((q: any) => {
+      const { constType, ...rest } = q;
+      return {
+        ...rest,
+        type: constType,
+      } as Question;
+    });
   } catch {
     return null;
   }
@@ -384,6 +418,16 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
   const updateOptionLabel = (idx: number, label: string) => {
     const options = [...question.options];
     options[idx] = { ...options[idx], label };
+    onChange({ ...question, options });
+  };
+
+  const updateOptionValue = (idx: number, value: string) => {
+    const numeric = Number(value);
+    const options = [...question.options];
+    options[idx] = {
+      ...options[idx],
+      value: Number.isFinite(numeric) ? numeric : 0,
+    };
     onChange({ ...question, options });
   };
 
@@ -474,6 +518,13 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
               </p>
               {question.options.map((opt, i) => (
                 <div key={i} className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    value={String(opt.value ?? i)}
+                    onChange={(e) => updateOptionValue(i, e.target.value)}
+                    placeholder="Score"
+                    className="h-8 w-20 text-sm"
+                  />
                   <Input
                     value={opt.label}
                     onChange={(e) => updateOptionLabel(i, e.target.value)}
@@ -613,13 +664,68 @@ const DomainForm: React.FC<DomainFormProps> = ({
       : ""
   );
   const [showAdvanced, setShowAdvanced] = useState(false);
-
-  const [questions, setQuestions] = useState<Question[]>(() => {
-    if (initial?.questions) {
-      return jsonToQuestions(initial.questions) || [];
-    }
-    return [];
+  const initialRiskThresholds = (initial?.scoringConfig as any)?.riskThresholds
+    || (initial?.scoringConfig as any)?.thresholds
+    || {};
+  const [riskThresholds, setRiskThresholds] = useState<RiskThresholdConfig>({
+    moderate:
+      Number.isFinite(Number(initialRiskThresholds?.moderate))
+        ? Number(initialRiskThresholds.moderate)
+        : undefined,
+    high:
+      Number.isFinite(Number(initialRiskThresholds?.high))
+        ? Number(initialRiskThresholds.high)
+        : undefined,
+    very_high:
+      Number.isFinite(Number(initialRiskThresholds?.very_high))
+        ? Number(initialRiskThresholds.very_high)
+        : undefined,
   });
+
+  const initialSkipLogic = (initial?.scoringConfig as any)?.skipLogic || {};
+  const initialQuestions = initial?.questions ? jsonToQuestions(initial.questions) || [] : [];
+  const [domainThresholdRule, setDomainThresholdRule] = useState<DomainThresholdRule>({
+    enabled: Boolean(initialSkipLogic?.domainThreshold?.enabled),
+    comparator: (initialSkipLogic?.domainThreshold?.comparator as Comparator) || "<",
+    threshold: Number(initialSkipLogic?.domainThreshold?.threshold ?? 0),
+    skipWhen: (initialSkipLogic?.domainThreshold?.skipWhen as SkipWhen) || "met",
+  });
+  const [questionSubsetRule, setQuestionSubsetRule] = useState<QuestionSubsetRule>({
+    enabled: Boolean(initialSkipLogic?.questionSubsetThreshold?.enabled),
+    questionIndexes: Array.isArray(initialSkipLogic?.questionSubsetThreshold?.questionIndexes)
+      ? initialSkipLogic.questionSubsetThreshold.questionIndexes
+      : [],
+    questionIds: Array.isArray(initialSkipLogic?.questionSubsetThreshold?.questionIds)
+      ? initialSkipLogic.questionSubsetThreshold.questionIds
+      : [],
+    aggregation: (initialSkipLogic?.questionSubsetThreshold?.aggregation as Aggregation) || "sum",
+    comparator:
+      (initialSkipLogic?.questionSubsetThreshold?.comparator as Comparator) || "<",
+    threshold: Number(initialSkipLogic?.questionSubsetThreshold?.threshold ?? 0),
+    skipWhen: (initialSkipLogic?.questionSubsetThreshold?.skipWhen as SkipWhen) || "met",
+  });
+
+  const [questions, setQuestions] = useState<Question[]>(initialQuestions);
+  const [selectedSubsetQuestionIds, setSelectedSubsetQuestionIds] = useState<string[]>(() => {
+    const configuredIds: string[] = Array.isArray(initialSkipLogic?.questionSubsetThreshold?.questionIds)
+      ? initialSkipLogic.questionSubsetThreshold.questionIds
+      : [];
+
+    if (configuredIds.length > 0) return configuredIds;
+
+    const configuredIndexes: number[] = Array.isArray(initialSkipLogic?.questionSubsetThreshold?.questionIndexes)
+      ? initialSkipLogic.questionSubsetThreshold.questionIndexes
+      : [];
+
+    return configuredIndexes
+      .map((oneBasedIndex) => initialQuestions[oneBasedIndex - 1]?.id)
+      .filter((id): id is string => Boolean(id));
+  });
+
+  useEffect(() => {
+    const validIds = new Set(questions.map((q) => q.id));
+    setSelectedSubsetQuestionIds((prev) => prev.filter((id) => validIds.has(id)));
+  }, [questions]);
 
   const handleNameChange = (val: string) => {
     setName(val);
@@ -698,13 +804,86 @@ const DomainForm: React.FC<DomainFormProps> = ({
       payload.resources = { scoringNote: scoringNote.trim() };
     }
 
+    let parsedScoringConfig: any = {};
     if (scoringConfigJson.trim()) {
       try {
-        payload.scoringConfig = JSON.parse(scoringConfigJson);
+        parsedScoringConfig = JSON.parse(scoringConfigJson);
       } catch {
         toast.error("Invalid JSON in scoring configuration");
         return;
       }
+    }
+
+    const nextSkipLogic: any = {};
+    if (domainThresholdRule.enabled && questionSubsetRule.enabled) {
+      toast.error("Choose only one skip logic mode: whole domain OR question subset");
+      return;
+    }
+
+    if (domainThresholdRule.enabled) {
+      nextSkipLogic.domainThreshold = {
+        enabled: true,
+        comparator: domainThresholdRule.comparator,
+        threshold: Number(domainThresholdRule.threshold),
+        skipWhen: domainThresholdRule.skipWhen,
+      };
+    }
+
+    if (questionSubsetRule.enabled) {
+      if (selectedSubsetQuestionIds.length === 0) {
+        toast.error("Question subset rule requires selecting at least one authored question");
+        return;
+      }
+
+      const selectedSet = new Set(selectedSubsetQuestionIds);
+      const mappedIndexes = questions
+        .map((question, index) => (selectedSet.has(question.id) ? index + 1 : -1))
+        .filter((index) => index > 0);
+
+      if (mappedIndexes.length === 0) {
+        toast.error("Selected subset questions are invalid. Please reselect and try again.");
+        return;
+      }
+
+      nextSkipLogic.questionSubsetThreshold = {
+        enabled: true,
+        questionIndexes: mappedIndexes,
+        questionIds: selectedSubsetQuestionIds,
+        aggregation: questionSubsetRule.aggregation,
+        comparator: questionSubsetRule.comparator,
+        threshold: Number(questionSubsetRule.threshold),
+        skipWhen: questionSubsetRule.skipWhen,
+      };
+    }
+
+    if (Object.keys(nextSkipLogic).length > 0) {
+      payload.scoringConfig = {
+        ...parsedScoringConfig,
+        skipLogic: {
+          ...(parsedScoringConfig?.skipLogic || {}),
+          ...nextSkipLogic,
+        },
+      };
+    } else if (Object.keys(parsedScoringConfig).length > 0) {
+      payload.scoringConfig = parsedScoringConfig;
+    }
+
+    const nextRiskThresholds: RiskThresholdConfig = {};
+    if (typeof riskThresholds.moderate === "number") {
+      nextRiskThresholds.moderate = riskThresholds.moderate;
+    }
+    if (typeof riskThresholds.high === "number") {
+      nextRiskThresholds.high = riskThresholds.high;
+    }
+    if (typeof riskThresholds.very_high === "number") {
+      nextRiskThresholds.very_high = riskThresholds.very_high;
+    }
+
+    if (Object.keys(nextRiskThresholds).length > 0) {
+      payload.scoringConfig = {
+        ...(payload.scoringConfig || parsedScoringConfig),
+        riskThresholds: nextRiskThresholds,
+      };
     }
 
     await onSave(payload);
@@ -713,6 +892,8 @@ const DomainForm: React.FC<DomainFormProps> = ({
   const formSections = [
     { id: "domain-info", label: "Domain Info" },
     { id: "scoring-reference", label: "Scoring Reference" },
+    { id: "risk-thresholds", label: "Risk Thresholds" },
+    { id: "skip-logic", label: "Skip Logic" },
     { id: "questions", label: "Questions" },
     { id: "advanced-config", label: "Advanced Config" },
   ];
@@ -823,6 +1004,331 @@ const DomainForm: React.FC<DomainFormProps> = ({
               className="resize-none text-sm"
               rows={2}
             />
+          </section>
+
+          <Separator />
+
+          <section id="risk-thresholds" className="space-y-4 scroll-mt-24">
+            <div>
+              <h3 className="text-base font-semibold">Risk Thresholds</h3>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Set domain score cutoffs in the UI. These values drive runtime risk mapping.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Moderate from score</Label>
+                <Input
+                  type="number"
+                  value={riskThresholds.moderate ?? ""}
+                  onChange={(e) =>
+                    setRiskThresholds((prev) => ({
+                      ...prev,
+                      moderate:
+                        e.target.value === ""
+                          ? undefined
+                          : Number(e.target.value),
+                    }))
+                  }
+                  placeholder="e.g. 5"
+                  className="h-9 text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">High from score</Label>
+                <Input
+                  type="number"
+                  value={riskThresholds.high ?? ""}
+                  onChange={(e) =>
+                    setRiskThresholds((prev) => ({
+                      ...prev,
+                      high:
+                        e.target.value === ""
+                          ? undefined
+                          : Number(e.target.value),
+                    }))
+                  }
+                  placeholder="e.g. 10"
+                  className="h-9 text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Very High from score</Label>
+                <Input
+                  type="number"
+                  value={riskThresholds.very_high ?? ""}
+                  onChange={(e) =>
+                    setRiskThresholds((prev) => ({
+                      ...prev,
+                      very_high:
+                        e.target.value === ""
+                          ? undefined
+                          : Number(e.target.value),
+                    }))
+                  }
+                  placeholder="e.g. 15"
+                  className="h-9 text-xs"
+                />
+              </div>
+            </div>
+          </section>
+
+          <Separator />
+
+          <section id="skip-logic" className="space-y-4 scroll-mt-24">
+            <div>
+              <h3 className="text-base font-semibold">Skip Logic Rules</h3>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Configure when a domain should be skipped based on score thresholds.
+              </p>
+            </div>
+
+            <div className="rounded-xl border p-4 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium">Whole Domain Threshold</p>
+                  <p className="text-xs text-muted-foreground">
+                    Evaluate score across the entire domain.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant={domainThresholdRule.enabled ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    const nextEnabled = !domainThresholdRule.enabled;
+                    setDomainThresholdRule((prev) => ({
+                      ...prev,
+                      enabled: nextEnabled,
+                    }));
+                    if (nextEnabled) {
+                      setQuestionSubsetRule((prev) => ({
+                        ...prev,
+                        enabled: false,
+                      }));
+                    }
+                  }}
+                >
+                  {domainThresholdRule.enabled ? "Enabled" : "Enable"}
+                </Button>
+              </div>
+
+              {domainThresholdRule.enabled && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Condition</Label>
+                    <Select
+                      value={domainThresholdRule.comparator}
+                      onValueChange={(v) =>
+                        setDomainThresholdRule((prev) => ({
+                          ...prev,
+                          comparator: v as Comparator,
+                        }))
+                      }
+                    >
+                      <SelectTrigger className="h-9 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="<">&lt;</SelectItem>
+                        <SelectItem value="<=">&lt;=</SelectItem>
+                        <SelectItem value="=">=</SelectItem>
+                        <SelectItem value=">=">&gt;=</SelectItem>
+                        <SelectItem value=">">&gt;</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Threshold</Label>
+                    <Input
+                      type="number"
+                      value={domainThresholdRule.threshold}
+                      onChange={(e) =>
+                        setDomainThresholdRule((prev) => ({
+                          ...prev,
+                          threshold: Number(e.target.value || 0),
+                        }))
+                      }
+                      className="h-9 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Skip Domain When</Label>
+                    <Select
+                      value={domainThresholdRule.skipWhen}
+                      onValueChange={(v) =>
+                        setDomainThresholdRule((prev) => ({
+                          ...prev,
+                          skipWhen: v as SkipWhen,
+                        }))
+                      }
+                    >
+                      <SelectTrigger className="h-9 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="met">Condition is met</SelectItem>
+                        <SelectItem value="not_met">Condition is not met</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-xl border p-4 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium">Question Subset Threshold</p>
+                  <p className="text-xs text-muted-foreground">
+                    Evaluate only selected authored questions from this domain.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant={questionSubsetRule.enabled ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    const nextEnabled = !questionSubsetRule.enabled;
+                    setQuestionSubsetRule((prev) => ({
+                      ...prev,
+                      enabled: nextEnabled,
+                    }));
+                    if (nextEnabled) {
+                      setDomainThresholdRule((prev) => ({
+                        ...prev,
+                        enabled: false,
+                      }));
+                    }
+                  }}
+                >
+                  {questionSubsetRule.enabled ? "Enabled" : "Enable"}
+                </Button>
+              </div>
+
+              {questionSubsetRule.enabled && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="space-y-1 md:col-span-2">
+                    <Label className="text-xs">Select Questions</Label>
+                    {questions.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">
+                        Add questions first, then choose which ones participate in the subset threshold.
+                      </p>
+                    ) : (
+                      <div className="max-h-44 overflow-auto rounded-md border p-2 space-y-1">
+                        {questions.map((question, index) => {
+                          const isSelected = selectedSubsetQuestionIds.includes(question.id);
+                          return (
+                            <button
+                              key={question.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedSubsetQuestionIds((prev) =>
+                                  prev.includes(question.id)
+                                    ? prev.filter((id) => id !== question.id)
+                                    : [...prev, question.id]
+                                );
+                              }}
+                              className={`w-full text-left rounded-md border px-2.5 py-2 text-xs transition-colors ${
+                                isSelected
+                                  ? "border-primary bg-primary/10 text-foreground"
+                                  : "border-border bg-background text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                              }`}
+                            >
+                              <span className="font-medium">Q{index + 1}.</span>{" "}
+                              {question.text.trim() || "Untitled question"}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-xs">Aggregation</Label>
+                    <Select
+                      value={questionSubsetRule.aggregation}
+                      onValueChange={(v) =>
+                        setQuestionSubsetRule((prev) => ({
+                          ...prev,
+                          aggregation: v as Aggregation,
+                        }))
+                      }
+                    >
+                      <SelectTrigger className="h-9 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="sum">Sum of subset scores</SelectItem>
+                        <SelectItem value="any">Any question score</SelectItem>
+                        <SelectItem value="all">All question scores</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-xs">Condition</Label>
+                    <Select
+                      value={questionSubsetRule.comparator}
+                      onValueChange={(v) =>
+                        setQuestionSubsetRule((prev) => ({
+                          ...prev,
+                          comparator: v as Comparator,
+                        }))
+                      }
+                    >
+                      <SelectTrigger className="h-9 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="<">&lt;</SelectItem>
+                        <SelectItem value="<=">&lt;=</SelectItem>
+                        <SelectItem value="=">=</SelectItem>
+                        <SelectItem value=">=">&gt;=</SelectItem>
+                        <SelectItem value=">">&gt;</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-xs">Threshold</Label>
+                    <Input
+                      type="number"
+                      value={questionSubsetRule.threshold}
+                      onChange={(e) =>
+                        setQuestionSubsetRule((prev) => ({
+                          ...prev,
+                          threshold: Number(e.target.value || 0),
+                        }))
+                      }
+                      className="h-9 text-xs"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-xs">Skip Domain When</Label>
+                    <Select
+                      value={questionSubsetRule.skipWhen}
+                      onValueChange={(v) =>
+                        setQuestionSubsetRule((prev) => ({
+                          ...prev,
+                          skipWhen: v as SkipWhen,
+                        }))
+                      }
+                    >
+                      <SelectTrigger className="h-9 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="met">Condition is met</SelectItem>
+                        <SelectItem value="not_met">Condition is not met</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+            </div>
           </section>
 
           <Separator />

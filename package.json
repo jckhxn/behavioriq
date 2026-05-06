@@ -19,6 +19,8 @@
     "db:backup": "bash scripts/backup-database.sh",
     "db:restore": "bash scripts/restore-database.sh",
     "db:verify": "tsx scripts/test-db-connection.ts",
+    "db:backfill-domain-thresholds:dry": "tsx scripts/backfill-domain-risk-thresholds.ts --dry-run",
+    "db:backfill-domain-thresholds": "tsx scripts/backfill-domain-risk-thresholds.ts",
     "generate:pseo": "node scripts/generateAll.js",
     "email:preview": "npx react-email dev"
   },
