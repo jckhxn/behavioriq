@@ -1,33 +1,46 @@
+"use client";
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Plus,
   Edit,
   Trash2,
   Upload,
-  FileText,
   Eye,
   Download,
   Zap,
+  Check,
+  ClipboardList,
 } from "lucide-react";
 import { toast } from "sonner";
 import AssessmentPreview from "./AssessmentPreview";
 import { BulkUploadDialog } from "./BulkUploadDialog";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface DomainTemplate {
   id: string;
@@ -38,13 +51,8 @@ interface DomainTemplate {
   resources?: any;
   scoringConfig?: any;
   createdAt: string;
-  createdBy: {
-    name: string;
-    email: string;
-  };
-  _count: {
-    assessmentTemplates: number;
-  };
+  createdBy: { name: string; email: string };
+  _count: { assessmentTemplates: number };
 }
 
 interface AssessmentTemplate {
@@ -55,156 +63,32 @@ interface AssessmentTemplate {
   instructions?: string;
   isActive: boolean;
   createdAt: string;
-  createdBy: {
-    name: string;
-    email: string;
-  };
-  domains: {
-    order: number;
-    domainTemplate: DomainTemplate;
-  }[];
-  _count: {
-    assessments: number;
-  };
+  createdBy: { name: string; email: string };
+  domains: { order: number; domainTemplate: DomainTemplate }[];
+  _count: { assessments: number };
 }
 
-interface DomainEditDialogProps {
-  domain: DomainTemplate;
-  isOpen: boolean;
-  onClose: () => void;
-  onSave: (domain: DomainTemplate) => void;
+interface AssessmentFormValues {
+  name: string;
+  slug: string;
+  description: string;
+  instructions: string;
+  isActive: boolean;
+  selectedDomains: { id: string; order: number }[];
 }
 
-const DomainEditDialog: React.FC<DomainEditDialogProps> = ({
-  domain,
-  isOpen,
-  onClose,
-  onSave,
-}) => {
-  const [editedDomain, setEditedDomain] = useState<DomainTemplate>(domain);
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    setEditedDomain(domain);
-  }, [domain]);
+const generateSlug = (name: string) =>
+  name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
 
-  const handleSave = () => {
-    onSave(editedDomain);
-  };
+const getTrialQuestionCount = (questions: any[]): number =>
+  Array.isArray(questions) ? questions.filter((q) => q.isTrial === true).length : 0;
 
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Edit Domain: {domain.name}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="domain-name">Domain Name</Label>
-              <Input
-                id="domain-name"
-                value={editedDomain.name}
-                onChange={(e) =>
-                  setEditedDomain({ ...editedDomain, name: e.target.value })
-                }
-              />
-            </div>
-            <div>
-              <Label htmlFor="domain-slug">Domain Slug</Label>
-              <Input
-                id="domain-slug"
-                value={editedDomain.slug}
-                onChange={(e) =>
-                  setEditedDomain({ ...editedDomain, slug: e.target.value })
-                }
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="domain-description">Description</Label>
-            <Textarea
-              id="domain-description"
-              value={editedDomain.description || ""}
-              onChange={(e) =>
-                setEditedDomain({
-                  ...editedDomain,
-                  description: e.target.value,
-                })
-              }
-              rows={3}
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="domain-questions">Questions (JSON)</Label>
-            <Textarea
-              id="domain-questions"
-              value={JSON.stringify(editedDomain.questions, null, 2)}
-              onChange={(e) => {
-                try {
-                  const questions = JSON.parse(e.target.value);
-                  setEditedDomain({ ...editedDomain, questions });
-                } catch (error) {
-                  // Invalid JSON, don't update
-                }
-              }}
-              rows={15}
-              className="font-mono text-sm"
-            />
-          </div>
-
-          {editedDomain.resources && (
-            <div>
-              <Label htmlFor="domain-resources">Resources (JSON)</Label>
-              <Textarea
-                id="domain-resources"
-                value={JSON.stringify(editedDomain.resources, null, 2)}
-                onChange={(e) => {
-                  try {
-                    const resources = JSON.parse(e.target.value);
-                    setEditedDomain({ ...editedDomain, resources });
-                  } catch (error) {
-                    // Invalid JSON, don't update
-                  }
-                }}
-                rows={10}
-                className="font-mono text-sm"
-              />
-            </div>
-          )}
-
-          {editedDomain.scoringConfig && (
-            <div>
-              <Label htmlFor="domain-scoring">Scoring Config (JSON)</Label>
-              <Textarea
-                id="domain-scoring"
-                value={JSON.stringify(editedDomain.scoringConfig, null, 2)}
-                onChange={(e) => {
-                  try {
-                    const scoringConfig = JSON.parse(e.target.value);
-                    setEditedDomain({ ...editedDomain, scoringConfig });
-                  } catch (error) {
-                    // Invalid JSON, don't update
-                  }
-                }}
-                rows={10}
-                className="font-mono text-sm"
-              />
-            </div>
-          )}
-
-          <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave}>Save Changes</Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-};
+// ─── DomainTrialEditor ────────────────────────────────────────────────────────
 
 interface DomainTrialEditorProps {
   isOpen: boolean;
@@ -226,83 +110,468 @@ const DomainTrialEditor: React.FC<DomainTrialEditorProps> = ({
   onToggleAll,
 }) => {
   const trialCount = questions.filter((q) => q.isTrial === true).length;
-  const allSelected = trialCount === questions.length && questions.length > 0;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
         <DialogHeader>
-          <DialogTitle>Configure Trial Questions: {domainName}</DialogTitle>
+          <DialogTitle>Trial Questions — {domainName}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between p-2 bg-accent/50 dark:bg-accent/30 rounded border border-border">
-            <span className="text-sm font-medium">
-              {trialCount} of {questions.length} questions marked for trial
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onToggleAll(true)}
-              >
-                Mark All
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onToggleAll(false)}
-              >
-                Unmark All
-              </Button>
-            </div>
-          </div>
 
-          <div className="space-y-2 max-h-96 overflow-y-auto border rounded p-3">
+        <div className="flex items-center justify-between px-1 py-2 bg-muted/50 rounded-lg border">
+          <span className="text-sm font-medium px-2">
+            {trialCount} of {questions.length} questions marked for trial
+          </span>
+          <div className="flex gap-2 pr-1">
+            <Button variant="outline" size="sm" onClick={() => onToggleAll(true)}>
+              Mark All
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => onToggleAll(false)}>
+              Unmark All
+            </Button>
+          </div>
+        </div>
+
+        <ScrollArea className="flex-1 -mx-1 px-1">
+          <div className="space-y-2 py-2">
             {questions.map((question, index) => (
               <div
                 key={index}
-                className={`flex items-start gap-3 p-2 rounded transition-colors ${
+                className={`flex items-start gap-3 p-3 rounded-lg transition-colors border ${
                   question.isTrial
-                    ? "bg-primary/10 dark:bg-primary/20 border border-primary/30 dark:border-primary/50"
-                    : "hover:bg-accent dark:hover:bg-accent/50 border border-transparent"
+                    ? "bg-primary/5 border-primary/30"
+                    : "border-transparent hover:bg-muted/50"
                 }`}
               >
                 <Checkbox
-                  id={`trial-question-${index}`}
+                  id={`trial-q-${index}`}
                   checked={question.isTrial || false}
-                  onCheckedChange={(checked) =>
-                    onUpdateQuestion(index, !!checked)
-                  }
-                  className="mt-1 shrink-0"
+                  onCheckedChange={(checked) => onUpdateQuestion(index, !!checked)}
+                  className="mt-0.5 shrink-0"
                 />
-                <div className="flex-1 min-w-0">
-                  <Label
-                    htmlFor={`trial-question-${index}`}
-                    className="text-sm font-medium cursor-pointer block"
-                  >
-                    Q{index + 1}. {question.text || question.title || "Untitled"}
-                  </Label>
-                  {question.description && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {question.description}
-                    </p>
-                  )}
-                </div>
+                <Label
+                  htmlFor={`trial-q-${index}`}
+                  className="text-sm leading-relaxed cursor-pointer"
+                >
+                  <span className="font-medium text-muted-foreground mr-1.5">
+                    {index + 1}.
+                  </span>
+                  {question.text || question.title || "Untitled"}
+                </Label>
               </div>
             ))}
           </div>
+        </ScrollArea>
 
-          <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button onClick={onSave}>Save Trial Configuration</Button>
-          </div>
+        <div className="flex justify-end gap-2 pt-2 border-t">
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={onSave}>Save Trial Configuration</Button>
         </div>
       </DialogContent>
     </Dialog>
   );
 };
+
+// ─── DomainEditDialog ─────────────────────────────────────────────────────────
+
+interface DomainEditDialogProps {
+  domain: DomainTemplate;
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (domain: DomainTemplate) => void;
+}
+
+const DomainEditDialog: React.FC<DomainEditDialogProps> = ({
+  domain,
+  isOpen,
+  onClose,
+  onSave,
+}) => {
+  const [editedDomain, setEditedDomain] = useState<DomainTemplate>(domain);
+
+  useEffect(() => {
+    setEditedDomain(domain);
+  }, [domain]);
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col overflow-hidden">
+        <DialogHeader>
+          <DialogTitle>Edit Domain: {domain.name}</DialogTitle>
+        </DialogHeader>
+
+        <ScrollArea className="flex-1 -mx-1 px-1">
+          <div className="space-y-5 py-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Domain Name</Label>
+                <Input
+                  value={editedDomain.name}
+                  onChange={(e) =>
+                    setEditedDomain({ ...editedDomain, name: e.target.value })
+                  }
+                  className="h-10"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Slug</Label>
+                <Input
+                  value={editedDomain.slug}
+                  onChange={(e) =>
+                    setEditedDomain({ ...editedDomain, slug: e.target.value })
+                  }
+                  className="h-10 font-mono text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea
+                value={editedDomain.description || ""}
+                onChange={(e) =>
+                  setEditedDomain({ ...editedDomain, description: e.target.value })
+                }
+                rows={3}
+                className="resize-none"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Questions (JSON)</Label>
+              <p className="text-xs text-muted-foreground">
+                For a better editing experience, use the Domain Library tab.
+              </p>
+              <Textarea
+                value={JSON.stringify(editedDomain.questions, null, 2)}
+                onChange={(e) => {
+                  try {
+                    const questions = JSON.parse(e.target.value);
+                    setEditedDomain({ ...editedDomain, questions });
+                  } catch {
+                    // invalid JSON, don't update
+                  }
+                }}
+                rows={14}
+                className="font-mono text-sm resize-none"
+              />
+            </div>
+          </div>
+        </ScrollArea>
+
+        <div className="flex justify-end gap-2 pt-4 border-t">
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={() => onSave(editedDomain)}>Save Changes</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// ─── AssessmentForm ───────────────────────────────────────────────────────────
+
+interface AssessmentFormProps {
+  initial?: AssessmentTemplate | null;
+  domainTemplates: DomainTemplate[];
+  onSave: (values: AssessmentFormValues) => Promise<void>;
+  onCancel: () => void;
+  isSaving: boolean;
+}
+
+const AssessmentForm: React.FC<AssessmentFormProps> = ({
+  initial,
+  domainTemplates,
+  onSave,
+  onCancel,
+  isSaving,
+}) => {
+  const [name, setName] = useState(initial?.name || "");
+  const [slug, setSlug] = useState(initial?.slug || "");
+  const [description, setDescription] = useState(initial?.description || "");
+  const [instructions, setInstructions] = useState(initial?.instructions || "");
+  const [isActive, setIsActive] = useState(initial?.isActive ?? true);
+  const [selectedDomains, setSelectedDomains] = useState<
+    { id: string; order: number }[]
+  >(
+    initial?.domains.map((d, i) => ({
+      id: d.domainTemplate.id,
+      order: d.order || i + 1,
+    })) || []
+  );
+
+  const handleNameChange = (val: string) => {
+    setName(val);
+    if (!initial) setSlug(generateSlug(val));
+  };
+
+  const toggleDomain = (domainId: string) => {
+    setSelectedDomains((prev) => {
+      const isSelected = prev.some((d) => d.id === domainId);
+      if (isSelected) {
+        const filtered = prev.filter((d) => d.id !== domainId);
+        return filtered.map((d, i) => ({ ...d, order: i + 1 }));
+      }
+      return [...prev, { id: domainId, order: prev.length + 1 }];
+    });
+  };
+
+  const handleSubmit = async () => {
+    if (!name.trim()) {
+      toast.error("Please enter an assessment name");
+      return;
+    }
+    if (selectedDomains.length === 0) {
+      toast.error("Please select at least one domain");
+      return;
+    }
+    await onSave({
+      name: name.trim(),
+      slug: slug.trim() || generateSlug(name),
+      description: description.trim(),
+      instructions: instructions.trim(),
+      isActive,
+      selectedDomains,
+    });
+  };
+
+  const totalQuestions = selectedDomains.reduce((sum, sd) => {
+    const domain = domainTemplates.find((d) => d.id === sd.id);
+    return sum + (Array.isArray(domain?.questions) ? domain.questions.length : 0);
+  }, 0);
+
+  const formSections = [
+    { id: "assessment-info", label: "Assessment Info" },
+    { id: "clinical-domains", label: "Clinical Domains" },
+  ];
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
+      <ScrollArea className="flex-1 min-h-0">
+        <div className="w-full px-10 py-10 space-y-10">
+          <div className="sticky top-0 z-10 -mx-10 mb-2 border-b bg-background/95 px-10 pb-4 pt-1 backdrop-blur">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
+              Form Sections
+            </p>
+            <nav className="flex flex-wrap gap-2">
+              {formSections.map((section) => (
+                <a
+                  key={section.id}
+                  href={`#${section.id}`}
+                  className="rounded-full border bg-card px-4 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/30 hover:bg-muted hover:text-foreground"
+                >
+                  {section.label}
+                </a>
+              ))}
+            </nav>
+          </div>
+
+          {/* Assessment info */}
+          <section id="assessment-info" className="space-y-4 scroll-mt-24">
+            <div>
+              <h3 className="text-base font-semibold">Assessment Information</h3>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Name and describe this assessment template
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">
+                  Assessment Name{" "}
+                  <span className="text-destructive" aria-hidden>
+                    *
+                  </span>
+                </Label>
+                <Input
+                  value={name}
+                  onChange={(e) => handleNameChange(e.target.value)}
+                  placeholder="e.g. ADHD Comprehensive Evaluation"
+                  className="h-11 text-base"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">
+                  Slug{" "}
+                  <span className="text-xs text-muted-foreground font-normal">
+                    (auto-generated, URL-safe identifier)
+                  </span>
+                </Label>
+                <Input
+                  value={slug}
+                  onChange={(e) => setSlug(e.target.value)}
+                  placeholder="adhd-comprehensive-evaluation"
+                  className="h-10 font-mono text-sm text-muted-foreground"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Description</Label>
+                <Textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="What does this assessment measure? Who is it designed for?"
+                  className="resize-none"
+                  rows={3}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Patient Instructions</Label>
+                <Textarea
+                  value={instructions}
+                  onChange={(e) => setInstructions(e.target.value)}
+                  placeholder="Instructions shown to the patient before they begin the assessment..."
+                  className="resize-none"
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex items-center gap-3 py-1">
+                <Switch checked={isActive} onCheckedChange={setIsActive} />
+                <div>
+                  <p className="text-sm font-medium leading-none">Active</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Inactive templates won't appear in assignment lists
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <Separator />
+
+          {/* Domain selector */}
+          <section id="clinical-domains" className="space-y-4 scroll-mt-24">
+            <div>
+              <h3 className="text-base font-semibold">Clinical Domains</h3>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Select the domains to include. Each domain contributes a structured
+                set of validated questions.
+              </p>
+            </div>
+
+            {domainTemplates.length === 0 ? (
+              <div className="border-2 border-dashed rounded-xl p-8 text-center">
+                <ClipboardList className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">
+                  No domain templates available. Create domains in the Domain
+                  Library first.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {domainTemplates.map((domain) => {
+                  const isSelected = selectedDomains.some((d) => d.id === domain.id);
+                  const selectedDomain = selectedDomains.find(
+                    (d) => d.id === domain.id
+                  );
+                  const questionCount = Array.isArray(domain.questions)
+                    ? domain.questions.length
+                    : 0;
+
+                  return (
+                    <button
+                      key={domain.id}
+                      type="button"
+                      onClick={() => toggleDomain(domain.id)}
+                      className={`w-full text-left border rounded-xl p-4 transition-all ${
+                        isSelected
+                          ? "border-primary bg-primary/5"
+                          : "hover:border-muted-foreground/30 hover:bg-muted/40"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                            isSelected
+                              ? "border-primary bg-primary"
+                              : "border-muted-foreground/30"
+                          }`}
+                        >
+                          {isSelected && (
+                            <Check className="h-3 w-3 text-primary-foreground" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-semibold">
+                              {domain.name}
+                            </span>
+                            {isSelected && (
+                              <Badge variant="secondary" className="text-xs">
+                                #{selectedDomain?.order}
+                              </Badge>
+                            )}
+                          </div>
+                          {domain.description && (
+                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                              {domain.description}
+                            </p>
+                          )}
+                          <p className="text-xs text-muted-foreground mt-0.5 font-medium">
+                            {questionCount} questions
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {selectedDomains.length > 0 && (
+              <div className="bg-muted/50 rounded-xl px-4 py-3 border">
+                <p className="text-xs font-medium text-muted-foreground">
+                  {selectedDomains.length} domain
+                  {selectedDomains.length !== 1 ? "s" : ""} selected ·{" "}
+                  {totalQuestions} total questions
+                </p>
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {[...selectedDomains]
+                    .sort((a, b) => a.order - b.order)
+                    .map((sd) => {
+                      const domain = domainTemplates.find((d) => d.id === sd.id);
+                      return (
+                        <span
+                          key={sd.id}
+                          className="text-xs bg-background border rounded-md px-2 py-0.5 font-medium"
+                        >
+                          {sd.order}. {domain?.name}
+                        </span>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+          </section>
+
+          <div className="h-2" />
+        </div>
+      </ScrollArea>
+
+      {/* Footer */}
+      <div className="border-t px-6 py-4 bg-background flex items-center justify-between shrink-0">
+        <Button variant="ghost" onClick={onCancel} disabled={isSaving}>
+          Cancel
+        </Button>
+        <Button onClick={handleSubmit} disabled={isSaving} className="min-w-40">
+          {isSaving
+            ? "Saving..."
+            : initial
+            ? "Update Assessment"
+            : "Create Assessment"}
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 const AssessmentTemplateManager: React.FC = () => {
   const [assessmentTemplates, setAssessmentTemplates] = useState<
@@ -310,45 +579,31 @@ const AssessmentTemplateManager: React.FC = () => {
   >([]);
   const [domainTemplates, setDomainTemplates] = useState<DomainTemplate[]>([]);
   const [loading, setLoading] = useState(true);
-  const [trialAssessmentId, setTrialAssessmentId] = useState<string | null>(
-    null
-  );
+  const [trialAssessmentId, setTrialAssessmentId] = useState<string | null>(null);
   const [selectedTemplate, setSelectedTemplate] =
     useState<AssessmentTemplate | null>(null);
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
+  // Sheet state (create + edit)
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Other dialogs
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false);
   const [isDomainEditDialogOpen, setIsDomainEditDialogOpen] = useState(false);
-  const [editingDomain, setEditingDomain] = useState<DomainTemplate | null>(
+  const [editingDomain, setEditingDomain] = useState<DomainTemplate | null>(null);
+
+  // Trial editor
+  const [isTrialEditorOpen, setIsTrialEditorOpen] = useState(false);
+  const [trialEditorDomainId, setTrialEditorDomainId] = useState<string | null>(
     null
   );
-
-  // Trial editor state
-  const [isTrialEditorOpen, setIsTrialEditorOpen] = useState(false);
-  const [trialEditorDomainId, setTrialEditorDomainId] = useState<string | null>(null);
   const [trialEditorQuestions, setTrialEditorQuestions] = useState<any[]>([]);
 
-  // Upload state
+  // Upload
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-
-  // Bulk operations state
-  const [selectedTemplates, setSelectedTemplates] = useState<Set<string>>(
-    new Set()
-  );
-  const [showBulkActions, setShowBulkActions] = useState(false);
-
-  // Form state
-  const [formData, setFormData] = useState({
-    name: "",
-    slug: "",
-    description: "",
-    instructions: "",
-    isActive: true,
-    selectedDomains: [] as { id: string; order: number }[],
-  });
 
   useEffect(() => {
     fetchAssessmentTemplates();
@@ -360,12 +615,11 @@ const AssessmentTemplateManager: React.FC = () => {
     try {
       const response = await fetch("/api/admin/assessment-templates");
       if (response.ok) {
-        const data = await response.json();
-        setAssessmentTemplates(data);
+        setAssessmentTemplates(await response.json());
       } else {
         toast.error("Failed to fetch assessment templates");
       }
-    } catch (error) {
+    } catch {
       toast.error("Error fetching assessment templates");
     }
   };
@@ -374,12 +628,11 @@ const AssessmentTemplateManager: React.FC = () => {
     try {
       const response = await fetch("/api/admin/domain-templates");
       if (response.ok) {
-        const data = await response.json();
-        setDomainTemplates(data);
+        setDomainTemplates(await response.json());
       } else {
         toast.error("Failed to fetch domain templates");
       }
-    } catch (error) {
+    } catch {
       toast.error("Error fetching domain templates");
     } finally {
       setLoading(false);
@@ -395,241 +648,103 @@ const AssessmentTemplateManager: React.FC = () => {
           setTrialAssessmentId(data.settings.globalTrialAssessment.id);
         }
       }
-    } catch (error) {
-      console.error("Error fetching platform settings:", error);
+    } catch {
+      console.error("Error fetching platform settings");
     }
   };
 
-  // Calculate total questions in an assessment template
-  const getTotalQuestionCount = (template: AssessmentTemplate): number => {
-    return template.domains.reduce((total, { domainTemplate }) => {
-      const questionCount = Array.isArray(domainTemplate.questions)
+  const getTotalQuestionCount = (template: AssessmentTemplate): number =>
+    template.domains.reduce((total, { domainTemplate }) => {
+      const count = Array.isArray(domainTemplate.questions)
         ? domainTemplate.questions.length
         : 0;
-      return total + questionCount;
+      return total + count;
     }, 0);
+
+  const openCreate = () => {
+    setSelectedTemplate(null);
+    setIsSheetOpen(true);
   };
 
-  // Trial editor functions
-  const openDomainTrialEditor = (domain: DomainTemplate) => {
-    if (Array.isArray(domain.questions)) {
-      setTrialEditorDomainId(domain.id);
-      setTrialEditorQuestions(
-        domain.questions.map((q) => ({
-          ...q,
-          isTrial: q.isTrial === true,
-        }))
-      );
-      setIsTrialEditorOpen(true);
-    }
+  const openEdit = (template: AssessmentTemplate) => {
+    setSelectedTemplate(template);
+    setIsSheetOpen(true);
   };
 
-  const updateQuestionTrialStatus = (index: number, isTrial: boolean) => {
-    setTrialEditorQuestions((prev) => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], isTrial };
-      return updated;
-    });
+  const closeSheet = () => {
+    if (isSaving) return;
+    setIsSheetOpen(false);
+    setSelectedTemplate(null);
   };
 
-  const toggleAllQuestionsTrialStatus = (isTrial: boolean) => {
-    setTrialEditorQuestions((prev) =>
-      prev.map((q) => ({ ...q, isTrial }))
-    );
-  };
-
-  const getTrialQuestionCount = (questions: any[]): number => {
-    return Array.isArray(questions)
-      ? questions.filter((q) => q.isTrial === true).length
-      : 0;
-  };
-
-  // Calculate total and trial questions for selected domains in form data
-  const getSelectedDomainsStats = (): { totalQuestions: number; trialQuestions: number } => {
-    let totalQuestions = 0;
-    let trialQuestions = 0;
-
-    formData.selectedDomains.forEach((selectedDomain) => {
-      const domain = domainTemplates.find((d) => d.id === selectedDomain.id);
-      if (domain) {
-        const domainTotal = Array.isArray(domain.questions) ? domain.questions.length : 0;
-        const domainTrial = getTrialQuestionCount(domain.questions);
-        totalQuestions += domainTotal;
-        trialQuestions += domainTrial;
-      }
-    });
-
-    return { totalQuestions, trialQuestions };
-  };
-
-  const saveTrialChanges = async () => {
-    if (!trialEditorDomainId || !selectedTemplate) return;
-
+  const handleSave = async (values: AssessmentFormValues) => {
+    setIsSaving(true);
     try {
-      // Update the assessment template with new trial questions
-      const response = await fetch("/api/admin/assessment-templates/trial", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          assessmentId: selectedTemplate.id,
-          domainId: trialEditorDomainId,
-          questions: trialEditorQuestions,
-        }),
-      });
+      const method = selectedTemplate ? "PUT" : "POST";
+      const body = selectedTemplate
+        ? {
+            id: selectedTemplate.id,
+            name: values.name,
+            slug: values.slug,
+            description: values.description,
+            instructions: values.instructions,
+            isActive: values.isActive,
+            domains: values.selectedDomains
+              .sort((a, b) => a.order - b.order)
+              .map((d) => ({ domainTemplateId: d.id, order: d.order })),
+          }
+        : {
+            name: values.name,
+            slug: values.slug,
+            description: values.description,
+            instructions: values.instructions,
+            isActive: values.isActive,
+            domainIds: values.selectedDomains
+              .sort((a, b) => a.order - b.order)
+              .map((d) => d.id),
+          };
 
-      if (response.ok) {
-        toast.success("Trial configuration updated successfully");
-        setIsTrialEditorOpen(false);
-        setTrialEditorDomainId(null);
-        setTrialEditorQuestions([]);
-        // Refresh the assessment templates to show updated trial status
-        fetchAssessmentTemplates();
-      } else {
-        const error = await response.json();
-        toast.error(error.error || "Failed to update trial configuration");
-      }
-    } catch (error) {
-      toast.error("Error updating trial configuration");
-    }
-  };
-
-  const handleCreateTemplate = async () => {
-    if (
-      !formData.name ||
-      !formData.slug ||
-      formData.selectedDomains.length === 0
-    ) {
-      toast.error(
-        "Please fill in all required fields and select at least one domain"
-      );
-      return;
-    }
-
-    try {
       const response = await fetch("/api/admin/assessment-templates", {
-        method: "POST",
+        method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          domainIds: formData.selectedDomains
-            .sort((a, b) => a.order - b.order)
-            .map((d) => d.id),
-        }),
+        body: JSON.stringify(body),
       });
 
       if (response.ok) {
-        toast.success("Assessment template created successfully");
-        setIsCreateDialogOpen(false);
-        resetForm();
+        toast.success(
+          selectedTemplate ? "Assessment updated" : "Assessment created successfully"
+        );
+        closeSheet();
         fetchAssessmentTemplates();
       } else {
         const error = await response.json();
-        toast.error(error.error || "Failed to create assessment template");
+        toast.error(error.error || "Failed to save assessment");
       }
-    } catch (error) {
-      toast.error("Error creating assessment template");
-    }
-  };
-
-  const handleUpdateTemplate = async () => {
-    if (
-      !selectedTemplate ||
-      !formData.name ||
-      !formData.slug ||
-      formData.selectedDomains.length === 0
-    ) {
-      toast.error(
-        "Please fill in all required fields and select at least one domain"
-      );
-      return;
-    }
-
-    try {
-      const response = await fetch("/api/admin/assessment-templates", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: selectedTemplate.id,
-          ...formData,
-          domains: formData.selectedDomains
-            .sort((a, b) => a.order - b.order)
-            .map((d) => ({
-              domainTemplateId: d.id,
-              order: d.order,
-            })),
-        }),
-      });
-
-      if (response.ok) {
-        toast.success("Assessment template updated successfully");
-        setIsEditDialogOpen(false);
-        resetForm();
-        fetchAssessmentTemplates();
-      } else {
-        const error = await response.json();
-        toast.error(error.error || "Failed to update assessment template");
-      }
-    } catch (error) {
-      toast.error("Error updating assessment template");
+    } catch {
+      toast.error("Error saving assessment");
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleDeleteTemplate = async (templateId: string) => {
-    if (!confirm("Are you sure you want to delete this assessment template?")) {
+    if (!confirm("Are you sure you want to delete this assessment template?"))
       return;
-    }
-
     try {
       const response = await fetch(
         `/api/admin/assessment-templates/${templateId}`,
-        {
-          method: "DELETE",
-        }
+        { method: "DELETE" }
       );
-
       if (response.ok) {
-        toast.success("Assessment template deleted successfully");
+        toast.success("Assessment template deleted");
         fetchAssessmentTemplates();
       } else {
         const error = await response.json();
-        toast.error(error.error || "Failed to delete assessment template");
+        toast.error(error.error || "Failed to delete");
       }
-    } catch (error) {
+    } catch {
       toast.error("Error deleting assessment template");
     }
-  };
-
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      slug: "",
-      description: "",
-      instructions: "",
-      isActive: true,
-      selectedDomains: [],
-    });
-    setSelectedTemplate(null);
-  };
-
-  const openEditDialog = (template: AssessmentTemplate) => {
-    setSelectedTemplate(template);
-    setFormData({
-      name: template.name,
-      slug: template.slug,
-      description: template.description || "",
-      instructions: template.instructions || "",
-      isActive: template.isActive,
-      selectedDomains: template.domains.map((d, index) => ({
-        id: d.domainTemplate.id,
-        order: d.order || index + 1,
-      })),
-    });
-    setIsEditDialogOpen(true);
-  };
-
-  const openPreviewDialog = (template: AssessmentTemplate) => {
-    setSelectedTemplate(template);
-    setIsPreviewDialogOpen(true);
   };
 
   const handleExportTemplate = async (
@@ -640,7 +755,6 @@ const AssessmentTemplateManager: React.FC = () => {
       const response = await fetch(
         `/api/admin/assessment-templates/${templateId}/export`
       );
-
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
@@ -651,195 +765,54 @@ const AssessmentTemplateManager: React.FC = () => {
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
-        toast.success("Assessment template exported successfully");
+        toast.success("Exported successfully");
       } else {
         toast.error("Failed to export assessment template");
       }
-    } catch (error) {
+    } catch {
       toast.error("Error exporting assessment template");
     }
   };
 
-  const handleDomainToggle = (domainId: string, checked: boolean) => {
-    setFormData((prev) => ({
-      ...prev,
-      selectedDomains: checked
-        ? [
-            ...prev.selectedDomains,
-            { id: domainId, order: prev.selectedDomains.length + 1 },
-          ]
-        : prev.selectedDomains.filter((domain) => domain.id !== domainId),
-    }));
+  // Trial editor
+  const openDomainTrialEditor = (domain: DomainTemplate) => {
+    if (Array.isArray(domain.questions)) {
+      setTrialEditorDomainId(domain.id);
+      setTrialEditorQuestions(
+        domain.questions.map((q) => ({ ...q, isTrial: q.isTrial === true }))
+      );
+      setIsTrialEditorOpen(true);
+    }
   };
 
-  const generateSlug = (name: string) => {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "");
-  };
-
-  const handleNameChange = (name: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      name,
-      slug: generateSlug(name),
-    }));
-  };
-
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    setSelectedFile(file || null);
-    setUploadError(null);
-  };
-
-  const handleUploadSubmit = async () => {
-    if (!selectedFile) return;
-
-    setIsUploading(true);
-    setUploadError(null);
-
+  const saveTrialChanges = async () => {
+    if (!trialEditorDomainId || !selectedTemplate) return;
     try {
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-
-      const response = await fetch("/api/admin/assessment-templates/upload", {
-        method: "POST",
-        body: formData,
+      const response = await fetch("/api/admin/assessment-templates/trial", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          assessmentId: selectedTemplate.id,
+          domainId: trialEditorDomainId,
+          questions: trialEditorQuestions,
+        }),
       });
-
-      const result = await response.json();
-
       if (response.ok) {
-        toast.success("Assessment template uploaded successfully");
-        setIsUploadDialogOpen(false);
-        setSelectedFile(null);
+        toast.success("Trial configuration updated");
+        setIsTrialEditorOpen(false);
+        setTrialEditorDomainId(null);
+        setTrialEditorQuestions([]);
         fetchAssessmentTemplates();
       } else {
-        setUploadError(result.error || "Failed to upload assessment template");
+        const error = await response.json();
+        toast.error(error.error || "Failed to update trial configuration");
       }
-    } catch (error) {
-      setUploadError("Error uploading assessment template");
-    } finally {
-      setIsUploading(false);
+    } catch {
+      toast.error("Error updating trial configuration");
     }
   };
 
-  const handleBulkUploadSuccess = () => {
-    fetchAssessmentTemplates();
-    fetchDomainTemplates();
-    toast.success("Bulk upload completed successfully");
-  };
-
-  const handleBulkSelect = (templateId: string, selected: boolean) => {
-    const newSelected = new Set(selectedTemplates);
-    if (selected) {
-      newSelected.add(templateId);
-    } else {
-      newSelected.delete(templateId);
-    }
-    setSelectedTemplates(newSelected);
-    setShowBulkActions(newSelected.size > 0);
-  };
-
-  const handleSelectAll = (selected: boolean) => {
-    if (selected) {
-      setSelectedTemplates(new Set(assessmentTemplates.map((t) => t.id)));
-      setShowBulkActions(true);
-    } else {
-      setSelectedTemplates(new Set());
-      setShowBulkActions(false);
-    }
-  };
-
-  const handleBulkDelete = async () => {
-    if (selectedTemplates.size === 0) return;
-
-    if (
-      !confirm(
-        `Are you sure you want to delete ${selectedTemplates.size} assessment templates?`
-      )
-    ) {
-      return;
-    }
-
-    try {
-      const deletePromises = Array.from(selectedTemplates).map((templateId) =>
-        fetch(`/api/admin/assessment-templates/${templateId}`, {
-          method: "DELETE",
-        })
-      );
-
-      const results = await Promise.allSettled(deletePromises);
-      const failures = results.filter(
-        (result) => result.status === "rejected"
-      ).length;
-
-      if (failures === 0) {
-        toast.success(
-          `Successfully deleted ${selectedTemplates.size} assessment templates`
-        );
-      } else {
-        toast.warning(
-          `Deleted ${results.length - failures} templates, ${failures} failed`
-        );
-      }
-
-      setSelectedTemplates(new Set());
-      setShowBulkActions(false);
-      fetchAssessmentTemplates();
-    } catch (error) {
-      toast.error("Error performing bulk delete");
-    }
-  };
-
-  const handleBulkToggleActive = async (active: boolean) => {
-    if (selectedTemplates.size === 0) return;
-
-    try {
-      const updatePromises = Array.from(selectedTemplates).map((templateId) => {
-        const template = assessmentTemplates.find((t) => t.id === templateId);
-        if (!template) return Promise.resolve();
-
-        return fetch("/api/admin/assessment-templates", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id: templateId,
-            name: template.name,
-            slug: template.slug,
-            description: template.description,
-            instructions: template.instructions,
-            isActive: active,
-            domainIds: template.domains.map((d) => d.domainTemplate.id),
-            changeDescription: `Bulk ${active ? "activated" : "deactivated"}`,
-          }),
-        });
-      });
-
-      const results = await Promise.allSettled(updatePromises);
-      const failures = results.filter(
-        (result) => result.status === "rejected"
-      ).length;
-
-      if (failures === 0) {
-        toast.success(
-          `Successfully ${active ? "activated" : "deactivated"} ${selectedTemplates.size} templates`
-        );
-      } else {
-        toast.warning(
-          `Updated ${results.length - failures} templates, ${failures} failed`
-        );
-      }
-
-      setSelectedTemplates(new Set());
-      setShowBulkActions(false);
-      fetchAssessmentTemplates();
-    } catch (error) {
-      toast.error("Error performing bulk update");
-    }
-  };
-
+  // Domain edit (from within assessment context)
   const handleEditDomain = (domain: DomainTemplate) => {
     setEditingDomain(domain);
     setIsDomainEditDialogOpen(true);
@@ -852,71 +825,98 @@ const AssessmentTemplateManager: React.FC = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updatedDomain),
       });
-
       if (response.ok) {
-        toast.success("Domain updated successfully");
+        toast.success("Domain updated");
         setIsDomainEditDialogOpen(false);
         setEditingDomain(null);
         fetchDomainTemplates();
-        fetchAssessmentTemplates(); // Refresh to show updated domain names
+        fetchAssessmentTemplates();
       } else {
         const error = await response.json();
         toast.error(error.error || "Failed to update domain");
       }
-    } catch (error) {
+    } catch {
       toast.error("Error updating domain");
     }
+  };
+
+  // File upload
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSelectedFile(event.target.files?.[0] || null);
+    setUploadError(null);
+  };
+
+  const handleUploadSubmit = async () => {
+    if (!selectedFile) return;
+    setIsUploading(true);
+    setUploadError(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", selectedFile);
+      const response = await fetch("/api/admin/assessment-templates/upload", {
+        method: "POST",
+        body: fd,
+      });
+      const result = await response.json();
+      if (response.ok) {
+        toast.success("Assessment template uploaded");
+        setIsUploadDialogOpen(false);
+        setSelectedFile(null);
+        fetchAssessmentTemplates();
+      } else {
+        setUploadError(result.error || "Failed to upload");
+      }
+    } catch {
+      setUploadError("Error uploading assessment template");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleBulkUploadSuccess = () => {
+    fetchAssessmentTemplates();
+    fetchDomainTemplates();
+    toast.success("Bulk upload completed successfully");
   };
 
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
+        <div className="text-center space-y-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto" />
+          <p className="text-sm text-muted-foreground">Loading assessments...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4">
-        <div className="min-w-0">
-          <h2 className="text-xl sm:text-2xl font-bold">
-            Assessment Templates
-          </h2>
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            Manage assessment templates and their associated domains. The trial
-            assessment appears here as a regular template.
+    <div className="space-y-6 p-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold">Assessment Templates</h2>
+          <p className="text-sm text-muted-foreground mt-1 max-w-lg">
+            Build full assessments by combining clinical domains. Each template
+            defines which domains are included and in what order.
           </p>
         </div>
         <div className="flex gap-2 shrink-0">
-          <Dialog
-            open={isUploadDialogOpen}
-            onOpenChange={setIsUploadDialogOpen}
-          >
+          {/* Upload JSON */}
+          <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
             <DialogTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-xs sm:text-sm"
-              >
-                <Upload className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Upload JSON</span>
+              <Button variant="outline">
+                <Upload className="h-4 w-4 mr-2" />
+                Upload JSON
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-[95vw] sm:max-w-md">
+            <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle className="text-base sm:text-lg">
-                  Upload Assessment Template
-                </DialogTitle>
+                <DialogTitle>Upload Assessment Template</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Upload a JSON file containing assessment template data. The
-                  file should include name, slug, domains array (domain slugs),
-                  and optionally description, instructions, and isActive.
+                  Upload a JSON file previously exported from this system.
                 </p>
                 <Input
                   type="file"
@@ -925,7 +925,7 @@ const AssessmentTemplateManager: React.FC = () => {
                   disabled={isUploading}
                 />
                 {uploadError && (
-                  <p className="text-sm text-red-500">{uploadError}</p>
+                  <p className="text-sm text-destructive">{uploadError}</p>
                 )}
                 <div className="flex justify-end gap-2">
                   <Button
@@ -947,580 +947,194 @@ const AssessmentTemplateManager: React.FC = () => {
 
           <BulkUploadDialog onUploadComplete={handleBulkUploadSuccess} />
 
-          <Dialog
-            open={isCreateDialogOpen}
-            onOpenChange={setIsCreateDialogOpen}
-          >
-            <DialogTrigger asChild>
-              <Button size="sm" className="text-xs sm:text-sm">
-                <Plus className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
-                <span className="hidden xs:inline">Create </span>Template
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-hidden">
-              <DialogHeader>
-                <DialogTitle className="text-base sm:text-lg">
-                  Create Assessment Template
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 max-h-96 overflow-y-auto">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="name">Name *</Label>
-                    <Input
-                      id="name"
-                      value={formData.name}
-                      onChange={(e) => handleNameChange(e.target.value)}
-                      placeholder="Assessment name"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="slug">Slug *</Label>
-                    <Input
-                      id="slug"
-                      value={formData.slug}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          slug: e.target.value,
-                        }))
-                      }
-                      placeholder="assessment-slug"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        description: e.target.value,
-                      }))
-                    }
-                    placeholder="Assessment description"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="instructions">Instructions</Label>
-                  <Textarea
-                    id="instructions"
-                    value={formData.instructions}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        instructions: e.target.value,
-                      }))
-                    }
-                    placeholder="Instructions for taking the assessment"
-                  />
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="isActive"
-                    checked={formData.isActive}
-                    onCheckedChange={(checked) =>
-                      setFormData((prev) => ({ ...prev, isActive: !!checked }))
-                    }
-                  />
-                  <Label htmlFor="isActive">Active</Label>
-                </div>
-
-                <Separator />
-
-                <div>
-                  <Label>Select Domains *</Label>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Choose domains for this assessment. Selected domains will be
-                    ordered automatically.
-                  </p>
-
-                  {/* Available Domains */}
-                  <div className="space-y-2 max-h-32 overflow-y-auto border rounded p-2">
-                    {domainTemplates.map((domain) => {
-                      const isSelected = formData.selectedDomains.some(
-                        (d) => d.id === domain.id
-                      );
-                      const selectedDomain = formData.selectedDomains.find(
-                        (d) => d.id === domain.id
-                      );
-                      return (
-                        <div
-                          key={domain.id}
-                          className={`flex items-center justify-between p-2 rounded transition-colors ${
-                            isSelected
-                              ? "bg-primary/10 dark:bg-primary/20 border border-primary/30 dark:border-primary/50"
-                              : "hover:bg-accent dark:hover:bg-accent/50"
-                          }`}
-                        >
-                          <div className="flex items-center space-x-2 flex-1">
-                            <Checkbox
-                              id={`domain-${domain.id}`}
-                              checked={isSelected}
-                              onCheckedChange={(checked) =>
-                                handleDomainToggle(domain.id, !!checked)
-                              }
-                            />
-                            <div className="flex-1">
-                              <Label
-                                htmlFor={`domain-${domain.id}`}
-                                className="text-sm font-medium cursor-pointer"
-                              >
-                                {domain.name}
-                              </Label>
-                              <p className="text-xs text-muted-foreground">
-                                {Array.isArray(domain.questions)
-                                  ? domain.questions.length
-                                  : 0}{" "}
-                                questions
-                              </p>
-                            </div>
-                          </div>
-                          {isSelected && (
-                            <div className="text-xs bg-primary/20 dark:bg-primary/30 text-primary dark:text-primary-foreground px-2 py-1 rounded font-medium">
-                              Order: {selectedDomain?.order}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Selected Domains Summary */}
-                  {formData.selectedDomains.length > 0 && (
-                    <div className="mt-2 p-2 bg-accent/50 dark:bg-accent/30 rounded border border-border">
-                      <p className="text-xs font-medium mb-1">
-                        Selected Domains ({formData.selectedDomains.length}):
-                      </p>
-                      <div className="flex flex-wrap gap-1">
-                        {formData.selectedDomains
-                          .sort((a, b) => a.order - b.order)
-                          .map((selectedDomain) => {
-                            const domain = domainTemplates.find(
-                              (d) => d.id === selectedDomain.id
-                            );
-                            return (
-                              <span
-                                key={selectedDomain.id}
-                                className="text-xs bg-primary/20 dark:bg-primary/30 text-primary dark:text-primary-foreground px-2 py-1 rounded font-medium"
-                              >
-                                {selectedDomain.order}. {domain?.name}
-                              </span>
-                            );
-                          })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex justify-end gap-2 pt-4">
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsCreateDialogOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button onClick={handleCreateTemplate}>
-                    Create Template
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <Button onClick={openCreate}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Assessment
+          </Button>
         </div>
       </div>
 
-      {/* Bulk Actions Bar */}
-      {showBulkActions && (
-        <div className="bg-muted p-4 rounded-lg border">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <span className="text-sm font-medium">
-                {selectedTemplates.size} template
-                {selectedTemplates.size !== 1 ? "s" : ""} selected
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleSelectAll(false)}
-              >
-                Clear Selection
-              </Button>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleBulkToggleActive(true)}
-              >
-                Activate Selected
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleBulkToggleActive(false)}
-              >
-                Deactivate Selected
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleBulkDelete}
-              >
-                Delete Selected
-              </Button>
-            </div>
-          </div>
+      {/* Assessment list */}
+      {assessmentTemplates.length === 0 ? (
+        <div className="border-2 border-dashed rounded-2xl p-16 text-center">
+          <ClipboardList className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-semibold mb-2">No assessments yet</h3>
+          <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
+            Create your first assessment template by combining clinical domains.
+          </p>
+          <Button onClick={openCreate}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create First Assessment
+          </Button>
         </div>
-      )}
-
-      {/* Select All Checkbox */}
-      <div className="flex items-center gap-2 mb-2">
-        <Checkbox
-          id="select-all"
-          checked={
-            selectedTemplates.size === assessmentTemplates.length &&
-            assessmentTemplates.length > 0
-          }
-          onCheckedChange={(checked) => handleSelectAll(!!checked)}
-        />
-        <Label htmlFor="select-all" className="text-sm">
-          Select all templates
-        </Label>
-      </div>
-
-      <div className="grid gap-3 sm:gap-4">
-        {assessmentTemplates.map((template) => (
-          <Card key={template.id}>
-            <CardHeader className="pb-3 sm:pb-6">
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
-                <div className="flex items-start gap-2 sm:gap-3 min-w-0 flex-1">
-                  <Checkbox
-                    checked={selectedTemplates.has(template.id)}
-                    onCheckedChange={(checked) =>
-                      handleBulkSelect(template.id, !!checked)
-                    }
-                    className="mt-1 shrink-0"
-                  />
+      ) : (
+        <div className="grid gap-4">
+          {assessmentTemplates.map((template) => (
+            <Card key={template.id} className="hover:shadow-sm transition-shadow">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 flex-1">
-                    <CardTitle className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-base sm:text-lg">
-                      <span className="truncate">{template.name}</span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <CardTitle className="text-lg">{template.name}</CardTitle>
                       {template.id === trialAssessmentId && (
                         <Badge
                           variant="outline"
-                          className="bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary-foreground border-primary/30 dark:border-primary/50 text-[10px] sm:text-xs shrink-0"
+                          className="bg-primary/10 text-primary border-primary/30 text-xs"
                         >
                           Trial
                         </Badge>
                       )}
                       <Badge
                         variant={template.isActive ? "default" : "secondary"}
-                        className="text-[10px] sm:text-xs shrink-0"
+                        className="text-xs"
                       >
                         {template.isActive ? "Active" : "Inactive"}
                       </Badge>
-                    </CardTitle>
-                    <p className="text-xs sm:text-sm text-muted-foreground mt-1 truncate">
-                      Slug: {template.slug}
-                    </p>
+                    </div>
                     {template.description && (
-                      <p className="text-xs sm:text-sm mt-2 line-clamp-2">
+                      <CardDescription className="mt-1.5 text-sm leading-relaxed line-clamp-2">
                         {template.description}
-                      </p>
+                      </CardDescription>
                     )}
                   </div>
-                </div>
-                <div className="flex gap-1.5 sm:gap-2 shrink-0">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => openPreviewDialog(template)}
-                    className="h-8 w-8 p-0"
-                    title="Preview"
-                  >
-                    <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      handleExportTemplate(template.id, template.slug)
-                    }
-                    className="h-8 w-8 p-0"
-                    title="Export"
-                  >
-                    <Download className="h-3 w-3 sm:h-4 sm:w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => openEditDialog(template)}
-                    className="h-8 w-8 p-0"
-                    title="Edit"
-                  >
-                    <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDeleteTemplate(template.id)}
-                    className="h-8 w-8 p-0"
-                    title="Delete"
-                  >
-                    <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="space-y-2">
-                <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
-                  <span className="truncate">By {template.createdBy.name}</span>
-                  <span className="hidden sm:inline">•</span>
-                  <span className="shrink-0">
-                    {new Date(template.createdAt).toLocaleDateString()}
-                  </span>
-                  <span className="hidden sm:inline">•</span>
-                  <span className="shrink-0">
-                    {template._count.assessments} assessments
-                  </span>
-                </div>
 
-                <div>
-                  <p className="text-xs sm:text-sm font-medium mb-1.5 sm:mb-2">
-                    {getTotalQuestionCount(template)} total questions ({template.domains.length} domains):
-                  </p>
-                  <div className="flex flex-wrap gap-1 sm:gap-1.5">
-                    {template.domains.map(({ domainTemplate }) => {
-                      const totalCount = Array.isArray(domainTemplate.questions)
-                        ? domainTemplate.questions.length
-                        : 0;
-                      const trialCount = getTrialQuestionCount(domainTemplate.questions);
-
-                      return (
-                        <div
-                          key={domainTemplate.id}
-                          className="flex items-center gap-1"
-                        >
-                          <Badge
-                            variant="outline"
-                            className="flex items-center gap-1 text-[10px] sm:text-xs"
-                          >
-                            {domainTemplate.name} ({totalCount}
-                            {trialCount > 0 && (
-                              <span className="text-primary font-medium">
-                                /{trialCount}
-                              </span>
-                            )}
-                            )
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedTemplate(template);
-                                openDomainTrialEditor(domainTemplate);
-                              }}
-                              className="ml-1 p-0.5 hover:bg-primary/20 dark:hover:bg-primary/30 rounded transition-colors"
-                              title={`Configure trial questions for ${domainTemplate.name}`}
-                            >
-                              <Zap className="h-2.5 w-2.5" />
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEditDomain(domainTemplate);
-                              }}
-                              className="ml-0.5 p-0.5 hover:bg-accent dark:hover:bg-accent/50 rounded transition-colors"
-                              title={`Edit ${domainTemplate.name} domain`}
-                            >
-                              <Edit className="h-3 w-3" />
-                            </button>
-                          </Badge>
-                        </div>
-                      );
-                    })}
+                  <div className="flex gap-1 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedTemplate(template);
+                        setIsPreviewDialogOpen(true);
+                      }}
+                      title="Preview"
+                      className="h-9 w-9 p-0"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        handleExportTemplate(template.id, template.slug)
+                      }
+                      title="Export JSON"
+                      className="h-9 w-9 p-0"
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openEdit(template)}
+                      title="Edit assessment"
+                      className="h-9 w-9 p-0"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteTemplate(template.id)}
+                      title="Delete assessment"
+                      className="h-9 w-9 p-0 hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardHeader>
 
-      {/* Edit Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Edit Assessment Template</DialogTitle>
-          </DialogHeader>
+              <CardContent className="pt-0">
+                <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground mb-3">
+                  <span>By {template.createdBy.name}</span>
+                  <span>·</span>
+                  <span>{new Date(template.createdAt).toLocaleDateString()}</span>
+                  <span>·</span>
+                  <span>{template._count.assessments} assessments</span>
+                  <span>·</span>
+                  <span className="font-medium">
+                    {getTotalQuestionCount(template)} total questions
+                  </span>
+                </div>
 
-          {/* Assessment Stats Summary */}
-          {formData.selectedDomains.length > 0 && (
-            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-              <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                {(() => {
-                  const { totalQuestions, trialQuestions } = getSelectedDomainsStats();
-                  return `Assessment Summary: ${totalQuestions} total questions (${trialQuestions} trial)`;
-                })()}
-              </p>
-            </div>
-          )}
+                <div className="flex flex-wrap gap-1.5">
+                  {template.domains.map(({ domainTemplate }) => {
+                    const totalCount = Array.isArray(domainTemplate.questions)
+                      ? domainTemplate.questions.length
+                      : 0;
+                    const trialCount = getTrialQuestionCount(
+                      domainTemplate.questions
+                    );
 
-          <div className="space-y-4 max-h-96 overflow-y-auto">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="edit-name">Name *</Label>
-                <Input
-                  id="edit-name"
-                  value={formData.name}
-                  onChange={(e) => handleNameChange(e.target.value)}
-                  placeholder="Assessment name"
-                />
-              </div>
-              <div>
-                <Label htmlFor="edit-slug">Slug *</Label>
-                <Input
-                  id="edit-slug"
-                  value={formData.slug}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, slug: e.target.value }))
-                  }
-                  placeholder="assessment-slug"
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="edit-description">Description</Label>
-              <Textarea
-                id="edit-description"
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    description: e.target.value,
-                  }))
-                }
-                placeholder="Assessment description"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="edit-instructions">Instructions</Label>
-              <Textarea
-                id="edit-instructions"
-                value={formData.instructions}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    instructions: e.target.value,
-                  }))
-                }
-                placeholder="Instructions for taking the assessment"
-              />
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="edit-isActive"
-                checked={formData.isActive}
-                onCheckedChange={(checked) =>
-                  setFormData((prev) => ({ ...prev, isActive: !!checked }))
-                }
-              />
-              <Label htmlFor="edit-isActive">Active</Label>
-            </div>
-
-            <Separator />
-
-            <div>
-              <Label>Select Domains *</Label>
-              <div className="grid grid-cols-1 gap-2 mt-2 max-h-32 overflow-y-auto">
-                {domainTemplates.map((domain) => {
-                  const trialCount = getTrialQuestionCount(domain.questions);
-                  const totalCount = Array.isArray(domain.questions)
-                    ? domain.questions.length
-                    : 0;
-                  const isSelected = formData.selectedDomains.some(
-                    (d) => d.id === domain.id
-                  );
-
-                  return (
-                    <div
-                      key={domain.id}
-                      className="flex items-center justify-between p-2 rounded hover:bg-accent dark:hover:bg-accent/50 transition-colors border border-transparent hover:border-border"
-                    >
-                      <div className="flex items-center space-x-2 flex-1">
-                        <Checkbox
-                          id={`edit-domain-${domain.id}`}
-                          checked={isSelected}
-                          onCheckedChange={(checked) =>
-                            handleDomainToggle(domain.id, !!checked)
-                          }
-                        />
-                        <div>
-                          <Label
-                            htmlFor={`edit-domain-${domain.id}`}
-                            className="text-sm font-medium"
-                          >
-                            {domain.name}
-                          </Label>
-                          <p className="text-xs text-muted-foreground">
-                            {totalCount} questions
-                            {isSelected && trialCount > 0 && (
-                              <span className="ml-1 text-primary font-medium">
-                                ({trialCount} trial)
-                              </span>
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                      {isSelected && (
-                        <div className="flex gap-1">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openDomainTrialEditor(domain)}
-                            className="h-8 w-8 p-0"
-                            title={`Configure trial questions for ${domain.name}`}
-                          >
-                            <Zap className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              handleEditDomain(domain);
+                    return (
+                      <div key={domainTemplate.id} className="flex items-center">
+                        <Badge
+                          variant="outline"
+                          className="flex items-center gap-1 text-xs pr-1"
+                        >
+                          {domainTemplate.name} ({totalCount}
+                          {trialCount > 0 && (
+                            <span className="text-primary font-medium">
+                              /{trialCount}
+                            </span>
+                          )}
+                          )
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedTemplate(template);
+                              openDomainTrialEditor(domainTemplate);
                             }}
-                            className="h-8 w-8 p-0"
-                            title={`Edit ${domain.name} questions`}
+                            className="ml-1 p-0.5 hover:bg-primary/20 rounded transition-colors"
+                            title={`Configure trial questions for ${domainTemplate.name}`}
+                          >
+                            <Zap className="h-2.5 w-2.5" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditDomain(domainTemplate);
+                            }}
+                            className="p-0.5 hover:bg-muted rounded transition-colors"
+                            title={`Edit ${domainTemplate.name} domain`}
                           >
                             <Edit className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+                          </button>
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
-            <div className="flex justify-end gap-2 pt-4">
-              <Button
-                variant="outline"
-                onClick={() => setIsEditDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button onClick={handleUpdateTemplate}>Update Template</Button>
-            </div>
-          </div>
+      {/* Create / Edit Dialog */}
+      <Dialog open={isSheetOpen} onOpenChange={(open) => !open && closeSheet()}>
+        <DialogContent className="w-[96vw] max-w-[92vw] h-[90vh] p-0 flex flex-col overflow-hidden lg:max-w-[94vw] xl:max-w-[96rem]">
+          <DialogHeader className="px-8 pt-7 pb-5 border-b shrink-0">
+            <DialogTitle className="text-xl">
+              {selectedTemplate
+                ? `Edit: ${selectedTemplate.name}`
+                : "New Assessment Template"}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedTemplate
+                ? "Update domains and settings for this assessment."
+                : "Compose a clinical assessment by selecting domains."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <AssessmentForm
+            key={selectedTemplate?.id || "new"}
+            initial={selectedTemplate}
+            domainTemplates={domainTemplates}
+            onSave={handleSave}
+            onCancel={closeSheet}
+            isSaving={isSaving}
+          />
         </DialogContent>
       </Dialog>
 
@@ -1533,7 +1147,7 @@ const AssessmentTemplateManager: React.FC = () => {
         />
       )}
 
-      {/* Domain Trial Editor Dialog */}
+      {/* Trial Editor */}
       {trialEditorDomainId && (
         <DomainTrialEditor
           isOpen={isTrialEditorOpen}
@@ -1547,8 +1161,16 @@ const AssessmentTemplateManager: React.FC = () => {
             setTrialEditorQuestions([]);
           }}
           onSave={saveTrialChanges}
-          onUpdateQuestion={updateQuestionTrialStatus}
-          onToggleAll={toggleAllQuestionsTrialStatus}
+          onUpdateQuestion={(index, isTrial) =>
+            setTrialEditorQuestions((prev) => {
+              const updated = [...prev];
+              updated[index] = { ...updated[index], isTrial };
+              return updated;
+            })
+          }
+          onToggleAll={(isTrial) =>
+            setTrialEditorQuestions((prev) => prev.map((q) => ({ ...q, isTrial })))
+          }
         />
       )}
 

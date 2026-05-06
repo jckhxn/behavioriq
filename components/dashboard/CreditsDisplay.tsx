@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   CreditCard,
   Infinity as InfinityIcon,
@@ -169,15 +170,16 @@ export function CreditsDisplay() {
                 </div>
               ) : null}
 
-              <Button asChild className="w-full text-sm">
-                <Link href="/checkout-direct">
-                  <CreditCard className="mr-2 h-4 w-4" />
-                  <span className="hidden sm:inline">
-                    Purchase Assessment -{" "}
-                  </span>
-                  <span className="sm:hidden">Buy - </span>$97
-                </Link>
-              </Button>
+              <Link
+                href="/checkout-direct"
+                className={buttonVariants({ className: "w-full text-sm" })}
+              >
+                <CreditCard className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">
+                  Purchase Assessment -{" "}
+                </span>
+                <span className="sm:hidden">Buy - </span>$97
+              </Link>
 
               <Button
                 variant="outline"

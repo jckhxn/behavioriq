@@ -14,8 +14,11 @@ export async function PATCH(
 ) {
   try {
     const currentUser = await getCurrentUserWithRole();
-    if (!currentUser || currentUser.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (
+      !currentUser ||
+      (currentUser.role !== "ADMIN" && currentUser.role !== "SUPER_ADMIN")
+    ) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
     const userId = (await params).id;

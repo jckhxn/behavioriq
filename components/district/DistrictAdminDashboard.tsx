@@ -410,6 +410,15 @@ function DistrictAdminDashboardInner({ user }: DistrictAdminDashboardProps) {
   // Default Dashboard View
   const highRiskCount =
     (data?.riskBreakdown?.HIGH || 0) + (data?.riskBreakdown?.VERY_HIGH || 0);
+  const dashboardSections = [
+    { id: "dashboard-overview", label: "Overview" },
+    ...(highRiskCount > 0
+      ? [{ id: "risk-alert", label: "Risk Alerts" }]
+      : []),
+    { id: "quick-actions", label: "Quick Actions" },
+    { id: "schools-overview", label: "Schools Overview" },
+    { id: "ferpa-notice", label: "FERPA Notice" },
+  ];
 
   return (
     <DashboardLayout
@@ -417,183 +426,214 @@ function DistrictAdminDashboardInner({ user }: DistrictAdminDashboardProps) {
       title="District Dashboard"
       description={`Managing ${data?.totalStudents || 0} students across ${data?.totalSchools || 0} schools`}
     >
-      <div className="space-y-6">
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_220px] lg:gap-8">
+        <div className="space-y-6">
         {/* Stats Grid */}
-        <StatsGrid
-          stats={[
-            {
-              label: "Total Students",
-              value: data?.totalStudents || 0,
-              icon: <Users className="h-6 w-6" />,
-            },
-            {
-              label: "Schools",
-              value: data?.totalSchools || 0,
-              icon: <School className="h-6 w-6" />,
-            },
-            {
-              label: "Teachers",
-              value: data?.totalTeachers || 0,
-              icon: <GraduationCap className="h-6 w-6" />,
-            },
-            {
-              label: "Assessments",
-              value: data?.totalAssessments || 0,
-              icon: <FileText className="h-6 w-6" />,
-            },
-          ]}
-        />
+          <section id="dashboard-overview" className="scroll-mt-24">
+            <StatsGrid
+              stats={[
+                {
+                  label: "Total Students",
+                  value: data?.totalStudents || 0,
+                  icon: <Users className="h-6 w-6" />,
+                },
+                {
+                  label: "Schools",
+                  value: data?.totalSchools || 0,
+                  icon: <School className="h-6 w-6" />,
+                },
+                {
+                  label: "Teachers",
+                  value: data?.totalTeachers || 0,
+                  icon: <GraduationCap className="h-6 w-6" />,
+                },
+                {
+                  label: "Assessments",
+                  value: data?.totalAssessments || 0,
+                  icon: <FileText className="h-6 w-6" />,
+                },
+              ]}
+            />
+          </section>
 
         {/* High risk alert */}
         {highRiskCount > 0 && (
-          <Alert variant="warning" title="Attention Required">
-            {highRiskCount} students across the district have been identified as
-            high risk and may need intervention.
-          </Alert>
+          <section id="risk-alert" className="scroll-mt-24">
+            <Alert variant="warning" title="Attention Required">
+              {highRiskCount} students across the district have been identified as
+              high risk and may need intervention.
+            </Alert>
+          </section>
         )}
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Card
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => router.push("/district?tab=students")}
-          >
-            <CardContent className="py-6">
-              <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <Users className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <p className="font-semibold">View Students</p>
-                  <p className="text-sm text-muted-foreground">
-                    Browse all district students
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <section id="quick-actions" className="scroll-mt-24">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <Card
+                className="cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => router.push("/district?tab=students")}
+              >
+                <CardContent className="py-6">
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <Users className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-semibold">View Students</p>
+                      <p className="text-sm text-muted-foreground">
+                        Browse all district students
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-          <Card
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => router.push("/district?tab=schools")}
-          >
-            <CardContent className="py-6">
-              <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                  <School className="h-6 w-6 text-blue-600" />
-                </div>
-                <div>
-                  <p className="font-semibold">Manage Schools</p>
-                  <p className="text-sm text-muted-foreground">
-                    View and configure schools
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              <Card
+                className="cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => router.push("/district?tab=schools")}
+              >
+                <CardContent className="py-6">
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                      <School className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold">Manage Schools</p>
+                      <p className="text-sm text-muted-foreground">
+                        View and configure schools
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-          <Card
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => router.push("/district?tab=analytics")}
-          >
-            <CardContent className="py-6">
-              <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                  <BarChart3 className="h-6 w-6 text-purple-600" />
-                </div>
+              <Card
+                className="cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => router.push("/district?tab=analytics")}
+              >
+                <CardContent className="py-6">
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                      <BarChart3 className="h-6 w-6 text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold">Analytics</p>
+                      <p className="text-sm text-muted-foreground">
+                        District-wide insights
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </section>
+
+          {/* Schools Overview */}
+          <section id="schools-overview" className="scroll-mt-24">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                  <p className="font-semibold">Analytics</p>
-                  <p className="text-sm text-muted-foreground">
-                    District-wide insights
-                  </p>
+                  <CardTitle>Schools Overview</CardTitle>
+                  <CardDescription>Schools in your district</CardDescription>
+                </div>
+                <Button
+                  onClick={handleExportCSV}
+                  disabled={exporting}
+                  variant="outline"
+                  size="sm"
+                >
+                  {exporting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Download className="h-4 w-4 mr-2" />
+                      Export CSV
+                    </>
+                  )}
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {data?.schools.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No schools found. Add your first school to get started.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {data?.schools.slice(0, 5).map((school) => (
+                      <div
+                        key={school.id}
+                        className="flex items-center justify-between p-3 bg-muted rounded-xl cursor-pointer hover:bg-muted/80 transition-colors"
+                        onClick={() => router.push(`/district/school/${school.id}`)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <School className="h-5 w-5 text-muted-foreground" />
+                          <div>
+                            <p className="font-medium">{school.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {school._count.classrooms} classrooms
+                            </p>
+                          </div>
+                        </div>
+                        <Button variant="ghost" size="sm">
+                          View
+                        </Button>
+                      </div>
+                    ))}
+                    {(data?.schools.length || 0) > 5 && (
+                      <Button
+                        variant="ghost"
+                        className="w-full"
+                        onClick={() => router.push("/district?tab=schools")}
+                      >
+                        View all {data?.schools.length} schools
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </section>
+
+          {/* FERPA Notice */}
+          <section id="ferpa-notice" className="scroll-mt-24">
+            <Card>
+              <CardContent className="py-4">
+                <div className="flex items-start gap-4">
+                  <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <Building2 className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium">🛡️ FERPA-Safe by Default</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      All student data is anonymized by default. Identifiable
+                      information is only shown when explicit consent has been
+                      documented.
+                    </p>
+                  </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </Card>
+          </section>
         </div>
 
-        {/* Schools Overview */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Schools Overview</CardTitle>
-              <CardDescription>Schools in your district</CardDescription>
-            </div>
-            <Button
-              onClick={handleExportCSV}
-              disabled={exporting}
-              variant="outline"
-              size="sm"
-            >
-              {exporting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <>
-                  <Download className="h-4 w-4 mr-2" />
-                  Export CSV
-                </>
-              )}
-            </Button>
-          </CardHeader>
-          <CardContent>
-            {data?.schools.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No schools found. Add your first school to get started.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {data?.schools.slice(0, 5).map((school) => (
-                  <div
-                    key={school.id}
-                    className="flex items-center justify-between p-3 bg-muted rounded-xl cursor-pointer hover:bg-muted/80 transition-colors"
-                    onClick={() => router.push(`/district/school/${school.id}`)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <School className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">{school.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {school._count.classrooms} classrooms
-                        </p>
-                      </div>
-                    </div>
-                    <Button variant="ghost" size="sm">
-                      View
-                    </Button>
-                  </div>
-                ))}
-                {(data?.schools.length || 0) > 5 && (
-                  <Button
-                    variant="ghost"
-                    className="w-full"
-                    onClick={() => router.push("/district?tab=schools")}
-                  >
-                    View all {data?.schools.length} schools
-                  </Button>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* FERPA Notice */}
-        <Card>
-          <CardContent className="py-4">
-            <div className="flex items-start gap-4">
-              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <Building2 className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="font-medium">🛡️ FERPA-Safe by Default</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  All student data is anonymized by default. Identifiable
-                  information is only shown when explicit consent has been
-                  documented.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <aside className="hidden lg:block">
+          <div className="sticky top-1/2 -translate-y-1/2 max-h-[70vh] overflow-y-auto rounded-xl border bg-card/90 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
+              Dashboard Sections
+            </p>
+            <nav className="space-y-1">
+              {dashboardSections.map((section) => (
+                <a
+                  key={section.id}
+                  href={`#${section.id}`}
+                  className="block rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                >
+                  {section.label}
+                </a>
+              ))}
+            </nav>
+          </div>
+        </aside>
       </div>
     </DashboardLayout>
   );

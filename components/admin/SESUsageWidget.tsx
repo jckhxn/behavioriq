@@ -156,11 +156,11 @@ export function SESUsageWidget() {
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Budget Usage</span>
             <span className="text-2xl font-bold">
-              {budgetStatus.percentageUsed.toFixed(1)}%
+              {(budgetStatus.percentageUsed ?? 0).toFixed(1)}%
             </span>
           </div>
           <Progress
-            value={Math.min(budgetStatus.percentageUsed, 100)}
+            value={Math.min(budgetStatus.percentageUsed ?? 0, 100)}
             className="h-3"
           />
           <div className="flex items-center justify-between text-xs text-muted-foreground">
