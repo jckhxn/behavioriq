@@ -22,6 +22,11 @@ const getQuestionMax = (question: any): number => {
     return Math.max(...numericValues);
   }
 
+  const numericWeight = Number(question?.weight);
+  if (Number.isFinite(numericWeight) && numericWeight > 0) {
+    return numericWeight;
+  }
+
   return 1;
 };
 
@@ -50,6 +55,7 @@ const buildDefaultRiskThresholds = (questions: unknown): JsonObject => {
 
 async function main() {
   const dryRun = process.argv.includes("--dry-run");
+  const force = process.argv.includes("--force");
 
   const templates = await prisma.domainTemplate.findMany({
     select: {
@@ -70,7 +76,7 @@ async function main() {
         ? (template.scoringConfig as JsonObject)
         : {};
 
-    if (hasRiskThresholds(currentConfig)) {
+    if (!force && hasRiskThresholds(currentConfig)) {
       skippedCount += 1;
       continue;
     }
@@ -99,6 +105,7 @@ async function main() {
   console.log(`Updated: ${updatedCount}`);
   console.log(`Skipped (already configured): ${skippedCount}`);
   console.log(`Mode: ${dryRun ? "dry-run" : "write"}`);
+  console.log(`Force: ${force}`);
 }
 
 main()

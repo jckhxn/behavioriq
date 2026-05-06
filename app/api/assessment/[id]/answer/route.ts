@@ -94,6 +94,23 @@ const determineRiskLevel = (
   return defaultRiskLevel(percentage);
 };
 
+const getQuestionMaxScore = (question: any): number => {
+  if (Array.isArray(question?.options)) {
+    const maxFromOptions = Math.max(
+      ...question.options
+        .map((opt: any) => normalizeNumeric(opt?.value))
+        .filter((v: number | null): v is number => v !== null),
+      0
+    );
+    if (maxFromOptions > 0) return maxFromOptions;
+  }
+
+  const weight = normalizeNumeric(question?.weight);
+  if (weight !== null && weight > 0) return weight;
+
+  return 1;
+};
+
 /**
  * POST /api/assessment/:id/answer
  * Submits an answer to a question
@@ -164,12 +181,13 @@ export async function POST(
       (d: any) => (Array.isArray(d?.domainTemplate?.questions) ? d.domainTemplate.questions : [])
     );
     const currentQuestion = allTemplateQuestions.find((q: any) => q?.id === qid);
+    const yesScoreForQuestion = getQuestionMaxScore(currentQuestion);
 
     const directNumeric = normalizeNumeric(value);
     if (directNumeric !== null) {
       scoreValue = directNumeric;
     } else if (typeof value === "boolean") {
-      scoreValue = value ? 1 : 0;
+      scoreValue = value ? yesScoreForQuestion : 0;
     } else if (typeof value === "string") {
       const lower = value.toLowerCase();
       const byYesNo =
@@ -178,7 +196,7 @@ export async function POST(
         null;
 
       if (byYesNo !== null) {
-        scoreValue = byYesNo;
+        scoreValue = byYesNo ? yesScoreForQuestion : 0;
       } else if (Array.isArray(currentQuestion?.options)) {
         const matchedOption = currentQuestion.options.find((opt: any) =>
           String(opt?.label ?? "").toLowerCase() === lower ||
@@ -276,7 +294,10 @@ export async function POST(
         // Get active questions for this domain
         let domainQuestions = questions.filter((q: any) => q.active !== false);
         if (assessment.mode === "TRIAL") {
-          domainQuestions = domainQuestions.filter((q: any) => q.isTrial);
+          const hasExplicitTrialFlags = domainQuestions.some((q: any) => q.isTrial === true);
+          if (hasExplicitTrialFlags) {
+            domainQuestions = domainQuestions.filter((q: any) => q.isTrial);
+          }
         }
 
         // Sum numeric response scores for this domain
@@ -295,14 +316,7 @@ export async function POST(
         for (const question of domainQuestions) {
           const response = responseMap.get(question.id as string) as any;
 
-          const questionMax = Array.isArray(question.options)
-            ? Math.max(
-                ...question.options
-                  .map((opt: any) => normalizeNumeric(opt?.value))
-                  .filter((v: number | null): v is number => v !== null),
-                1
-              )
-            : 1;
+          const questionMax = getQuestionMaxScore(question);
           totalPossible += questionMax;
 
           if (response) {

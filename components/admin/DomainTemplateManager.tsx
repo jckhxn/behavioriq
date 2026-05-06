@@ -64,11 +64,10 @@ type QuestionType =
   | "multiple_choice"
   | "text";
 
+// Questions are now just text items — type/options live at the domain level
 interface Question {
   id: string;
   text: string;
-  type: QuestionType;
-  options: QuestionOption[];
   isTrial?: boolean;
 }
 
@@ -151,13 +150,64 @@ const QUESTION_TYPE_OPTIONS: Record<QuestionType, QuestionOption[]> = {
 
 const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   likert4: "Likert 4-pt — Not at all → Nearly every day (PHQ/GAD)",
-  likert5: "Likert 5-pt — Never → Always",
+  likert5: "Likert 5-pt — Never → Very Often",
   likert7: "Likert 7-pt — Strongly Disagree → Strongly Agree",
-  likert10: "Likert 11-pt — 0 to 10 (Clinician/Doctor scale)",
+  likert10: "Likert 11-pt — 0 to 10 (numeric scale)",
   yes_no: "Yes / No",
   multiple_choice: "Multiple Choice (custom options)",
   text: "Free Text Response",
 };
+
+// Rich metadata for the domain-level response type selector
+const RESPONSE_TYPE_META: {
+  type: QuestionType;
+  label: string;
+  description: string;
+  preview: string;
+}[] = [
+  {
+    type: "yes_no",
+    label: "Yes / No",
+    description: "Binary clinical screening",
+    preview: "No · Yes",
+  },
+  {
+    type: "likert4",
+    label: "Likert 4-pt",
+    description: "PHQ-9 / GAD-7 frequency scale",
+    preview: "Not at all · Several days · More than half the days · Nearly every day",
+  },
+  {
+    type: "likert5",
+    label: "Likert 5-pt",
+    description: "Behavioral frequency scale",
+    preview: "Never · Rarely · Sometimes · Often · Very Often",
+  },
+  {
+    type: "likert7",
+    label: "Likert 7-pt",
+    description: "Agreement / attitude scale",
+    preview: "Strongly Disagree → Strongly Agree",
+  },
+  {
+    type: "likert10",
+    label: "0 – 10 Scale",
+    description: "Numeric clinician-rated scale",
+    preview: "0 · 1 · 2 · 3 · 4 · 5 · 6 · 7 · 8 · 9 · 10",
+  },
+  {
+    type: "text",
+    label: "Free Text",
+    description: "Open-ended written response",
+    preview: "Patient types a free-form answer",
+  },
+  {
+    type: "multiple_choice",
+    label: "Multiple Choice",
+    description: "Custom options you define",
+    preview: "Define your own answer options below",
+  },
+];
 
 // ─── Pre-built validated instruments ─────────────────────────────────────────
 
@@ -169,25 +219,11 @@ interface PsychTemplate {
   icon: React.ReactNode;
   slug: string;
   scoringNote: string;
-  questions: Omit<Question, "id">[];
+  responseType: QuestionType;
+  questions: { text: string }[];
 }
 
-const makeQ = (
-  text: string,
-  type: QuestionType = "likert4"
-): Omit<Question, "id"> => ({
-  text,
-  type,
-  options: QUESTION_TYPE_OPTIONS[type],
-});
-
-const ADHD_OPTIONS: QuestionOption[] = [
-  { value: 0, label: "Never" },
-  { value: 1, label: "Rarely" },
-  { value: 2, label: "Sometimes" },
-  { value: 3, label: "Often" },
-  { value: 4, label: "Very Often" },
-];
+const makeQ = (text: string): { text: string } => ({ text });
 
 const PSYCH_INSTRUMENTS: PsychTemplate[] = [
   {
@@ -199,6 +235,7 @@ const PSYCH_INSTRUMENTS: PsychTemplate[] = [
     slug: "phq-9-depression",
     scoringNote:
       "0–4 minimal, 5–9 mild, 10–14 moderate, 15–19 moderately severe, 20–27 severe depression",
+    responseType: "likert4",
     questions: [
       makeQ("Little interest or pleasure in doing things"),
       makeQ("Feeling down, depressed, or hopeless"),
@@ -228,6 +265,7 @@ const PSYCH_INSTRUMENTS: PsychTemplate[] = [
     slug: "gad-7-anxiety",
     scoringNote:
       "0–4 minimal, 5–9 mild, 10–14 moderate, 15–21 severe anxiety",
+    responseType: "likert4",
     questions: [
       makeQ("Feeling nervous, anxious, or on edge"),
       makeQ("Not being able to stop or control worrying"),
@@ -247,37 +285,14 @@ const PSYCH_INSTRUMENTS: PsychTemplate[] = [
     slug: "adhd-asrs-screener",
     scoringNote:
       "≥4 positive responses (items 1–3: Never/Rarely/Sometimes; items 4–6: Often/Very Often) suggests probable ADHD",
+    responseType: "likert5",
     questions: [
-      {
-        text: "How often do you have trouble wrapping up the final details of a project, once the challenging parts have been done?",
-        type: "likert5",
-        options: ADHD_OPTIONS,
-      },
-      {
-        text: "How often do you have difficulty getting things in order when you have to do a task that requires organization?",
-        type: "likert5",
-        options: ADHD_OPTIONS,
-      },
-      {
-        text: "How often do you have problems remembering appointments or obligations?",
-        type: "likert5",
-        options: ADHD_OPTIONS,
-      },
-      {
-        text: "When you have a task that requires a lot of thought, how often do you avoid or delay getting started?",
-        type: "likert5",
-        options: ADHD_OPTIONS,
-      },
-      {
-        text: "How often do you fidget or squirm with your hands or feet when you have to sit down for a long time?",
-        type: "likert5",
-        options: ADHD_OPTIONS,
-      },
-      {
-        text: "How often do you feel overly active and compelled to do things, like you were driven by a motor?",
-        type: "likert5",
-        options: ADHD_OPTIONS,
-      },
+      makeQ("How often do you have trouble wrapping up the final details of a project, once the challenging parts have been done?"),
+      makeQ("How often do you have difficulty getting things in order when you have to do a task that requires organization?"),
+      makeQ("How often do you have problems remembering appointments or obligations?"),
+      makeQ("When you have a task that requires a lot of thought, how often do you avoid or delay getting started?"),
+      makeQ("How often do you fidget or squirm with your hands or feet when you have to sit down for a long time?"),
+      makeQ("How often do you feel overly active and compelled to do things, like you were driven by a motor?"),
     ],
   },
   {
@@ -289,32 +304,13 @@ const PSYCH_INSTRUMENTS: PsychTemplate[] = [
     slug: "pc-ptsd-5",
     scoringNote:
       "Score ≥3 is the recommended cut-off for further PTSD assessment",
+    responseType: "yes_no",
     questions: [
-      {
-        text: "In the past month, have you had nightmares about it or thought about it when you did not want to?",
-        type: "yes_no",
-        options: QUESTION_TYPE_OPTIONS["yes_no"],
-      },
-      {
-        text: "Tried hard not to think about it or went out of your way to avoid situations that reminded you of it?",
-        type: "yes_no",
-        options: QUESTION_TYPE_OPTIONS["yes_no"],
-      },
-      {
-        text: "Were constantly on guard, watchful, or easily startled?",
-        type: "yes_no",
-        options: QUESTION_TYPE_OPTIONS["yes_no"],
-      },
-      {
-        text: "Felt numb or detached from people, activities, or your surroundings?",
-        type: "yes_no",
-        options: QUESTION_TYPE_OPTIONS["yes_no"],
-      },
-      {
-        text: "Felt guilty or unable to stop blaming yourself or others for the event or problems it caused?",
-        type: "yes_no",
-        options: QUESTION_TYPE_OPTIONS["yes_no"],
-      },
+      makeQ("In the past month, have you had nightmares about it or thought about it when you did not want to?"),
+      makeQ("Tried hard not to think about it or went out of your way to avoid situations that reminded you of it?"),
+      makeQ("Were constantly on guard, watchful, or easily startled?"),
+      makeQ("Felt numb or detached from people, activities, or your surroundings?"),
+      makeQ("Felt guilty or unable to stop blaming yourself or others for the event or problems it caused?"),
     ],
   },
   {
@@ -325,6 +321,7 @@ const PSYCH_INSTRUMENTS: PsychTemplate[] = [
     icon: <BookOpen className="h-5 w-5" />,
     slug: "",
     scoringNote: "",
+    responseType: "yes_no",
     questions: [],
   },
 ];
@@ -340,40 +337,31 @@ const generateSlug = (name: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
 
+// Type and options now live at domain level — questions are just text items
 const questionsToJson = (questions: Question[]): any[] =>
   questions.map((q) => ({
     id: q.id,
     text: q.text,
-    type: q.type,
-    options: q.options,
     ...(q.isTrial !== undefined ? { isTrial: q.isTrial } : {}),
   }));
 
 const jsonToQuestions = (json: any): Question[] | null => {
   if (!Array.isArray(json)) return null;
   try {
-    return json.map((q: any) => ({
-      constType: (q.type as QuestionType) || "likert4",
-      id: q.id || generateId(),
-      text: q.text || q.title || "",
-      type: ((q.type as QuestionType) || "likert4") as QuestionType,
-      options: Array.isArray(q.options)
-        ? q.options
-        : QUESTION_TYPE_OPTIONS[((q.type as QuestionType) || "likert4") as QuestionType],
-      isTrial: q.isTrial,
-    })).map((q: any) => {
-      const { constType, ...rest } = q;
-      return {
-        ...rest,
-        type: constType,
-      } as Question;
-    });
+    return json.map(
+      (q: any): Question => ({
+        id: q.id || generateId(),
+        text: q.text || q.title || "",
+        isTrial: q.isTrial,
+      })
+    );
   } catch {
     return null;
   }
 };
 
 // ─── QuestionCard ─────────────────────────────────────────────────────────────
+// Simplified — type/options are domain-level, so each card is just the question text
 
 interface QuestionCardProps {
   question: Question;
@@ -393,185 +381,52 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
   onDelete,
   onMoveUp,
   onMoveDown,
-}) => {
-  const handleTypeChange = (type: QuestionType) => {
-    onChange({
-      ...question,
-      type,
-      options:
-        type === "multiple_choice" || type === "text"
-          ? question.options
-          : QUESTION_TYPE_OPTIONS[type],
-    });
-  };
-
-  const addCustomOption = () => {
-    onChange({
-      ...question,
-      options: [
-        ...question.options,
-        { value: question.options.length, label: "" },
-      ],
-    });
-  };
-
-  const updateOptionLabel = (idx: number, label: string) => {
-    const options = [...question.options];
-    options[idx] = { ...options[idx], label };
-    onChange({ ...question, options });
-  };
-
-  const updateOptionValue = (idx: number, value: string) => {
-    const numeric = Number(value);
-    const options = [...question.options];
-    options[idx] = {
-      ...options[idx],
-      value: Number.isFinite(numeric) ? numeric : 0,
-    };
-    onChange({ ...question, options });
-  };
-
-  const removeOption = (idx: number) => {
-    onChange({
-      ...question,
-      options: question.options.filter((_, i) => i !== idx),
-    });
-  };
-
-  return (
-    <div className="border rounded-xl bg-card p-5 space-y-4 shadow-sm">
-      <div className="flex items-start gap-3">
-        {/* Number + move controls */}
-        <div className="flex flex-col items-center gap-0.5 pt-1 shrink-0">
-          <span className="text-xs font-bold text-muted-foreground bg-muted w-7 h-7 rounded-full flex items-center justify-center mb-1">
-            {index + 1}
-          </span>
-          <button
-            onClick={onMoveUp}
-            disabled={index === 0}
-            className="p-1 rounded hover:bg-muted disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
-            title="Move up"
-          >
-            <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
-          </button>
-          <button
-            onClick={onMoveDown}
-            disabled={index === total - 1}
-            className="p-1 rounded hover:bg-muted disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
-            title="Move down"
-          >
-            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-          </button>
-        </div>
-
-        <div className="flex-1 space-y-3 min-w-0">
-          {/* Question text */}
-          <Textarea
-            value={question.text}
-            onChange={(e) => onChange({ ...question, text: e.target.value })}
-            placeholder="Enter your question here..."
-            className="text-sm resize-none leading-relaxed"
-            rows={3}
-          />
-
-          {/* Type selector + delete */}
-          <div className="flex items-center gap-2">
-            <div className="flex-1">
-              <Select
-                value={question.type}
-                onValueChange={(v) => handleTypeChange(v as QuestionType)}
-              >
-                <SelectTrigger className="h-9 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(Object.entries(QUESTION_TYPE_LABELS) as [QuestionType, string][]).map(
-                    ([type, label]) => (
-                      <SelectItem key={type} value={type} className="text-sm">
-                        {label}
-                      </SelectItem>
-                    )
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-            <button
-              onClick={onDelete}
-              className="p-2 rounded-lg hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition-colors shrink-0"
-              title="Remove question"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-
-          {/* Options display / editor */}
-          {question.type === "text" ? (
-            <div className="bg-muted/40 rounded-lg px-3 py-2.5">
-              <p className="text-xs text-muted-foreground italic">
-                Patient will provide a written response
-              </p>
-            </div>
-          ) : question.type === "multiple_choice" ? (
-            <div className="bg-muted/40 rounded-lg p-3 space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">
-                Answer options:
-              </p>
-              {question.options.map((opt, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    value={String(opt.value ?? i)}
-                    onChange={(e) => updateOptionValue(i, e.target.value)}
-                    placeholder="Score"
-                    className="h-8 w-20 text-sm"
-                  />
-                  <Input
-                    value={opt.label}
-                    onChange={(e) => updateOptionLabel(i, e.target.value)}
-                    placeholder={`Option ${i + 1}`}
-                    className="h-8 text-sm"
-                  />
-                  <button
-                    onClick={() => removeOption(i)}
-                    className="shrink-0 p-1 hover:text-destructive text-muted-foreground transition-colors"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ))}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={addCustomOption}
-                className="h-8 text-xs w-full"
-              >
-                <Plus className="h-3 w-3 mr-1" />
-                Add option
-              </Button>
-            </div>
-          ) : (
-            <div className="bg-muted/40 rounded-lg px-3 py-2.5">
-              <div className="flex flex-wrap gap-2">
-                {question.options.map((opt, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center gap-1.5 bg-background border rounded-md px-2.5 py-1"
-                  >
-                    <span className="text-[10px] font-mono text-muted-foreground">
-                      {opt.value}
-                    </span>
-                    <span className="text-xs text-foreground">{opt.label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+}) => (
+  <div className="border rounded-xl bg-card p-4 shadow-sm">
+    <div className="flex items-start gap-3">
+      {/* Number + reorder controls */}
+      <div className="flex flex-col items-center gap-0.5 pt-1 shrink-0">
+        <span className="text-xs font-bold text-muted-foreground bg-muted w-7 h-7 rounded-full flex items-center justify-center mb-1">
+          {index + 1}
+        </span>
+        <button
+          onClick={onMoveUp}
+          disabled={index === 0}
+          className="p-1 rounded hover:bg-muted disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+          title="Move up"
+        >
+          <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
+        </button>
+        <button
+          onClick={onMoveDown}
+          disabled={index === total - 1}
+          className="p-1 rounded hover:bg-muted disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+          title="Move down"
+        >
+          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+        </button>
       </div>
+
+      {/* Question text */}
+      <Textarea
+        value={question.text}
+        onChange={(e) => onChange({ ...question, text: e.target.value })}
+        placeholder="Enter your question here..."
+        className="flex-1 text-sm resize-none leading-relaxed min-h-[72px]"
+        rows={3}
+      />
+
+      {/* Delete */}
+      <button
+        onClick={onDelete}
+        className="mt-1 p-1.5 rounded-lg hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition-colors shrink-0"
+        title="Remove question"
+      >
+        <X className="h-4 w-4" />
+      </button>
     </div>
-  );
-};
+  </div>
+);
 
 // ─── Instrument selector ──────────────────────────────────────────────────────
 
@@ -657,7 +512,22 @@ const DomainForm: React.FC<DomainFormProps> = ({
   const [name, setName] = useState(initial?.name || "");
   const [slug, setSlug] = useState(initial?.slug || "");
   const [description, setDescription] = useState(initial?.description || "");
-  const [scoringNote, setScoringNote] = useState("");
+  const [scoringNote, setScoringNote] = useState(
+    (initial?.resources as any)?.scoringNote || ""
+  );
+
+  // Domain-level response type (single type applies to all questions)
+  const [responseType, setResponseType] = useState<QuestionType>(
+    (initial?.scoringConfig as any)?.responseType || "yes_no"
+  );
+  // Custom options — only used when responseType === "multiple_choice"
+  const [customOptions, setCustomOptions] = useState<QuestionOption[]>(
+    (initial?.scoringConfig as any)?.responseOptions &&
+    (initial?.scoringConfig as any)?.responseType === "multiple_choice"
+      ? (initial?.scoringConfig as any).responseOptions
+      : []
+  );
+
   const [scoringConfigJson, setScoringConfigJson] = useState(
     initial?.scoringConfig
       ? JSON.stringify(initial.scoringConfig, null, 2)
@@ -738,8 +608,11 @@ const DomainForm: React.FC<DomainFormProps> = ({
       setSlug(instrument.slug);
       setDescription(instrument.description);
       setScoringNote(instrument.scoringNote);
+      // Set the domain-level response type from the instrument definition
+      setResponseType(instrument.responseType);
+      // Strip per-question type/options — store only text
       setQuestions(
-        instrument.questions.map((q) => ({ ...q, id: generateId() }))
+        instrument.questions.map((q) => ({ id: generateId(), text: q.text }))
       );
     }
     setStage("build");
@@ -748,12 +621,7 @@ const DomainForm: React.FC<DomainFormProps> = ({
   const addQuestion = () => {
     setQuestions((prev) => [
       ...prev,
-      {
-        id: generateId(),
-        text: "",
-        type: "likert4",
-        options: QUESTION_TYPE_OPTIONS["likert4"],
-      },
+      { id: generateId(), text: "" },
     ]);
   };
 
@@ -793,6 +661,14 @@ const DomainForm: React.FC<DomainFormProps> = ({
       return;
     }
 
+    // Build the domain-level response options
+    const responseOptions =
+      responseType === "multiple_choice"
+        ? customOptions
+        : responseType === "text"
+        ? []
+        : QUESTION_TYPE_OPTIONS[responseType] ?? [];
+
     const payload: any = {
       name: name.trim(),
       slug: slug.trim() || generateSlug(name),
@@ -813,6 +689,13 @@ const DomainForm: React.FC<DomainFormProps> = ({
         return;
       }
     }
+
+    // Always write responseType + responseOptions at the domain level
+    parsedScoringConfig = {
+      ...parsedScoringConfig,
+      responseType,
+      responseOptions,
+    };
 
     const nextSkipLogic: any = {};
     if (domainThresholdRule.enabled && questionSubsetRule.enabled) {
@@ -891,12 +774,35 @@ const DomainForm: React.FC<DomainFormProps> = ({
 
   const formSections = [
     { id: "domain-info", label: "Domain Info" },
+    { id: "response-format", label: "Response Format" },
     { id: "scoring-reference", label: "Scoring Reference" },
     { id: "risk-thresholds", label: "Risk Thresholds" },
     { id: "skip-logic", label: "Skip Logic" },
     { id: "questions", label: "Questions" },
     { id: "advanced-config", label: "Advanced Config" },
   ];
+
+  const scrollAreaRef = React.useRef<HTMLDivElement>(null);
+
+  const scrollToSection = (id: string) => {
+    // Find the Radix ScrollArea viewport (the actual scrolling element)
+    const viewport = scrollAreaRef.current?.querySelector(
+      "[data-radix-scroll-area-viewport]"
+    ) as HTMLElement | null;
+    const target = document.getElementById(id);
+    if (!target) return;
+    if (viewport) {
+      // Scroll within the ScrollArea viewport, offset by the sticky nav height (~88px)
+      const targetTop =
+        target.getBoundingClientRect().top -
+        viewport.getBoundingClientRect().top +
+        viewport.scrollTop -
+        100;
+      viewport.scrollTo({ top: targetTop, behavior: "smooth" });
+    } else {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
 
   if (stage === "instrument") {
     return (
@@ -908,7 +814,7 @@ const DomainForm: React.FC<DomainFormProps> = ({
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden" ref={scrollAreaRef}>
       <ScrollArea className="flex-1 min-h-0">
         <div className="w-full px-10 py-10 space-y-10">
           <div className="sticky top-0 z-10 -mx-10 mb-2 border-b bg-background/95 px-10 pb-4 pt-1 backdrop-blur">
@@ -917,13 +823,14 @@ const DomainForm: React.FC<DomainFormProps> = ({
             </p>
             <nav className="flex flex-wrap gap-2">
               {formSections.map((section) => (
-                <a
+                <button
                   key={section.id}
-                  href={`#${section.id}`}
+                  type="button"
+                  onClick={() => scrollToSection(section.id)}
                   className="rounded-full border bg-card px-4 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/30 hover:bg-muted hover:text-foreground"
                 >
                   {section.label}
-                </a>
+                </button>
               ))}
             </nav>
           </div>
@@ -982,6 +889,122 @@ const DomainForm: React.FC<DomainFormProps> = ({
                 />
               </div>
             </div>
+          </section>
+
+          <Separator />
+
+          {/* Response Format — domain-level, applies to ALL questions */}
+          <section id="response-format" className="space-y-5 scroll-mt-24">
+            <div>
+              <h3 className="text-base font-semibold">Response Format</h3>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                One response type applies to every question in this domain.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {RESPONSE_TYPE_META.map((meta) => (
+                <button
+                  key={meta.type}
+                  type="button"
+                  onClick={() => setResponseType(meta.type)}
+                  className={`text-left rounded-xl border p-4 transition-all ${
+                    responseType === meta.type
+                      ? "border-primary bg-primary/5 ring-1 ring-primary/30"
+                      : "hover:border-muted-foreground/30 hover:bg-muted/40"
+                  }`}
+                >
+                  <p className="text-sm font-semibold leading-tight">{meta.label}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                    {meta.description}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground/70 mt-2 leading-relaxed">
+                    {meta.preview}
+                  </p>
+                </button>
+              ))}
+            </div>
+
+            {/* Options preview / custom editor */}
+            {responseType === "text" ? (
+              <div className="bg-muted/40 rounded-xl px-4 py-3 border">
+                <p className="text-xs text-muted-foreground italic">
+                  Patient will type a free-form written answer — no score is collected.
+                </p>
+              </div>
+            ) : responseType === "multiple_choice" ? (
+              <div className="bg-muted/40 rounded-xl p-4 border space-y-3">
+                <p className="text-xs font-medium text-muted-foreground">
+                  Define the answer options patients will see:
+                </p>
+                {customOptions.map((opt, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      value={String(opt.value ?? i)}
+                      onChange={(e) => {
+                        const updated = [...customOptions];
+                        updated[i] = { ...updated[i], value: Number(e.target.value) };
+                        setCustomOptions(updated);
+                      }}
+                      placeholder="Score"
+                      className="h-8 w-20 text-sm font-mono"
+                    />
+                    <Input
+                      value={opt.label}
+                      onChange={(e) => {
+                        const updated = [...customOptions];
+                        updated[i] = { ...updated[i], label: e.target.value };
+                        setCustomOptions(updated);
+                      }}
+                      placeholder={`Option ${i + 1}`}
+                      className="h-8 text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setCustomOptions(customOptions.filter((_, j) => j !== i))}
+                      className="shrink-0 p-1 hover:text-destructive text-muted-foreground transition-colors"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setCustomOptions([
+                      ...customOptions,
+                      { value: customOptions.length, label: "" },
+                    ])
+                  }
+                  className="h-8 text-xs"
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  Add option
+                </Button>
+              </div>
+            ) : (
+              <div className="bg-muted/40 rounded-xl px-4 py-3 border">
+                <p className="text-xs font-medium text-muted-foreground mb-2">
+                  Patient responds with:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {(QUESTION_TYPE_OPTIONS[responseType] ?? []).map((opt, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-1.5 bg-background border rounded-md px-2.5 py-1"
+                    >
+                      <span className="text-[10px] font-mono text-muted-foreground">
+                        {opt.value}
+                      </span>
+                      <span className="text-xs">{opt.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
 
           <Separator />
@@ -1823,8 +1846,11 @@ const DomainTemplateManager: React.FC = () => {
           </DialogHeader>
           <ScrollArea className="flex-1 -mx-1 px-1">
             <div className="space-y-3 py-2">
-              {selectedTemplate &&
-                (jsonToQuestions(selectedTemplate.questions) || []).map(
+              {selectedTemplate && (() => {
+                const domainResponseType = (selectedTemplate.scoringConfig as any)?.responseType as QuestionType | undefined;
+                const domainOptions: QuestionOption[] = (selectedTemplate.scoringConfig as any)?.responseOptions
+                  ?? (domainResponseType ? QUESTION_TYPE_OPTIONS[domainResponseType] : []);
+                return (jsonToQuestions(selectedTemplate.questions) || []).map(
                   (q, i) => (
                     <div key={i} className="border rounded-lg p-4 space-y-2">
                       <p className="text-sm leading-relaxed">
@@ -1837,9 +1863,9 @@ const DomainTemplateManager: React.FC = () => {
                           </span>
                         )}
                       </p>
-                      {q.type !== "text" && q.options.length > 0 && (
+                      {domainResponseType !== "text" && domainOptions.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 pl-5">
-                          {q.options.map((opt, j) => (
+                          {domainOptions.map((opt, j) => (
                             <span
                               key={j}
                               className="text-xs bg-muted px-2 py-1 rounded"
@@ -1851,7 +1877,8 @@ const DomainTemplateManager: React.FC = () => {
                       )}
                     </div>
                   )
-                )}
+                );
+              })()}
             </div>
           </ScrollArea>
         </DialogContent>

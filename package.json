@@ -21,6 +21,9 @@
     "db:verify": "tsx scripts/test-db-connection.ts",
     "db:backfill-domain-thresholds:dry": "tsx scripts/backfill-domain-risk-thresholds.ts --dry-run",
     "db:backfill-domain-thresholds": "tsx scripts/backfill-domain-risk-thresholds.ts",
+    "db:backfill-domain-thresholds:force": "tsx scripts/backfill-domain-risk-thresholds.ts --force",
+    "db:recalculate-assessment-scores:dry": "tsx scripts/recalculate-assessment-scores.ts --dry-run",
+    "db:recalculate-assessment-scores": "tsx scripts/recalculate-assessment-scores.ts",
     "generate:pseo": "node scripts/generateAll.js",
     "email:preview": "npx react-email dev"
   },
