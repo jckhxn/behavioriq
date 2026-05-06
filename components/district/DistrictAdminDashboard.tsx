@@ -611,7 +611,7 @@ function DistrictAdminDashboardInner({ user }: DistrictAdminDashboardProps) {
                     </p>
                   </div>
                 </div>
-              </div>
+                </CardContent>
             </Card>
           </section>
         </div>
