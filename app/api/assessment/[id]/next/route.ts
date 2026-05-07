@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
+import { computeSkippedQuestions } from "@/lib/assessment/skip-logic";
 
 /**
  * GET /api/assessment/:id/next
- * Returns the next question for the assessment
- * For TRIAL mode: returns trial questions only (isTrial=true)
- * For FULL mode: returns all questions, skipping already-answered
+ * Returns the next question for the assessment respecting:
+ *   - TRIAL vs FULL mode (isTrial flag)
+ *   - active flag per question
+ *   - per-question skip logic loaded from the template
+ *
+ * Response includes full question metadata (weight, isGatingQuestion,
+ * skipLogic) so iOS / web clients can handle branching client-side too.
  */
 export async function GET(
   request: NextRequest,
@@ -29,7 +34,7 @@ export async function GET(
           },
         },
         responses: {
-          select: { questionId: true },
+          select: { questionId: true, response: true },
         },
       },
     });
@@ -48,60 +53,78 @@ export async function GET(
       );
     }
 
-    // Flatten all questions from template domains
+    // Flatten all questions from template domains, preserving full structure
     const allQuestions = assessment.assessmentTemplate.domains.flatMap(
       (domain: any, domainIndex: number) => {
         const domainQuestions = domain.domainTemplate.questions as any[];
         return domainQuestions.map((question: any, questionIndex: number) => ({
           id: question.id,
           text: question.text,
-          order: domainIndex * 100 + questionIndex,
+          // Prefer explicit per-question order, fall back to positional
+          order:
+            domainIndex * 1000 +
+            (typeof question.order === "number" ? question.order : questionIndex),
           domain: domain.domainTemplate.name,
           domainSlug: domain.domainTemplate.slug,
           isTrial: question.isTrial || false,
           active: question.active !== false,
+          weight: typeof question.weight === "number" ? question.weight : 1,
+          isGatingQuestion: Boolean(question.isGatingQuestion),
+          // Support both field names used in different template versions
+          skipLogic: question.skipLogic || question.skipCondition || null,
+          category: question.category || null,
         }));
       }
     );
 
-    // Filter based on assessment mode
+    // Filter to questions eligible for this mode
     let availableQuestions = allQuestions.filter((q: any) => q.active);
-
     if (assessment.mode === "TRIAL") {
       availableQuestions = availableQuestions.filter((q: any) => q.isTrial);
     }
 
-    // Sort by order
+    // Sort by composite order (domain position × 1000 + question position)
     availableQuestions.sort((a: any, b: any) => a.order - b.order);
 
-    // Get answered question IDs
-    const answeredIds = new Set(
-      assessment.responses.map((r) => r.questionId)
+    // Build answer map for skip logic evaluation
+    const answerMap = new Map<string, string>(
+      assessment.responses.map((r) => [r.questionId, r.response])
     );
 
-    // Find next unanswered question
-    const nextQuestion = availableQuestions.find(
+    // Compute questions that should be skipped given current answers
+    const skippedIds = computeSkippedQuestions(availableQuestions, answerMap);
+
+    // Effective questions = available minus skipped
+    const effectiveQuestions = availableQuestions.filter(
+      (q: any) => !skippedIds.has(q.id)
+    );
+
+    // Questions already answered
+    const answeredIds = new Set(assessment.responses.map((r) => r.questionId));
+
+    // First effective question that hasn't been answered yet
+    const nextQuestion = effectiveQuestions.find(
       (q: any) => !answeredIds.has(q.id)
     );
 
-    // Calculate progress
-    const totalQuestions = availableQuestions.length;
-    const answeredCount = Array.from(answeredIds).filter((id) =>
-      availableQuestions.some((q: any) => q.id === id)
+    // Progress uses effective question count so it accounts for skips
+    const totalQuestions = effectiveQuestions.length;
+    const answeredCount = effectiveQuestions.filter((q: any) =>
+      answeredIds.has(q.id)
     ).length;
-    const progressPercent = Math.round(
-      (answeredCount / totalQuestions) * 100
-    );
-    const etaMinutes = Math.ceil((totalQuestions - answeredCount) * 0.5); // 30s per question
+    const progressPercent =
+      totalQuestions > 0
+        ? Math.round((answeredCount / totalQuestions) * 100)
+        : 100;
+    const etaMinutes = Math.ceil((totalQuestions - answeredCount) * 0.5);
 
-    // Determine phase
     const isDone = !nextQuestion;
     let phase: "trial" | "full" | "done" = "done";
     if (!isDone) {
       phase = assessment.mode === "TRIAL" ? "trial" : "full";
     }
 
-    const response: any = {
+    const responseBody: any = {
       assessmentId,
       phase,
       progress: {
@@ -113,18 +136,23 @@ export async function GET(
     };
 
     if (nextQuestion) {
-      response.next = {
+      responseBody.next = {
         qid: nextQuestion.id,
         text: nextQuestion.text,
-        scale: "yesno", // Currently only yes/no supported
+        scale: "yesno",
+        weight: nextQuestion.weight,
+        isGatingQuestion: nextQuestion.isGatingQuestion,
+        skipLogic: nextQuestion.skipLogic,
+        category: nextQuestion.category,
         context: {
           domain: nextQuestion.domain,
+          domainSlug: nextQuestion.domainSlug,
           order: nextQuestion.order,
         },
       };
     }
 
-    return NextResponse.json(response);
+    return NextResponse.json(responseBody);
   } catch (error) {
     console.error("[assessment/[id]/next] failed", error);
     return NextResponse.json(

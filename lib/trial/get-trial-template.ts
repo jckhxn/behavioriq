@@ -15,18 +15,12 @@ export interface TrialTemplateMeta {
 }
 
 export async function getTrialTemplate(): Promise<TrialTemplateMeta | null> {
-  // TODO: DEPRECATED - globalTrialAssessmentId field is now deprecated
-  // Trial questions are now marked with isTrial flag on individual questions
-  // within the globalRegularAssessmentId
-
   const platformSettings = await prisma.platformSettings.findFirst({
     include: {
-      globalRegularAssessment: {
+      globalTrialAssessment: {
         include: {
           domains: {
-            include: {
-              domainTemplate: true,
-            },
+            include: { domainTemplate: true },
             orderBy: { order: "asc" },
           },
         },
@@ -34,16 +28,16 @@ export async function getTrialTemplate(): Promise<TrialTemplateMeta | null> {
     },
   });
 
-  if (!platformSettings?.globalRegularAssessment || platformSettings.trialAssessmentsEnabled === false) {
+  if (!platformSettings?.globalTrialAssessment || platformSettings.trialAssessmentsEnabled === false) {
     return null;
   }
 
-  const assessment = platformSettings.globalRegularAssessment;
+  const assessment = platformSettings.globalTrialAssessment;
   if (!assessment.isActive) {
     return null;
   }
 
-  // Filter questions by isTrial flag from the regular assessment
+  // Filter questions by isTrial flag
   const questions = assessment.domains.flatMap((domain: any, domainIndex: number) => {
     const domainQuestions = domain.domainTemplate.questions as any[];
     return domainQuestions

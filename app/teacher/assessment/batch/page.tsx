@@ -109,7 +109,9 @@ export default function BatchAssessmentPage() {
           const assessments = await assessmentsRes.json();
           setAvailableAssessments(assessments);
           if (assessments.length > 0) {
-            setSelectedAssessment(assessments[0]);
+            const savedId = sessionStorage.getItem("selectedAssessmentId");
+            const saved = savedId ? assessments.find((a: AssessmentTemplate) => a.id === savedId) : null;
+            setSelectedAssessment(saved || assessments[0]);
           }
         }
 
@@ -334,7 +336,10 @@ export default function BatchAssessmentPage() {
                 {availableAssessments.map((assessment) => (
                   <button
                     key={assessment.id}
-                    onClick={() => setSelectedAssessment(assessment)}
+                    onClick={() => {
+                      setSelectedAssessment(assessment);
+                      sessionStorage.setItem("selectedAssessmentId", assessment.id);
+                    }}
                     className={cn(
                       "px-4 py-2 rounded-xl font-medium text-sm transition-all",
                       selectedAssessment?.id === assessment.id

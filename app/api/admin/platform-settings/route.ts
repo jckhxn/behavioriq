@@ -29,23 +29,14 @@ export async function GET(request: NextRequest) {
         globalTrialAssessment: {
           select: { id: true, name: true, slug: true, description: true },
         },
-        globalRegularAssessment: {
-          select: { id: true, name: true, slug: true, description: true },
-        },
       },
     });
 
     if (!settings) {
-      // Create default platform settings
       settings = await prisma.platformSettings.create({
-        data: {
-          updatedBy: user.id,
-        },
+        data: { updatedBy: user.id },
         include: {
           globalTrialAssessment: {
-            select: { id: true, name: true, slug: true, description: true },
-          },
-          globalRegularAssessment: {
             select: { id: true, name: true, slug: true, description: true },
           },
         },
@@ -94,20 +85,18 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-  const {
-    globalTrialAssessmentId,
-    globalRegularAssessmentId,
-    maintenanceMode,
-    registrationEnabled,
-    trialAssessmentsEnabled,
-    aiReportsEnabled,
-    maxAiReportsPerUser,
-    maxConversationalSessionsPerUser,
-    emailSendingEnabled,
-    sesMonthlyBudget,
-  } = body;
+    const {
+      globalTrialAssessmentId,
+      maintenanceMode,
+      registrationEnabled,
+      trialAssessmentsEnabled,
+      aiReportsEnabled,
+      maxAiReportsPerUser,
+      maxConversationalSessionsPerUser,
+      emailSendingEnabled,
+      sesMonthlyBudget,
+    } = body;
 
-    // Validate assessment template IDs if provided
     if (globalTrialAssessmentId) {
       const trialTemplate = await prisma.assessmentTemplate.findUnique({
         where: { id: globalTrialAssessmentId },
@@ -120,76 +109,47 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    if (globalRegularAssessmentId) {
-      const regularTemplate = await prisma.assessmentTemplate.findUnique({
-        where: { id: globalRegularAssessmentId },
-      });
-      if (!regularTemplate) {
-        return NextResponse.json(
-          { error: "Invalid regular assessment template ID" },
-          { status: 400 }
-        );
-      }
-    }
-
     // Update or create platform settings
     let settings = await prisma.platformSettings.findFirst();
+
+    const sharedInclude = {
+      globalTrialAssessment: {
+        select: { id: true, name: true, slug: true, description: true },
+      },
+    };
 
     if (settings) {
       settings = await prisma.platformSettings.update({
         where: { id: settings.id },
         data: {
-          globalTrialAssessmentId: globalTrialAssessmentId || null,
-          globalRegularAssessmentId: globalRegularAssessmentId || null,
+          globalTrialAssessmentId: globalTrialAssessmentId ?? settings.globalTrialAssessmentId,
           maintenanceMode: maintenanceMode ?? settings.maintenanceMode,
-          registrationEnabled:
-            registrationEnabled ?? settings.registrationEnabled,
-          trialAssessmentsEnabled:
-            trialAssessmentsEnabled ?? settings.trialAssessmentsEnabled,
+          registrationEnabled: registrationEnabled ?? settings.registrationEnabled,
+          trialAssessmentsEnabled: trialAssessmentsEnabled ?? settings.trialAssessmentsEnabled,
           aiReportsEnabled: aiReportsEnabled ?? settings.aiReportsEnabled,
-          maxAiReportsPerUser:
-            maxAiReportsPerUser ?? settings.maxAiReportsPerUser,
-          maxConversationalSessionsPerUser:
-            maxConversationalSessionsPerUser ??
-            settings.maxConversationalSessionsPerUser,
-          emailSendingEnabled:
-            emailSendingEnabled ?? settings.emailSendingEnabled,
+          maxAiReportsPerUser: maxAiReportsPerUser ?? settings.maxAiReportsPerUser,
+          maxConversationalSessionsPerUser: maxConversationalSessionsPerUser ?? settings.maxConversationalSessionsPerUser,
+          emailSendingEnabled: emailSendingEnabled ?? settings.emailSendingEnabled,
           sesMonthlyBudget: sesMonthlyBudget ?? settings.sesMonthlyBudget,
           updatedBy: user.id,
         },
-        include: {
-          globalTrialAssessment: {
-            select: { id: true, name: true, slug: true, description: true },
-          },
-          globalRegularAssessment: {
-            select: { id: true, name: true, slug: true, description: true },
-          },
-        },
+        include: sharedInclude,
       });
     } else {
       settings = await prisma.platformSettings.create({
         data: {
           globalTrialAssessmentId: globalTrialAssessmentId || null,
-          globalRegularAssessmentId: globalRegularAssessmentId || null,
           maintenanceMode: maintenanceMode ?? false,
           registrationEnabled: registrationEnabled ?? true,
           trialAssessmentsEnabled: trialAssessmentsEnabled ?? true,
           aiReportsEnabled: aiReportsEnabled ?? true,
           maxAiReportsPerUser: maxAiReportsPerUser ?? 10,
-          maxConversationalSessionsPerUser:
-            maxConversationalSessionsPerUser ?? 10,
+          maxConversationalSessionsPerUser: maxConversationalSessionsPerUser ?? 10,
           emailSendingEnabled: emailSendingEnabled ?? true,
           sesMonthlyBudget: sesMonthlyBudget ?? 5.0,
           updatedBy: user.id,
         },
-        include: {
-          globalTrialAssessment: {
-            select: { id: true, name: true, slug: true, description: true },
-          },
-          globalRegularAssessment: {
-            select: { id: true, name: true, slug: true, description: true },
-          },
-        },
+        include: sharedInclude,
       });
     }
 

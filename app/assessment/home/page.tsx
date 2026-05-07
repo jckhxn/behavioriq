@@ -372,7 +372,7 @@ function HomeAssessmentContent() {
                         <div className="flex items-start justify-between">
                           <div>
                             <p className="font-medium">{template.name}</p>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-sm text-muted-foreground line-clamp-2">
                               {template.description}
                             </p>
                           </div>

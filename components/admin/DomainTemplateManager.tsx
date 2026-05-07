@@ -1733,7 +1733,7 @@ const DomainTemplateManager: React.FC = () => {
                     <div className="min-w-0 flex-1">
                       <CardTitle className="text-lg">{template.name}</CardTitle>
                       {template.description && (
-                        <CardDescription className="mt-1 text-sm leading-relaxed">
+                        <CardDescription className="mt-1 text-sm leading-relaxed line-clamp-2">
                           {template.description}
                         </CardDescription>
                       )}

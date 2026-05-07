@@ -66,12 +66,23 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        // Get assessment template (use global or provided)
+        // Get assessment template (use provided, or fall back to first active non-trial template)
         let templateId = assessmentTemplateId;
         if (!templateId) {
-          // Get global assessment template
-          const platformSettings = await prisma.platformSettings.findFirst();
-          templateId = platformSettings?.globalRegularAssessmentId;
+          const platformSettings = await prisma.platformSettings.findFirst({
+            select: { globalTrialAssessmentId: true },
+          });
+          const fallback = await prisma.assessmentTemplate.findFirst({
+            where: {
+              isActive: true,
+              ...(platformSettings?.globalTrialAssessmentId
+                ? { id: { not: platformSettings.globalTrialAssessmentId } }
+                : {}),
+            },
+            orderBy: { createdAt: "desc" },
+            select: { id: true },
+          });
+          templateId = fallback?.id;
         }
 
         const template = templateId

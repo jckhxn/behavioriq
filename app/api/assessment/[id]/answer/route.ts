@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { RiskLevel } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
+import { computeSkippedQuestions } from "@/lib/assessment/skip-logic";
 
 interface AnswerPayload {
   qid: string;
@@ -228,7 +229,7 @@ export async function POST(
       },
     });
 
-    // Get all questions to calculate progress
+    // Get all questions to calculate progress, including skip logic fields
     const allQuestions = assessment.assessmentTemplate.domains.flatMap(
       (domain: any, domainIndex: number) => {
         const domainQuestions = domain.domainTemplate.questions as any[];
@@ -236,6 +237,10 @@ export async function POST(
           id: question.id,
           isTrial: question.isTrial || false,
           active: question.active !== false,
+          order:
+            domainIndex * 1000 +
+            (typeof question.order === "number" ? question.order : questionIndex),
+          skipLogic: question.skipLogic || question.skipCondition || null,
         }));
       }
     );
@@ -245,22 +250,36 @@ export async function POST(
     if (assessment.mode === "TRIAL") {
       availableQuestions = availableQuestions.filter((q: any) => q.isTrial);
     }
+    availableQuestions.sort((a: any, b: any) => a.order - b.order);
+
+    // Build answer map including the question just submitted
+    const answerMapForProgress = new Map<string, string>(
+      assessment.responses.map((r) => [r.questionId, r.response])
+    );
+    answerMapForProgress.set(qid, stringValue);
+
+    // Compute which questions are skipped given all answers so far
+    const skippedIds = computeSkippedQuestions(availableQuestions, answerMapForProgress);
+    const effectiveQuestions = availableQuestions.filter(
+      (q: any) => !skippedIds.has(q.id)
+    );
 
     // Get all answered question IDs (including the one just submitted)
     const answeredIds = new Set(
       assessment.responses.map((r) => r.questionId)
     );
-    answeredIds.add(qid); // Add the just-answered question
+    answeredIds.add(qid);
 
-    const totalQuestions = availableQuestions.length;
-    const answeredCount = Array.from(answeredIds).filter((id) =>
-      availableQuestions.some((q: any) => q.id === id)
+    const totalQuestions = effectiveQuestions.length;
+    const answeredCount = effectiveQuestions.filter((q: any) =>
+      answeredIds.has(q.id)
     ).length;
 
     const isDone = answeredCount >= totalQuestions;
-    const progressPercent = Math.round(
-      (answeredCount / totalQuestions) * 100
-    );
+    const progressPercent =
+      totalQuestions > 0
+        ? Math.round((answeredCount / totalQuestions) * 100)
+        : 100;
 
     // Mark assessment as completed when all questions are answered
     // Always calculate/recalculate scores when done, regardless of status

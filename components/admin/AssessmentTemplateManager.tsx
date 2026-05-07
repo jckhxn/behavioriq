@@ -873,6 +873,28 @@ const AssessmentTemplateManager: React.FC = () => {
     }
   };
 
+  const handleToggleActive = async (template: AssessmentTemplate) => {
+    try {
+      const res = await fetch(`/api/admin/assessment-templates/${template.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: !template.isActive }),
+      });
+      if (res.ok) {
+        setAssessmentTemplates((prev) =>
+          prev.map((t) =>
+            t.id === template.id ? { ...t, isActive: !template.isActive } : t
+          )
+        );
+        toast.success(`Assessment ${!template.isActive ? "enabled" : "disabled"}`);
+      } else {
+        toast.error("Failed to update assessment");
+      }
+    } catch {
+      toast.error("Failed to update assessment");
+    }
+  };
+
   const handleBulkUploadSuccess = () => {
     fetchAssessmentTemplates();
     fetchDomainTemplates();
@@ -984,12 +1006,22 @@ const AssessmentTemplateManager: React.FC = () => {
                           Trial
                         </Badge>
                       )}
-                      <Badge
-                        variant={template.isActive ? "default" : "secondary"}
-                        className="text-xs"
+                      <div
+                        className="flex items-center gap-1.5"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleActive(template);
+                        }}
                       >
-                        {template.isActive ? "Active" : "Inactive"}
-                      </Badge>
+                        <Switch
+                          checked={template.isActive}
+                          onCheckedChange={() => handleToggleActive(template)}
+                          className="scale-75"
+                        />
+                        <span className="text-xs text-muted-foreground">
+                          {template.isActive ? "Active" : "Inactive"}
+                        </span>
+                      </div>
                     </div>
                     {template.description && (
                       <CardDescription className="mt-1.5 text-sm leading-relaxed line-clamp-2">

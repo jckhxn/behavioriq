@@ -87,7 +87,9 @@ function NewAssessmentContent() {
           const assessments = await assessmentsRes.json();
           setAvailableAssessments(assessments);
           if (assessments.length > 0) {
-            setSelectedAssessment(assessments[0]);
+            const savedId = sessionStorage.getItem("selectedAssessmentId");
+            const saved = savedId ? assessments.find((a: AssessmentTemplate) => a.id === savedId) : null;
+            setSelectedAssessment(saved || assessments[0]);
           }
         }
 
@@ -144,6 +146,7 @@ function NewAssessmentContent() {
 
       if (response.ok) {
         const assessment = await response.json();
+        sessionStorage.removeItem("selectedAssessmentId");
         refreshCredits();
         router.push(`/assessment/${assessment.id}`);
       } else {
@@ -268,7 +271,10 @@ function NewAssessmentContent() {
                 {availableAssessments.map((assessment) => (
                   <button
                     key={assessment.id}
-                    onClick={() => setSelectedAssessment(assessment)}
+                    onClick={() => {
+                      setSelectedAssessment(assessment);
+                      sessionStorage.setItem("selectedAssessmentId", assessment.id);
+                    }}
                     className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
                       selectedAssessment?.id === assessment.id
                         ? "border-primary bg-primary/5"

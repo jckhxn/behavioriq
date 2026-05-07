@@ -87,31 +87,6 @@ export async function POST(request: NextRequest) {
 
     const willBeActive = isActive !== undefined ? isActive : true;
 
-    // If creating as active, deactivate all other assessments (EXCEPT the trial assessment)
-    if (willBeActive) {
-      // Get platform settings to identify the trial assessment
-      const platformSettings = await (prisma as any).platformSettings.findFirst(
-        {
-          select: { globalTrialAssessmentId: true },
-        }
-      );
-
-      const whereClause: any = { isActive: true };
-
-      // Exclude the trial assessment from deactivation
-      if (platformSettings?.globalTrialAssessmentId) {
-        whereClause.id = { not: platformSettings.globalTrialAssessmentId };
-        console.log(
-          `[ASSESSMENT-TEMPLATES] Preserving trial assessment (${platformSettings.globalTrialAssessmentId}) while deactivating other regular assessments`
-        );
-      }
-
-      await prisma.assessmentTemplate.updateMany({
-        where: whereClause,
-        data: { isActive: false },
-      });
-    }
-
     const template = await prisma.assessmentTemplate.create({
       data: {
         name,
@@ -190,43 +165,6 @@ export async function PUT(request: NextRequest) {
         { error: "Assessment template not found" },
         { status: 404 }
       );
-    }
-
-    // TODO: Fix version snapshot system - temporarily disabled
-    // await createVersionSnapshot(
-    //   currentTemplate,
-    //   session.user.id,
-    //   changeDescription
-    // );
-
-    // If setting this assessment to active, deactivate all other assessments (EXCEPT the trial assessment)
-    if (isActive && !currentTemplate.isActive) {
-      // Get platform settings to identify the trial assessment
-      const platformSettings = await (prisma as any).platformSettings.findFirst(
-        {
-          select: { globalTrialAssessmentId: true },
-        }
-      );
-
-      const whereClause: any = {
-        id: { not: id },
-        isActive: true,
-      };
-
-      // Exclude the trial assessment from deactivation
-      if (platformSettings?.globalTrialAssessmentId) {
-        whereClause.id = {
-          notIn: [id, platformSettings.globalTrialAssessmentId],
-        };
-        console.log(
-          `[ASSESSMENT-TEMPLATES] Preserving trial assessment (${platformSettings.globalTrialAssessmentId}) while deactivating other regular assessments`
-        );
-      }
-
-      await prisma.assessmentTemplate.updateMany({
-        where: whereClause,
-        data: { isActive: false },
-      });
     }
 
     const updateData: any = {

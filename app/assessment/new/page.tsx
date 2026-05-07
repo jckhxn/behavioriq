@@ -68,9 +68,10 @@ export default function NewAssessmentPage() {
         if (response.ok) {
           const assessments = await response.json();
           setAvailableAssessments(assessments);
-          // Auto-select the first available assessment
           if (assessments.length > 0) {
-            setSelectedAssessment(assessments[0]);
+            const savedId = sessionStorage.getItem("selectedAssessmentId");
+            const saved = savedId ? assessments.find((a: AssessmentTemplate) => a.id === savedId) : null;
+            setSelectedAssessment(saved || assessments[0]);
           }
         }
       } catch (error) {
@@ -107,6 +108,7 @@ export default function NewAssessmentPage() {
 
       if (response.ok) {
         const assessment = await response.json();
+        sessionStorage.removeItem("selectedAssessmentId");
         refreshCredits(); // Refresh credits after successful creation
         router.push(`/assessment/${assessment.id}`);
       } else {
@@ -212,7 +214,10 @@ export default function NewAssessmentPage() {
                         ? "border-primary bg-primary/5"
                         : "border-border hover:border-primary/50"
                     }`}
-                    onClick={() => setSelectedAssessment(assessment)}
+                    onClick={() => {
+                      setSelectedAssessment(assessment);
+                      sessionStorage.setItem("selectedAssessmentId", assessment.id);
+                    }}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">

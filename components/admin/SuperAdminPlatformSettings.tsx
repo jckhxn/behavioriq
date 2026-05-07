@@ -49,7 +49,6 @@ import { FeatureFlagsManager } from "@/components/admin/FeatureFlagsManager";
 interface PlatformSettings {
   id: string;
   globalTrialAssessmentId?: string;
-  globalRegularAssessmentId?: string;
   maintenanceMode: boolean;
   registrationEnabled: boolean;
   trialAssessmentsEnabled: boolean;
@@ -59,12 +58,6 @@ interface PlatformSettings {
   emailSendingEnabled: boolean;
   sesMonthlyBudget: number;
   globalTrialAssessment?: {
-    id: string;
-    name: string;
-    slug: string;
-    description?: string;
-  };
-  globalRegularAssessment?: {
     id: string;
     name: string;
     slug: string;
@@ -88,6 +81,7 @@ export function SuperAdminPlatformSettings() {
   >([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSettings();
@@ -151,6 +145,29 @@ export function SuperAdminPlatformSettings() {
   const updateSetting = (key: keyof PlatformSettings, value: any) => {
     if (settings) {
       setSettings({ ...settings, [key]: value });
+    }
+  };
+
+  const toggleAssessmentActive = async (id: string, currentlyActive: boolean) => {
+    setTogglingId(id);
+    try {
+      const res = await fetch(`/api/admin/assessment-templates/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: !currentlyActive }),
+      });
+      if (res.ok) {
+        setAvailableAssessments((prev) =>
+          prev.map((t) => (t.id === id ? { ...t, isActive: !currentlyActive } : t))
+        );
+        toast.success(`Assessment ${!currentlyActive ? "enabled" : "disabled"}`);
+      } else {
+        toast.error("Failed to update assessment");
+      }
+    } catch {
+      toast.error("Failed to update assessment");
+    } finally {
+      setTogglingId(null);
     }
   };
 
@@ -259,74 +276,85 @@ export function SuperAdminPlatformSettings() {
         </TabsList>
 
         <TabsContent value="platform" className="space-y-6 mt-6">
-          {/* Global Assessment Configuration */}
+          {/* Available Assessments */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Globe className="h-5 w-5" />
-                Global Assessment Configuration
+                Available Assessments
               </CardTitle>
               <CardDescription>
-                Set which assessments are available to trial users and regular
-                users platform-wide.
+                Toggle which assessments are available to users. Active assessments appear in the iOS app and web assessment picker.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-lg">
-                  <p className="text-xs text-amber-800 dark:text-amber-100">
-                    <strong>Trial Assessment (DEPRECATED):</strong> Trial
-                    questions are now configured at the question level within
-                    the regular assessment. Use the "Configure Trial" button in
-                    Domain Templates to mark which questions appear in the
-                    trial. The global trial assessment selector below is
-                    deprecated and will be removed in a future version.
-                  </p>
+            <CardContent className="space-y-4">
+              {availableAssessments.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No assessment templates found. Create one in the Assessments tab.</p>
+              ) : (
+                <div className="divide-y rounded-lg border">
+                  {availableAssessments.map((assessment) => {
+                    const isTrialTemplate = assessment.id === settings.globalTrialAssessmentId;
+                    return (
+                      <div key={assessment.id} className="flex items-center justify-between px-4 py-3">
+                        <div className="space-y-0.5 min-w-0 mr-4">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-sm truncate">{assessment.name}</span>
+                            {isTrialTemplate && (
+                              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 shrink-0">
+                                TRIAL SOURCE
+                              </span>
+                            )}
+                          </div>
+                          {assessment.description && (
+                            <p className="text-xs text-muted-foreground truncate">{assessment.description}</p>
+                          )}
+                        </div>
+                        <Switch
+                          checked={assessment.isActive}
+                          disabled={togglingId === assessment.id}
+                          onCheckedChange={() => toggleAssessmentActive(assessment.id, assessment.isActive)}
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
+              )}
+            </CardContent>
+          </Card>
 
-                <div className="space-y-2">
-                  <Label htmlFor="regular-assessment">
-                    Regular Assessment (Source for Trial & Full)
-                  </Label>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    This assessment is the source of truth for both trial and
-                    full assessments. Questions marked with{" "}
-                    <code className="bg-muted px-1 rounded text-[10px]">
-                      isTrial: true
-                    </code>{" "}
-                    appear in the trial; all questions appear in the full
-                    assessment.
-                  </p>
-                  <Select
-                    value={settings.globalRegularAssessmentId || "none"}
-                    onValueChange={(value) =>
-                      updateSetting(
-                        "globalRegularAssessmentId",
-                        value === "none" ? null : value
-                      )
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select regular assessment..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">
-                        None (Use district-specific assessments)
-                      </SelectItem>
-                      {availableAssessments.map((assessment) => (
-                        <SelectItem key={assessment.id} value={assessment.id}>
-                          {assessment.name}{" "}
-                          {assessment.isActive ? "" : "(Inactive)"}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {settings.globalRegularAssessment && (
-                    <p className="text-sm text-muted-foreground">
-                      Current: {settings.globalRegularAssessment.name}
-                    </p>
-                  )}
-                </div>
+          {/* Trial Assessment Source */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Brain className="h-5 w-5" />
+                Trial Assessment Source
+              </CardTitle>
+              <CardDescription>
+                The template whose <code className="bg-muted px-1 rounded text-[10px]">isTrial: true</code> questions are served to anonymous trial users.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <Label htmlFor="trial-assessment">Trial Source Template</Label>
+                <Select
+                  value={settings.globalTrialAssessmentId || "none"}
+                  onValueChange={(value) =>
+                    updateSetting("globalTrialAssessmentId", value === "none" ? null : value)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select trial source..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None (trial disabled)</SelectItem>
+                    {availableAssessments.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {settings.globalTrialAssessment && (
+                  <p className="text-xs text-muted-foreground">Current: {settings.globalTrialAssessment.name}</p>
+                )}
               </div>
             </CardContent>
           </Card>

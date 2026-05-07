@@ -177,7 +177,8 @@ const AssessmentPreview: React.FC<AssessmentPreviewProps> = ({
                     </div>
                     {template.description && (
                       <div>
-                        <strong>Description:</strong> {template.description}
+                        <strong>Description:</strong>{" "}
+                        <span className="line-clamp-3">{template.description}</span>
                       </div>
                     )}
                     {template.instructions && (
@@ -205,7 +206,7 @@ const AssessmentPreview: React.FC<AssessmentPreviewProps> = ({
                     </CardHeader>
                     <CardContent className="space-y-4">
                       {domain.domainTemplate.description && (
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-muted-foreground line-clamp-3">
                           {domain.domainTemplate.description}
                         </p>
                       )}
