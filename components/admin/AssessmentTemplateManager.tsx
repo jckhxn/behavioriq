@@ -35,6 +35,7 @@ import {
   Zap,
   Check,
   ClipboardList,
+  FlaskConical,
 } from "lucide-react";
 import { toast } from "sonner";
 import AssessmentPreview from "./AssessmentPreview";
@@ -901,6 +902,26 @@ const AssessmentTemplateManager: React.FC = () => {
     toast.success("Bulk upload completed successfully");
   };
 
+  const handleSetTrialAssessment = async (template: AssessmentTemplate) => {
+    if (template.id === trialAssessmentId) return;
+    try {
+      const res = await fetch("/api/admin/assessment-templates/set-trial", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ templateId: template.id }),
+      });
+      if (res.ok) {
+        setTrialAssessmentId(template.id);
+        toast.success(`"${template.name}" is now the trial assessment`);
+      } else {
+        const err = await res.json();
+        toast.error(err.error || "Failed to set trial assessment");
+      }
+    } catch {
+      toast.error("Failed to set trial assessment");
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -1053,6 +1074,24 @@ const AssessmentTemplateManager: React.FC = () => {
                       className="h-9 w-9 p-0"
                     >
                       <Download className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleSetTrialAssessment(template)}
+                      title={
+                        template.id === trialAssessmentId
+                          ? "Current trial assessment"
+                          : "Set as trial assessment"
+                      }
+                      disabled={template.id === trialAssessmentId}
+                      className={`h-9 w-9 p-0 ${
+                        template.id === trialAssessmentId
+                          ? "text-primary opacity-60"
+                          : "hover:text-primary hover:bg-primary/10"
+                      }`}
+                    >
+                      <FlaskConical className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="ghost"

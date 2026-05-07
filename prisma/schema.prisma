@@ -1,6 +1,6 @@
 generator client {
   provider        = "prisma-client-js"
-  previewFeatures = ["postgresqlExtensions"]
+  previewFeatures = ["postgresqlExtensions", "multiSchema"]
 }
 
 datasource db {
@@ -9,24 +9,28 @@ datasource db {
   directUrl         = env("DIRECT_URL")
   shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
   extensions        = [uuid_ossp(map: "uuid-ossp", schema: "extensions"), vector]
+  schemas           = ["public", "auth"]
 }
 
 model BannedDevice {
   deviceId  String   @id
   reason    String?
   createdAt DateTime @default(now())
+  @@schema("public")
 }
 
 model BannedUser {
   userId    String   @id
   reason    String?
   createdAt DateTime @default(now())
+  @@schema("public")
 }
 
 model BannedEmail {
   email     String   @id
   reason    String?
   createdAt DateTime @default(now())
+  @@schema("public")
 }
 
 model AffiliateReferrer {
@@ -46,6 +50,7 @@ model AffiliateReferrer {
   user                    User                              @relation(fields: [userId], references: [id])
 
   @@index([status])
+  @@schema("public")
 }
 
 model AffiliateClick {
@@ -60,6 +65,7 @@ model AffiliateClick {
   @@index([refCode])
   @@index([sessionId])
   @@index([createdAt])
+  @@schema("public")
 }
 
 model AffiliateAttribution {
@@ -76,6 +82,7 @@ model AffiliateAttribution {
 
   @@index([refCode])
   @@index([createdAt])
+  @@schema("public")
 }
 
 model AffiliateCommission {
@@ -97,6 +104,7 @@ model AffiliateCommission {
   @@index([createdAt])
   @@index([holdUntil])
   @@index([referrerId, status])
+  @@schema("public")
 }
 
 model AffiliatePayout {
@@ -120,6 +128,7 @@ model AffiliatePayout {
   @@index([status])
   @@index([createdAt])
   @@index([estimatedArrivalDate])
+  @@schema("public")
 }
 
 model AffiliatePayoutPreferences {
@@ -135,6 +144,7 @@ model AffiliatePayoutPreferences {
   referrer                AffiliateReferrer @relation(fields: [referrerId], references: [id], onDelete: Cascade)
 
   @@index([referrerId])
+  @@schema("public")
 }
 
 model AffiliateNotificationPreferences {
@@ -150,6 +160,7 @@ model AffiliateNotificationPreferences {
   referrer                 AffiliateReferrer @relation(fields: [referrerId], references: [id], onDelete: Cascade)
 
   @@index([referrerId])
+  @@schema("public")
 }
 
 model User {
@@ -209,6 +220,7 @@ model User {
   telemetryEvents                                  TelemetryEvent[]
   usageMetrics                                     UsageMetrics[]
   licenses                                         UserLicense[]
+  pushNotifications                                PushNotification[]
   upsellState                                      UserUpsellState?
   organization                                     Organization?               @relation(fields: [organizationId], references: [id])
   parentUser                                       User?                       @relation("UserSubAccounts", fields: [parentUserId], references: [id])
@@ -217,6 +229,7 @@ model User {
   @@index([organizationId])
   @@index([parentUserId])
   @@map("users")
+  @@schema("public")
 }
 
 model Passkey {
@@ -234,6 +247,7 @@ model Passkey {
   @@index([userId])
   @@index([credentialId])
   @@map("passkeys")
+  @@schema("public")
 }
 
 model PasskeyChallenge {
@@ -247,6 +261,7 @@ model PasskeyChallenge {
   @@index([challenge])
   @@index([expiresAt])
   @@map("passkey_challenges")
+  @@schema("public")
 }
 
 model SubAccount {
@@ -270,6 +285,7 @@ model SubAccount {
   @@index([organizationId])
   @@index([isActive])
   @@map("sub_accounts")
+  @@schema("public")
 }
 
 model Document {
@@ -289,6 +305,7 @@ model Document {
   @@index([userId])
   @@index([category])
   @@map("documents")
+  @@schema("public")
 }
 
 model DocumentChunk {
@@ -306,6 +323,7 @@ model DocumentChunk {
   @@index([documentId])
   @@index([userId])
   @@map("document_chunks")
+  @@schema("public")
 }
 
 model Assessment {
@@ -351,6 +369,7 @@ model Assessment {
   @@index([mode])
   @@index([sessionId])
   @@map("assessments")
+  @@schema("public")
 }
 
 model AIReport {
@@ -374,6 +393,7 @@ model AIReport {
   @@index([generatedByUserId])
   @@index([generatedAt])
   @@map("ai_reports")
+  @@schema("public")
 }
 
 model AssessmentTemplate {
@@ -398,6 +418,7 @@ model AssessmentTemplate {
   @@index([isActive])
   @@index([slug])
   @@map("assessment_templates")
+  @@schema("public")
 }
 
 model DomainTemplate {
@@ -420,6 +441,7 @@ model DomainTemplate {
   @@index([createdById])
   @@index([slug])
   @@map("domain_templates")
+  @@schema("public")
 }
 
 model AssessmentTemplateDomain {
@@ -435,6 +457,7 @@ model AssessmentTemplateDomain {
   @@index([assessmentTemplateId])
   @@index([domainTemplateId])
   @@map("assessment_template_domains")
+  @@schema("public")
 }
 
 model AssessmentTemplateVersion {
@@ -456,6 +479,7 @@ model AssessmentTemplateVersion {
   @@unique([assessmentTemplateId, version])
   @@index([assessmentTemplateId])
   @@map("assessment_template_versions")
+  @@schema("public")
 }
 
 model DomainTemplateVersion {
@@ -477,6 +501,7 @@ model DomainTemplateVersion {
   @@unique([domainTemplateId, version])
   @@index([domainTemplateId])
   @@map("domain_template_versions")
+  @@schema("public")
 }
 
 model ShareableLink {
@@ -500,6 +525,7 @@ model ShareableLink {
   @@index([createdById])
   @@index([isActive])
   @@map("shareable_links")
+  @@schema("public")
 }
 
 model ChatSession {
@@ -515,6 +541,7 @@ model ChatSession {
   @@index([userId])
   @@index([type])
   @@map("chat_sessions")
+  @@schema("public")
 }
 
 model ChatMessage {
@@ -531,6 +558,7 @@ model ChatMessage {
   @@index([assessmentId])
   @@index([sessionId])
   @@map("chat_messages")
+  @@schema("public")
 }
 
 model Score {
@@ -552,6 +580,7 @@ model Score {
   @@index([assessmentId])
   @@index([domainTemplateId])
   @@map("scores")
+  @@schema("public")
 }
 
 model Recommendation {
@@ -572,6 +601,7 @@ model Recommendation {
   @@index([assessmentId])
   @@index([isBookmarked])
   @@map("recommendations")
+  @@schema("public")
 }
 
 model ResourceLibrary {
@@ -591,6 +621,7 @@ model ResourceLibrary {
   @@index([isActive])
   @@index([createdBy])
   @@map("resource_library")
+  @@schema("public")
 }
 
 model QuestionSet {
@@ -613,6 +644,7 @@ model QuestionSet {
 
   @@index([domain, isActive])
   @@map("question_sets")
+  @@schema("public")
 }
 
 model Question {
@@ -632,6 +664,7 @@ model Question {
   @@index([questionSetId, isActive])
   @@index([isTrial])
   @@map("questions")
+  @@schema("public")
 }
 
 model TerminationRule {
@@ -647,6 +680,7 @@ model TerminationRule {
 
   @@index([questionSetId, isActive])
   @@map("termination_rules")
+  @@schema("public")
 }
 
 model QuestionResponse {
@@ -661,6 +695,7 @@ model QuestionResponse {
   @@unique([assessmentId, questionId])
   @@index([assessmentId])
   @@map("question_responses")
+  @@schema("public")
 }
 
 model License {
@@ -684,6 +719,7 @@ model License {
   @@index([licenseKey])
   @@index([status])
   @@map("licenses")
+  @@schema("public")
 }
 
 model Organization {
@@ -711,6 +747,7 @@ model Organization {
   users          User[]
 
   @@map("organizations")
+  @@schema("public")
 }
 
 model UserLicense {
@@ -732,6 +769,7 @@ model UserLicense {
   @@index([userId])
   @@index([licenseId])
   @@map("user_licenses")
+  @@schema("public")
 }
 
 model Subscription {
@@ -757,6 +795,7 @@ model Subscription {
   @@index([organizationId])
   @@index([status])
   @@map("subscriptions")
+  @@schema("public")
 }
 
 model Payment {
@@ -778,6 +817,7 @@ model Payment {
   @@index([userId])
   @@index([status])
   @@map("payments")
+  @@schema("public")
 }
 
 model UsageMetrics {
@@ -793,6 +833,7 @@ model UsageMetrics {
   @@index([userId])
   @@index([date])
   @@map("usage_metrics")
+  @@schema("public")
 }
 
 model PlatformSettings {
@@ -801,7 +842,7 @@ model PlatformSettings {
   globalRegularAssessmentId        String?
   maintenanceMode                  Boolean             @default(false)
   registrationEnabled              Boolean             @default(true)
-  trialAssessmentsEnabled          Boolean             @default(true)
+  trialAssessmentsEnabled          Boolean             @default(true)  @map("trial_assessments_enabled")
   aiReportsEnabled                 Boolean             @default(true)
   maxAiReportsPerUser              Int                 @default(10)
   createdAt                        DateTime            @default(now())
@@ -814,6 +855,7 @@ model PlatformSettings {
   globalTrialAssessment            AssessmentTemplate? @relation("GlobalTrialAssessment", fields: [globalTrialAssessmentId], references: [id])
 
   @@map("platform_settings")
+  @@schema("public")
 }
 
 model SESUsage {
@@ -826,6 +868,7 @@ model SESUsage {
 
   @@index([sentAt])
   @@map("ses_usage")
+  @@schema("public")
 }
 
 model SESMonthlyTotal {
@@ -838,6 +881,7 @@ model SESMonthlyTotal {
 
   @@index([month])
   @@map("ses_monthly_totals")
+  @@schema("public")
 }
 
 model EmailLog {
@@ -862,6 +906,7 @@ model EmailLog {
   @@index([status])
   @@index([templateId])
   @@map("email_logs")
+  @@schema("public")
 }
 
 model NotificationPreferences {
@@ -884,6 +929,7 @@ model NotificationPreferences {
 
   @@index([userId])
   @@map("notification_preferences")
+  @@schema("public")
 }
 
 model UserUpsellState {
@@ -904,6 +950,7 @@ model UserUpsellState {
 
   @@index([userId], map: "user_upsell_state_user_id_idx")
   @@map("user_upsell_state")
+  @@schema("public")
 }
 
 model TelemetryEvent {
@@ -920,6 +967,7 @@ model TelemetryEvent {
   @@index([user_id])
   @@index([userId], map: "telemetry_events_userid_idx")
   @@map("telemetry_events")
+  @@schema("public")
 }
 
 model SnapshotSession {
@@ -934,6 +982,7 @@ model SnapshotSession {
   trials    AssessmentTrial[]
 
   @@map("snapshot_sessions")
+  @@schema("public")
 }
 
 model Lead {
@@ -947,6 +996,7 @@ model Lead {
 
   @@unique([sessionId, email], map: "snapshot_leads_session_email_idx")
   @@map("snapshot_leads")
+  @@schema("public")
 }
 
 model AssessmentTrial {
@@ -963,6 +1013,7 @@ model AssessmentTrial {
 
   @@index([sessionId], map: "snapshot_trials_session_idx")
   @@map("snapshot_trials")
+  @@schema("public")
 }
 
 model SnapshotOrder {
@@ -980,6 +1031,7 @@ model SnapshotOrder {
   @@index([leadId], map: "snapshot_orders_lead_idx")
   @@index([sessionId], map: "snapshot_orders_session_idx")
   @@map("snapshot_orders")
+  @@schema("public")
 }
 
 model AssessmentFull {
@@ -991,6 +1043,7 @@ model AssessmentFull {
   order      SnapshotOrder @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@map("snapshot_full_reports")
+  @@schema("public")
 }
 
 model LoginToken {
@@ -1006,6 +1059,7 @@ model LoginToken {
   @@index([userId])
   @@index([expiresAt])
   @@map("login_tokens")
+  @@schema("public")
 }
 
 model ConversationalSession {
@@ -1033,6 +1087,7 @@ model ConversationalSession {
   @@index([updatedAt])
   @@index([isComplete])
   @@map("conversational_sessions")
+  @@schema("public")
 }
 
 model ConversationalSubmission {
@@ -1053,6 +1108,7 @@ model ConversationalSubmission {
   @@index([questionId])
   @@index([submittedAt])
   @@map("conversational_submissions")
+  @@schema("public")
 }
 
 model EmailTemplate {
@@ -1084,6 +1140,7 @@ model EmailTemplate {
   @@index([isActive])
   @@index([createdById])
   @@map("EmailTemplate")
+  @@schema("public")
 }
 
 model EmailTemplateVersion {
@@ -1107,6 +1164,7 @@ model EmailTemplateVersion {
   @@index([templateId])
   @@index([createdAt])
   @@map("EmailTemplateVersion")
+  @@schema("public")
 }
 
 model PDFStyle {
@@ -1114,6 +1172,7 @@ model PDFStyle {
   name      String   @unique
   css       String
   updatedAt DateTime
+  @@schema("public")
 }
 
 model ChildProfile {
@@ -1128,6 +1187,7 @@ model ChildProfile {
   users       User         @relation(fields: [userid], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_childprofile_user")
 
   @@map("child_profiles")
+  @@schema("public")
 }
 
 model MagicLinkToken {
@@ -1140,6 +1200,7 @@ model MagicLinkToken {
 
   @@index([userId])
   @@index([expiresAt])
+  @@schema("public")
 }
 
 model TrialSession {
@@ -1155,6 +1216,7 @@ model TrialSession {
 
   @@index([status])
   @@index([createdAt])
+  @@schema("public")
 }
 
 model ChatGPTAssessmentResult {
@@ -1169,6 +1231,7 @@ model ChatGPTAssessmentResult {
 
   @@index([assessmentId])
   @@index([percentile])
+  @@schema("public")
 }
 
 model CreditTransaction {
@@ -1184,6 +1247,7 @@ model CreditTransaction {
   @@index([userId])
   @@index([type])
   @@index([createdAt])
+  @@schema("public")
 }
 
 model AuthorizationCode {
@@ -1200,6 +1264,7 @@ model AuthorizationCode {
 
   @@index([clientId])
   @@index([expiresAt])
+  @@schema("public")
 }
 
 model OAuthToken {
@@ -1214,6 +1279,7 @@ model OAuthToken {
   @@index([accessToken])
   @@index([refreshToken])
   @@index([expiresAt])
+  @@schema("public")
 }
 
 model District {
@@ -1236,6 +1302,7 @@ model District {
   @@index([organizationId])
   @@index([code])
   @@map("districts")
+  @@schema("public")
 }
 
 model School {
@@ -1255,6 +1322,7 @@ model School {
   @@unique([districtId, code])
   @@index([districtId])
   @@map("schools")
+  @@schema("public")
 }
 
 model Classroom {
@@ -1271,6 +1339,7 @@ model Classroom {
 
   @@index([schoolId])
   @@map("classrooms")
+  @@schema("public")
 }
 
 model Teacher {
@@ -1292,6 +1361,7 @@ model Teacher {
   @@index([districtId])
   @@index([schoolId])
   @@map("teachers")
+  @@schema("public")
 }
 
 model TeacherClassroom {
@@ -1307,6 +1377,7 @@ model TeacherClassroom {
   @@index([teacherId])
   @@index([classroomId])
   @@map("teacher_classrooms")
+  @@schema("public")
 }
 
 model Counselor {
@@ -1327,6 +1398,7 @@ model Counselor {
   @@index([districtId])
   @@index([schoolId])
   @@map("counselors")
+  @@schema("public")
 }
 
 model CounselorCaseload {
@@ -1342,6 +1414,7 @@ model CounselorCaseload {
   @@index([counselorId])
   @@index([studentId])
   @@map("counselor_caseloads")
+  @@schema("public")
 }
 
 model Student {
@@ -1373,6 +1446,7 @@ model Student {
   @@index([schoolId])
   @@index([anonymousId])
   @@map("students")
+  @@schema("public")
 }
 
 model StudentClassroom {
@@ -1387,6 +1461,7 @@ model StudentClassroom {
   @@index([studentId])
   @@index([classroomId])
   @@map("student_classrooms")
+  @@schema("public")
 }
 
 model StudentAssessment {
@@ -1411,6 +1486,7 @@ model StudentAssessment {
   @@index([assessmentId])
   @@index([isTrial])
   @@map("student_assessments")
+  @@schema("public")
 }
 
 model StudentRecommendation {
@@ -1430,6 +1506,7 @@ model StudentRecommendation {
   @@index([studentId])
   @@index([assessmentId])
   @@map("student_recommendations")
+  @@schema("public")
 }
 
 model DistrictAuditLog {
@@ -1451,6 +1528,7 @@ model DistrictAuditLog {
   @@index([action])
   @@index([createdAt])
   @@map("district_audit_logs")
+  @@schema("public")
 }
 
 model FeatureFlag {
@@ -1470,6 +1548,7 @@ model FeatureFlag {
   @@index([isEnabled])
   @@index([scope])
   @@map("feature_flags")
+  @@schema("public")
 }
 
 enum Role {
@@ -1481,28 +1560,33 @@ enum Role {
   PRINCIPAL
   SUB_ACCOUNT
   SUPER_ADMIN
+  @@schema("public")
 }
 
 enum AssessmentStatus {
   IN_PROGRESS
   COMPLETED
   ABANDONED
+  @@schema("public")
 }
 
 enum AssessmentMode {
   TRIAL
   FULL
+  @@schema("public")
 }
 
 enum ChatSessionType {
   ASSESSMENT
   KNOWLEDGE
+  @@schema("public")
 }
 
 enum MessageRole {
   USER
   ASSISTANT
   SYSTEM
+  @@schema("public")
 }
 
 enum RiskLevel {
@@ -1510,6 +1594,7 @@ enum RiskLevel {
   MODERATE
   HIGH
   VERY_HIGH
+  @@schema("public")
 }
 
 enum AssessmentDomain {
@@ -1518,6 +1603,7 @@ enum AssessmentDomain {
   ATTENTION
   EMOTIONAL
   CONDUCT
+  @@schema("public")
 }
 
 enum LicenseType {
@@ -1538,6 +1624,7 @@ enum LicenseType {
   DISTRICT_STANDARD
   DISTRICT_PROFESSIONAL
   DISTRICT_ENTERPRISE
+  @@schema("public")
 }
 
 enum LicenseStatus {
@@ -1545,6 +1632,7 @@ enum LicenseStatus {
   EXPIRED
   SUSPENDED
   CANCELLED
+  @@schema("public")
 }
 
 enum SubscriptionStatus {
@@ -1555,6 +1643,7 @@ enum SubscriptionStatus {
   INCOMPLETE_EXPIRED
   TRIALING
   UNPAID
+  @@schema("public")
 }
 
 enum DocumentCategory {
@@ -1565,12 +1654,14 @@ enum DocumentCategory {
   ASSESSMENT_TOOL
   REFERENCE
   OTHER
+  @@schema("public")
 }
 
 enum ShareLinkPrivacy {
   PUBLIC
   PRIVATE
   PASSWORD_PROTECTED
+  @@schema("public")
 }
 
 enum EmailTemplateType {
@@ -1588,6 +1679,7 @@ enum EmailTemplateType {
   AFFILIATE_FRAUD_ALERT
   SYSTEM_NOTIFICATION
   GENERIC
+  @@schema("public")
 }
 
 model DomainIndicator {
@@ -1604,6 +1696,7 @@ model DomainIndicator {
   @@index([assessmentId])
   @@index([domainName])
   @@map("domain_indicators")
+  @@schema("public")
 }
 
 model TeacherObservation {
@@ -1622,6 +1715,22 @@ model TeacherObservation {
   @@index([studentId])
   @@index([createdAt])
   @@map("teacher_observations")
+  @@schema("public")
+}
+
+model PushNotification {
+  id     String   @id @default(cuid())
+  userId String   @map("user_id")
+  title  String
+  body   String
+  data   Json?
+  sentAt DateTime @default(now()) @map("sent_at")
+  user   User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([sentAt])
+  @@map("push_notifications")
+  @@schema("public")
 }
 
 model IntentAcknowledgment {
@@ -1638,4 +1747,5 @@ model IntentAcknowledgment {
   @@index([studentId])
   @@index([action])
   @@map("intent_acknowledgments")
+  @@schema("public")
 }
