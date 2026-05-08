@@ -14,15 +14,39 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search") || "";
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = parseInt(searchParams.get("offset") || "0");
+    const notificationsEnabled = searchParams.get("notificationsEnabled") === "true";
+    const iosActive = searchParams.get("iosActive") === "true";
+    // "Recently active" = iOS app seen within the last 7 days
+    const IOS_ACTIVE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
-    const whereClause = search
-      ? {
-          OR: [
-            { email: { contains: search, mode: "insensitive" as const } },
-            { name: { contains: search, mode: "insensitive" as const } },
-          ],
-        }
-      : {};
+    const whereClause: Record<string, unknown> = {};
+    if (search) {
+      whereClause.OR = [
+        { email: { contains: search, mode: "insensitive" as const } },
+        { name: { contains: search, mode: "insensitive" as const } },
+      ];
+    }
+    if (notificationsEnabled) {
+      whereClause.notificationPreferences = {
+        OR: [
+          { assessmentComplete: true },
+          { assessmentShared: true },
+          { licenseExpiring: true },
+          { licenseRenewed: true },
+          { newRecommendation: true },
+          { weeklySummary: true },
+          { monthlySummary: true },
+          { accountUpdate: true },
+          { productUpdates: true },
+          { marketingEmails: true },
+        ],
+      };
+    }
+    if (iosActive) {
+      whereClause.iosAppLastSeen = {
+        gte: new Date(Date.now() - IOS_ACTIVE_WINDOW_MS),
+      };
+    }
 
     const [users, totalCount] = await Promise.all([
       prisma.user.findMany({
@@ -36,6 +60,7 @@ export async function GET(request: NextRequest) {
           name: true,
           role: true,
           createdAt: true,
+          iosAppLastSeen: true,
           licenses: {
             where: { isActive: true },
             select: {

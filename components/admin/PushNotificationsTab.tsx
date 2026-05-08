@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useUserData } from "@/lib/hooks/use-supabase-user";
-import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -17,13 +15,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Table,
   TableBody,
   TableCell,
@@ -31,6 +22,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Bell, RefreshCw, Send } from "lucide-react";
 import { toast } from "sonner";
 
@@ -49,10 +47,7 @@ interface SentNotification {
   user: { id: string; email: string; name: string | null };
 }
 
-export default function NotificationsPage() {
-  const { userData, isLoading: authLoading } = useUserData();
-  const router = useRouter();
-
+export function PushNotificationsTab() {
   const [users, setUsers] = useState<UserOption[]>([]);
   const [filterEnabled, setFilterEnabled] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserOption | null>(null);
@@ -64,12 +59,6 @@ export default function NotificationsPage() {
 
   const [history, setHistory] = useState<SentNotification[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
-
-  useEffect(() => {
-    if (!authLoading && !userData) {
-      router.push("/auth/login");
-    }
-  }, [userData, authLoading, router]);
 
   useEffect(() => {
     fetchUsers();
@@ -146,31 +135,16 @@ export default function NotificationsPage() {
       )
     : users;
 
-  if (authLoading || !userData) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-2xl font-bold">Push Notifications</h1>
-        <p className="text-muted-foreground">
-          Send in-app notifications to BehaviorIQ users via Supabase Realtime
-        </p>
-      </div>
-
+    <div className="space-y-4">
       {/* Compose */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bell className="h-5 w-5" />
+      <Card className="border-border bg-card">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Bell className="h-4 w-4" />
             Compose Notification
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-xs">
             Delivered instantly while the user has the iOS app open.
           </CardDescription>
         </CardHeader>
@@ -178,7 +152,7 @@ export default function NotificationsPage() {
           {/* Filter toggle */}
           <div className="flex items-center justify-between rounded-lg border p-3">
             <div className="space-y-0.5">
-              <Label className="text-sm font-medium">iOS app users only</Label>
+              <Label className="text-xs font-medium">iOS app users only</Label>
               <p className="text-xs text-muted-foreground">
                 Only show users who opened the iOS app in the last 7 days
               </p>
@@ -188,7 +162,7 @@ export default function NotificationsPage() {
 
           {/* User picker */}
           <div className="space-y-1.5">
-            <Label>
+            <Label className="text-xs">
               Recipient
               <span className="text-muted-foreground ml-1">({users.length} users)</span>
             </Label>
@@ -196,7 +170,7 @@ export default function NotificationsPage() {
               placeholder="Search by email or name…"
               value={userSearch}
               onChange={(e) => setUserSearch(e.target.value)}
-              className="mb-1.5"
+              className="text-sm mb-1.5"
             />
             <Select
               value={selectedUser?.id ?? ""}
@@ -205,7 +179,7 @@ export default function NotificationsPage() {
                 setSelectedUser(u);
               }}
             >
-              <SelectTrigger>
+              <SelectTrigger className="text-sm">
                 <SelectValue placeholder="Select user…" />
               </SelectTrigger>
               <SelectContent>
@@ -216,7 +190,7 @@ export default function NotificationsPage() {
                   </SelectItem>
                 ))}
                 {filteredUsers.length === 0 && (
-                  <div className="px-3 py-2 text-sm text-muted-foreground">No users found.</div>
+                  <div className="px-3 py-2 text-xs text-muted-foreground">No users found.</div>
                 )}
               </SelectContent>
             </Select>
@@ -224,19 +198,20 @@ export default function NotificationsPage() {
 
           {/* Title */}
           <div className="space-y-1.5">
-            <Label htmlFor="notif-title">Title</Label>
+            <Label htmlFor="notif-title" className="text-xs">Title</Label>
             <Input
               id="notif-title"
               placeholder="e.g. Assessment reminder"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               maxLength={100}
+              className="text-sm"
             />
           </div>
 
           {/* Body */}
           <div className="space-y-1.5">
-            <Label htmlFor="notif-body">Body</Label>
+            <Label htmlFor="notif-body" className="text-xs">Body</Label>
             <Textarea
               id="notif-body"
               placeholder="Notification message…"
@@ -244,64 +219,65 @@ export default function NotificationsPage() {
               onChange={(e) => setBody(e.target.value)}
               rows={3}
               maxLength={500}
+              className="text-sm"
             />
           </div>
 
-          <Button onClick={handleSend} disabled={sending}>
-            <Send className="h-4 w-4 mr-2" />
+          <Button onClick={handleSend} disabled={sending} size="sm">
+            <Send className="h-3.5 w-3.5 mr-2" />
             {sending ? "Sending…" : "Send Notification"}
           </Button>
         </CardContent>
       </Card>
 
       {/* History */}
-      <Card>
-        <CardHeader>
+      <Card className="border-border bg-card">
+        <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Recent Notifications</CardTitle>
-              <CardDescription>Last 50 sent</CardDescription>
+              <CardTitle className="text-sm">Recent Notifications</CardTitle>
+              <CardDescription className="text-xs">Last 50 sent</CardDescription>
             </div>
             <Button variant="outline" size="sm" onClick={fetchHistory}>
-              <RefreshCw className="h-4 w-4 mr-2" />
+              <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
               Refresh
             </Button>
           </div>
         </CardHeader>
         <CardContent>
           {loadingHistory ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+            <div className="flex justify-center py-6">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
             </div>
           ) : history.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">No notifications sent yet.</p>
+            <p className="text-center text-xs text-muted-foreground py-6">No notifications sent yet.</p>
           ) : (
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Recipient</TableHead>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Body</TableHead>
-                    <TableHead className="text-right">Sent</TableHead>
+                    <TableHead className="text-xs">Recipient</TableHead>
+                    <TableHead className="text-xs">Title</TableHead>
+                    <TableHead className="text-xs">Body</TableHead>
+                    <TableHead className="text-xs text-right">Sent</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {history.map((n) => (
                     <TableRow key={n.id}>
-                      <TableCell>
-                        <div className="font-medium text-sm">{n.user.email}</div>
+                      <TableCell className="text-xs">
+                        <div className="font-medium">{n.user.email}</div>
                         {n.user.name && (
-                          <div className="text-xs text-muted-foreground">{n.user.name}</div>
+                          <div className="text-muted-foreground">{n.user.name}</div>
                         )}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary">{n.title}</Badge>
+                        <Badge variant="secondary" className="text-xs">{n.title}</Badge>
                       </TableCell>
-                      <TableCell className="max-w-[300px] truncate text-sm text-muted-foreground">
+                      <TableCell className="max-w-[200px] truncate text-xs text-muted-foreground">
                         {n.body}
                       </TableCell>
-                      <TableCell className="text-right text-sm text-muted-foreground whitespace-nowrap">
+                      <TableCell className="text-right text-xs text-muted-foreground whitespace-nowrap">
                         {new Date(n.sentAt).toLocaleString()}
                       </TableCell>
                     </TableRow>

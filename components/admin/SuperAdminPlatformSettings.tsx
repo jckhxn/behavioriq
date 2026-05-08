@@ -35,6 +35,7 @@ import {
   FileText,
   Wrench,
   Flag,
+  Bell,
 } from "lucide-react";
 import ResourceLibraryManager from "@/components/admin/ResourceLibraryManager";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
@@ -45,6 +46,7 @@ import { LeadsManagementTab } from "@/components/admin/LeadsManagementTab";
 import { AssessmentBuilder } from "@/components/admin/AssessmentBuilder";
 import TemplatesAndStylesTab from "@/components/admin/TemplatesAndStylesTab";
 import { FeatureFlagsManager } from "@/components/admin/FeatureFlagsManager";
+import { PushNotificationsTab } from "@/components/admin/PushNotificationsTab";
 
 interface PlatformSettings {
   id: string;
@@ -268,6 +270,10 @@ export function SuperAdminPlatformSettings() {
           <TabsTrigger value="tools" className="whitespace-nowrap">
             <Wrench className="h-4 w-4 mr-2" />
             Tools
+          </TabsTrigger>
+          <TabsTrigger value="notifications" className="whitespace-nowrap">
+            <Bell className="h-4 w-4 mr-1" />
+            Push
           </TabsTrigger>
           <TabsTrigger value="feature-flags" className="whitespace-nowrap">
             <Flag className="h-4 w-4 mr-2" />
@@ -654,6 +660,10 @@ export function SuperAdminPlatformSettings() {
 
         <TabsContent value="tools" className="mt-6">
           <AdminDashboard />
+        </TabsContent>
+
+        <TabsContent value="notifications" className="mt-6">
+          <PushNotificationsTab />
         </TabsContent>
 
         <TabsContent value="feature-flags" className="mt-6">

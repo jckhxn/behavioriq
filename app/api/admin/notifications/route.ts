@@ -24,8 +24,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    // Resolve the Supabase auth UUID so the iOS Realtime filter matches.
+    // Our users table uses Prisma CUIDs; the iOS app identifies via Supabase UUID.
+    let supabaseUserId: string | null = null;
+    try {
+      const rows = await prisma.$queryRaw<{ id: string }[]>`
+        SELECT id FROM auth.users WHERE email = ${target.email} LIMIT 1
+      `;
+      supabaseUserId = rows[0]?.id ?? null;
+    } catch {
+      // Non-fatal: notification still creates, just won't reach the app
+      console.warn("[admin/notifications] Could not resolve Supabase auth UUID for", target.email);
+    }
+
     const notification = await prisma.pushNotification.create({
-      data: { userId, title, body, data: data ?? undefined },
+      data: { userId, supabaseUserId, title, body, data: data ?? undefined },
     });
 
     return NextResponse.json({ success: true, notification });
