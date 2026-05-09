@@ -22,6 +22,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -38,7 +39,7 @@ import {
   FlaskConical,
 } from "lucide-react";
 import { toast } from "sonner";
-import AssessmentPreview from "./AssessmentPreview";
+import { AssessmentTester } from "./AssessmentTester";
 import { BulkUploadDialog } from "./BulkUploadDialog";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -1210,13 +1211,24 @@ const AssessmentTemplateManager: React.FC = () => {
       </Dialog>
 
       {/* Preview Dialog */}
-      {selectedTemplate && (
-        <AssessmentPreview
-          template={selectedTemplate}
-          isOpen={isPreviewDialogOpen}
-          onClose={() => setIsPreviewDialogOpen(false)}
-        />
-      )}
+      <Dialog open={isPreviewDialogOpen} onOpenChange={setIsPreviewDialogOpen}>
+        <DialogContent className="w-[96vw] max-w-3xl max-h-[90vh] flex flex-col overflow-hidden p-0">
+          <DialogHeader className="px-6 pt-5 pb-4 border-b shrink-0">
+            <DialogTitle className="flex items-center gap-2">
+              <FlaskConical className="h-4 w-4 text-amber-500" />
+              Preview: {selectedTemplate?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Walk through this assessment as a respondent would. No data is saved.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto p-6">
+            {selectedTemplate && isPreviewDialogOpen && (
+              <AssessmentTester key={selectedTemplate.id} templateId={selectedTemplate.id} />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Trial Editor */}
       {trialEditorDomainId && (

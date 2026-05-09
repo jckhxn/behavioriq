@@ -25,6 +25,7 @@ import {
   FileText,
   BarChart3,
   Mail,
+  Bell,
 } from "lucide-react";
 import { UserManagementTab } from "@/components/admin/UserManagementTab";
 import { LeadsManagementTab } from "@/components/admin/LeadsManagementTab";
@@ -32,6 +33,7 @@ import ResourceLibraryManager from "@/components/admin/ResourceLibraryManager";
 import { AssessmentBuilder } from "@/components/admin/AssessmentBuilder";
 import { SystemStats } from "@/components/admin/SystemStats";
 import TemplatesAndStylesTab from "@/components/admin/TemplatesAndStylesTab";
+import { PushNotificationsTab } from "@/components/admin/PushNotificationsTab";
 
 interface PlatformSettings {
   maintenanceMode: boolean;
@@ -159,7 +161,7 @@ const SuperAdminPanel: React.FC = () => {
     <div className="space-y-4">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList
-          className={`grid w-full mb-3 ${userData?.role === "SUPER_ADMIN" ? "grid-cols-5" : "grid-cols-3"}`}
+          className={`grid w-full mb-3 ${userData?.role === "SUPER_ADMIN" ? "grid-cols-6" : "grid-cols-3"}`}
         >
           <TabsTrigger value="platform" className="text-xs">
             <Settings className="h-3 w-3 mr-1" />
@@ -182,6 +184,10 @@ const SuperAdminPanel: React.FC = () => {
               <TabsTrigger value="templates" className="text-xs">
                 <FileText className="h-3 w-3 mr-1" />
                 Templates
+              </TabsTrigger>
+              <TabsTrigger value="notifications" className="text-xs">
+                <Bell className="h-3 w-3 mr-1" />
+                Push
               </TabsTrigger>
             </>
           )}
@@ -425,6 +431,13 @@ const SuperAdminPanel: React.FC = () => {
                 <TemplatesAndStylesTab />
               </CardContent>
             </Card>
+          </TabsContent>
+        )}
+
+        {/* Push Notifications Tab - Only for SUPER_ADMIN */}
+        {userData?.role === "SUPER_ADMIN" && (
+          <TabsContent value="notifications" className="space-y-4 mt-0">
+            <PushNotificationsTab />
           </TabsContent>
         )}
       </Tabs>
