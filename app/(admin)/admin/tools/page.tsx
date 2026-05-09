@@ -3,15 +3,8 @@
 import { useState } from "react";
 import { SystemStats } from "@/components/admin/SystemStats";
 import { PushNotificationsTab } from "@/components/admin/PushNotificationsTab";
+import { C } from "@/lib/dashboard/colors";
 
-const C = {
-  surface: "#FFFFFF",
-  sunk: "#F4EFE6",
-  ink900: "#1C1917",
-  ink700: "#44403C",
-  ink500: "#78716C",
-  ink100: "#E7E5E4",
-};
 
 const TABS = [
   { id: "stats", label: "System stats" },

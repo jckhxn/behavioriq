@@ -6,25 +6,8 @@ import { useUserData } from "@/lib/hooks/use-supabase-user";
 import { ClipboardList, FileStack, CheckCircle, Clock } from "lucide-react";
 import AssessmentTemplateManager from "@/components/admin/AssessmentTemplateManager";
 import DomainTemplateManager from "@/components/admin/DomainTemplateManager";
+import { C } from "@/lib/dashboard/colors";
 
-const C = {
-  surface: "#FFFFFF",
-  sunk: "#F4EFE6",
-  ink900: "#1C1917",
-  ink700: "#44403C",
-  ink500: "#78716C",
-  ink200: "#D6D3D1",
-  ink100: "#E7E5E4",
-  indigo50: "#EEF0FF",
-  indigo500: "#6366F1",
-  indigo600: "#4F46E5",
-  mint50: "#EBF7EF",
-  mint700: "#2C7A4F",
-  amber50: "#FDF5E2",
-  amber700: "#A06E16",
-  peach50: "#FFF4EC",
-  peach500: "#F97C4E",
-};
 
 function StatCard({ label, value, icon: Icon, toneBg, toneText }: { label: string; value: number; icon: React.ComponentType<any>; toneBg: string; toneText: string }) {
   return (

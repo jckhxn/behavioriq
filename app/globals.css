@@ -180,6 +180,57 @@
 }
 
 /* ============================================
+   BehaviorIQ Dashboard Design Tokens
+   ============================================ */
+:root {
+  --dash-canvas:    #FBF8F3;
+  --dash-surface:   #FFFFFF;
+  --dash-sunk:      #F4EFE6;
+  --dash-ink-900:   #1C1917;
+  --dash-ink-700:   #44403C;
+  --dash-ink-500:   #78716C;
+  --dash-ink-300:   #A8A29E;
+  --dash-ink-200:   #D6D3D1;
+  --dash-ink-100:   #E7E5E4;
+  --dash-indigo-50:  #EEF0FF;
+  --dash-indigo-100: #DDE1FF;
+  --dash-indigo-500: #6366F1;
+  --dash-indigo-600: #4F46E5;
+  --dash-peach-50:  #FFF4EC;
+  --dash-peach-500: #F97C4E;
+  --dash-mint-50:   #EBF7EF;
+  --dash-mint-700:  #2C7A4F;
+  --dash-amber-50:  #FDF5E2;
+  --dash-amber-700: #A06E16;
+  --dash-rose-50:   #FBECEA;
+  --dash-rose-700:  #9A2F24;
+}
+
+.dark {
+  --dash-canvas:    #1A1512;
+  --dash-surface:   #231F1B;
+  --dash-sunk:      #1C1917;
+  --dash-ink-900:   #F5F0EB;
+  --dash-ink-700:   #D4CEC9;
+  --dash-ink-500:   #9E9692;
+  --dash-ink-300:   #6B6460;
+  --dash-ink-200:   #3D3733;
+  --dash-ink-100:   #2E2A26;
+  --dash-indigo-50:  #1E1D3D;
+  --dash-indigo-100: #252466;
+  --dash-indigo-500: #6366F1;
+  --dash-indigo-600: #818CF8;
+  --dash-peach-50:  #2A1910;
+  --dash-peach-500: #F97C4E;
+  --dash-mint-50:   #0F2218;
+  --dash-mint-700:  #4ADE80;
+  --dash-amber-50:  #261D0A;
+  --dash-amber-700: #FCD34D;
+  --dash-rose-50:   #2A100D;
+  --dash-rose-700:  #F87171;
+}
+
+/* ============================================
    Base Styles
    ============================================ */
 @layer base {

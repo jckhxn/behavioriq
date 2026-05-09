@@ -23,25 +23,7 @@ import {
   Search,
   Gift,
 } from "lucide-react";
-
-// ── Design tokens ────────────────────────────────────────────────────────────
-const C = {
-  canvas: "#FBF8F3",
-  surface: "#FFFFFF",
-  sunk: "#F4EFE6",
-  ink900: "#1C1917",
-  ink700: "#44403C",
-  ink500: "#78716C",
-  ink300: "#A8A29E",
-  ink200: "#D6D3D1",
-  ink100: "#E7E5E4",
-  indigo50: "#EEF0FF",
-  indigo100: "#DDE1FF",
-  indigo500: "#6366F1",
-  indigo600: "#4F46E5",
-  peach50: "#FFF4EC",
-  peach500: "#F97C4E",
-};
+import { C } from "@/lib/dashboard/colors";
 
 // ── Nav definitions ───────────────────────────────────────────────────────────
 const USER_NAV = [

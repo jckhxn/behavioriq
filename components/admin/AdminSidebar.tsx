@@ -15,19 +15,7 @@ import {
   Sliders,
   LogOut,
 } from "lucide-react";
-
-const C = {
-  surface: "#FFFFFF",
-  sunk: "#F4EFE6",
-  ink900: "#1C1917",
-  ink700: "#44403C",
-  ink500: "#78716C",
-  ink100: "#E7E5E4",
-  indigo50: "#EEF0FF",
-  indigo600: "#4F46E5",
-  peach50: "#FFF4EC",
-  peach500: "#F97C4E",
-};
+import { C } from "@/lib/dashboard/colors";
 
 const NAV = [
   { kind: "group" as const, label: "Platform" },

@@ -3,8 +3,8 @@
 import UserResourceLibrary from "@/components/resources/UserResourceLibrary";
 import ResourceLibraryManager from "@/components/admin/ResourceLibraryManager";
 import { useUserData } from "@/lib/hooks/use-supabase-user";
+import { C } from "@/lib/dashboard/colors";
 
-const C = { ink900: "#1C1917", ink700: "#44403C", ink500: "#78716C" };
 
 export default function LibraryPage() {
   const { userData } = useUserData();

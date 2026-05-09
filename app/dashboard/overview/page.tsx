@@ -4,26 +4,9 @@ import { useUserData } from "@/lib/hooks/use-supabase-user";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { AdminAnalytics } from "@/components/admin/AdminAnalytics";
 import { useState, useEffect } from "react";
-import {
-  ClipboardList,
-  FileStack,
-  CheckCircle,
-  Users,
-} from "lucide-react";
+import { ClipboardList, FileStack, CheckCircle, Users } from "lucide-react";
+import { C } from "@/lib/dashboard/colors";
 
-const C = {
-  surface: "#FFFFFF",
-  ink900: "#1C1917",
-  ink700: "#44403C",
-  ink500: "#78716C",
-  ink100: "#E7E5E4",
-  indigo50: "#EEF0FF",
-  indigo600: "#4F46E5",
-  mint50: "#EBF7EF",
-  mint700: "#2C7A4F",
-  peach50: "#FFF4EC",
-  peach500: "#F97C4E",
-};
 
 function StatCard({
   label,

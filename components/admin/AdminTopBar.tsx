@@ -4,18 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { Bell, LifeBuoy, Search, ChevronRight, ChevronDown } from "lucide-react";
 import { useUserData } from "@/lib/hooks/use-supabase-user";
-
-const C = {
-  canvas: "#FBF8F3",
-  surface: "#FFFFFF",
-  ink900: "#1C1917",
-  ink700: "#44403C",
-  ink500: "#78716C",
-  ink200: "#D6D3D1",
-  ink100: "#E7E5E4",
-  peach50: "#FFF4EC",
-  peach500: "#F97C4E",
-};
+import { C } from "@/lib/dashboard/colors";
 
 const ROUTE_LABELS: Record<string, string> = {
   overview: "Overview",

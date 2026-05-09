@@ -1,12 +1,8 @@
 "use client";
 
 import ResourceLibraryManager from "@/components/admin/ResourceLibraryManager";
+import { C } from "@/lib/dashboard/colors";
 
-const C = {
-  ink900: "#1C1917",
-  ink700: "#44403C",
-  ink500: "#78716C",
-};
 
 export default function ResourcesPage() {
   return (

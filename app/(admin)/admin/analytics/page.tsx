@@ -1,14 +1,8 @@
 "use client";
 
 import { AdminAnalytics } from "@/components/admin/AdminAnalytics";
+import { C } from "@/lib/dashboard/colors";
 
-const C = {
-  surface: "#FFFFFF",
-  ink900: "#1C1917",
-  ink700: "#44403C",
-  ink500: "#78716C",
-  ink100: "#E7E5E4",
-};
 
 export default function AnalyticsPage() {
   return (

@@ -4,8 +4,8 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useUserData } from "@/lib/hooks/use-supabase-user";
 import { UserManagementTab } from "@/components/admin/UserManagementTab";
+import { C } from "@/lib/dashboard/colors";
 
-const C = { ink900: "#1C1917", ink700: "#44403C", ink500: "#78716C" };
 
 export default function UsersPage() {
   const { userData, isLoading } = useUserData();

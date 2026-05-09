@@ -1,12 +1,8 @@
 "use client";
 
 import { FeatureFlagsManager } from "@/components/admin/FeatureFlagsManager";
+import { C } from "@/lib/dashboard/colors";
 
-const C = {
-  ink900: "#1C1917",
-  ink700: "#44403C",
-  ink500: "#78716C",
-};
 
 export default function FeatureFlagsPage() {
   return (
