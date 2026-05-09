@@ -189,7 +189,9 @@ export function AssessmentTester({ templateId: initialTemplateId }: AssessmentTe
       setPhase("taking");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to start test");
-      setPhase("select");
+      // When launched with a fixed templateId keep the loading/error view —
+      // don't fall back to the broken select UI with no templates.
+      setPhase(initialTemplateId ? "loading" : "select");
     }
   }, [selectedTemplateId]);
 
@@ -323,11 +325,22 @@ export function AssessmentTester({ templateId: initialTemplateId }: AssessmentTe
   // ── Loading phase ─────────────────────────────────────────────────────────
   if (phase === "loading") {
     return (
-      <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-5 w-5 animate-spin text-primary mr-2" />
-        <span className="text-sm text-muted-foreground">
-          Loading assessment…
-        </span>
+      <div className="flex flex-col items-center justify-center py-8 gap-4">
+        {error ? (
+          <>
+            <p className="text-sm text-destructive bg-destructive/10 p-3 rounded-md text-center">
+              {error}
+            </p>
+            <Button size="sm" onClick={() => startTest()}>
+              Retry
+            </Button>
+          </>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <span className="text-sm text-muted-foreground">Loading assessment…</span>
+          </div>
+        )}
       </div>
     );
   }
