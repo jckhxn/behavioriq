@@ -927,17 +927,17 @@ const AssessmentTemplateManager: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold">Assessment Templates</h2>
-          <p className="text-sm text-muted-foreground mt-1 max-w-lg">
+          <h2 className="text-[22px] font-semibold text-dash-ink-900 [font-family:var(--font-display,Georgia,serif)]">Assessment Templates</h2>
+          <p className="text-[13px] text-dash-ink-500 mt-1 max-w-lg leading-relaxed">
             Build full assessments by combining clinical domains. Each template
             defines which domains are included and in what order.
           </p>
         </div>
-        <div className="flex gap-2 shrink-0">
+        <div className="flex flex-wrap gap-2 shrink-0">
           {/* Upload JSON */}
           <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
             <DialogTrigger asChild>
@@ -1008,62 +1008,17 @@ const AssessmentTemplateManager: React.FC = () => {
           {assessmentTemplates.map((template) => (
             <div
               key={template.id}
-              className="bg-dash-surface border border-dash-ink-100 rounded-xl p-5 transition-shadow hover:shadow-sm"
+              className="bg-dash-surface border border-dash-ink-100 rounded-xl p-4 transition-shadow hover:shadow-sm"
             >
-              <div className="flex items-start gap-4">
+              {/* Top row: title + actions */}
+              <div className="flex items-start gap-2 mb-2">
                 <div className="flex-1 min-w-0">
-                  {/* Title + badges + toggle */}
-                  <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                    <h3 className="text-[15px] font-semibold text-dash-ink-900">{template.name}</h3>
-                    {template.id === trialAssessmentId && (
-                      <span className="text-[11px] font-semibold text-dash-indigo-600 bg-dash-indigo-50 border border-dash-indigo-100 px-2 py-0.5 rounded-full">
-                        Trial
-                      </span>
-                    )}
-                    <div
-                      className="flex items-center gap-1.5 ml-0.5"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Switch
-                        checked={template.isActive}
-                        onCheckedChange={() => handleToggleActive(template)}
-                        className="scale-75"
-                      />
-                      <span className="text-xs text-dash-ink-500">
-                        {template.isActive ? "Active" : "Inactive"}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Description */}
-                  {template.description && (
-                    <p className="text-[13px] text-dash-ink-500 leading-relaxed line-clamp-2 mb-2.5">
-                      {template.description}
-                    </p>
-                  )}
-
-                  {/* Meta row */}
-                  <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-dash-ink-500">
-                    <span>By {template.createdBy.name}</span>
-                    <span>·</span>
-                    <span>{new Date(template.createdAt).toLocaleDateString()}</span>
-                    <span>·</span>
-                    <span>{template._count.assessments} assessments</span>
-                    <span>·</span>
-                    <span className="font-medium text-dash-ink-700">
-                      {getTotalQuestionCount(template)} total questions
-                    </span>
-                    {template.domains.length > 0 && (
-                      <>
-                        <span>·</span>
-                        <span>{template.domains.length} domain{template.domains.length !== 1 ? "s" : ""}</span>
-                      </>
-                    )}
-                  </div>
+                  <h3 className="text-[15px] font-semibold text-dash-ink-900 leading-snug">
+                    {template.name}
+                  </h3>
                 </div>
-
-                {/* Action buttons */}
-                <div className="flex items-center shrink-0">
+                {/* Action buttons — always on the right of title */}
+                <div className="flex items-center shrink-0 -mt-0.5 -mr-1">
                   <button
                     onClick={() => { setSelectedTemplate(template); setIsPreviewDialogOpen(true); }}
                     title="Preview"
@@ -1107,6 +1062,65 @@ const AssessmentTemplateManager: React.FC = () => {
                   </button>
                 </div>
               </div>
+
+              {/* Status row */}
+              <div className="flex items-center gap-2 flex-wrap mb-2">
+                <div
+                  className="flex items-center gap-1.5"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Switch
+                    checked={template.isActive}
+                    onCheckedChange={() => handleToggleActive(template)}
+                    className="scale-75 origin-left"
+                  />
+                  <span className="text-xs text-dash-ink-500">
+                    {template.isActive ? "Active" : "Inactive"}
+                  </span>
+                </div>
+                {template.id === trialAssessmentId && (
+                  <span className="text-[11px] font-semibold text-dash-indigo-600 bg-dash-indigo-50 border border-dash-indigo-100 px-2 py-0.5 rounded-full">
+                    Trial
+                  </span>
+                )}
+              </div>
+
+              {/* Description */}
+              {template.description && (
+                <p className="text-[13px] text-dash-ink-500 leading-relaxed line-clamp-2 mb-2.5">
+                  {template.description}
+                </p>
+              )}
+
+              {/* Meta row */}
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-dash-ink-500 mb-0">
+                <span>By {template.createdBy.name}</span>
+                <span>·</span>
+                <span>{new Date(template.createdAt).toLocaleDateString()}</span>
+                <span>·</span>
+                <span>{template._count.assessments} assessments</span>
+                <span>·</span>
+                <span className="font-medium text-dash-ink-700">
+                  {getTotalQuestionCount(template)} total questions
+                </span>
+              </div>
+
+              {/* Domains */}
+              {template.domains.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-dash-ink-100">
+                  {[...template.domains]
+                    .sort((a, b) => a.order - b.order)
+                    .map(({ order, domainTemplate }) => (
+                      <span
+                        key={domainTemplate.id}
+                        className="inline-flex items-center gap-1 text-[11px] font-medium text-dash-ink-500 bg-dash-sunk px-2 py-0.5 rounded-md leading-none"
+                      >
+                        <span className="text-dash-ink-300 font-normal">{order}.</span>
+                        {domainTemplate.name}
+                      </span>
+                    ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -1153,7 +1167,11 @@ const AssessmentTemplateManager: React.FC = () => {
           </DialogHeader>
           <div className="flex-1 overflow-y-auto p-6">
             {selectedTemplate && isPreviewDialogOpen && (
-              <AssessmentTester key={selectedTemplate.id} templateId={selectedTemplate.id} />
+              <AssessmentTester
+                key={selectedTemplate.id}
+                templateId={selectedTemplate.id}
+                onExit={() => setIsPreviewDialogOpen(false)}
+              />
             )}
           </div>
         </DialogContent>

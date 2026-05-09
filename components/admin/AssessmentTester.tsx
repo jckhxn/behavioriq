@@ -105,9 +105,10 @@ function getNextNavState(
 
 interface AssessmentTesterProps {
   templateId?: string;
+  onExit?: () => void;
 }
 
-export function AssessmentTester({ templateId: initialTemplateId }: AssessmentTesterProps = {}) {
+export function AssessmentTester({ templateId: initialTemplateId, onExit }: AssessmentTesterProps = {}) {
   const [phase, setPhase] = useState<Phase>(initialTemplateId ? "loading" : "select");
   const [templates, setTemplates] = useState<AssessmentTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(initialTemplateId ?? "");
@@ -318,8 +319,8 @@ export function AssessmentTester({ templateId: initialTemplateId }: AssessmentTe
             <span className="text-xs font-semibold text-dash-amber-700">TEST MODE — No data is saved</span>
           </div>
           <button
-            onClick={reset}
-            className="inline-flex items-center gap-1 text-xs font-medium text-dash-amber-700 hover:text-dash-amber-700 border-none bg-transparent cursor-pointer py-1 px-2 rounded-md hover:bg-dash-amber-700/10 transition-colors"
+            onClick={initialTemplateId && onExit ? onExit : reset}
+            className="inline-flex items-center gap-1 text-xs font-medium text-dash-amber-700 border-none bg-transparent cursor-pointer py-1 px-2 rounded-md hover:bg-dash-amber-700/10 transition-colors"
           >
             <ArrowLeft size={12} strokeWidth={1.6} />
             Exit
