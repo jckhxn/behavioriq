@@ -3,11 +3,14 @@
 import UserResourceLibrary from "@/components/resources/UserResourceLibrary";
 import ResourceLibraryManager from "@/components/admin/ResourceLibraryManager";
 import { useUserData } from "@/lib/hooks/use-supabase-user";
+import { useDebugMode } from "@/lib/contexts/DebugModeContext";
 
 
 export default function LibraryPage() {
   const { userData } = useUserData();
-  const isAdmin = userData && ["SUPER_ADMIN", "ADMIN"].includes(userData.role);
+  const { debugRole } = useDebugMode();
+  const effectiveRole = debugRole ?? userData?.role ?? "";
+  const isAdmin = ["SUPER_ADMIN", "ADMIN"].includes(effectiveRole);
 
   return (
     <div>

@@ -5,10 +5,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { useUserData, useSignOut } from "@/lib/hooks/use-supabase-user";
 import { cn } from "@/lib/utils";
 import { OnboardingProvider } from "@/lib/contexts/OnboardingContext";
+import { DebugModeProvider, useDebugMode } from "@/lib/contexts/DebugModeContext";
 import {
   LayoutDashboard, BarChart3, ClipboardList, Library, Users, Mail,
   Wrench, Flag, Sliders, LogOut, X, Menu, Bell, ChevronRight,
-  ChevronDown, Search, Gift,
+  ChevronDown, Search, Gift, FlaskConical,
 } from "lucide-react";
 
 // ── Nav definitions ───────────────────────────────────────────────────────────
@@ -55,20 +56,24 @@ const ROUTE_SECTIONS: Record<string, string> = {
 };
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
-function Sidebar({ open, onClose, isMobile, role }: {
-  open: boolean; onClose: () => void; isMobile: boolean; role: string;
+function Sidebar({ open, onClose, isMobile, role, actualRole }: {
+  open: boolean; onClose: () => void; isMobile: boolean; role: string; actualRole: string;
 }) {
   const pathname = usePathname();
   const router = useRouter();
   const { userData } = useUserData();
   const { signOut } = useSignOut();
+  const { debugRole, setDebugRole } = useDebugMode();
 
   const isAdmin = ["SUPER_ADMIN", "ADMIN"].includes(role);
+  const isActualAdmin = ["SUPER_ADMIN", "ADMIN"].includes(actualRole);
   const nav = isAdmin ? ADMIN_NAV : USER_NAV;
 
   const displayName = userData?.name || userData?.email || "Account";
   const initials = displayName.slice(0, 2).toUpperCase();
-  const roleLabel = userData?.role?.toLowerCase().replace("_", " ") ?? "";
+  const roleLabel = debugRole
+    ? "debug: user view"
+    : userData?.role?.toLowerCase().replace("_", " ") ?? "";
 
   return (
     <aside
@@ -88,8 +93,10 @@ function Sidebar({ open, onClose, isMobile, role }: {
         </div>
         <div className="flex flex-col leading-none flex-1 min-w-0">
           <span className="text-sm font-semibold text-dash-ink-900">BehaviorIQ</span>
-          {isAdmin && (
-            <span className="text-[11px] text-dash-ink-500 tracking-[0.04em]">{roleLabel}</span>
+          {(isAdmin || debugRole) && (
+            <span className={cn("text-[11px] tracking-[0.04em]", debugRole ? "text-dash-amber-700" : "text-dash-ink-500")}>
+              {roleLabel}
+            </span>
           )}
         </div>
         {isMobile && (
@@ -135,6 +142,29 @@ function Sidebar({ open, onClose, isMobile, role }: {
         })}
       </nav>
 
+      {/* Debug mode toggle — only for real admins */}
+      {isActualAdmin && (
+        <div className="px-2.5 pb-2">
+          {debugRole ? (
+            <button
+              onClick={() => { setDebugRole(null); router.push("/dashboard/overview"); }}
+              className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg border border-dash-amber-700/30 bg-dash-amber-50 text-dash-amber-700 text-[12px] font-semibold cursor-pointer hover:bg-dash-amber-50/80 transition-colors duration-[120ms]"
+            >
+              <FlaskConical size={13} strokeWidth={1.6} />
+              Exit user view
+            </button>
+          ) : (
+            <button
+              onClick={() => { setDebugRole("USER"); router.push("/dashboard/overview"); }}
+              className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg border border-dash-ink-200 bg-transparent text-dash-ink-500 text-[12px] font-medium cursor-pointer hover:bg-dash-sunk transition-colors duration-[120ms]"
+            >
+              <FlaskConical size={13} strokeWidth={1.6} />
+              Preview as user
+            </button>
+          )}
+        </div>
+      )}
+
       {/* User footer */}
       <div className="border-t border-dash-ink-100 p-3.5 flex items-center gap-2.5 shrink-0">
         <div className="w-8 h-8 rounded-full bg-dash-peach-50 text-dash-peach-500 flex items-center justify-center font-bold text-[13px] shrink-0">
@@ -142,7 +172,7 @@ function Sidebar({ open, onClose, isMobile, role }: {
         </div>
         <div className="flex-1 min-w-0 leading-tight">
           <div className="text-[13px] font-semibold text-dash-ink-900 truncate">{displayName}</div>
-          {roleLabel && <div className="text-[11px] text-dash-ink-500">{roleLabel}</div>}
+          {roleLabel && <div className={cn("text-[11px]", debugRole ? "text-dash-amber-700" : "text-dash-ink-500")}>{roleLabel}</div>}
         </div>
         <button
           onClick={signOut}
@@ -245,9 +275,31 @@ function TopBar({ onMenuClick, isMobile }: { onMenuClick: () => void; isMobile: 
   );
 }
 
-// ── Layout ────────────────────────────────────────────────────────────────────
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+// ── Debug banner ──────────────────────────────────────────────────────────────
+function DebugBanner() {
+  const { debugRole, setDebugRole } = useDebugMode();
+  const router = useRouter();
+  if (!debugRole) return null;
+  return (
+    <div className="bg-dash-amber-50 border-b border-dash-amber-700/20 px-5 py-2 flex items-center gap-2.5 shrink-0">
+      <FlaskConical size={13} className="text-dash-amber-700 shrink-0" strokeWidth={1.6} />
+      <span className="text-[12px] font-medium text-dash-amber-700 flex-1">
+        Debug mode — previewing as a standard user. Admin data is hidden.
+      </span>
+      <button
+        onClick={() => { setDebugRole(null); router.push("/dashboard/overview"); }}
+        className="text-[12px] font-semibold text-dash-amber-700 underline underline-offset-2 bg-transparent border-none cursor-pointer"
+      >
+        Exit
+      </button>
+    </div>
+  );
+}
+
+// ── Inner layout (needs context) ───────────────────────────────────────────────
+function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const { userData, isLoading } = useUserData();
+  const { debugRole } = useDebugMode();
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -265,6 +317,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     if (isLoading) return;
     if (!userData) { router.replace("/login"); return; }
+    // Don't redirect admins even in debug mode
+    const isActualAdmin = ["SUPER_ADMIN", "ADMIN"].includes(userData.role);
+    if (isActualAdmin) return;
     const redirectMap: Record<string, string> = {
       TEACHER: "/teacher", COUNSELOR: "/counselor",
       PRINCIPAL: "/principal", DISTRICT_ADMIN: "/district",
@@ -280,34 +335,47 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
+  const effectiveRole = debugRole ?? userData.role;
+
   return (
-    <OnboardingProvider>
-      <div
-        className="flex h-screen bg-dash-canvas overflow-hidden relative"
-        style={{ fontFamily: "var(--font-text, 'Source Sans 3', -apple-system, sans-serif)", color: "var(--dash-ink-900)" }}
-      >
-        {/* Mobile backdrop */}
-        {isMobile && sidebarOpen && (
-          <div
-            onClick={() => setSidebarOpen(false)}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
-          />
-        )}
-
-        <Sidebar
-          open={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-          isMobile={isMobile}
-          role={userData.role}
+    <div
+      className="flex h-screen bg-dash-canvas overflow-hidden relative"
+      style={{ fontFamily: "var(--font-text, 'Source Sans 3', -apple-system, sans-serif)", color: "var(--dash-ink-900)" }}
+    >
+      {/* Mobile backdrop */}
+      {isMobile && sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
         />
+      )}
 
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          <TopBar onMenuClick={() => setSidebarOpen(true)} isMobile={isMobile} />
-          <main className={cn("flex-1 overflow-auto", isMobile ? "px-4 py-5" : "px-10 py-8")}>
-            <div className="max-w-[1280px] mx-auto">{children}</div>
-          </main>
-        </div>
+      <Sidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        isMobile={isMobile}
+        role={effectiveRole}
+        actualRole={userData.role}
+      />
+
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <TopBar onMenuClick={() => setSidebarOpen(true)} isMobile={isMobile} />
+        <DebugBanner />
+        <main className={cn("flex-1 overflow-auto", isMobile ? "px-4 py-5" : "px-10 py-8")}>
+          <div className="max-w-[1280px] mx-auto">{children}</div>
+        </main>
       </div>
-    </OnboardingProvider>
+    </div>
+  );
+}
+
+// ── Layout ────────────────────────────────────────────────────────────────────
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <DebugModeProvider>
+      <OnboardingProvider>
+        <DashboardLayoutInner>{children}</DashboardLayoutInner>
+      </OnboardingProvider>
+    </DebugModeProvider>
   );
 }

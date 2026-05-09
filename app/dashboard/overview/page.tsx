@@ -1,6 +1,7 @@
 "use client";
 
 import { useUserData } from "@/lib/hooks/use-supabase-user";
+import { useDebugMode } from "@/lib/contexts/DebugModeContext";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { AdminAnalytics } from "@/components/admin/AdminAnalytics";
 import { useState, useEffect } from "react";
@@ -96,9 +97,11 @@ function UserOverview() {
 
 export default function OverviewPage() {
   const { userData, isLoading } = useUserData();
+  const { debugRole } = useDebugMode();
 
   if (isLoading || !userData) return null;
 
-  const isAdmin = ["SUPER_ADMIN", "ADMIN"].includes(userData.role);
+  const effectiveRole = debugRole ?? userData.role;
+  const isAdmin = ["SUPER_ADMIN", "ADMIN"].includes(effectiveRole);
   return isAdmin ? <AdminOverview /> : <UserOverview />;
 }
