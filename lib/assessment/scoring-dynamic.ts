@@ -19,7 +19,7 @@ const scoringDebugLog = (...args: unknown[]) => {
 
 export interface QuestionResponse {
   questionId: string;
-  response: string | boolean; // Can be string from DB or boolean from code
+  response: string | boolean | number;
   timestamp?: Date;
 }
 
@@ -131,14 +131,29 @@ export class DynamicScoringCalculator {
     );
 
     const totalPossible = domainConfig.totalPossibleScore || 0;
-    const rawScore = uniqueResponses.reduce(
-      (sum, response) => sum + (response.response ? 1 : 0),
-      0
-    );
+    const rawScore = uniqueResponses.reduce((sum, response) => {
+      const question = domainConfig.questions.find((q) => q.id === response.questionId);
+      const responseType = question?.responseType ?? "boolean";
+      if (responseType === "text") return sum;
+      if (responseType === "likert") {
+        const scale = question?.likertScale;
+        const val = typeof response.response === "number"
+          ? response.response
+          : Number(response.response);
+        if (scale && !isNaN(val)) {
+          return sum + (val - scale.min) / (scale.max - scale.min);
+        }
+        return sum;
+      }
+      return sum + (response.response === true || response.response === "true" ? 1 : 0);
+    }, 0);
     const clampedScore = Math.min(rawScore, totalPossible || rawScore);
 
-    const yesCount = clampedScore;
-    const noCount = uniqueResponses.length - clampedScore;
+    const yesCount = uniqueResponses.filter((r) => {
+      const q = domainConfig.questions.find((q) => q.id === r.questionId);
+      return (!q?.responseType || q.responseType === "boolean") && (r.response === true || r.response === "true");
+    }).length;
+    const noCount = uniqueResponses.length - yesCount;
     const percentage =
       totalPossible > 0 ? (clampedScore / totalPossible) * 100 : 0;
     const isClinicallySignificant =
@@ -195,7 +210,7 @@ export class DynamicScoringCalculator {
       return true;
     });
     const part1Score = part1Responses.reduce(
-      (sum, r) => sum + (r.response ? 1 : 0),
+      (sum, r) => sum + (r.response === true || r.response === "true" ? 1 : 0),
       0
     );
     const part1Met = part1Score >= multiPartLogic.part1Threshold;
@@ -217,7 +232,7 @@ export class DynamicScoringCalculator {
       return true;
     });
     const part2Score = part2Responses.reduce(
-      (sum, r) => sum + (r.response ? 1 : 0),
+      (sum, r) => sum + (r.response === true || r.response === "true" ? 1 : 0),
       0
     );
     const part2Met = part2Score >= multiPartLogic.part2Threshold;

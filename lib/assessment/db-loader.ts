@@ -14,7 +14,61 @@ import {
   SkipCondition,
   PrerequisiteConfig,
   MultiPartLogicConfig,
+  type QuestionResponseType,
+  type LikertScale,
+  type LikertOption,
 } from "./types";
+
+type AdminResponseType =
+  | "yes_no"
+  | "likert4"
+  | "likert5"
+  | "likert7"
+  | "likert10"
+  | "multiple_choice"
+  | "text";
+
+function mapAdminResponseType(
+  adminType: AdminResponseType,
+  responseOptions: LikertOption[]
+): { responseType?: QuestionResponseType; likertScale?: LikertScale } {
+  if (adminType === "yes_no" || !adminType) return {};
+  if (adminType === "text") return { responseType: "text" };
+
+  const opts = Array.isArray(responseOptions) ? responseOptions : [];
+
+  if (adminType === "multiple_choice") {
+    if (opts.length === 0) return { responseType: "text" };
+    const values = opts.map((o) => o.value);
+    return {
+      responseType: "likert",
+      likertScale: {
+        min: Math.min(...values),
+        max: Math.max(...values),
+        options: opts,
+      },
+    };
+  }
+
+  // likert4 / likert5 / likert7 / likert10
+  if (opts.length > 0) {
+    const values = opts.map((o) => o.value);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    return {
+      responseType: "likert",
+      likertScale: {
+        min,
+        max,
+        minLabel: opts[0]?.label,
+        maxLabel: opts[opts.length - 1]?.label,
+        options: opts,
+      },
+    };
+  }
+
+  return {};
+}
 
 const DEFAULT_TEMPLATE_CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -503,6 +557,13 @@ export async function loadAssessmentConfigFromTemplate(
           domainTemplateMap[templateName.toLowerCase()] = templateIdValue;
         }
 
+        // Map the domain-level response type (set in admin UI) to QuestionResponseType + LikertScale
+        const adminResponseType = (scoringConfig as any)?.responseType as AdminResponseType | undefined;
+        const adminResponseOptions: LikertOption[] = (scoringConfig as any)?.responseOptions ?? [];
+        const domainResponseMapping = adminResponseType
+          ? mapAdminResponseType(adminResponseType, adminResponseOptions)
+          : {};
+
         const questionSetConfig: QuestionSetConfig = {
           name: domainTemplate.name,
           displayName: domainTemplate.name,
@@ -525,6 +586,9 @@ export async function loadAssessmentConfigFromTemplate(
                 isGatingQuestion: Boolean(q.isGatingQuestion),
                 skipLogic: q.skipLogic || null,
                 category: q.category || null,
+                // Per-question override takes precedence; fall back to domain-level
+                responseType: q.responseType || domainResponseMapping.responseType,
+                likertScale: q.likertScale || domainResponseMapping.likertScale,
               };
             } catch (questionError) {
               console.warn(

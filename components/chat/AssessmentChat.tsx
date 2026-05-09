@@ -88,6 +88,8 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
               questionId: question.id,
               text: question.text,
               domain: domain.name,
+              responseType: question.responseType,
+              likertScale: question.likertScale,
             };
           }
         }
@@ -474,7 +476,7 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
   );
 
   const handleStructuredAnswer = useCallback(
-    async (questionId: string, response: boolean) => {
+    async (questionId: string, response: boolean | number | string) => {
       if (
         !activeQuestion ||
         activeQuestion.questionId !== questionId ||
@@ -620,6 +622,8 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
               onBack={handleBack}
               canGoBack={canGoBack}
               assessmentConfigs={assessmentConfigs}
+              responseType={activeQuestion.responseType}
+              likertScale={activeQuestion.likertScale}
             />
           </div>
         </div>

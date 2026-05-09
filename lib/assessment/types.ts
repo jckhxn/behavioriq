@@ -12,6 +12,22 @@ export interface SkipCondition {
   skipToQuestion?: string;
 }
 
+export type QuestionResponseType = "boolean" | "likert" | "text";
+
+export interface LikertOption {
+  value: number;
+  label: string;
+}
+
+export interface LikertScale {
+  min: number;
+  max: number;
+  step?: number;
+  minLabel?: string;
+  maxLabel?: string;
+  options?: LikertOption[];
+}
+
 export interface QuestionConfig {
   id: string;
   text: string;
@@ -19,6 +35,8 @@ export interface QuestionConfig {
   isGatingQuestion: boolean;
   weight: number;
   skipCondition?: SkipCondition;
+  responseType?: QuestionResponseType;
+  likertScale?: LikertScale;
 }
 
 export interface TerminationRuleConfig {

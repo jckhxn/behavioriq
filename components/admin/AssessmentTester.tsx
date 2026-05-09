@@ -47,10 +47,12 @@ function riskClass(level: RiskLevel): string {
   }
 }
 
+type ResponseValue = boolean | number | string;
+
 function findFirstQuestionInDomain(
   configs: QuestionSetConfig[],
   domainIndex: number,
-  responses: Record<string, boolean>
+  responses: Record<string, ResponseValue>
 ): NavState | null {
   if (domainIndex >= configs.length) return null;
   const domain = configs[domainIndex];
@@ -68,26 +70,35 @@ function findFirstQuestionInDomain(
 function getNextNavState(
   configs: QuestionSetConfig[],
   current: NavState,
-  responses: Record<string, boolean>
+  responses: Record<string, ResponseValue>
 ): NavState | null {
   const domain = configs[current.domainIndex];
   const question = domain.questions[current.questionIndex];
   const answer = responses[question.id];
+  const isBooleanQuestion = !question.responseType || question.responseType === "boolean";
 
-  const skipCondition = domain.skipConditions.find(
-    (sc) => sc.questionId === question.id && sc.skipValue === answer
-  );
-  if (skipCondition?.skipToQuestion) {
-    const targetIdx = domain.questions.findIndex(
-      (q) => q.id === skipCondition.skipToQuestion
+  // Skip conditions only apply to boolean questions
+  if (isBooleanQuestion) {
+    const skipCondition = domain.skipConditions.find(
+      (sc) => sc.questionId === question.id && sc.skipValue === answer
     );
-    if (targetIdx > current.questionIndex) {
-      return { domainIndex: current.domainIndex, questionIndex: targetIdx };
+    if (skipCondition?.skipToQuestion) {
+      const targetIdx = domain.questions.findIndex(
+        (q) => q.id === skipCondition.skipToQuestion
+      );
+      if (targetIdx > current.questionIndex) {
+        return { domainIndex: current.domainIndex, questionIndex: targetIdx };
+      }
     }
   }
 
+  // Termination rules count boolean true responses only
   const answeredInDomain = domain.questions.slice(0, current.questionIndex + 1);
-  const yesCount = answeredInDomain.filter((q) => responses[q.id] === true).length;
+  const yesCount = answeredInDomain.filter((q) => {
+    const qConfig = domain.questions.find((dq) => dq.id === q.id);
+    const isBoolean = !qConfig?.responseType || qConfig.responseType === "boolean";
+    return isBoolean && responses[q.id] === true;
+  }).length;
   for (const rule of domain.terminationRules) {
     if (current.questionIndex + 1 >= rule.checkAfterQuestion) {
       if (yesCount < rule.minimumYesToContinue) {
@@ -114,7 +125,7 @@ export function AssessmentTester({ templateId: initialTemplateId, onExit }: Asse
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(initialTemplateId ?? "");
   const [configs, setConfigs] = useState<QuestionSetConfig[]>([]);
   const [navState, setNavState] = useState<NavState>({ domainIndex: 0, questionIndex: 0 });
-  const [responses, setResponses] = useState<Record<string, boolean>>({});
+  const [responses, setResponses] = useState<Record<string, ResponseValue>>({});
   const [history, setHistory] = useState<NavState[]>([]);
   const [results, setResults] = useState<ScoredResult[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -162,7 +173,7 @@ export function AssessmentTester({ templateId: initialTemplateId, onExit }: Asse
   }, [selectedTemplateId]);
 
   const handleAnswer = useCallback(
-    async (questionId: string, response: boolean) => {
+    async (questionId: string, response: ResponseValue) => {
       const newResponses = { ...responses, [questionId]: response };
       setResponses(newResponses);
       setHistory((prev) => [...prev, navState]);
@@ -336,6 +347,8 @@ export function AssessmentTester({ templateId: initialTemplateId, onExit }: Asse
           onBack={history.length > 0 ? handleBack : undefined}
           canGoBack={history.length > 0}
           assessmentConfigs={configs}
+          responseType={currentQuestion.responseType}
+          likertScale={currentQuestion.likertScale}
         />
       </div>
     );
