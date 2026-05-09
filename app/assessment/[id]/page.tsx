@@ -5,9 +5,7 @@ import { useParams } from "next/navigation";
 import { useUser } from "@/lib/hooks/use-supabase-user";
 import { AssessmentChat } from "@/components/chat/AssessmentChat";
 import { AssessmentCompletion } from "@/components/assessment/AssessmentCompletion";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 interface Assessment {
@@ -31,152 +29,92 @@ export default function AssessmentPage() {
 
   useEffect(() => {
     if (isLoading) return;
-
-    // Allow both authenticated users and anonymous users to view completed assessments
-    // (Anonymous users can view results after paying for full assessment)
     const fetchAssessment = async () => {
       try {
-        const response = await fetch(`/api/assessments/${assessmentId}`);
-        if (!response.ok) {
-          if (response.status === 404) {
-            setError("Assessment not found");
-          } else if (response.status === 401) {
-            // For unauthorized, only redirect if they're not an anonymous paid user
-            setError("You don't have access to this assessment");
-          } else {
-            setError("Failed to load assessment");
-          }
+        const res = await fetch(`/api/assessments/${assessmentId}`);
+        if (!res.ok) {
+          if (res.status === 404) setError("Assessment not found");
+          else if (res.status === 401) setError("You don't have access to this assessment");
+          else setError("Failed to load assessment");
           return;
         }
-        const data = await response.json();
-        setAssessment(data);
-      } catch (error) {
-        console.error("Error fetching assessment:", error);
+        setAssessment(await res.json());
+      } catch {
         setError("Failed to load assessment");
       } finally {
         setLoading(false);
       }
     };
-
     fetchAssessment();
   }, [assessmentId, isLoading]);
 
+  const fontStyle = { fontFamily: "var(--font-text, 'Source Sans 3', -apple-system, sans-serif)" };
+
   if (isLoading || loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 dark:from-background dark:via-background dark:to-muted/20 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading assessment...</p>
-        </div>
+      <div className="min-h-screen bg-dash-canvas flex items-center justify-center" style={fontStyle}>
+        <div className="w-2 h-2 rounded-full bg-dash-indigo-500 opacity-60 animate-pulse" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 dark:from-background dark:via-background dark:to-muted/20 flex items-center justify-center">
-        <Card className="max-w-md w-full mx-4">
-          <CardContent className="pt-6 text-center">
-            <div className="text-destructive mb-4">
-              <svg
-                className="h-12 w-12 mx-auto"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z"
-                />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold mb-2">Error</h3>
-            <p className="text-muted-foreground mb-4">{error}</p>
-            <Link href="/">
-              <Button variant="outline">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Assessments
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (!assessment) {
-    return null;
-  }
-
-  // For completed conversational assessments, show AssessmentCompletion directly
-  if (assessment.isConversational && assessment.status === "COMPLETED") {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 dark:from-background dark:via-background dark:to-muted/20">
-        <div className="container mx-auto px-4 py-8 max-w-6xl">
-          {/* Header */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <Link href="/">
-                <Button variant="ghost" size="sm">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Dashboard
-                </Button>
-              </Link>
-            </div>
-
-            <div className="text-center">
-              <h1 className="text-3xl font-bold mb-2">
-                Conversational Assessment Results
-              </h1>
-              <p className="text-muted-foreground">
-                {assessment.subjectName}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Completed on {new Date(assessment.completedAt || assessment.startedAt).toLocaleDateString()}
-              </p>
-            </div>
-          </div>
-
-          {/* Results */}
-          <AssessmentCompletion
-            assessmentId={assessmentId}
-            subjectName={assessment.subjectName}
-            isAnonymous={assessment.userId === null}
-          />
+      <div className="min-h-screen bg-dash-canvas flex items-center justify-center" style={fontStyle}>
+        <div className="bg-dash-surface border border-dash-ink-100 rounded-2xl p-8 max-w-sm w-full mx-4 text-center">
+          <p className="text-[15px] text-dash-ink-700 mb-5">{error}</p>
+          <Link
+            href="/dashboard/overview"
+            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-dash-indigo-600 hover:underline"
+          >
+            <ArrowLeft size={13} strokeWidth={1.6} />
+            Back to dashboard
+          </Link>
         </div>
       </div>
     );
   }
 
-  // For completed assessments, show results (no chat interface)
+  if (!assessment) return null;
+
+  const backLink = (
+    <Link
+      href="/dashboard/overview"
+      className="inline-flex items-center gap-1.5 text-[13px] font-medium text-dash-ink-500 hover:text-dash-ink-900 transition-colors"
+    >
+      <ArrowLeft size={13} strokeWidth={1.6} />
+      Dashboard
+    </Link>
+  );
+
+  // Completed assessment — show results
   if (assessment.status === "COMPLETED") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 dark:from-background dark:via-background dark:to-muted/20">
-        <div className="container mx-auto px-4 py-8 max-w-6xl">
-          {/* Header */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <Link href="/">
-                <Button variant="ghost" size="sm">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Assessments
-                </Button>
-              </Link>
-            </div>
+      <div className="min-h-screen bg-dash-canvas" style={fontStyle}>
+        {/* Nav */}
+        <div className="h-[56px] border-b border-dash-ink-100 bg-dash-surface flex items-center px-5 shrink-0">
+          {backLink}
+        </div>
 
-            <div className="text-center">
-              <h1 className="text-3xl font-bold mb-2">
-                Assessment Results: {assessment.subjectName}
-              </h1>
-              <p className="text-muted-foreground">
-                Completed on {new Date(assessment.completedAt || assessment.startedAt).toLocaleDateString()}
-              </p>
-            </div>
+        {/* Header */}
+        <div className="max-w-4xl mx-auto px-5 pt-8 pb-2">
+          <div className="text-[11px] font-semibold text-dash-ink-500 tracking-[0.08em] uppercase mb-1">
+            Results
           </div>
+          <h1
+            className="text-[26px] font-semibold tracking-[-0.02em] text-dash-ink-900 leading-[1.2]"
+            style={{ fontFamily: "var(--font-display, Georgia, serif)" }}
+          >
+            {assessment.subjectName}
+          </h1>
+          {assessment.completedAt && (
+            <p className="text-[13px] text-dash-ink-500 mt-1">
+              Completed {new Date(assessment.completedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+            </p>
+          )}
+        </div>
 
-          {/* Results */}
+        <div className="max-w-4xl mx-auto px-5 py-6">
           <AssessmentCompletion
             assessmentId={assessmentId}
             subjectName={assessment.subjectName}
@@ -187,47 +125,36 @@ export default function AssessmentPage() {
     );
   }
 
-  // For in-progress assessments, show chat interface
+  // In-progress assessment — show chat/question interface
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 dark:from-background dark:via-background dark:to-muted/20">
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <Link href="/">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Assessments
-              </Button>
-            </Link>
-            <div className="text-right">
-              <div className="text-sm text-muted-foreground">
-                Assessment Status
-              </div>
-              <div
-                className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400`}
-              >
-                In Progress
-              </div>
-            </div>
-          </div>
-
-          <div className="text-center">
-            <h1 className="text-3xl font-bold mb-2">
-              Assessment for {assessment.subjectName}
-            </h1>
-            <p className="text-muted-foreground">
-              Started on {new Date(assessment.startedAt).toLocaleDateString()}
-            </p>
-          </div>
+    <div className="min-h-screen bg-dash-canvas flex flex-col" style={fontStyle}>
+      {/* Nav */}
+      <div className="h-[56px] border-b border-dash-ink-100 bg-dash-surface flex items-center justify-between px-5 shrink-0">
+        {backLink}
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-dash-amber-700 bg-dash-amber-50 px-2.5 py-1 rounded-lg">
+            In progress
+          </span>
         </div>
+      </div>
 
-        {/* Assessment Chat Interface */}
-        <Card className="shadow-lg dark:shadow-xl border dark:border-border">
-          <CardContent className="p-0">
-            <AssessmentChat assessmentId={assessmentId} />
-          </CardContent>
-        </Card>
+      {/* Assessment label */}
+      <div className="border-b border-dash-ink-100 px-5 py-3 bg-dash-surface shrink-0">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-[15px] font-semibold text-dash-ink-900">
+            Assessment — {assessment.subjectName}
+          </h1>
+          <p className="text-[12px] text-dash-ink-500 mt-0.5">
+            Started {new Date(assessment.startedAt).toLocaleDateString("en-US", { month: "long", day: "numeric" })}
+          </p>
+        </div>
+      </div>
+
+      {/* Chat / question interface */}
+      <div className="flex-1 overflow-hidden">
+        <div className="max-w-4xl mx-auto h-full">
+          <AssessmentChat assessmentId={assessmentId} />
+        </div>
       </div>
     </div>
   );

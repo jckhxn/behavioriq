@@ -4,7 +4,6 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
 import { Send, Loader2 } from "lucide-react";
 import { useUser } from "@/lib/hooks/use-supabase-user";
 import { ASSESSMENT_CONFIG } from "@/lib/config/ai-config";
@@ -598,27 +597,19 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
     if (activeQuestion && assessmentConfigs.length > 0) {
       return (
         <div className="flex flex-col h-full">
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b">
-            <h2 className="text-lg font-semibold">Behavioral Assessment</h2>
-            <div className="flex items-center gap-3">
-              <Badge variant="default">In Progress</Badge>
-              {pendingSaves > 0 && (
-                <span className="flex items-center text-xs text-muted-foreground">
-                  <Loader2 className="h-3 w-3 mr-2 animate-spin" />
-                  Syncing...
-                </span>
-              )}
-            </div>
-          </div>
-
           {syncError && (
-            <div className="px-4 py-2 text-sm text-destructive">
+            <div className="px-5 py-2 text-[12px] text-dash-rose-700 bg-dash-rose-50 border-b border-dash-rose-700/20 shrink-0">
               {syncError}
             </div>
           )}
+          {pendingSaves > 0 && (
+            <div className="px-5 py-1.5 text-[11px] text-dash-ink-500 bg-dash-sunk border-b border-dash-ink-100 flex items-center gap-1.5 shrink-0">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Syncing…
+            </div>
+          )}
 
-          <div className="flex-1 p-4 overflow-auto">
+          <div className="flex-1 px-5 overflow-auto">
             <QuestionPresenter
               questionId={activeQuestion.questionId}
               questionText={activeQuestion.text}
@@ -676,9 +667,11 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b">
-        <h2 className="text-lg font-semibold">Behavioral Assessment</h2>
-        <Badge variant="default">In Progress</Badge>
+      <div className="flex items-center justify-between px-5 py-3 border-b border-dash-ink-100 shrink-0">
+        <h2 className="text-[14px] font-semibold text-dash-ink-900">Behavioral Assessment</h2>
+        <span className="text-[11px] font-semibold text-dash-amber-700 bg-dash-amber-50 px-2 py-0.5 rounded-md">
+          In progress
+        </span>
       </div>
 
       {/* Messages */}

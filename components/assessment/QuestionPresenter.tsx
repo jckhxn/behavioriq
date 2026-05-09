@@ -1,11 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { CheckCircle, XCircle, Loader2, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { QuestionSetConfig } from "@/lib/assessment/db-loader";
 
 interface QuestionPresenterProps {
@@ -36,249 +33,159 @@ export function QuestionPresenter({
   canGoBack = false,
   assessmentConfigs,
 }: QuestionPresenterProps) {
-  const [selectedAnswer, setSelectedAnswer] = useState<boolean | null>(null);
+  const [selected, setSelected] = useState<boolean | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Reset selected answer when question changes
+  useEffect(() => { setSelected(null); }, [questionId]);
+
+  const handleAnswer = useCallback(async (response: boolean) => {
+    if (isSubmitting || selected !== null || isLoading) return;
+    setSelected(response);
+    setIsSubmitting(true);
+    setTimeout(async () => {
+      try {
+        await onAnswer(questionId, response);
+      } catch {
+        setSelected(null);
+      } finally {
+        setIsSubmitting(false);
+      }
+    }, 250);
+  }, [isSubmitting, selected, isLoading, onAnswer, questionId]);
+
   useEffect(() => {
-    setSelectedAnswer(null);
-  }, [questionId]);
-
-  const handleAnswerClick = useCallback(
-    async (response: boolean) => {
-      if (isSubmitting || selectedAnswer !== null || isLoading) return;
-
-      // Show selected button
-      setSelectedAnswer(response);
-      setIsSubmitting(true);
-
-      // Wait a brief moment to show the selection, then submit
-      setTimeout(async () => {
-        try {
-          await onAnswer(questionId, response);
-          // Don't reset selectedAnswer here - let it reset when the question changes
-        } catch (error) {
-          console.error("Error submitting answer:", error);
-          setSelectedAnswer(null); // Reset on error so user can try again
-        } finally {
-          setIsSubmitting(false);
-        }
-      }, 300);
-    },
-    [isSubmitting, selectedAnswer, isLoading, onAnswer, questionId]
-  );
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyPress = (event: KeyboardEvent) => {
-      // Ignore if user is typing in an input field
-      if (
-        event.target instanceof HTMLInputElement ||
-        event.target instanceof HTMLTextAreaElement
-      ) {
-        return;
-      }
-
-      const key = event.key.toLowerCase();
-
-      // Y key or Enter key = Yes (true)
-      if (key === "y" || key === "enter") {
-        event.preventDefault();
-        handleAnswerClick(true);
-      }
-      // N key = No (false)
-      else if (key === "n") {
-        event.preventDefault();
-        handleAnswerClick(false);
-      }
-      // Backspace or left arrow = Previous question
-      else if (
-        (key === "backspace" || key === "arrowleft") &&
-        canGoBack &&
-        onBack
-      ) {
-        event.preventDefault();
-        if (!isLoading && !isSubmitting) {
-          onBack();
-        }
+    const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      const k = e.key.toLowerCase();
+      if (k === "y" || k === "enter") { e.preventDefault(); handleAnswer(true); }
+      else if (k === "n") { e.preventDefault(); handleAnswer(false); }
+      else if ((k === "backspace" || k === "arrowleft") && canGoBack && onBack && !isLoading && !isSubmitting) {
+        e.preventDefault(); onBack();
       }
     };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [handleAnswer, canGoBack, onBack, isLoading, isSubmitting]);
 
-    // Add event listener
-    window.addEventListener("keydown", handleKeyPress);
-
-    // Cleanup
-    return () => {
-      window.removeEventListener("keydown", handleKeyPress);
-    };
-  }, [handleAnswerClick, canGoBack, onBack, isLoading, isSubmitting]);
-
-  // Find domain configuration from our assessment configs
   const domainConfig = useMemo(() => {
-    return (
-      assessmentConfigs.find((domain) => domain.name === currentDomain) || {
-        domain: currentDomain as any,
-        name: currentDomain,
-        displayName: currentDomain,
-        description: "",
-        order: 0,
-        totalPossibleScore: 0,
-        clinicallySignificantScore: 0,
-        questions: [],
-        terminationRules: [],
-        skipConditions: [],
-        prerequisites: [],
-      }
-    );
+    return assessmentConfigs.find((d) => d.name === currentDomain) ?? { name: currentDomain };
   }, [assessmentConfigs, currentDomain]);
 
-  const progressPercentage = Math.round(progress.overallProgress);
+  const pct = Math.round(progress.overallProgress);
 
   return (
-    <div className="w-full max-w-2xl mx-auto space-y-6 animate-fade-in">
-      {/* Progress Header */}
-      <Card className="card-gradient border-primary/20">
-        <CardHeader className="pb-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <CardTitle className="text-lg font-semibold">
-                Assessment Progress
-              </CardTitle>
-              <Badge variant="secondary" className="bg-primary/10 text-primary">
-                {domainConfig.name}
-              </Badge>
-            </div>
-            <div className="text-right space-y-1">
-              <div className="text-sm font-medium text-muted-foreground">
-                {progress.answeredQuestions} of {progress.totalQuestions}{" "}
-                questions
-              </div>
-              <div className="text-2xl font-bold gradient-text">
-                {progressPercentage}%
-              </div>
-            </div>
-          </div>
-          <Progress
-            value={progressPercentage}
-            className="h-2 gradient-animated"
-          />
-        </CardHeader>
-      </Card>
-
-      {/* Question Card */}
-      <Card className="card-gradient border-primary/20 animate-slide-up">
-        <CardHeader>
-          <CardTitle className="text-xl leading-relaxed">
-            {questionText}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Answer Options */}
-          <div className="space-y-4">
-            <Button
-              size="lg"
-              onClick={() => handleAnswerClick(true)}
-              disabled={selectedAnswer !== null || isLoading}
-              className={`w-full h-14 text-lg font-medium transition-all duration-200 border-2 ${
-                selectedAnswer === true
-                  ? "bg-green-500 hover:bg-green-600 text-white border-green-500 ring-4 ring-green-200 dark:ring-green-900 shadow-lg scale-105"
-                  : "bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600 text-foreground hover:border-green-400 dark:hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-950/50"
-              }`}
-            >
-              <CheckCircle className="mr-3 h-5 w-5" />
-              Yes
-            </Button>
-
-            <Button
-              size="lg"
-              onClick={() => handleAnswerClick(false)}
-              disabled={selectedAnswer !== null || isLoading}
-              className={`w-full h-14 text-lg font-medium transition-all duration-200 border-2 ${
-                selectedAnswer === false
-                  ? "bg-red-500 hover:bg-red-600 text-white border-red-500 ring-4 ring-red-200 dark:ring-red-900 shadow-lg scale-105"
-                  : "bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600 text-foreground hover:border-red-400 dark:hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-950/50"
-              }`}
-            >
-              <XCircle className="mr-3 h-5 w-5" />
-              No
-            </Button>
-          </div>
-
-          {/* Keyboard Shortcuts Hint - Subtle */}
-          <div className="text-center text-xs text-muted-foreground/60 space-y-0.5">
-            <p>
-              Keyboard shortcuts:{" "}
-              <kbd className="px-1.5 py-0.5 text-[10px] bg-muted/50 rounded border border-border/50 font-mono">
-                Y
-              </kbd>{" "}
-              Yes •{" "}
-              <kbd className="px-1.5 py-0.5 text-[10px] bg-muted/50 rounded border border-border/50 font-mono">
-                N
-              </kbd>{" "}
-              No •{" "}
-              <kbd className="px-1.5 py-0.5 text-[10px] bg-muted/50 rounded border border-border/50 font-mono">
-                Enter
-              </kbd>{" "}
-              Yes
-              {canGoBack && (
-                <>
-                  {" • "}
-                  <kbd className="px-1.5 py-0.5 text-[10px] bg-muted/50 rounded border border-border/50 font-mono">
-                    ←
-                  </kbd>{" "}
-                  Back
-                </>
-              )}
-            </p>
-          </div>
-
-          {/* Back Button */}
-          {canGoBack && (
-            <Button
+    <div className="h-full flex flex-col items-center justify-center py-6">
+      <div className="w-full max-w-lg">
+        {/* Top row: back + counter */}
+        <div className="flex items-center justify-between mb-4">
+          {canGoBack ? (
+            <button
               onClick={onBack}
-              variant="ghost"
-              size="lg"
-              className="w-full h-12 text-lg font-medium flex items-center justify-center gap-2"
               disabled={isLoading || isSubmitting}
+              className="flex items-center gap-1.5 text-[13px] font-medium text-dash-ink-500 hover:text-dash-ink-700 transition-colors border-none bg-transparent cursor-pointer disabled:opacity-40"
             >
-              <ArrowLeft className="h-5 w-5" />
-              Previous Question
-            </Button>
-          )}
+              <ArrowLeft size={13} strokeWidth={1.6} />
+              Back
+            </button>
+          ) : <div />}
+          <span className="text-[13px] font-medium text-dash-ink-500">
+            {progress.answeredQuestions} / {progress.totalQuestions}
+          </span>
+        </div>
 
-          {/* Progress Details */}
-          <div className="pt-4 border-t border-border/50">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div className="text-center p-3 rounded-lg bg-primary/5">
-                <div className="font-semibold text-primary">
-                  {progress.answeredQuestions}
-                </div>
-                <div className="text-muted-foreground">Answered</div>
-              </div>
-              <div className="text-center p-3 rounded-lg bg-accent/5">
-                <div className="font-semibold text-accent">
-                  {progress.completedDomains}
-                </div>
-                <div className="text-muted-foreground">Domains</div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        {/* Progress bar */}
+        <div className="h-1.5 bg-dash-ink-100 rounded-full mb-6 overflow-hidden">
+          <div
+            className="h-full bg-dash-indigo-500 rounded-full transition-[width] duration-500"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
 
-      {/* Subtle Loading Indicator - only shows between questions */}
-      {isLoading && !isSubmitting && (
-        <Card className="card-gradient border-primary/20">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-center space-x-3 text-muted-foreground">
-              <Loader2 className="h-5 w-5 animate-spin text-primary" />
-              <span className="text-sm font-medium">
-                Loading next question...
+        {/* Domain label */}
+        <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-dash-ink-500 mb-4">
+          {domainConfig.name}
+        </div>
+
+        {/* Question card */}
+        <div className="bg-dash-surface border border-dash-ink-100 rounded-2xl p-7 mb-5 shadow-sm">
+          <p
+            className="text-[19px] leading-[1.6] text-dash-ink-900"
+            style={{ fontFamily: "var(--font-display, Georgia, serif)" }}
+          >
+            {questionText}
+          </p>
+        </div>
+
+        {/* Answer buttons */}
+        <div className="grid grid-cols-2 gap-3 mb-5">
+          <button
+            onClick={() => handleAnswer(true)}
+            disabled={selected !== null || isLoading}
+            className={cn(
+              "h-[60px] rounded-xl border-2 text-[15px] font-semibold transition-all duration-150 cursor-pointer disabled:cursor-not-allowed",
+              selected === true
+                ? "bg-dash-mint-700 border-dash-mint-700 text-white shadow-sm"
+                : "bg-dash-mint-50 border-dash-mint-700/25 text-dash-mint-700 hover:border-dash-mint-700/50 disabled:opacity-40",
+            )}
+          >
+            Yes
+          </button>
+          <button
+            onClick={() => handleAnswer(false)}
+            disabled={selected !== null || isLoading}
+            className={cn(
+              "h-[60px] rounded-xl border-2 text-[15px] font-semibold transition-all duration-150 cursor-pointer disabled:cursor-not-allowed",
+              selected === false
+                ? "bg-dash-rose-700 border-dash-rose-700 text-white shadow-sm"
+                : "bg-dash-rose-50 border-dash-rose-700/25 text-dash-rose-700 hover:border-dash-rose-700/50 disabled:opacity-40",
+            )}
+          >
+            No
+          </button>
+        </div>
+
+        {/* Keyboard hints */}
+        <div className="flex items-center justify-center gap-3 text-[11px] text-dash-ink-400">
+          <span>
+            <kbd className="px-1.5 py-0.5 rounded border border-dash-ink-200 bg-dash-surface font-mono text-[10px] text-dash-ink-500">Y</kbd>
+            {" "}Yes
+          </span>
+          <span className="text-dash-ink-200">·</span>
+          <span>
+            <kbd className="px-1.5 py-0.5 rounded border border-dash-ink-200 bg-dash-surface font-mono text-[10px] text-dash-ink-500">N</kbd>
+            {" "}No
+          </span>
+          {canGoBack && (
+            <>
+              <span className="text-dash-ink-200">·</span>
+              <span>
+                <kbd className="px-1.5 py-0.5 rounded border border-dash-ink-200 bg-dash-surface font-mono text-[10px] text-dash-ink-500">←</kbd>
+                {" "}Back
               </span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+            </>
+          )}
+        </div>
+
+        {/* Between-question loader */}
+        {isLoading && !isSubmitting && (
+          <div className="mt-5 text-center text-[12px] text-dash-ink-400 animate-pulse">
+            Loading next question…
+          </div>
+        )}
+      </div>
+
+      {/* Footer stats */}
+      <div className="mt-8 flex items-center gap-8">
+        <div className="text-center">
+          <div className="text-[22px] font-semibold text-dash-ink-900 leading-none">{pct}%</div>
+          <div className="text-[11px] text-dash-ink-500 mt-0.5">complete</div>
+        </div>
+        <div className="w-px h-8 bg-dash-ink-100" />
+        <div className="text-center">
+          <div className="text-[22px] font-semibold text-dash-ink-900 leading-none">{progress.completedDomains}</div>
+          <div className="text-[11px] text-dash-ink-500 mt-0.5">domains done</div>
+        </div>
+      </div>
     </div>
   );
 }
