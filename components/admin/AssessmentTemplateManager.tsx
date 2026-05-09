@@ -5,13 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -22,7 +15,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -33,11 +25,11 @@ import {
   Upload,
   Eye,
   Download,
-  Zap,
   Check,
   ClipboardList,
   FlaskConical,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { AssessmentTester } from "./AssessmentTester";
 import { BulkUploadDialog } from "./BulkUploadDialog";
@@ -1000,10 +992,10 @@ const AssessmentTemplateManager: React.FC = () => {
 
       {/* Assessment list */}
       {assessmentTemplates.length === 0 ? (
-        <div className="border-2 border-dashed rounded-2xl p-16 text-center">
-          <ClipboardList className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No assessments yet</h3>
-          <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
+        <div className="border-2 border-dashed border-dash-ink-200 rounded-2xl p-16 text-center">
+          <ClipboardList className="h-10 w-10 text-dash-ink-300 mx-auto mb-4" strokeWidth={1.4} />
+          <h3 className="text-[15px] font-semibold text-dash-ink-900 mb-1.5">No assessments yet</h3>
+          <p className="text-[13px] text-dash-ink-500 mb-6 max-w-sm mx-auto">
             Create your first assessment template by combining clinical domains.
           </p>
           <Button onClick={openCreate}>
@@ -1012,173 +1004,110 @@ const AssessmentTemplateManager: React.FC = () => {
           </Button>
         </div>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid gap-3">
           {assessmentTemplates.map((template) => (
-            <Card key={template.id} className="hover:shadow-sm transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <CardTitle className="text-lg">{template.name}</CardTitle>
-                      {template.id === trialAssessmentId && (
-                        <Badge
-                          variant="outline"
-                          className="bg-primary/10 text-primary border-primary/30 text-xs"
-                        >
-                          Trial
-                        </Badge>
-                      )}
-                      <div
-                        className="flex items-center gap-1.5"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleToggleActive(template);
-                        }}
-                      >
-                        <Switch
-                          checked={template.isActive}
-                          onCheckedChange={() => handleToggleActive(template)}
-                          className="scale-75"
-                        />
-                        <span className="text-xs text-muted-foreground">
-                          {template.isActive ? "Active" : "Inactive"}
-                        </span>
-                      </div>
+            <div
+              key={template.id}
+              className="bg-dash-surface border border-dash-ink-100 rounded-xl p-5 transition-shadow hover:shadow-sm"
+            >
+              <div className="flex items-start gap-4">
+                <div className="flex-1 min-w-0">
+                  {/* Title + badges + toggle */}
+                  <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                    <h3 className="text-[15px] font-semibold text-dash-ink-900">{template.name}</h3>
+                    {template.id === trialAssessmentId && (
+                      <span className="text-[11px] font-semibold text-dash-indigo-600 bg-dash-indigo-50 border border-dash-indigo-100 px-2 py-0.5 rounded-full">
+                        Trial
+                      </span>
+                    )}
+                    <div
+                      className="flex items-center gap-1.5 ml-0.5"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Switch
+                        checked={template.isActive}
+                        onCheckedChange={() => handleToggleActive(template)}
+                        className="scale-75"
+                      />
+                      <span className="text-xs text-dash-ink-500">
+                        {template.isActive ? "Active" : "Inactive"}
+                      </span>
                     </div>
-                    {template.description && (
-                      <CardDescription className="mt-1.5 text-sm leading-relaxed line-clamp-2">
-                        {template.description}
-                      </CardDescription>
+                  </div>
+
+                  {/* Description */}
+                  {template.description && (
+                    <p className="text-[13px] text-dash-ink-500 leading-relaxed line-clamp-2 mb-2.5">
+                      {template.description}
+                    </p>
+                  )}
+
+                  {/* Meta row */}
+                  <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-dash-ink-500">
+                    <span>By {template.createdBy.name}</span>
+                    <span>·</span>
+                    <span>{new Date(template.createdAt).toLocaleDateString()}</span>
+                    <span>·</span>
+                    <span>{template._count.assessments} assessments</span>
+                    <span>·</span>
+                    <span className="font-medium text-dash-ink-700">
+                      {getTotalQuestionCount(template)} total questions
+                    </span>
+                    {template.domains.length > 0 && (
+                      <>
+                        <span>·</span>
+                        <span>{template.domains.length} domain{template.domains.length !== 1 ? "s" : ""}</span>
+                      </>
                     )}
                   </div>
-
-                  <div className="flex gap-1 shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedTemplate(template);
-                        setIsPreviewDialogOpen(true);
-                      }}
-                      title="Preview"
-                      className="h-9 w-9 p-0"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        handleExportTemplate(template.id, template.slug)
-                      }
-                      title="Export JSON"
-                      className="h-9 w-9 p-0"
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleSetTrialAssessment(template)}
-                      title={
-                        template.id === trialAssessmentId
-                          ? "Current trial assessment"
-                          : "Set as trial assessment"
-                      }
-                      disabled={template.id === trialAssessmentId}
-                      className={`h-9 w-9 p-0 ${
-                        template.id === trialAssessmentId
-                          ? "text-primary opacity-60"
-                          : "hover:text-primary hover:bg-primary/10"
-                      }`}
-                    >
-                      <FlaskConical className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => openEdit(template)}
-                      title="Edit assessment"
-                      className="h-9 w-9 p-0"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteTemplate(template.id)}
-                      title="Delete assessment"
-                      className="h-9 w-9 p-0 hover:text-destructive hover:bg-destructive/10"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-
-              <CardContent className="pt-0">
-                <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground mb-3">
-                  <span>By {template.createdBy.name}</span>
-                  <span>·</span>
-                  <span>{new Date(template.createdAt).toLocaleDateString()}</span>
-                  <span>·</span>
-                  <span>{template._count.assessments} assessments</span>
-                  <span>·</span>
-                  <span className="font-medium">
-                    {getTotalQuestionCount(template)} total questions
-                  </span>
                 </div>
 
-                <div className="flex flex-wrap gap-1.5">
-                  {template.domains.map(({ domainTemplate }) => {
-                    const totalCount = Array.isArray(domainTemplate.questions)
-                      ? domainTemplate.questions.length
-                      : 0;
-                    const trialCount = getTrialQuestionCount(
-                      domainTemplate.questions
-                    );
-
-                    return (
-                      <div key={domainTemplate.id} className="flex items-center">
-                        <Badge
-                          variant="outline"
-                          className="flex items-center gap-1 text-xs pr-1"
-                        >
-                          {domainTemplate.name} ({totalCount}
-                          {trialCount > 0 && (
-                            <span className="text-primary font-medium">
-                              /{trialCount}
-                            </span>
-                          )}
-                          )
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedTemplate(template);
-                              openDomainTrialEditor(domainTemplate);
-                            }}
-                            className="ml-1 p-0.5 hover:bg-primary/20 rounded transition-colors"
-                            title={`Configure trial questions for ${domainTemplate.name}`}
-                          >
-                            <Zap className="h-2.5 w-2.5" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEditDomain(domainTemplate);
-                            }}
-                            className="p-0.5 hover:bg-muted rounded transition-colors"
-                            title={`Edit ${domainTemplate.name} domain`}
-                          >
-                            <Edit className="h-3 w-3" />
-                          </button>
-                        </Badge>
-                      </div>
-                    );
-                  })}
+                {/* Action buttons */}
+                <div className="flex items-center shrink-0">
+                  <button
+                    onClick={() => { setSelectedTemplate(template); setIsPreviewDialogOpen(true); }}
+                    title="Preview"
+                    className="w-8 h-8 flex items-center justify-center rounded-lg text-dash-ink-500 hover:text-dash-ink-900 hover:bg-dash-sunk border-none bg-transparent cursor-pointer transition-colors"
+                  >
+                    <Eye size={15} strokeWidth={1.6} />
+                  </button>
+                  <button
+                    onClick={() => handleExportTemplate(template.id, template.slug)}
+                    title="Export JSON"
+                    className="w-8 h-8 flex items-center justify-center rounded-lg text-dash-ink-500 hover:text-dash-ink-900 hover:bg-dash-sunk border-none bg-transparent cursor-pointer transition-colors"
+                  >
+                    <Download size={15} strokeWidth={1.6} />
+                  </button>
+                  <button
+                    onClick={() => handleSetTrialAssessment(template)}
+                    disabled={template.id === trialAssessmentId}
+                    title={template.id === trialAssessmentId ? "Current trial assessment" : "Set as trial assessment"}
+                    className={cn(
+                      "w-8 h-8 flex items-center justify-center rounded-lg border-none bg-transparent cursor-pointer transition-colors",
+                      template.id === trialAssessmentId
+                        ? "text-dash-indigo-600 opacity-50 cursor-not-allowed"
+                        : "text-dash-ink-500 hover:text-dash-indigo-600 hover:bg-dash-indigo-50",
+                    )}
+                  >
+                    <FlaskConical size={15} strokeWidth={1.6} />
+                  </button>
+                  <button
+                    onClick={() => openEdit(template)}
+                    title="Edit assessment"
+                    className="w-8 h-8 flex items-center justify-center rounded-lg text-dash-ink-500 hover:text-dash-ink-900 hover:bg-dash-sunk border-none bg-transparent cursor-pointer transition-colors"
+                  >
+                    <Edit size={15} strokeWidth={1.6} />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteTemplate(template.id)}
+                    title="Delete assessment"
+                    className="w-8 h-8 flex items-center justify-center rounded-lg text-dash-ink-500 hover:text-dash-rose-700 hover:bg-dash-rose-50 border-none bg-transparent cursor-pointer transition-colors"
+                  >
+                    <Trash2 size={15} strokeWidth={1.6} />
+                  </button>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ))}
         </div>
       )}
