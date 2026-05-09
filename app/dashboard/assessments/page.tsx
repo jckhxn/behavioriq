@@ -3,22 +3,29 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useUserData } from "@/lib/hooks/use-supabase-user";
-import { ClipboardList, FileStack, CheckCircle, Clock } from "lucide-react";
+import { ClipboardList, FileStack, CheckCircle } from "lucide-react";
 import AssessmentTemplateManager from "@/components/admin/AssessmentTemplateManager";
 import DomainTemplateManager from "@/components/admin/DomainTemplateManager";
-import { C } from "@/lib/dashboard/colors";
+import { cn } from "@/lib/utils";
 
 
-function StatCard({ label, value, icon: Icon, toneBg, toneText }: { label: string; value: number; icon: React.ComponentType<any>; toneBg: string; toneText: string }) {
+function StatCard({ label, value, icon: Icon, iconClass }: {
+  label: string;
+  value: number;
+  icon: React.ComponentType<any>;
+  iconClass: string;
+}) {
   return (
-    <div style={{ background: C.surface, border: `1px solid ${C.ink100}`, borderRadius: 12, padding: "16px 18px" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-        <span style={{ fontSize: 12, fontWeight: 500, color: C.ink500 }}>{label}</span>
-        <span style={{ width: 26, height: 26, borderRadius: 7, background: toneBg, color: toneText, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+    <div className="bg-dash-surface border border-dash-ink-100 rounded-xl p-[16px_18px]">
+      <div className="flex items-center justify-between mb-2.5">
+        <span className="text-xs font-medium text-dash-ink-500">{label}</span>
+        <span className={cn("w-[26px] h-[26px] rounded-[7px] inline-flex items-center justify-center", iconClass)}>
           <Icon size={14} strokeWidth={1.6} />
         </span>
       </div>
-      <div style={{ fontFamily: "var(--font-display, Georgia, serif)", fontSize: 30, fontWeight: 600, letterSpacing: "-0.02em", color: C.ink900, lineHeight: 1 }}>{value}</div>
+      <div className="[font-family:var(--font-display,Georgia,serif)] text-[30px] font-semibold tracking-[-0.02em] text-dash-ink-900 leading-none">
+        {value}
+      </div>
     </div>
   );
 }
@@ -53,23 +60,23 @@ export default function AssessmentsPage() {
 
   return (
     <div>
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: C.ink500, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>Content</div>
-        <h1 style={{ fontFamily: "var(--font-display, Georgia, serif)", fontSize: 32, fontWeight: 600, letterSpacing: "-0.02em", color: C.ink900, lineHeight: 1.1, margin: 0 }}>
+      <div className="mb-6">
+        <div className="text-[11px] font-semibold text-dash-ink-500 tracking-[0.08em] uppercase mb-2">Content</div>
+        <h1 className="[font-family:var(--font-display,Georgia,serif)] text-[32px] font-semibold tracking-[-0.02em] text-dash-ink-900 leading-[1.1] m-0">
           Assessments &amp; domain libraries
         </h1>
-        <p style={{ fontSize: 15, color: C.ink700, lineHeight: 1.55, margin: "10px 0 0" }}>
+        <p className="text-[15px] text-dash-ink-700 leading-[1.55] mt-2.5 mb-0">
           Build full assessments by combining domains, or upload complete JSON.
         </p>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 28 }}>
-        <StatCard label="Active assessments" value={stats.activeAssessments} icon={ClipboardList} toneBg={C.mint50} toneText={C.mint700} />
-        <StatCard label="Domain templates" value={stats.domainTemplates} icon={FileStack} toneBg={C.indigo50} toneText={C.indigo600} />
-        <StatCard label="Total completions" value={stats.completions} icon={CheckCircle} toneBg={C.mint50} toneText={C.mint700} />
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3 mb-7">
+        <StatCard label="Active assessments" value={stats.activeAssessments} icon={ClipboardList} iconClass="bg-dash-mint-50 text-dash-mint-700" />
+        <StatCard label="Domain templates" value={stats.domainTemplates} icon={FileStack} iconClass="bg-dash-indigo-50 text-dash-indigo-600" />
+        <StatCard label="Total completions" value={stats.completions} icon={CheckCircle} iconClass="bg-dash-mint-50 text-dash-mint-700" />
       </div>
 
-      <div style={{ display: "inline-flex", padding: 4, background: C.sunk, borderRadius: 10, border: `1px solid ${C.ink100}`, marginBottom: 20 }}>
+      <div className="inline-flex p-1 bg-dash-sunk rounded-[10px] border border-dash-ink-100 mb-5">
         {([
           { id: "templates", label: "Assessment templates", icon: ClipboardList },
           { id: "domains", label: "Domain library", icon: FileStack },
@@ -77,7 +84,16 @@ export default function AssessmentsPage() {
           const isActive = tab === t.id;
           const Icon = t.icon;
           return (
-            <button key={t.id} onClick={() => setTab(t.id)} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "7px 16px", borderRadius: 7, border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, background: isActive ? C.surface : "transparent", color: isActive ? C.ink900 : C.ink500, boxShadow: isActive ? "0 1px 2px rgba(28,25,23,0.06)" : "none", transition: "background 120ms, color 120ms" }}>
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={cn(
+                "inline-flex items-center gap-2 px-4 py-[7px] rounded-[7px] border-none cursor-pointer font-[inherit] text-[13px] font-semibold transition-[background,color] duration-[120ms]",
+                isActive
+                  ? "bg-dash-surface text-dash-ink-900 shadow-[0_1px_2px_rgba(28,25,23,0.06)]"
+                  : "bg-transparent text-dash-ink-500",
+              )}
+            >
               <Icon size={14} strokeWidth={1.6} />
               {t.label}
             </button>

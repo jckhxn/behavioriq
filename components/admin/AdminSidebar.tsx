@@ -1,36 +1,27 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useUserData } from "@/lib/hooks/use-supabase-user";
-import { useSignOut } from "@/lib/hooks/use-supabase-user";
+import { useUserData, useSignOut } from "@/lib/hooks/use-supabase-user";
 import {
-  LayoutDashboard,
-  BarChart3,
-  ClipboardList,
-  Library,
-  Users,
-  Mail,
-  Wrench,
-  Flag,
-  Sliders,
-  LogOut,
+  LayoutDashboard, BarChart3, ClipboardList, Library, Users,
+  Mail, Wrench, Flag, Sliders, LogOut,
 } from "lucide-react";
-import { C } from "@/lib/dashboard/colors";
+import { cn } from "@/lib/utils";
 
 const NAV = [
   { kind: "group" as const, label: "Platform" },
-  { id: "overview", icon: LayoutDashboard, label: "Overview", href: "/admin/overview" },
-  { id: "analytics", icon: BarChart3, label: "Analytics", href: "/admin/analytics" },
+  { id: "overview",      icon: LayoutDashboard, label: "Overview",      href: "/admin/overview" },
+  { id: "analytics",     icon: BarChart3,        label: "Analytics",     href: "/admin/analytics" },
   { kind: "group" as const, label: "Content" },
-  { id: "assessments", icon: ClipboardList, label: "Assessments", href: "/admin/assessments" },
-  { id: "resources", icon: Library, label: "Resources", href: "/admin/resources" },
+  { id: "assessments",   icon: ClipboardList,    label: "Assessments",   href: "/admin/assessments" },
+  { id: "resources",     icon: Library,          label: "Resources",     href: "/admin/resources" },
   { kind: "group" as const, label: "People" },
-  { id: "users", icon: Users, label: "Users", href: "/admin/users" },
-  { id: "leads", icon: Mail, label: "Leads", href: "/admin/leads" },
+  { id: "users",         icon: Users,            label: "Users",         href: "/admin/users" },
+  { id: "leads",         icon: Mail,             label: "Leads",         href: "/admin/leads" },
   { kind: "group" as const, label: "System" },
-  { id: "tools", icon: Wrench, label: "Tools", href: "/admin/tools" },
-  { id: "feature-flags", icon: Flag, label: "Feature flags", href: "/admin/feature-flags" },
-  { id: "settings", icon: Sliders, label: "Settings", href: "/admin/settings" },
+  { id: "tools",         icon: Wrench,           label: "Tools",         href: "/admin/tools" },
+  { id: "feature-flags", icon: Flag,             label: "Feature flags", href: "/admin/feature-flags" },
+  { id: "settings",      icon: Sliders,          label: "Settings",      href: "/admin/settings" },
 ];
 
 export function AdminSidebar() {
@@ -44,67 +35,29 @@ export function AdminSidebar() {
   const roleLabel = userData?.role?.toLowerCase().replace("_", " ") ?? "admin";
 
   return (
-    <aside
-      style={{
-        width: 240,
-        background: C.surface,
-        borderRight: `1px solid ${C.ink100}`,
-        display: "flex",
-        flexDirection: "column",
-        flexShrink: 0,
-        height: "100%",
-      }}
-    >
+    <aside className="w-60 bg-dash-surface border-r border-dash-ink-100 flex flex-col shrink-0 h-full">
       {/* Logo */}
-      <div
-        style={{
-          padding: "20px 20px 16px",
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          borderBottom: `1px solid ${C.ink100}`,
-        }}
-      >
+      <div className="flex items-center gap-2.5 px-5 pt-5 pb-4 border-b border-dash-ink-100">
         <div
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: 8,
-            background: C.ink900,
-            color: "#fff",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontFamily: "var(--font-display, Georgia, serif)",
-            fontWeight: 700,
-            fontSize: 15,
-          }}
+          className="w-7 h-7 rounded-lg bg-dash-ink-900 text-white flex items-center justify-center font-bold text-[15px] shrink-0"
+          style={{ fontFamily: "var(--font-display, Georgia, serif)" }}
         >
           B
         </div>
-        <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: C.ink900 }}>BehaviorIQ</span>
-          <span style={{ fontSize: 11, color: C.ink500, letterSpacing: "0.04em" }}>
-            Super admin
-          </span>
+        <div className="flex flex-col leading-[1.1]">
+          <span className="text-sm font-semibold text-dash-ink-900">BehaviorIQ</span>
+          <span className="text-[11px] text-dash-ink-500 tracking-[0.04em]">Super admin</span>
         </div>
       </div>
 
       {/* Nav */}
-      <nav style={{ padding: "12px 10px", flex: 1, overflowY: "auto" }}>
+      <nav className="px-2.5 py-3 flex-1 overflow-y-auto">
         {NAV.map((item, i) => {
           if (item.kind === "group") {
             return (
               <div
                 key={i}
-                style={{
-                  padding: "14px 10px 6px",
-                  fontSize: 11,
-                  fontWeight: 600,
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                  color: C.ink500,
-                }}
+                className="px-2.5 pt-3.5 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-dash-ink-500"
               >
                 {item.label}
               </div>
@@ -116,91 +69,35 @@ export function AdminSidebar() {
             <button
               key={item.id}
               onClick={() => router.push(item.href)}
-              style={{
-                width: "100%",
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                padding: "8px 10px",
-                borderRadius: 8,
-                border: "none",
-                cursor: "pointer",
-                textAlign: "left",
-                fontFamily: "inherit",
-                fontSize: 14,
-                fontWeight: isActive ? 600 : 500,
-                color: isActive ? C.indigo600 : C.ink700,
-                background: isActive ? C.indigo50 : "transparent",
-                marginBottom: 2,
-                transition: "background 120ms, color 120ms",
-              }}
+              className={cn(
+                "w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg border-none cursor-pointer text-left font-[inherit] text-sm mb-0.5 transition-colors duration-[120ms]",
+                isActive
+                  ? "font-semibold text-dash-indigo-600 bg-dash-indigo-50"
+                  : "font-medium text-dash-ink-700 bg-transparent hover:bg-dash-sunk",
+              )}
             >
               <Icon size={16} strokeWidth={1.6} />
-              <span style={{ flex: 1 }}>{item.label}</span>
+              <span className="flex-1">{item.label}</span>
             </button>
           );
         })}
       </nav>
 
       {/* User footer */}
-      <div
-        style={{
-          borderTop: `1px solid ${C.ink100}`,
-          padding: 14,
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-        }}
-      >
-        <div
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: "50%",
-            background: C.peach50,
-            color: C.peach500,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontWeight: 700,
-            fontSize: 13,
-            flexShrink: 0,
-          }}
-        >
+      <div className="border-t border-dash-ink-100 p-3.5 flex items-center gap-2.5 shrink-0">
+        <div className="w-8 h-8 rounded-full bg-dash-peach-50 text-dash-peach-500 flex items-center justify-center font-bold text-[13px] shrink-0">
           {initials}
         </div>
-        <div style={{ flex: 1, minWidth: 0, lineHeight: 1.2 }}>
-          <div
-            style={{
-              fontSize: 13,
-              fontWeight: 600,
-              color: C.ink900,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {displayName}
-          </div>
-          <div style={{ fontSize: 11, color: C.ink500 }}>{roleLabel}</div>
+        <div className="flex-1 min-w-0 leading-tight">
+          <div className="text-[13px] font-semibold text-dash-ink-900 truncate">{displayName}</div>
+          <div className="text-[11px] text-dash-ink-500">{roleLabel}</div>
         </div>
         <button
           onClick={signOut}
           title="Sign out"
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: 7,
-            border: `1px solid ${C.ink100}`,
-            background: "transparent",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            flexShrink: 0,
-          }}
+          className="w-7 h-7 rounded-[7px] border border-dash-ink-100 bg-transparent flex items-center justify-center cursor-pointer shrink-0 hover:bg-dash-sunk"
         >
-          <LogOut size={14} color={C.ink500} strokeWidth={1.6} />
+          <LogOut size={14} className="text-dash-ink-500" strokeWidth={1.6} />
         </button>
       </div>
     </aside>

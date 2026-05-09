@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useUserData } from "@/lib/hooks/use-supabase-user";
 import { SystemSettings } from "@/components/admin/SystemSettings";
 import { SuperAdminPlatformSettings } from "@/components/admin/SuperAdminPlatformSettings";
-import { C } from "@/lib/dashboard/colors";
+import { cn } from "@/lib/utils";
 
 const TABS = [{ id: "system", label: "System settings" }, { id: "platform", label: "Platform settings" }] as const;
 
@@ -24,21 +24,36 @@ export default function AdminSettingsPage() {
 
   return (
     <div>
-      <div style={{ marginBottom: 28 }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: C.ink500, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>System</div>
-        <h1 style={{ fontFamily: "var(--font-display, Georgia, serif)", fontSize: 32, fontWeight: 600, letterSpacing: "-0.02em", color: C.ink900, lineHeight: 1.1, margin: 0 }}>Settings</h1>
-        <p style={{ fontSize: 15, color: C.ink700, lineHeight: 1.55, margin: "10px 0 0" }}>Global platform configuration and admin preferences.</p>
+      <div className="mb-7">
+        <div className="text-[11px] font-semibold text-dash-ink-500 tracking-[0.08em] uppercase mb-2">System</div>
+        <h1 className="[font-family:var(--font-display,Georgia,serif)] text-[32px] font-semibold tracking-[-0.02em] text-dash-ink-900 leading-[1.1] m-0">
+          Settings
+        </h1>
+        <p className="text-[15px] text-dash-ink-700 leading-[1.55] mt-2.5 mb-0">
+          Global platform configuration and admin preferences.
+        </p>
       </div>
-      <div style={{ display: "inline-flex", padding: 4, background: C.sunk, borderRadius: 10, border: `1px solid ${C.ink100}`, marginBottom: 24 }}>
+
+      <div className="inline-flex p-1 bg-dash-sunk rounded-[10px] border border-dash-ink-100 mb-6">
         {TABS.map((t) => {
           const isActive = tab === t.id;
           return (
-            <button key={t.id} onClick={() => setTab(t.id)} style={{ display: "inline-flex", alignItems: "center", padding: "7px 16px", borderRadius: 7, border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, background: isActive ? C.surface : "transparent", color: isActive ? C.ink900 : C.ink500, boxShadow: isActive ? "0 1px 2px rgba(28,25,23,0.06)" : "none", transition: "background 120ms, color 120ms" }}>
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={cn(
+                "inline-flex items-center px-4 py-[7px] rounded-[7px] border-none cursor-pointer font-[inherit] text-[13px] font-semibold transition-[background,color] duration-[120ms]",
+                isActive
+                  ? "bg-dash-surface text-dash-ink-900 shadow-[0_1px_2px_rgba(28,25,23,0.06)]"
+                  : "bg-transparent text-dash-ink-500",
+              )}
+            >
               {t.label}
             </button>
           );
         })}
       </div>
+
       {tab === "system" ? <SystemSettings /> : <SuperAdminPlatformSettings />}
     </div>
   );

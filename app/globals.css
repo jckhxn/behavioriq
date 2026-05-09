@@ -12,6 +12,29 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  /* BehaviorIQ dashboard design tokens */
+  --color-dash-canvas:     var(--dash-canvas);
+  --color-dash-surface:    var(--dash-surface);
+  --color-dash-sunk:       var(--dash-sunk);
+  --color-dash-ink-900:    var(--dash-ink-900);
+  --color-dash-ink-700:    var(--dash-ink-700);
+  --color-dash-ink-500:    var(--dash-ink-500);
+  --color-dash-ink-300:    var(--dash-ink-300);
+  --color-dash-ink-200:    var(--dash-ink-200);
+  --color-dash-ink-100:    var(--dash-ink-100);
+  --color-dash-indigo-50:  var(--dash-indigo-50);
+  --color-dash-indigo-100: var(--dash-indigo-100);
+  --color-dash-indigo-500: var(--dash-indigo-500);
+  --color-dash-indigo-600: var(--dash-indigo-600);
+  --color-dash-peach-50:   var(--dash-peach-50);
+  --color-dash-peach-500:  var(--dash-peach-500);
+  --color-dash-mint-50:    var(--dash-mint-50);
+  --color-dash-mint-700:   var(--dash-mint-700);
+  --color-dash-amber-50:   var(--dash-amber-50);
+  --color-dash-amber-700:  var(--dash-amber-700);
+  --color-dash-rose-50:    var(--dash-rose-50);
+  --color-dash-rose-700:   var(--dash-rose-700);
+
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);

@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useUserData } from "@/lib/hooks/use-supabase-user";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminTopBar } from "@/components/admin/AdminTopBar";
-import { C } from "@/lib/dashboard/colors";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { userData, isLoading } = useUserData();
@@ -19,8 +18,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (isLoading) {
     return (
-      <div style={{ display: "flex", height: "100vh", alignItems: "center", justifyContent: "center", background: C.canvas }}>
-        <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.indigo500, opacity: 0.6 }} />
+      <div className="flex h-screen items-center justify-center bg-dash-canvas">
+        <div className="w-2 h-2 rounded-full bg-dash-indigo-500 opacity-60" />
       </div>
     );
   }
@@ -28,12 +27,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (!userData || !["SUPER_ADMIN", "ADMIN"].includes(userData.role)) return null;
 
   return (
-    <div style={{ display: "flex", height: "100vh", background: C.canvas, fontFamily: "var(--font-text, 'Source Sans 3', -apple-system, sans-serif)", color: C.ink900, overflow: "hidden" }}>
+    <div
+      className="flex h-screen bg-dash-canvas overflow-hidden text-dash-ink-900"
+      style={{ fontFamily: "var(--font-text, 'Source Sans 3', -apple-system, sans-serif)" }}
+    >
       <AdminSidebar />
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, overflow: "hidden" }}>
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <AdminTopBar />
-        <main style={{ flex: 1, overflow: "auto", padding: "32px 40px" }}>
-          <div style={{ maxWidth: 1280, margin: "0 auto" }}>{children}</div>
+        <main className="flex-1 overflow-auto px-10 py-8">
+          <div className="max-w-[1280px] mx-auto">{children}</div>
         </main>
       </div>
     </div>

@@ -4,30 +4,17 @@ import { useState, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { Bell, LifeBuoy, Search, ChevronRight, ChevronDown } from "lucide-react";
 import { useUserData } from "@/lib/hooks/use-supabase-user";
-import { C } from "@/lib/dashboard/colors";
 
 const ROUTE_LABELS: Record<string, string> = {
-  overview: "Overview",
-  analytics: "Analytics",
-  assessments: "Assessments",
-  resources: "Resources",
-  users: "Users",
-  leads: "Leads",
-  tools: "Tools",
-  "feature-flags": "Feature flags",
-  settings: "Settings",
+  overview: "Overview", analytics: "Analytics", assessments: "Assessments",
+  resources: "Resources", users: "Users", leads: "Leads",
+  tools: "Tools", "feature-flags": "Feature flags", settings: "Settings",
 };
 
 const ROUTE_SECTIONS: Record<string, string> = {
-  overview: "Platform",
-  analytics: "Platform",
-  assessments: "Content",
-  resources: "Content",
-  users: "People",
-  leads: "People",
-  tools: "System",
-  "feature-flags": "System",
-  settings: "System",
+  overview: "Platform", analytics: "Platform", assessments: "Content",
+  resources: "Content", users: "People", leads: "People",
+  tools: "System", "feature-flags": "System", settings: "System",
 };
 
 export function AdminTopBar() {
@@ -54,130 +41,52 @@ export function AdminTopBar() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  const iconBtn: React.CSSProperties = {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    border: `1px solid ${C.ink100}`,
-    background: "transparent",
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    cursor: "pointer",
-  };
-
   return (
-    <header
-      style={{
-        height: 60,
-        borderBottom: `1px solid ${C.ink100}`,
-        background: C.surface,
-        display: "flex",
-        alignItems: "center",
-        padding: "0 28px",
-        gap: 16,
-        flexShrink: 0,
-      }}
-    >
+    <header className="h-[60px] border-b border-dash-ink-100 bg-dash-surface flex items-center px-7 gap-4 shrink-0">
       {/* Breadcrumb */}
-      <div style={{ display: "flex", alignItems: "center", gap: 6, color: C.ink500, fontSize: 13 }}>
+      <div className="flex items-center gap-1.5 text-[13px] text-dash-ink-500 shrink-0">
         <span>{section}</span>
         <ChevronRight size={14} strokeWidth={1.6} />
-        <span style={{ color: C.ink900, fontWeight: 600 }}>{pageLabel}</span>
+        <span className="text-dash-ink-900 font-semibold">{pageLabel}</span>
       </div>
 
       {/* Search */}
-      <div style={{ flex: 1, minWidth: 200, maxWidth: 400, marginLeft: 16, position: "relative" }}>
-        <Search
-          size={14}
-          color={C.ink500}
-          strokeWidth={1.6}
-          style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}
-        />
+      <div className="relative flex-1 min-w-[200px] max-w-[400px] ml-4">
+        <Search size={14} className="text-dash-ink-500 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" strokeWidth={1.6} />
         <input
           ref={inputRef}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search assessments, users…"
-          style={{
-            width: "100%",
-            height: 36,
-            paddingLeft: 32,
-            paddingRight: 56,
-            borderRadius: 8,
-            border: `1px solid ${C.ink200}`,
-            background: C.canvas,
-            fontFamily: "inherit",
-            fontSize: 13,
-            color: C.ink900,
-            outline: "none",
-          }}
+          className="w-full h-9 pl-8 pr-14 rounded-lg border border-dash-ink-200 bg-dash-canvas text-[13px] text-dash-ink-900 font-[inherit] outline-none focus:border-dash-indigo-500"
         />
         <kbd
-          style={{
-            position: "absolute",
-            right: 8,
-            top: "50%",
-            transform: "translateY(-50%)",
-            fontFamily: "var(--font-mono-admin, monospace)",
-            fontSize: 11,
-            padding: "2px 6px",
-            border: `1px solid ${C.ink200}`,
-            borderRadius: 4,
-            color: C.ink500,
-            background: C.surface,
-            pointerEvents: "none",
-          }}
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] px-1.5 py-0.5 rounded border border-dash-ink-200 text-dash-ink-500 bg-dash-surface pointer-events-none"
+          style={{ fontFamily: "var(--font-mono-admin, monospace)" }}
         >
           ⌘K
         </kbd>
       </div>
 
       {/* Actions */}
-      <button style={iconBtn} title="Notifications">
-        <Bell size={16} color={C.ink700} strokeWidth={1.6} />
+      <button className="w-9 h-9 rounded-lg border border-dash-ink-100 bg-transparent flex items-center justify-center cursor-pointer hover:bg-dash-sunk" title="Notifications">
+        <Bell size={16} className="text-dash-ink-700" strokeWidth={1.6} />
       </button>
-      <button style={iconBtn} title="Help">
-        <LifeBuoy size={16} color={C.ink700} strokeWidth={1.6} />
+      <button className="w-9 h-9 rounded-lg border border-dash-ink-100 bg-transparent flex items-center justify-center cursor-pointer hover:bg-dash-sunk" title="Help">
+        <LifeBuoy size={16} className="text-dash-ink-700" strokeWidth={1.6} />
       </button>
 
-      <span style={{ width: 1, height: 24, background: C.ink100 }} />
+      <span className="w-px h-6 bg-dash-ink-100 shrink-0" />
 
-      {/* User menu */}
-      <button
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          height: 36,
-          padding: "0 10px 0 6px",
-          borderRadius: 8,
-          background: "transparent",
-          border: `1px solid ${C.ink100}`,
-          cursor: "pointer",
-          fontFamily: "inherit",
-        }}
-      >
-        <span
-          style={{
-            width: 24,
-            height: 24,
-            borderRadius: "50%",
-            background: C.peach50,
-            color: C.peach500,
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontWeight: 700,
-            fontSize: 11,
-          }}
-        >
+      {/* User chip */}
+      <button className="flex items-center gap-2 h-9 px-2 rounded-lg border border-dash-ink-100 bg-transparent cursor-pointer shrink-0 hover:bg-dash-sunk font-[inherit]">
+        <span className="w-6 h-6 rounded-full bg-dash-peach-50 text-dash-peach-500 flex items-center justify-center font-bold text-[11px]">
           {initials}
         </span>
-        <span style={{ fontSize: 13, fontWeight: 600, color: C.ink900 }}>
+        <span className="text-[13px] font-semibold text-dash-ink-900">
           {displayName.split(" ")[0]}
         </span>
-        <ChevronDown size={14} color={C.ink500} strokeWidth={1.6} />
+        <ChevronDown size={14} className="text-dash-ink-500" strokeWidth={1.6} />
       </button>
     </header>
   );

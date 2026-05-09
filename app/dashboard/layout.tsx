@@ -3,95 +3,60 @@
 import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useUserData, useSignOut } from "@/lib/hooks/use-supabase-user";
+import { cn } from "@/lib/utils";
+import { OnboardingProvider } from "@/lib/contexts/OnboardingContext";
 import {
-  LayoutDashboard,
-  BarChart3,
-  ClipboardList,
-  Library,
-  Users,
-  Mail,
-  Wrench,
-  Flag,
-  Sliders,
-  LogOut,
-  X,
-  Menu,
-  Bell,
-  LifeBuoy,
-  ChevronRight,
-  ChevronDown,
-  Search,
-  Gift,
+  LayoutDashboard, BarChart3, ClipboardList, Library, Users, Mail,
+  Wrench, Flag, Sliders, LogOut, X, Menu, Bell, ChevronRight,
+  ChevronDown, Search, Gift,
 } from "lucide-react";
-import { C } from "@/lib/dashboard/colors";
 
 // ── Nav definitions ───────────────────────────────────────────────────────────
 const USER_NAV = [
   { kind: "group" as const, label: "My dashboard" },
-  { id: "overview", icon: LayoutDashboard, label: "Overview", href: "/dashboard/overview" },
-  { id: "library", icon: Library, label: "Library", href: "/dashboard/library" },
+  { id: "overview",      icon: LayoutDashboard, label: "Overview",     href: "/dashboard/overview" },
+  { id: "library",       icon: Library,         label: "Library",      href: "/dashboard/library" },
   { kind: "group" as const, label: "Account" },
-  { id: "settings", icon: Sliders, label: "Settings", href: "/dashboard/settings" },
-  { id: "earn-rewards", icon: Gift, label: "Earn rewards", href: "/earn-rewards" },
+  { id: "settings",      icon: Sliders,         label: "Settings",     href: "/dashboard/settings" },
+  { id: "earn-rewards",  icon: Gift,             label: "Earn rewards", href: "/earn-rewards" },
 ];
 
 const ADMIN_NAV = [
   { kind: "group" as const, label: "Platform" },
-  { id: "overview", icon: LayoutDashboard, label: "Overview", href: "/dashboard/overview" },
-  { id: "analytics", icon: BarChart3, label: "Analytics", href: "/dashboard/analytics" },
+  { id: "overview",       icon: LayoutDashboard, label: "Overview",      href: "/dashboard/overview" },
+  { id: "analytics",      icon: BarChart3,        label: "Analytics",     href: "/dashboard/analytics" },
   { kind: "group" as const, label: "Content" },
-  { id: "assessments", icon: ClipboardList, label: "Assessments", href: "/dashboard/assessments" },
-  { id: "library", icon: Library, label: "Resources", href: "/dashboard/library" },
+  { id: "assessments",    icon: ClipboardList,    label: "Assessments",   href: "/dashboard/assessments" },
+  { id: "library",        icon: Library,          label: "Resources",     href: "/dashboard/library" },
   { kind: "group" as const, label: "People" },
-  { id: "users", icon: Users, label: "Users", href: "/dashboard/users" },
-  { id: "leads", icon: Mail, label: "Leads", href: "/dashboard/leads" },
+  { id: "users",          icon: Users,            label: "Users",         href: "/dashboard/users" },
+  { id: "leads",          icon: Mail,             label: "Leads",         href: "/dashboard/leads" },
   { kind: "group" as const, label: "System" },
-  { id: "tools", icon: Wrench, label: "Tools", href: "/dashboard/tools" },
-  { id: "feature-flags", icon: Flag, label: "Feature flags", href: "/dashboard/feature-flags" },
-  { id: "admin-settings", icon: Sliders, label: "Settings", href: "/dashboard/admin-settings" },
+  { id: "tools",          icon: Wrench,           label: "Tools",         href: "/dashboard/tools" },
+  { id: "feature-flags",  icon: Flag,             label: "Feature flags", href: "/dashboard/feature-flags" },
+  { id: "admin-settings", icon: Sliders,          label: "Settings",      href: "/dashboard/admin-settings" },
+  { kind: "group" as const, label: "Account" },
+  { id: "settings",       icon: Sliders,          label: "My account",    href: "/dashboard/settings" },
 ];
 
 const ROUTE_LABELS: Record<string, string> = {
-  overview: "Overview",
-  library: "Library",
-  settings: "Settings",
-  "earn-rewards": "Earn rewards",
-  analytics: "Analytics",
-  assessments: "Assessments",
-  users: "Users",
-  leads: "Leads",
-  tools: "Tools",
-  "feature-flags": "Feature flags",
-  "admin-settings": "Settings",
+  overview: "Overview", library: "Library", settings: "My account",
+  "earn-rewards": "Earn rewards", analytics: "Analytics",
+  assessments: "Assessments", users: "Users", leads: "Leads",
+  tools: "Tools", "feature-flags": "Feature flags", "admin-settings": "Settings",
   "enhanced-report": "Enhanced report",
 };
 
 const ROUTE_SECTIONS: Record<string, string> = {
-  overview: "My dashboard",
-  library: "My dashboard",
-  settings: "Account",
-  "earn-rewards": "Account",
-  analytics: "Platform",
-  assessments: "Content",
-  resources: "Content",
-  users: "People",
-  leads: "People",
-  tools: "System",
-  "feature-flags": "System",
-  "admin-settings": "System",
+  overview: "My dashboard", library: "My dashboard", settings: "Account",
+  "earn-rewards": "Account", analytics: "Platform", assessments: "Content",
+  users: "People", leads: "People", tools: "System",
+  "feature-flags": "System", "admin-settings": "System",
 };
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
-function Sidebar({
-  open,
-  onClose,
-  isMobile,
-  role,
-}: {
-  open: boolean;
-  onClose: () => void;
-  isMobile: boolean;
-  role: string;
+function Sidebar({ open, onClose, isMobile, role }: {
+  open: boolean; onClose: () => void; isMobile: boolean; role: string;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -105,99 +70,46 @@ function Sidebar({
   const initials = displayName.slice(0, 2).toUpperCase();
   const roleLabel = userData?.role?.toLowerCase().replace("_", " ") ?? "";
 
-  const sidebarStyle: React.CSSProperties = {
-    width: 240,
-    background: C.surface,
-    borderRight: `1px solid ${C.ink100}`,
-    display: "flex",
-    flexDirection: "column",
-    flexShrink: 0,
-    height: "100%",
-    ...(isMobile
-      ? {
-          position: "fixed",
-          top: 0,
-          left: open ? 0 : -240,
-          bottom: 0,
-          zIndex: 50,
-          transition: "left 200ms cubic-bezier(0.2,0.8,0.2,1)",
-          boxShadow: open ? "4px 0 24px rgba(28,25,23,0.12)" : "none",
-        }
-      : {}),
-  };
-
   return (
-    <aside style={sidebarStyle}>
+    <aside
+      className={cn(
+        "w-60 bg-dash-surface border-r border-dash-ink-100 flex flex-col shrink-0 h-full",
+        isMobile && "fixed top-0 bottom-0 z-50 transition-[left] duration-200 ease-out shadow-lg",
+        isMobile && (open ? "left-0" : "-left-60"),
+      )}
+    >
       {/* Logo */}
-      <div
-        style={{
-          padding: "20px 20px 16px",
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          borderBottom: `1px solid ${C.ink100}`,
-        }}
-      >
+      <div className="flex items-center gap-2.5 px-5 py-5 border-b border-dash-ink-100 shrink-0">
         <div
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: 8,
-            background: C.ink900,
-            color: "#fff",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontFamily: "var(--font-display, Georgia, serif)",
-            fontWeight: 700,
-            fontSize: 15,
-          }}
+          className="w-7 h-7 rounded-lg bg-dash-ink-900 text-white flex items-center justify-center font-bold text-[15px] shrink-0"
+          style={{ fontFamily: "var(--font-display, Georgia, serif)" }}
         >
           B
         </div>
-        <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1, flex: 1 }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: C.ink900 }}>BehaviorIQ</span>
+        <div className="flex flex-col leading-none flex-1 min-w-0">
+          <span className="text-sm font-semibold text-dash-ink-900">BehaviorIQ</span>
           {isAdmin && (
-            <span style={{ fontSize: 11, color: C.ink500, letterSpacing: "0.04em" }}>
-              {roleLabel}
-            </span>
+            <span className="text-[11px] text-dash-ink-500 tracking-[0.04em]">{roleLabel}</span>
           )}
         </div>
         {isMobile && (
           <button
             onClick={onClose}
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 6,
-              border: "none",
-              background: "transparent",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
+            className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-dash-sunk border-none bg-transparent cursor-pointer"
           >
-            <X size={16} color={C.ink500} strokeWidth={1.6} />
+            <X size={16} className="text-dash-ink-500" strokeWidth={1.6} />
           </button>
         )}
       </div>
 
       {/* Nav */}
-      <nav style={{ padding: "12px 10px", flex: 1, overflowY: "auto" }}>
+      <nav className="px-2.5 py-3 flex-1 overflow-y-auto">
         {nav.map((item, i) => {
           if (item.kind === "group") {
             return (
               <div
                 key={i}
-                style={{
-                  padding: "14px 10px 6px",
-                  fontSize: 11,
-                  fontWeight: 600,
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                  color: C.ink500,
-                }}
+                className="px-2.5 pt-3.5 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-dash-ink-500"
               >
                 {item.label}
               </div>
@@ -208,97 +120,36 @@ function Sidebar({
           return (
             <button
               key={item.id}
-              onClick={() => {
-                router.push(item.href);
-                if (isMobile) onClose();
-              }}
-              style={{
-                width: "100%",
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                padding: "8px 10px",
-                borderRadius: 8,
-                border: "none",
-                cursor: "pointer",
-                textAlign: "left",
-                fontFamily: "inherit",
-                fontSize: 14,
-                fontWeight: isActive ? 600 : 500,
-                color: isActive ? C.indigo600 : C.ink700,
-                background: isActive ? C.indigo50 : "transparent",
-                marginBottom: 2,
-                transition: "background 120ms, color 120ms",
-              }}
+              onClick={() => { router.push(item.href); if (isMobile) onClose(); }}
+              className={cn(
+                "w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg border-none cursor-pointer text-left font-[inherit] text-sm mb-0.5 transition-colors duration-[120ms]",
+                isActive
+                  ? "font-semibold text-dash-indigo-600 bg-dash-indigo-50"
+                  : "font-medium text-dash-ink-700 bg-transparent hover:bg-dash-sunk",
+              )}
             >
               <Icon size={16} strokeWidth={1.6} />
-              <span style={{ flex: 1 }}>{item.label}</span>
+              <span className="flex-1">{item.label}</span>
             </button>
           );
         })}
       </nav>
 
       {/* User footer */}
-      <div
-        style={{
-          borderTop: `1px solid ${C.ink100}`,
-          padding: 14,
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-        }}
-      >
-        <div
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: "50%",
-            background: C.peach50,
-            color: C.peach500,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontWeight: 700,
-            fontSize: 13,
-            flexShrink: 0,
-          }}
-        >
+      <div className="border-t border-dash-ink-100 p-3.5 flex items-center gap-2.5 shrink-0">
+        <div className="w-8 h-8 rounded-full bg-dash-peach-50 text-dash-peach-500 flex items-center justify-center font-bold text-[13px] shrink-0">
           {initials}
         </div>
-        <div style={{ flex: 1, minWidth: 0, lineHeight: 1.2 }}>
-          <div
-            style={{
-              fontSize: 13,
-              fontWeight: 600,
-              color: C.ink900,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {displayName}
-          </div>
-          {roleLabel && (
-            <div style={{ fontSize: 11, color: C.ink500 }}>{roleLabel}</div>
-          )}
+        <div className="flex-1 min-w-0 leading-tight">
+          <div className="text-[13px] font-semibold text-dash-ink-900 truncate">{displayName}</div>
+          {roleLabel && <div className="text-[11px] text-dash-ink-500">{roleLabel}</div>}
         </div>
         <button
           onClick={signOut}
           title="Sign out"
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: 7,
-            border: `1px solid ${C.ink100}`,
-            background: "transparent",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            flexShrink: 0,
-          }}
+          className="w-7 h-7 rounded-[7px] border border-dash-ink-100 bg-transparent flex items-center justify-center cursor-pointer shrink-0 hover:bg-dash-sunk"
         >
-          <LogOut size={14} color={C.ink500} strokeWidth={1.6} />
+          <LogOut size={14} className="text-dash-ink-500" strokeWidth={1.6} />
         </button>
       </div>
     </aside>
@@ -306,13 +157,7 @@ function Sidebar({
 }
 
 // ── Top bar ───────────────────────────────────────────────────────────────────
-function TopBar({
-  onMenuClick,
-  isMobile,
-}: {
-  onMenuClick: () => void;
-  isMobile: boolean;
-}) {
+function TopBar({ onMenuClick, isMobile }: { onMenuClick: () => void; isMobile: boolean }) {
   const pathname = usePathname();
   const { userData } = useUserData();
   const [search, setSearch] = useState("");
@@ -324,170 +169,77 @@ function TopBar({
   const displayName = userData?.name || userData?.email || "Account";
   const initials = displayName.slice(0, 2).toUpperCase();
 
-  const iconBtn: React.CSSProperties = {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    border: `1px solid ${C.ink100}`,
-    background: "transparent",
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    cursor: "pointer",
-  };
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        (document.getElementById("dash-search") as HTMLInputElement)?.focus();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   return (
-    <header
-      style={{
-        height: 60,
-        borderBottom: `1px solid ${C.ink100}`,
-        background: C.surface,
-        display: "flex",
-        alignItems: "center",
-        padding: "0 16px 0 20px",
-        gap: 12,
-        flexShrink: 0,
-      }}
-    >
+    <header className="h-[60px] border-b border-dash-ink-100 bg-dash-surface flex items-center px-5 gap-3 shrink-0">
       {/* Mobile hamburger */}
       {isMobile && (
         <button
           onClick={onMenuClick}
-          style={{ ...iconBtn, flexShrink: 0 }}
           aria-label="Open menu"
+          className="w-9 h-9 rounded-lg border border-dash-ink-100 bg-transparent flex items-center justify-center cursor-pointer shrink-0 hover:bg-dash-sunk"
         >
-          <Menu size={18} color={C.ink700} strokeWidth={1.6} />
+          <Menu size={18} className="text-dash-ink-700" strokeWidth={1.6} />
         </button>
       )}
 
       {/* Breadcrumb */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          color: C.ink500,
-          fontSize: 13,
-          flexShrink: 0,
-        }}
-      >
-        <span style={{ display: isMobile ? "none" : "inline" }}>{section}</span>
-        <ChevronRight
-          size={14}
-          strokeWidth={1.6}
-          style={{ display: isMobile ? "none" : "inline" }}
-        />
-        <span style={{ color: C.ink900, fontWeight: 600 }}>{pageLabel}</span>
+      <div className="flex items-center gap-1.5 text-[13px] text-dash-ink-500 shrink-0">
+        {!isMobile && <span>{section}</span>}
+        {!isMobile && <ChevronRight size={14} strokeWidth={1.6} />}
+        <span className="text-dash-ink-900 font-semibold">{pageLabel}</span>
       </div>
 
-      {/* Search — hidden on small mobile */}
-      <div
-        style={{
-          flex: 1,
-          minWidth: 0,
-          maxWidth: 380,
-          marginLeft: isMobile ? 0 : 16,
-          position: "relative",
-          display: isMobile ? "none" : "block",
-        }}
-      >
-        <Search
-          size={14}
-          color={C.ink500}
-          strokeWidth={1.6}
-          style={{
-            position: "absolute",
-            left: 10,
-            top: "50%",
-            transform: "translateY(-50%)",
-            pointerEvents: "none",
-          }}
-        />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search…"
-          style={{
-            width: "100%",
-            height: 36,
-            paddingLeft: 32,
-            paddingRight: 48,
-            borderRadius: 8,
-            border: `1px solid ${C.ink200}`,
-            background: C.canvas,
-            fontFamily: "inherit",
-            fontSize: 13,
-            color: C.ink900,
-            outline: "none",
-          }}
-        />
-        <kbd
-          style={{
-            position: "absolute",
-            right: 8,
-            top: "50%",
-            transform: "translateY(-50%)",
-            fontFamily: "var(--font-mono-admin, monospace)",
-            fontSize: 11,
-            padding: "2px 5px",
-            border: `1px solid ${C.ink200}`,
-            borderRadius: 4,
-            color: C.ink500,
-            background: C.surface,
-            pointerEvents: "none",
-          }}
-        >
-          ⌘K
-        </kbd>
-      </div>
+      {/* Search */}
+      {!isMobile && (
+        <div className="relative flex-1 max-w-sm ml-4">
+          <Search size={14} className="text-dash-ink-500 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" strokeWidth={1.6} />
+          <input
+            id="dash-search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search…"
+            className="w-full h-9 pl-8 pr-12 rounded-lg border border-dash-ink-200 bg-dash-canvas text-[13px] text-dash-ink-900 font-[inherit] outline-none focus:border-dash-indigo-500"
+          />
+          <kbd
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] px-1.5 py-0.5 rounded border border-dash-ink-200 text-dash-ink-500 bg-dash-surface pointer-events-none"
+            style={{ fontFamily: "var(--font-mono-admin, monospace)" }}
+          >
+            ⌘K
+          </kbd>
+        </div>
+      )}
 
-      <div style={{ flex: 1 }} />
+      <div className="flex-1" />
 
-      {/* Icons */}
-      <button style={iconBtn} title="Notifications">
-        <Bell size={16} color={C.ink700} strokeWidth={1.6} />
+      {/* Notifications */}
+      <button className="w-9 h-9 rounded-lg border border-dash-ink-100 bg-transparent flex items-center justify-center cursor-pointer hover:bg-dash-sunk">
+        <Bell size={16} className="text-dash-ink-700" strokeWidth={1.6} />
       </button>
 
-      <span style={{ width: 1, height: 24, background: C.ink100, flexShrink: 0 }} />
+      <span className="w-px h-6 bg-dash-ink-100 shrink-0" />
 
       {/* User chip */}
-      <button
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 7,
-          height: 36,
-          padding: "0 10px 0 6px",
-          borderRadius: 8,
-          background: "transparent",
-          border: `1px solid ${C.ink100}`,
-          cursor: "pointer",
-          fontFamily: "inherit",
-          flexShrink: 0,
-        }}
-      >
-        <span
-          style={{
-            width: 24,
-            height: 24,
-            borderRadius: "50%",
-            background: C.peach50,
-            color: C.peach500,
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontWeight: 700,
-            fontSize: 11,
-          }}
-        >
+      <button className="flex items-center gap-2 h-9 px-2 rounded-lg border border-dash-ink-100 bg-transparent cursor-pointer shrink-0 hover:bg-dash-sunk">
+        <span className="w-6 h-6 rounded-full bg-dash-peach-50 text-dash-peach-500 flex items-center justify-center font-bold text-[11px]">
           {initials}
         </span>
         {!isMobile && (
-          <span style={{ fontSize: 13, fontWeight: 600, color: C.ink900 }}>
+          <span className="text-[13px] font-semibold text-dash-ink-900">
             {displayName.split("@")[0].split(" ")[0]}
           </span>
         )}
-        <ChevronDown size={14} color={C.ink500} strokeWidth={1.6} />
+        <ChevronDown size={14} className="text-dash-ink-500" strokeWidth={1.6} />
       </button>
     </header>
   );
@@ -497,6 +249,7 @@ function TopBar({
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { userData, isLoading } = useUserData();
   const router = useRouter();
+  const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -507,116 +260,54 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  // Close sidebar on route change (mobile)
-  const pathname = usePathname();
-  useEffect(() => {
-    setSidebarOpen(false);
-  }, [pathname]);
+  useEffect(() => { setSidebarOpen(false); }, [pathname]);
 
   useEffect(() => {
     if (isLoading) return;
-    if (!userData) {
-      router.replace("/login");
-      return;
-    }
-    const districtRoles = ["TEACHER", "COUNSELOR", "PRINCIPAL", "DISTRICT_ADMIN"];
-    if (districtRoles.includes(userData.role)) {
-      const redirectMap: Record<string, string> = {
-        TEACHER: "/teacher",
-        COUNSELOR: "/counselor",
-        PRINCIPAL: "/principal",
-        DISTRICT_ADMIN: "/district",
-      };
-      router.replace(redirectMap[userData.role] ?? "/");
-    }
+    if (!userData) { router.replace("/login"); return; }
+    const redirectMap: Record<string, string> = {
+      TEACHER: "/teacher", COUNSELOR: "/counselor",
+      PRINCIPAL: "/principal", DISTRICT_ADMIN: "/district",
+    };
+    if (redirectMap[userData.role]) router.replace(redirectMap[userData.role]);
   }, [userData, isLoading, router]);
 
   if (isLoading || !userData) {
     return (
-      <div
-        style={{
-          display: "flex",
-          height: "100vh",
-          alignItems: "center",
-          justifyContent: "center",
-          background: C.canvas,
-        }}
-      >
-        <div
-          style={{
-            width: 8,
-            height: 8,
-            borderRadius: "50%",
-            background: C.indigo500,
-            opacity: 0.6,
-          }}
-        />
+      <div className="h-screen flex items-center justify-center bg-dash-canvas">
+        <div className="w-2 h-2 rounded-full bg-dash-indigo-500 opacity-60" />
       </div>
     );
   }
 
-  const role = userData.role;
-
   return (
-    <div
-      style={{
-        display: "flex",
-        height: "100vh",
-        background: C.canvas,
-        fontFamily: "var(--font-text, 'Source Sans 3', -apple-system, sans-serif)",
-        color: C.ink900,
-        overflow: "hidden",
-        position: "relative",
-      }}
-    >
-      {/* Mobile overlay backdrop */}
-      {isMobile && sidebarOpen && (
-        <div
-          onClick={() => setSidebarOpen(false)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(28,25,23,0.4)",
-            zIndex: 40,
-            backdropFilter: "blur(2px)",
-          }}
-        />
-      )}
+    <OnboardingProvider>
+      <div
+        className="flex h-screen bg-dash-canvas overflow-hidden relative"
+        style={{ fontFamily: "var(--font-text, 'Source Sans 3', -apple-system, sans-serif)", color: "var(--dash-ink-900)" }}
+      >
+        {/* Mobile backdrop */}
+        {isMobile && sidebarOpen && (
+          <div
+            onClick={() => setSidebarOpen(false)}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+          />
+        )}
 
-      {/* Sidebar */}
-      {(!isMobile || sidebarOpen) && (
         <Sidebar
           open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           isMobile={isMobile}
-          role={role}
+          role={userData.role}
         />
-      )}
 
-      {/* Main */}
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          minWidth: 0,
-          overflow: "hidden",
-        }}
-      >
-        <TopBar
-          onMenuClick={() => setSidebarOpen(true)}
-          isMobile={isMobile}
-        />
-        <main
-          style={{
-            flex: 1,
-            overflow: "auto",
-            padding: isMobile ? "20px 16px" : "32px 40px",
-          }}
-        >
-          <div style={{ maxWidth: 1280, margin: "0 auto" }}>{children}</div>
-        </main>
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          <TopBar onMenuClick={() => setSidebarOpen(true)} isMobile={isMobile} />
+          <main className={cn("flex-1 overflow-auto", isMobile ? "px-4 py-5" : "px-10 py-8")}>
+            <div className="max-w-[1280px] mx-auto">{children}</div>
+          </main>
+        </div>
       </div>
-    </div>
+    </OnboardingProvider>
   );
 }

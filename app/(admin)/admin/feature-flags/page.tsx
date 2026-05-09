@@ -1,39 +1,17 @@
 "use client";
 
 import { FeatureFlagsManager } from "@/components/admin/FeatureFlagsManager";
-import { C } from "@/lib/dashboard/colors";
 
 
 export default function FeatureFlagsPage() {
   return (
     <div>
-      <div style={{ marginBottom: 28 }}>
-        <div
-          style={{
-            fontSize: 11,
-            fontWeight: 600,
-            color: C.ink500,
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
-            marginBottom: 8,
-          }}
-        >
-          System
-        </div>
-        <h1
-          style={{
-            fontFamily: "var(--font-display, Georgia, serif)",
-            fontSize: 32,
-            fontWeight: 600,
-            letterSpacing: "-0.02em",
-            color: C.ink900,
-            lineHeight: 1.1,
-            margin: 0,
-          }}
-        >
+      <div className="mb-7">
+        <div className="text-[11px] font-semibold text-dash-ink-500 tracking-[0.08em] uppercase mb-2">System</div>
+        <h1 className="[font-family:var(--font-display,Georgia,serif)] text-[32px] font-semibold tracking-[-0.02em] text-dash-ink-900 leading-[1.1] m-0">
           Feature flags
         </h1>
-        <p style={{ fontSize: 15, color: C.ink700, lineHeight: 1.55, margin: "10px 0 0" }}>
+        <p className="text-[15px] text-dash-ink-700 leading-[1.55] mt-2.5 mb-0">
           Enable or disable platform features without a deployment.
         </p>
       </div>

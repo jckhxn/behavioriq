@@ -1,97 +1,45 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ClipboardList, FileStack, CheckCircle, Clock, Plus, Upload, Layers } from "lucide-react";
+import { ClipboardList, FileStack, CheckCircle, Clock } from "lucide-react";
 import AssessmentTemplateManager from "@/components/admin/AssessmentTemplateManager";
 import DomainTemplateManager from "@/components/admin/DomainTemplateManager";
-import { C } from "@/lib/dashboard/colors";
+import { cn } from "@/lib/utils";
 
 
-interface Stats {
-  activeAssessments: number;
-  domainTemplates: number;
-  completions30d: number;
-  pendingReview: number;
-}
+const TONE_CLASSES = {
+  mint:   { icon: "bg-dash-mint-50 text-dash-mint-700",   delta: "text-dash-mint-700" },
+  indigo: { icon: "bg-dash-indigo-50 text-dash-indigo-600", delta: "text-dash-indigo-600" },
+  amber:  { icon: "bg-dash-amber-50 text-dash-amber-700", delta: "text-dash-amber-700" },
+} as const;
 
-const STAT_CONFIGS = [
-  { key: "activeAssessments", label: "Active assessments", icon: ClipboardList, tone: "mint", delta: "assessment templates" },
-  { key: "domainTemplates", label: "Domain templates", icon: FileStack, tone: "indigo", delta: "available domains" },
-  { key: "completions30d", label: "Completions (30d)", icon: CheckCircle, tone: "mint", delta: "last 30 days" },
-  { key: "pendingReview", label: "Pending review", icon: Clock, tone: "amber", delta: "need attention" },
-] as const;
-
-const TONE_COLORS = {
-  mint: { bg: C.mint50, text: C.mint700 },
-  indigo: { bg: C.indigo50, text: C.indigo600 },
-  amber: { bg: C.amber50, text: C.amber700 },
-};
-
-function StatCard({
-  label,
-  value,
-  delta,
-  icon: Icon,
-  tone,
-}: {
+function StatCard({ label, value, delta, icon: Icon, tone }: {
   label: string;
   value: string | number;
   delta: string;
   icon: React.ComponentType<any>;
-  tone: keyof typeof TONE_COLORS;
+  tone: keyof typeof TONE_CLASSES;
 }) {
-  const { bg, text } = TONE_COLORS[tone];
+  const { icon: iconClass, delta: deltaClass } = TONE_CLASSES[tone];
   return (
-    <div
-      style={{
-        background: C.surface,
-        border: `1px solid ${C.ink100}`,
-        borderRadius: 12,
-        padding: "16px 18px",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-        <span style={{ fontSize: 12, fontWeight: 500, color: C.ink500 }}>{label}</span>
-        <span
-          style={{
-            width: 26,
-            height: 26,
-            borderRadius: 7,
-            background: bg,
-            color: text,
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
+    <div className="bg-dash-surface border border-dash-ink-100 rounded-xl p-[16px_18px]">
+      <div className="flex items-center justify-between mb-2.5">
+        <span className="text-xs font-medium text-dash-ink-500">{label}</span>
+        <span className={cn("w-[26px] h-[26px] rounded-[7px] inline-flex items-center justify-center", iconClass)}>
           <Icon size={14} strokeWidth={1.6} />
         </span>
       </div>
-      <div
-        style={{
-          fontFamily: "var(--font-display, Georgia, serif)",
-          fontSize: 30,
-          fontWeight: 600,
-          letterSpacing: "-0.02em",
-          color: C.ink900,
-          lineHeight: 1,
-        }}
-      >
+      <div className="[font-family:var(--font-display,Georgia,serif)] text-[30px] font-semibold tracking-[-0.02em] text-dash-ink-900 leading-none">
         {value}
       </div>
-      <div style={{ fontSize: 12, color: text, marginTop: 6, fontWeight: 500 }}>{delta}</div>
+      <div className={cn("text-xs mt-1.5 font-medium", deltaClass)}>{delta}</div>
     </div>
   );
 }
 
 export default function AssessmentsPage() {
   const [tab, setTab] = useState<"templates" | "domains">("templates");
-  const [stats, setStats] = useState<Stats>({
-    activeAssessments: 0,
-    domainTemplates: 0,
-    completions30d: 0,
-    pendingReview: 0,
-  });
+  const [stats, setStats] = useState({ activeAssessments: 0, domainTemplates: 0, completions30d: 0, pendingReview: 0 });
 
   useEffect(() => {
     Promise.all([
@@ -99,174 +47,53 @@ export default function AssessmentsPage() {
       fetch("/api/admin/domain-templates").then((r) => r.json()).catch(() => []),
       fetch("/api/admin/stats").then((r) => r.json()).catch(() => ({})),
     ]).then(([templates, domains, statsData]) => {
-      const activeCount = Array.isArray(templates) ? templates.filter((t: any) => t.isActive).length : 0;
-      const domainCount = Array.isArray(domains) ? domains.length : 0;
-      const completions = statsData?.assessments?.completed ?? 0;
       setStats({
-        activeAssessments: activeCount,
-        domainTemplates: domainCount,
-        completions30d: completions,
+        activeAssessments: Array.isArray(templates) ? templates.filter((t: any) => t.isActive).length : 0,
+        domainTemplates: Array.isArray(domains) ? domains.length : 0,
+        completions30d: statsData?.assessments?.completed ?? 0,
         pendingReview: 0,
       });
     });
   }, []);
 
-  const pillFilter: React.CSSProperties = {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 8,
-    height: 36,
-    padding: "0 16px",
-    borderRadius: 8,
-    background: C.surface,
-    color: C.ink900,
-    border: `1px solid ${C.ink200}`,
-    fontFamily: "inherit",
-    fontSize: 14,
-    fontWeight: 500,
-    cursor: "pointer",
-  };
-
-  const primaryBtn: React.CSSProperties = {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 8,
-    height: 36,
-    padding: "0 16px",
-    borderRadius: 8,
-    background: C.indigo500,
-    color: "#fff",
-    border: "none",
-    fontFamily: "inherit",
-    fontSize: 14,
-    fontWeight: 600,
-    cursor: "pointer",
-    boxShadow: "0 1px 2px rgba(28,25,23,0.08)",
-  };
-
   return (
     <div>
-      {/* Page header */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          gap: 24,
-          marginBottom: 24,
-        }}
-      >
-        <div style={{ maxWidth: 680 }}>
-          <div
-            style={{
-              fontSize: 11,
-              fontWeight: 600,
-              color: C.ink500,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              marginBottom: 8,
-            }}
-          >
-            Assessment management
-          </div>
-          <h1
-            style={{
-              fontFamily: "var(--font-display, Georgia, serif)",
-              fontSize: 32,
-              fontWeight: 600,
-              letterSpacing: "-0.02em",
-              color: C.ink900,
-              lineHeight: 1.1,
-              margin: 0,
-            }}
-          >
-            Assessments &amp; domain libraries
-          </h1>
-          <p style={{ fontSize: 15, color: C.ink700, lineHeight: 1.55, margin: "10px 0 0" }}>
-            Build full assessments by combining domains, or upload complete JSON. All assessments
-            are database-driven and fully customizable.
-          </p>
+      <div className="mb-6">
+        <div className="text-[11px] font-semibold text-dash-ink-500 tracking-[0.08em] uppercase mb-2">
+          Assessment management
         </div>
+        <h1 className="[font-family:var(--font-display,Georgia,serif)] text-[32px] font-semibold tracking-[-0.02em] text-dash-ink-900 leading-[1.1] m-0">
+          Assessments &amp; domain libraries
+        </h1>
+        <p className="text-[15px] text-dash-ink-700 leading-[1.55] mt-2.5 mb-0">
+          Build full assessments by combining domains, or upload complete JSON. All assessments are database-driven and fully customizable.
+        </p>
       </div>
 
-      {/* Stat row */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
-          gap: 12,
-          marginBottom: 28,
-        }}
-      >
-        <StatCard
-          label="Active assessments"
-          value={stats.activeAssessments}
-          delta="assessment templates"
-          icon={ClipboardList}
-          tone="mint"
-        />
-        <StatCard
-          label="Domain templates"
-          value={stats.domainTemplates}
-          delta="available domains"
-          icon={FileStack}
-          tone="indigo"
-        />
-        <StatCard
-          label="Completions (30d)"
-          value={stats.completions30d}
-          delta="last 30 days"
-          icon={CheckCircle}
-          tone="mint"
-        />
-        <StatCard
-          label="Pending review"
-          value={stats.pendingReview}
-          delta="need attention"
-          icon={Clock}
-          tone="amber"
-        />
+      <div className="grid grid-cols-4 gap-3 mb-7">
+        <StatCard label="Active assessments" value={stats.activeAssessments} delta="assessment templates" icon={ClipboardList} tone="mint" />
+        <StatCard label="Domain templates" value={stats.domainTemplates} delta="available domains" icon={FileStack} tone="indigo" />
+        <StatCard label="Completions (30d)" value={stats.completions30d} delta="last 30 days" icon={CheckCircle} tone="mint" />
+        <StatCard label="Pending review" value={stats.pendingReview} delta="need attention" icon={Clock} tone="amber" />
       </div>
 
-      {/* Segmented tabs */}
-      <div
-        style={{
-          display: "inline-flex",
-          padding: 4,
-          background: C.sunk,
-          borderRadius: 10,
-          border: `1px solid ${C.ink100}`,
-          marginBottom: 20,
-        }}
-      >
-        {(
-          [
-            { id: "templates", label: "Assessment templates", icon: ClipboardList },
-            { id: "domains", label: "Domain library", icon: FileStack },
-          ] as const
-        ).map((t) => {
+      <div className="inline-flex p-1 bg-dash-sunk rounded-[10px] border border-dash-ink-100 mb-5">
+        {([
+          { id: "templates", label: "Assessment templates", icon: ClipboardList },
+          { id: "domains", label: "Domain library", icon: FileStack },
+        ] as const).map((t) => {
           const isActive = tab === t.id;
           const Icon = t.icon;
           return (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                padding: "7px 16px",
-                borderRadius: 7,
-                border: "none",
-                cursor: "pointer",
-                fontFamily: "inherit",
-                fontSize: 13,
-                fontWeight: 600,
-                background: isActive ? C.surface : "transparent",
-                color: isActive ? C.ink900 : C.ink500,
-                boxShadow: isActive ? "0 1px 2px rgba(28,25,23,0.06)" : "none",
-                transition: "background 120ms, color 120ms",
-              }}
+              className={cn(
+                "inline-flex items-center gap-2 px-4 py-[7px] rounded-[7px] border-none cursor-pointer font-[inherit] text-[13px] font-semibold transition-[background,color] duration-[120ms]",
+                isActive
+                  ? "bg-dash-surface text-dash-ink-900 shadow-[0_1px_2px_rgba(28,25,23,0.06)]"
+                  : "bg-transparent text-dash-ink-500",
+              )}
             >
               <Icon size={14} strokeWidth={1.6} />
               {t.label}
@@ -275,7 +102,6 @@ export default function AssessmentsPage() {
         })}
       </div>
 
-      {/* Content */}
       {tab === "templates" ? <AssessmentTemplateManager /> : <DomainTemplateManager />}
     </div>
   );
