@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Script from "next/script";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Fraunces, Source_Sans_3, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AffiliateTracker } from "@/components/AffiliateTracker";
@@ -16,6 +16,24 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+const fraunces = Fraunces({
+  variable: "--font-display",
+  subsets: ["latin"],
+  axes: ["opsz"],
+});
+
+const sourceSans3 = Source_Sans_3({
+  variable: "--font-text",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-mono-admin",
+  subsets: ["latin"],
+  weight: ["400", "500"],
 });
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://behavioriq.app";
@@ -154,7 +172,7 @@ export default function RootLayout({
         )}
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} ${sourceSans3.variable} ${jetbrainsMono.variable} antialiased`}
       >
         <ThemeProvider>
           <Suspense fallback={null}>
