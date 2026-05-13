@@ -9,8 +9,9 @@ import { DebugModeProvider, useDebugMode } from "@/lib/contexts/DebugModeContext
 import {
   LayoutDashboard, BarChart3, ClipboardList, Library, Users, Mail,
   Wrench, Flag, Sliders, LogOut, X, Menu, Bell, ChevronRight,
-  ChevronDown, Search, Gift, FlaskConical,
+  ChevronDown, Search, Gift, FlaskConical, Sun, Moon,
 } from "lucide-react";
+import { useTheme } from "next-themes";
 
 // ── Nav definitions ───────────────────────────────────────────────────────────
 const USER_NAV = [
@@ -68,6 +69,7 @@ function Sidebar({ open, onClose, isMobile, role, actualRole }: {
   const isAdmin = ["SUPER_ADMIN", "ADMIN"].includes(role);
   const isActualAdmin = ["SUPER_ADMIN", "ADMIN"].includes(actualRole);
   const nav = isAdmin ? ADMIN_NAV : USER_NAV;
+  const { resolvedTheme, setTheme } = useTheme();
 
   const displayName = userData?.name || userData?.email || "Account";
   const initials = displayName.slice(0, 2).toUpperCase();
@@ -164,6 +166,19 @@ function Sidebar({ open, onClose, isMobile, role, actualRole }: {
           )}
         </div>
       )}
+
+      {/* Theme toggle */}
+      <div className="px-2.5 pb-2">
+        <button
+          onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+          className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg border-none cursor-pointer text-left font-[inherit] text-sm text-dash-ink-700 bg-transparent hover:bg-dash-sunk transition-colors duration-[120ms]"
+        >
+          {resolvedTheme === "dark"
+            ? <Sun size={16} strokeWidth={1.6} className="shrink-0" />
+            : <Moon size={16} strokeWidth={1.6} className="shrink-0" />}
+          <span>{resolvedTheme === "dark" ? "Light mode" : "Dark mode"}</span>
+        </button>
+      </div>
 
       {/* User footer */}
       <div className="border-t border-dash-ink-100 p-3.5 flex items-center gap-2.5 shrink-0">

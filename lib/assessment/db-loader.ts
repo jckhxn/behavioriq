@@ -14,6 +14,7 @@ import {
   SkipCondition,
   PrerequisiteConfig,
   MultiPartLogicConfig,
+  DomainGatingLogic,
   type QuestionResponseType,
   type LikertScale,
   type LikertOption,
@@ -564,6 +565,13 @@ export async function loadAssessmentConfigFromTemplate(
           ? mapAdminResponseType(adminResponseType, adminResponseOptions)
           : {};
 
+        // Parse domain-level gating skip logic from scoringConfig.skipLogic
+        let gatingLogic: DomainGatingLogic | undefined;
+        const rawGatingLogic = (scoringConfig as any)?.skipLogic;
+        if (rawGatingLogic && typeof rawGatingLogic === "object") {
+          gatingLogic = rawGatingLogic as DomainGatingLogic;
+        }
+
         const questionSetConfig: QuestionSetConfig = {
           name: domainTemplate.name,
           displayName: domainTemplate.name,
@@ -576,6 +584,7 @@ export async function loadAssessmentConfigFromTemplate(
             (scoringConfig as any)?.significantScore ||
             Math.ceil(questions.length * 0.6),
           resources,
+          gatingLogic,
           questions: questions.map((q: any, qIndex: number) => {
             try {
               return {

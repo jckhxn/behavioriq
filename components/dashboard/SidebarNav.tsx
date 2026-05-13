@@ -248,7 +248,7 @@ export function SidebarNav({
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   const { signOut: supabaseSignOut } = useSignOut();
 
   // Use provided onSignOut or default to supabase signOut
@@ -353,30 +353,6 @@ export function SidebarNav({
           <NavLink key={item.href} item={item} />
         ))}
 
-        {/* Theme Toggle */}
-        <button
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          className={cn(
-            "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200",
-            "text-muted-foreground hover:bg-muted hover:text-foreground"
-          )}
-        >
-          <Sun className="h-5 w-5 flex-shrink-0 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-          <Moon className="absolute h-5 w-5 flex-shrink-0 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-          <AnimatePresence>
-            {!collapsed && (
-              <motion.span
-                initial={{ opacity: 0, width: 0 }}
-                animate={{ opacity: 1, width: "auto" }}
-                exit={{ opacity: 0, width: 0 }}
-                className="font-medium whitespace-nowrap overflow-hidden"
-              >
-                {theme === "dark" ? "Light Mode" : "Dark Mode"}
-              </motion.span>
-            )}
-          </AnimatePresence>
-        </button>
-
         <button
           onClick={handleSignOut}
           className={cn(
@@ -401,15 +377,42 @@ export function SidebarNav({
       </div>
 
       {/* User Profile */}
-      <div className="p-4 border-t border-border">
-        <div
+      <div className="p-4 border-t border-border space-y-2">
+        {/* Theme toggle */}
+        <button
+          onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+          title={resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
           className={cn(
-            "flex items-center gap-3 px-3 py-2.5 rounded-xl bg-muted",
+            "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200",
+            "text-muted-foreground hover:bg-muted hover:text-foreground",
             collapsed && "justify-center"
           )}
         >
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-purple-400 flex items-center justify-center flex-shrink-0">
-            <UserCircle className="h-6 w-6 text-white" />
+          {resolvedTheme === "dark"
+            ? <Sun className="h-5 w-5 flex-shrink-0" />
+            : <Moon className="h-5 w-5 flex-shrink-0" />}
+          <AnimatePresence>
+            {!collapsed && (
+              <motion.span
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: "auto" }}
+                exit={{ opacity: 0, width: 0 }}
+                className="font-medium whitespace-nowrap overflow-hidden"
+              >
+                {resolvedTheme === "dark" ? "Light mode" : "Dark mode"}
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </button>
+
+        <div
+          className={cn(
+            "flex items-center gap-2 px-3 py-2.5 rounded-xl bg-muted",
+            collapsed && "justify-center"
+          )}
+        >
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-400 to-purple-400 flex items-center justify-center flex-shrink-0">
+            <UserCircle className="h-5 w-5 text-white" />
           </div>
           <AnimatePresence>
             {!collapsed && (

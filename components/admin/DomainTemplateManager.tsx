@@ -1290,44 +1290,77 @@ const DomainForm: React.FC<DomainFormProps> = ({
                     </Select>
                   </div>
 
-                  <div className="space-y-1">
-                    <Label className="text-xs">Condition</Label>
-                    <Select
-                      value={questionSubsetRule.comparator}
-                      onValueChange={(v) =>
-                        setQuestionSubsetRule((prev) => ({
-                          ...prev,
-                          comparator: v as Comparator,
-                        }))
-                      }
-                    >
-                      <SelectTrigger className="h-9 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="<">&lt;</SelectItem>
-                        <SelectItem value="<=">&lt;=</SelectItem>
-                        <SelectItem value="=">=</SelectItem>
-                        <SelectItem value=">=">&gt;=</SelectItem>
-                        <SelectItem value=">">&gt;</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {/* For yes/no domains: show a plain Yes/No selector locked to comparator "="
+                      For all other types: show the raw Condition + Threshold inputs */}
+                  {responseType === "yes_no" && questionSubsetRule.aggregation !== "sum" ? (
+                    <div className="space-y-1 md:col-span-1">
+                      <Label className="text-xs">Skip When Answer Is</Label>
+                      <Select
+                        value={String(questionSubsetRule.threshold)}
+                        onValueChange={(v) =>
+                          setQuestionSubsetRule((prev) => ({
+                            ...prev,
+                            threshold: Number(v),
+                            comparator: "=",
+                          }))
+                        }
+                      >
+                        <SelectTrigger className="h-9 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="0">No (score = 0)</SelectItem>
+                          <SelectItem value="1">Yes (score = 1)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Condition</Label>
+                        <Select
+                          value={questionSubsetRule.comparator}
+                          onValueChange={(v) =>
+                            setQuestionSubsetRule((prev) => ({
+                              ...prev,
+                              comparator: v as Comparator,
+                            }))
+                          }
+                        >
+                          <SelectTrigger className="h-9 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="<">&lt;</SelectItem>
+                            <SelectItem value="<=">&lt;=</SelectItem>
+                            <SelectItem value="=">=</SelectItem>
+                            <SelectItem value=">=">&gt;=</SelectItem>
+                            <SelectItem value=">">&gt;</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                  <div className="space-y-1">
-                    <Label className="text-xs">Threshold</Label>
-                    <Input
-                      type="number"
-                      value={questionSubsetRule.threshold}
-                      onChange={(e) =>
-                        setQuestionSubsetRule((prev) => ({
-                          ...prev,
-                          threshold: Number(e.target.value || 0),
-                        }))
-                      }
-                      className="h-9 text-xs"
-                    />
-                  </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">
+                          Threshold
+                          {responseType === "yes_no" && (
+                            <span className="ml-1 text-muted-foreground font-normal">(No = 0, Yes = 1)</span>
+                          )}
+                        </Label>
+                        <Input
+                          type="number"
+                          value={questionSubsetRule.threshold}
+                          onChange={(e) =>
+                            setQuestionSubsetRule((prev) => ({
+                              ...prev,
+                              threshold: Number(e.target.value || 0),
+                            }))
+                          }
+                          className="h-9 text-xs"
+                        />
+                      </div>
+                    </>
+                  )}
 
                   <div className="space-y-1">
                     <Label className="text-xs">Skip Domain When</Label>

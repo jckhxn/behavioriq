@@ -2,9 +2,10 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useUserData, useSignOut } from "@/lib/hooks/use-supabase-user";
+import { useTheme } from "next-themes";
 import {
   LayoutDashboard, BarChart3, ClipboardList, Library, Users,
-  Mail, Wrench, Flag, Sliders, LogOut,
+  Mail, Wrench, Flag, Sliders, LogOut, Sun, Moon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +30,7 @@ export function AdminSidebar() {
   const router = useRouter();
   const { userData } = useUserData();
   const { signOut } = useSignOut();
+  const { resolvedTheme, setTheme } = useTheme();
 
   const displayName = userData?.name || userData?.email || "Admin";
   const initials = displayName.slice(0, 2).toUpperCase();
@@ -82,6 +84,17 @@ export function AdminSidebar() {
           );
         })}
       </nav>
+
+      {/* Theme toggle */}
+      <button
+        onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+        className="mx-2.5 mb-1 flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium text-dash-ink-700 hover:bg-dash-sunk transition-colors border-none cursor-pointer text-left font-[inherit] w-[calc(100%-20px)]"
+      >
+        {resolvedTheme === "dark"
+          ? <Sun size={16} strokeWidth={1.6} className="shrink-0" />
+          : <Moon size={16} strokeWidth={1.6} className="shrink-0" />}
+        <span>{resolvedTheme === "dark" ? "Light mode" : "Dark mode"}</span>
+      </button>
 
       {/* User footer */}
       <div className="border-t border-dash-ink-100 p-3.5 flex items-center gap-2.5 shrink-0">

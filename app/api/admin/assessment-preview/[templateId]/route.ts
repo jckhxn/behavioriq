@@ -70,6 +70,8 @@ export async function GET(
           category: q.category ?? null,
         }));
 
+        const gatingLogic = scoringConfig.skipLogic ?? undefined;
+
         return {
           name: dt.name,
           displayName: dt.name,
@@ -90,6 +92,7 @@ export async function GET(
           prerequisites: [],
           terminationRules: [],
           multiPartLogic: undefined,
+          gatingLogic,
           resources: dt.resources ?? undefined,
         };
       })

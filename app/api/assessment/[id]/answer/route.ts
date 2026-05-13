@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { RiskLevel } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
-import { computeSkippedQuestions } from "@/lib/assessment/skip-logic";
+import { computeSkippedQuestions, evaluateDomainGatingSkip } from "@/lib/assessment/skip-logic";
+
+// Normalize a raw question to the shape expected by computeSkippedQuestions
+const toSkipLogicShape = (q: any) => ({
+  id: q.id as string,
+  skipLogic: q.skipLogic || q.skipCondition || null,
+});
 
 interface AnswerPayload {
   qid: string;
@@ -329,10 +335,37 @@ export async function POST(
           score: scoreValue,
         });
 
+        // Build the answer map for this domain's skip logic evaluation
+        const domainAnswerMap = new Map<string, string>();
+        for (const [qid, r] of responseMap) {
+          domainAnswerMap.set(qid, String((r as any).response ?? ""));
+        }
+
+        // Check domain-level gating logic (scoringConfig.skipLogic.questionSubsetThreshold)
+        let wasGatingSkipped = false;
+        const rawGatingLogic = domainTemplate.scoringConfig?.skipLogic;
+        if (rawGatingLogic && typeof rawGatingLogic === "object") {
+          wasGatingSkipped = evaluateDomainGatingSkip(rawGatingLogic, domainAnswerMap);
+        }
+
+        const domainSkippedIds = wasGatingSkipped
+          ? new Set(domainQuestions.map((q: any) => q.id as string))
+          : computeSkippedQuestions(domainQuestions.map(toSkipLogicShape), domainAnswerMap);
+
+        // When gating-skipped, only the gating questions themselves count toward totalPossible
+        const gatingQuestionIds = wasGatingSkipped
+          ? new Set<string>(rawGatingLogic?.questionSubsetThreshold?.questionIds ?? [])
+          : null;
+
         let domainScoreSum = 0;
         let answeredInDomain = 0;
         let totalPossible = 0;
         for (const question of domainQuestions) {
+          if (wasGatingSkipped) {
+            // Only include the gating questions in the score, not the skipped follow-ups
+            if (!gatingQuestionIds!.has(question.id as string)) continue;
+          } else if (domainSkippedIds.has(question.id as string)) continue;
+
           const response = responseMap.get(question.id as string) as any;
 
           const questionMax = getQuestionMaxScore(question);
@@ -394,9 +427,9 @@ export async function POST(
             rawScore,
             totalPossible,
             riskLevel,
-            confidence: 0.95, // Default confidence
+            confidence: 0.95,
             questionsAnswered: answeredInDomain,
-            wasTerminatedEarly: false,
+            wasTerminatedEarly: wasGatingSkipped,
           });
         }
       }

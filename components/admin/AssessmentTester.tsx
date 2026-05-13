@@ -8,6 +8,12 @@ import {
   type DomainScore,
 } from "@/lib/assessment/scoring-dynamic";
 import type { QuestionSetConfig } from "@/lib/assessment/types";
+import {
+  getNextQuestion,
+  computeProgress,
+  type ResponseValue,
+} from "@/lib/assessment/navigation";
+import { evaluateDomainGatingSkip } from "@/lib/assessment/skip-logic";
 import { RiskLevel } from "@prisma/client";
 import {
   BarChart3, FileText, CheckCircle, RotateCcw, FlaskConical,
@@ -33,11 +39,6 @@ interface ScoredResult extends DomainScore {
   riskLevel: RiskLevel;
 }
 
-interface NavState {
-  domainIndex: number;
-  questionIndex: number;
-}
-
 function riskClass(level: RiskLevel): string {
   switch (level) {
     case "HIGH":
@@ -45,73 +46,6 @@ function riskClass(level: RiskLevel): string {
     case "MODERATE": return "bg-dash-amber-50 text-dash-amber-700";
     default: return "bg-dash-mint-50 text-dash-mint-700";
   }
-}
-
-type ResponseValue = boolean | number | string;
-
-function findFirstQuestionInDomain(
-  configs: QuestionSetConfig[],
-  domainIndex: number,
-  responses: Record<string, ResponseValue>
-): NavState | null {
-  if (domainIndex >= configs.length) return null;
-  const domain = configs[domainIndex];
-  for (const prereq of domain.prerequisites) {
-    if (responses[prereq.questionId] !== prereq.requiredValue) {
-      return findFirstQuestionInDomain(configs, domainIndex + 1, responses);
-    }
-  }
-  if (domain.questions.length === 0) {
-    return findFirstQuestionInDomain(configs, domainIndex + 1, responses);
-  }
-  return { domainIndex, questionIndex: 0 };
-}
-
-function getNextNavState(
-  configs: QuestionSetConfig[],
-  current: NavState,
-  responses: Record<string, ResponseValue>
-): NavState | null {
-  const domain = configs[current.domainIndex];
-  const question = domain.questions[current.questionIndex];
-  const answer = responses[question.id];
-  const isBooleanQuestion = !question.responseType || question.responseType === "boolean";
-
-  // Skip conditions only apply to boolean questions
-  if (isBooleanQuestion) {
-    const skipCondition = domain.skipConditions.find(
-      (sc) => sc.questionId === question.id && sc.skipValue === answer
-    );
-    if (skipCondition?.skipToQuestion) {
-      const targetIdx = domain.questions.findIndex(
-        (q) => q.id === skipCondition.skipToQuestion
-      );
-      if (targetIdx > current.questionIndex) {
-        return { domainIndex: current.domainIndex, questionIndex: targetIdx };
-      }
-    }
-  }
-
-  // Termination rules count boolean true responses only
-  const answeredInDomain = domain.questions.slice(0, current.questionIndex + 1);
-  const yesCount = answeredInDomain.filter((q) => {
-    const qConfig = domain.questions.find((dq) => dq.id === q.id);
-    const isBoolean = !qConfig?.responseType || qConfig.responseType === "boolean";
-    return isBoolean && responses[q.id] === true;
-  }).length;
-  for (const rule of domain.terminationRules) {
-    if (current.questionIndex + 1 >= rule.checkAfterQuestion) {
-      if (yesCount < rule.minimumYesToContinue) {
-        return findFirstQuestionInDomain(configs, current.domainIndex + 1, responses);
-      }
-    }
-  }
-
-  if (current.questionIndex + 1 < domain.questions.length) {
-    return { domainIndex: current.domainIndex, questionIndex: current.questionIndex + 1 };
-  }
-
-  return findFirstQuestionInDomain(configs, current.domainIndex + 1, responses);
 }
 
 interface AssessmentTesterProps {
@@ -124,9 +58,9 @@ export function AssessmentTester({ templateId: initialTemplateId, onExit }: Asse
   const [templates, setTemplates] = useState<AssessmentTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(initialTemplateId ?? "");
   const [configs, setConfigs] = useState<QuestionSetConfig[]>([]);
-  const [navState, setNavState] = useState<NavState>({ domainIndex: 0, questionIndex: 0 });
   const [responses, setResponses] = useState<Record<string, ResponseValue>>({});
-  const [history, setHistory] = useState<NavState[]>([]);
+  // history is a stack of response-maps so Back can restore the previous state
+  const [history, setHistory] = useState<Record<string, ResponseValue>[]>([]);
   const [results, setResults] = useState<ScoredResult[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -156,12 +90,9 @@ export function AssessmentTester({ templateId: initialTemplateId, onExit }: Asse
       const loaded: QuestionSetConfig[] = data.configs || [];
 
       if (loaded.length === 0) throw new Error("This assessment has no configured domains/questions");
-
-      const first = findFirstQuestionInDomain(loaded, 0, {});
-      if (!first) throw new Error("No questions found in this assessment");
+      if (!getNextQuestion(loaded, {})) throw new Error("No questions found in this assessment");
 
       setConfigs(loaded);
-      setNavState(first);
       setResponses({});
       setHistory([]);
       setResults([]);
@@ -175,48 +106,44 @@ export function AssessmentTester({ templateId: initialTemplateId, onExit }: Asse
   const handleAnswer = useCallback(
     async (questionId: string, response: ResponseValue) => {
       const newResponses = { ...responses, [questionId]: response };
+      setHistory((prev) => [...prev, responses]);
       setResponses(newResponses);
-      setHistory((prev) => [...prev, navState]);
 
-      const next = getNextNavState(configs, navState, newResponses);
+      const next = getNextQuestion(configs, newResponses);
       if (!next) {
         const calculator = new DynamicScoringCalculator(configs);
         const qResponses = Object.entries(newResponses).map(([qId, resp]) => ({
           questionId: qId,
           response: resp,
         }));
+        const answerMap = new Map(Object.entries(newResponses).map(([k, v]) => [k, String(v)]));
         const domainScores = calculator.getAllDomainScores(qResponses);
-        const scored: ScoredResult[] = domainScores.map((ds) => ({
-          ...ds,
-          riskLevel: calculator.mapScoreToRiskLevel(ds),
-        }));
+        const scored: ScoredResult[] = domainScores.map((ds, i) => {
+          const cfg = configs[i];
+          const wasGatingSkipped =
+            !!cfg?.gatingLogic && evaluateDomainGatingSkip(cfg.gatingLogic, answerMap);
+          return {
+            ...ds,
+            skipped: ds.skipped || wasGatingSkipped,
+            skipReason: wasGatingSkipped ? "Gating question skipped domain" : ds.skipReason,
+            riskLevel: calculator.mapScoreToRiskLevel(ds),
+          };
+        });
         setResults(scored);
         setPhase("results");
-      } else {
-        setNavState(next);
       }
     },
-    [responses, navState, configs]
+    [responses, configs]
   );
 
   const handleBack = useCallback(() => {
     if (history.length === 0) return;
-    const prev = history[history.length - 1];
-    const currentQ = configs[navState.domainIndex]?.questions[navState.questionIndex];
-    if (currentQ) {
-      setResponses((r) => {
-        const copy = { ...r };
-        delete copy[currentQ.id];
-        return copy;
-      });
-    }
+    setResponses(history[history.length - 1]);
     setHistory((h) => h.slice(0, -1));
-    setNavState(prev);
-  }, [history, navState, configs]);
+  }, [history]);
 
   const reset = useCallback(() => {
     setConfigs([]);
-    setNavState({ domainIndex: 0, questionIndex: 0 });
     setResponses({});
     setHistory([]);
     setResults([]);
@@ -230,17 +157,8 @@ export function AssessmentTester({ templateId: initialTemplateId, onExit }: Asse
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTemplateId]);
 
-  const totalQuestions = configs.reduce((sum, d) => sum + d.questions.length, 0);
-  const answeredCount = Object.keys(responses).length;
-  const progress = {
-    totalQuestions,
-    answeredQuestions: answeredCount,
-    completedDomains: navState.domainIndex,
-    overallProgress: totalQuestions > 0 ? (answeredCount / totalQuestions) * 100 : 0,
-  };
-
-  const currentDomain = configs[navState.domainIndex];
-  const currentQuestion = currentDomain?.questions[navState.questionIndex];
+  const activeQuestion = configs.length > 0 ? getNextQuestion(configs, responses) : null;
+  const progress = computeProgress(configs, responses);
 
   const chartConfig = {
     score: { label: "Risk Score (%)", color: "hsl(var(--chart-1))" },
@@ -320,7 +238,7 @@ export function AssessmentTester({ templateId: initialTemplateId, onExit }: Asse
   }
 
   // ── Taking phase ──────────────────────────────────────────────────────────
-  if (phase === "taking" && currentQuestion) {
+  if (phase === "taking" && activeQuestion) {
     return (
       <div className="space-y-3">
         {/* Test mode banner */}
@@ -339,16 +257,16 @@ export function AssessmentTester({ templateId: initialTemplateId, onExit }: Asse
         </div>
 
         <QuestionPresenter
-          questionId={currentQuestion.id}
-          questionText={currentQuestion.text}
-          currentDomain={currentDomain?.name || ""}
+          questionId={activeQuestion.questionId}
+          questionText={activeQuestion.text}
+          currentDomain={activeQuestion.domain}
           progress={progress}
           onAnswer={handleAnswer}
           onBack={history.length > 0 ? handleBack : undefined}
           canGoBack={history.length > 0}
           assessmentConfigs={configs}
-          responseType={currentQuestion.responseType}
-          likertScale={currentQuestion.likertScale}
+          responseType={activeQuestion.responseType}
+          likertScale={activeQuestion.likertScale}
         />
       </div>
     );
@@ -379,7 +297,7 @@ export function AssessmentTester({ templateId: initialTemplateId, onExit }: Asse
           <div>
             <p className="text-[13px] font-semibold text-dash-mint-700">Preview Complete</p>
             <p className="text-xs text-dash-mint-700 opacity-80">
-              {answeredCount} questions answered across {results.filter((r) => !r.skipped).length} domains
+              {Object.keys(responses).length} questions answered across {results.filter((r) => !r.skipped).length} domains
             </p>
           </div>
         </div>
@@ -449,7 +367,9 @@ export function AssessmentTester({ templateId: initialTemplateId, onExit }: Asse
                     {result.displayName || result.domain}
                   </h4>
                   {result.skipped ? (
-                    <p className="text-xs text-dash-ink-500">Skipped — prerequisite not met</p>
+                    <p className="text-xs text-dash-ink-500">
+                      Skipped — {result.skipReason ?? "prerequisite not met"}
+                    </p>
                   ) : (
                     <>
                       <p className="text-xs text-dash-ink-500">

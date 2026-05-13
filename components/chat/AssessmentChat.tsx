@@ -10,10 +10,12 @@ import { ASSESSMENT_CONFIG } from "@/lib/config/ai-config";
 import { QuestionPresenter } from "@/components/assessment/QuestionPresenter";
 import { AssessmentCompletion } from "@/components/assessment/AssessmentCompletion";
 import type { QuestionSetConfig } from "@/lib/assessment/db-loader";
+import type { QuestionResponse as StructuredQuestionResponse } from "@/lib/assessment/scoring";
 import {
-  createScoringCalculator,
-  type QuestionResponse as StructuredQuestionResponse,
-} from "@/lib/assessment/scoring";
+  getNextQuestion,
+  computeProgress as sharedComputeProgress,
+  type ResponseValue,
+} from "@/lib/assessment/navigation";
 
 interface Message {
   id: string;
@@ -51,121 +53,28 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
   const [resolvedAssessmentId, setResolvedAssessmentId] = useState<string | null>(null);
 
   const isStructuredMode = ASSESSMENT_CONFIG.CURRENT_MODE === "structured";
-  const scoringCalculator = useMemo(() => {
-    if (assessmentConfigs.length === 0) {
-      return null;
-    }
-    return createScoringCalculator(assessmentConfigs);
-  }, [assessmentConfigs]);
-
   const determineNextQuestion = useCallback(
     (responses: StructuredQuestionResponse[]) => {
-      if (assessmentConfigs.length === 0) {
-        return null;
-      }
-
-      const answeredIds = new Set(responses.map((response) => response.questionId));
-
-      for (const domain of assessmentConfigs) {
-        const domainHasResponses = domain.questions.some((question) =>
-          answeredIds.has(question.id)
-        );
-
-        if (domainHasResponses && scoringCalculator) {
-          const domainScore = scoringCalculator.calculateDomainScore(
-            domain.name,
-            responses
-          );
-
-          if (domainScore.skipped) {
-            continue;
-          }
-        }
-
-        for (const question of domain.questions) {
-          if (!answeredIds.has(question.id)) {
-            return {
-              questionId: question.id,
-              text: question.text,
-              domain: domain.name,
-              responseType: question.responseType,
-              likertScale: question.likertScale,
-            };
-          }
-        }
-      }
-
-      return null;
+      if (assessmentConfigs.length === 0) return null;
+      const responseRecord: Record<string, ResponseValue> = Object.fromEntries(
+        responses.map((r) => [r.questionId, r.response as ResponseValue])
+      );
+      return getNextQuestion(assessmentConfigs, responseRecord);
     },
-    [assessmentConfigs, scoringCalculator]
+    [assessmentConfigs]
   );
 
   const computeProgress = useCallback(
-    (
-      responses: StructuredQuestionResponse[]
-    ): {
-      totalQuestions: number;
-      answeredQuestions: number;
-      completedDomains: number;
-      overallProgress: number;
-    } => {
+    (responses: StructuredQuestionResponse[]) => {
       if (assessmentConfigs.length === 0) {
-        return {
-          totalQuestions: 0,
-          answeredQuestions: responses.length,
-          completedDomains: 0,
-          overallProgress: 0,
-        };
+        return { totalQuestions: 0, answeredQuestions: 0, completedDomains: 0, overallProgress: 0 };
       }
-
-      const totalQuestions = assessmentConfigs.reduce(
-        (sum, domain) => sum + domain.questions.length,
-        0
+      const responseRecord: Record<string, ResponseValue> = Object.fromEntries(
+        responses.map((r) => [r.questionId, r.response as ResponseValue])
       );
-      const answeredQuestions = responses.length;
-      const answeredIds = new Set(responses.map((response) => response.questionId));
-
-      let completedDomains = 0;
-
-      for (const domain of assessmentConfigs) {
-        const domainHasResponses = domain.questions.some((question) =>
-          answeredIds.has(question.id)
-        );
-
-        if (domainHasResponses && scoringCalculator) {
-          const domainScore = scoringCalculator.calculateDomainScore(
-            domain.name,
-            responses
-          );
-
-          if (domainScore.skipped) {
-            completedDomains += 1;
-            continue;
-          }
-        }
-
-        const allAnswered = domain.questions.every((question) =>
-          answeredIds.has(question.id)
-        );
-
-        if (allAnswered) {
-          completedDomains += 1;
-        } else {
-          break;
-        }
-      }
-
-      return {
-        totalQuestions,
-        answeredQuestions,
-        completedDomains,
-        overallProgress:
-          totalQuestions === 0
-            ? 0
-            : (answeredQuestions / totalQuestions) * 100,
-      };
+      return sharedComputeProgress(assessmentConfigs, responseRecord);
     },
-    [assessmentConfigs, scoringCalculator]
+    [assessmentConfigs]
   );
 
   const progressSummary = useMemo(
