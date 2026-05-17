@@ -92,22 +92,35 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
     !activeQuestion &&
     questionResponses.length > 0;
 
+  const finalizedRef = useRef(false);
+
   useEffect(() => {
     if (!isStructuredMode) {
       return;
     }
 
-    if (isLocallyComplete && pendingSaves === 0) {
+    if (isLocallyComplete && pendingSaves === 0 && !finalizedRef.current) {
+      finalizedRef.current = true;
       setAssessmentStatus("COMPLETED");
+
+      // Ensure server has computed scores and marked the assessment COMPLETED.
+      // This handles cases where per-answer processStructuredResponse didn't
+      // detect completion (e.g. when questions were skipped via skip logic).
+      const id = resolvedAssessmentId || assessmentId;
+      fetch(`/api/assessments/${id}/finalize`, { method: "POST" }).catch(
+        (err) => console.error("[finalize] request failed:", err)
+      );
     } else if ((activeQuestion || pendingSaves > 0) && assessmentStatus === "COMPLETED") {
       setAssessmentStatus("IN_PROGRESS");
     }
   }, [
     activeQuestion,
+    assessmentId,
     assessmentStatus,
     isLocallyComplete,
     isStructuredMode,
     pendingSaves,
+    resolvedAssessmentId,
   ]);
 
   const initializeStructuredMode = useCallback(async () => {

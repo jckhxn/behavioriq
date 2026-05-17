@@ -100,13 +100,11 @@ const globalAssessmentCaches = globalThis as typeof globalThis & {
   __assessmentResponseCache?: Map<string, AssessmentResponseCacheEntry>;
 };
 
-const assessmentSetupCache =
-  globalAssessmentCaches.__assessmentSetupCache ??
-  new Map<string, AssessmentSetupCacheEntry>();
-
-if (!globalAssessmentCaches.__assessmentSetupCache) {
-  globalAssessmentCaches.__assessmentSetupCache = assessmentSetupCache;
-}
+const assessmentSetupCache: Map<string, AssessmentSetupCacheEntry> =
+  process.env.NODE_ENV === "production"
+    ? (globalAssessmentCaches.__assessmentSetupCache ??
+        (globalAssessmentCaches.__assessmentSetupCache = new Map()))
+    : new Map();
 
 const assessmentResponseCache =
   globalAssessmentCaches.__assessmentResponseCache ??
@@ -959,6 +957,7 @@ ${JSON.stringify(topDomains, null, 2)}`;
       });
     } catch (error) {
       console.error("Error updating scores:", error);
+      throw error; // surface so callers can detect the failure
     }
   }
 
@@ -1166,6 +1165,56 @@ ${JSON.stringify(topDomains, null, 2)}`;
         : null,
       progress,
     };
+  }
+
+  /**
+   * Compute domain scores from all persisted responses, save them, and mark
+   * the assessment COMPLETED. Called by the /finalize endpoint when the client
+   * determines all questions have been answered (accounting for skip logic that
+   * the per-answer processStructuredResponse path may not have applied).
+   */
+  async finalizeAssessment(chargeCredit = true): Promise<void> {
+    if (!this.scoringCalculator) {
+      throw new Error("AssessmentAI not initialized");
+    }
+
+    const domainScores = this.scoringCalculator.getAllDomainScores(
+      this.questionResponses
+    );
+
+    const assessment = await prisma.assessment.update({
+      where: { id: this.assessmentId },
+      data: { status: "COMPLETED", completedAt: new Date() },
+      select: { userId: true, isConversational: true, subjectName: true },
+    });
+
+    if (chargeCredit && assessment.userId && !assessment.isConversational) {
+      const { assessmentCreditsService } = await import(
+        "@/lib/services/assessment-credits-service"
+      );
+      try {
+        await assessmentCreditsService.useCredit(assessment.userId);
+      } catch (error) {
+        console.error(
+          `[finalize] credit charge failed for ${this.assessmentId}:`,
+          error
+        );
+      }
+    }
+
+    await this.updateStructuredScores(domainScores);
+
+    if (assessment.userId && domainScores.length > 0) {
+      void this.generateAndPersistRecommendations(
+        domainScores,
+        assessment.userId,
+        assessment.subjectName || undefined
+      );
+    }
+
+    console.log(
+      `[finalize] ✅ Assessment ${this.assessmentId} finalized with ${domainScores.length} domain scores`
+    );
   }
 
   static async createNewAssessment(

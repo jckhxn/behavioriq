@@ -82,13 +82,13 @@ const globalWithCache = globalThis as typeof globalThis & {
   __assessmentTemplateCache?: Map<string, TemplateCacheEntry>;
 };
 
-const templateCache =
-  globalWithCache.__assessmentTemplateCache ??
-  new Map<string, TemplateCacheEntry>();
-
-if (!globalWithCache.__assessmentTemplateCache) {
-  globalWithCache.__assessmentTemplateCache = templateCache;
-}
+// In development, always start fresh so hot-reloaded code changes take effect immediately.
+// In production, persist on globalThis to survive Next.js serverless function warm keeps.
+const templateCache: Map<string, TemplateCacheEntry> =
+  process.env.NODE_ENV === "production"
+    ? (globalWithCache.__assessmentTemplateCache ??
+        (globalWithCache.__assessmentTemplateCache = new Map()))
+    : new Map();
 
 const isTemplateDebugEnabled =
   process.env.ASSESSMENT_TEMPLATE_DEBUG === "true";
@@ -171,11 +171,12 @@ function validateDomainTemplate(
           `Domain ${domainIndex}, Question ${qIndex}: Missing or invalid question text`
         );
       }
-      if (question.order === undefined || typeof question.order !== "number") {
+      if (question.order !== undefined && typeof question.order !== "number") {
         validationIssues.push(
           `Domain ${domainIndex}, Question ${qIndex}: Missing or invalid question order`
         );
       }
+      // If order is absent, the loader at line 594 falls back to array index — that's fine.
     });
   }
 

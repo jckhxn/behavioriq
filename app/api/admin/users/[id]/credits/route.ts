@@ -21,7 +21,8 @@ export async function POST(
     const body = await request.json();
     const {
       assessmentCredits,
-      conversationalReportCredits,
+      conversationalCredits,
+      conversationalReportCredits = conversationalCredits,
     } = body;
 
     if (

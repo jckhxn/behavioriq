@@ -1195,15 +1195,17 @@ export function AssessmentsView() {
         </div>
       )}
 
-      {/* Assessment Detail Sidebar — rendered below in block flow */}
-      {selectedAssessmentId && (
-        <div className="bg-dash-surface border border-dash-ink-100 rounded-xl overflow-hidden">
-          <AssessmentDetailSidebar
-            assessmentId={selectedAssessmentId}
-            onClose={handleCloseSidebar}
-          />
-        </div>
-      )}
+      {/* Assessment Detail — centered modal */}
+      <Dialog open={!!selectedAssessmentId} onOpenChange={(open) => { if (!open) handleCloseSidebar(); }}>
+        <DialogContent className="max-w-2xl w-full p-0 overflow-hidden max-h-[90vh] flex flex-col">
+          {selectedAssessmentId && (
+            <AssessmentDetailSidebar
+              assessmentId={selectedAssessmentId}
+              onClose={handleCloseSidebar}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Rename Assessment Dialog */}
       <RenameAssessmentDialog
