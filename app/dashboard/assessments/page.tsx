@@ -3,9 +3,10 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useUserData } from "@/lib/hooks/use-supabase-user";
-import { ClipboardList, FileStack, CheckCircle } from "lucide-react";
+import { ClipboardList, FileStack, CheckCircle, FlaskConical } from "lucide-react";
 import AssessmentTemplateManager from "@/components/admin/AssessmentTemplateManager";
 import DomainTemplateManager from "@/components/admin/DomainTemplateManager";
+import TrialAssessmentConfig from "@/components/admin/TrialAssessmentConfig";
 import { cn } from "@/lib/utils";
 
 
@@ -33,7 +34,7 @@ function StatCard({ label, value, icon: Icon, iconClass }: {
 export default function AssessmentsPage() {
   const { userData, isLoading } = useUserData();
   const router = useRouter();
-  const [tab, setTab] = useState<"templates" | "domains">("templates");
+  const [tab, setTab] = useState<"templates" | "domains" | "trial">("templates");
   const [stats, setStats] = useState({ activeAssessments: 0, domainTemplates: 0, completions: 0 });
 
   useEffect(() => {
@@ -80,6 +81,7 @@ export default function AssessmentsPage() {
         {([
           { id: "templates", label: "Assessment templates", icon: ClipboardList },
           { id: "domains", label: "Domain library", icon: FileStack },
+          { id: "trial", label: "Trial configuration", icon: FlaskConical },
         ] as const).map((t) => {
           const isActive = tab === t.id;
           const Icon = t.icon;
@@ -101,7 +103,9 @@ export default function AssessmentsPage() {
         })}
       </div>
 
-      {tab === "templates" ? <AssessmentTemplateManager /> : <DomainTemplateManager />}
+      {tab === "templates" && <AssessmentTemplateManager />}
+      {tab === "domains" && <DomainTemplateManager />}
+      {tab === "trial" && <TrialAssessmentConfig />}
     </div>
   );
 }
