@@ -178,14 +178,7 @@ export async function middleware(req: NextRequest) {
     return redirectResponse;
   }
 
-  // Check admin routes - we'll need to fetch user from database
-  if (req.nextUrl.pathname.startsWith("/admin")) {
-    // For admin routes, we need to check the user's role from the database
-    // This will be handled by the page itself for now
-    // TODO: Consider adding role to user metadata for faster checks
-  }
-
-  const protectedPaths = ["/dashboard", "/assessments", "/admin"];
+  const protectedPaths = ["/dashboard", "/assessments"];
   const isProtectedPath = protectedPaths.some((path) =>
     req.nextUrl.pathname.startsWith(path)
   );

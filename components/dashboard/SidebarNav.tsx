@@ -191,22 +191,22 @@ const roleNavItems: Record<string, NavItem[]> = {
   ADMIN: [
     {
       label: "Dashboard",
-      href: "/admin",
+      href: "/dashboard/overview",
       icon: <LayoutDashboard className="h-5 w-5" />,
     },
     {
       label: "Assessments",
-      href: "/admin?tab=assessments",
+      href: "/dashboard/assessments",
       icon: <FileText className="h-5 w-5" />,
     },
     {
       label: "Users",
-      href: "/admin?tab=users",
+      href: "/dashboard/users",
       icon: <Users className="h-5 w-5" />,
     },
     {
       label: "Analytics",
-      href: "/admin?tab=analytics",
+      href: "/dashboard/analytics",
       icon: <BarChart3 className="h-5 w-5" />,
     },
   ],
