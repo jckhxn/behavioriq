@@ -2,12 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -24,7 +21,6 @@ import {
   ListChecks,
   AlertCircle,
   Plus,
-  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -52,9 +48,11 @@ interface AssessmentTemplate {
 interface DomainTrialEditorDialogProps {
   isOpen: boolean;
   domainName: string;
+  domainId: string | null;
+  assessmentId: string | null;
   questions: any[];
   onClose: () => void;
-  onSave: () => void;
+  onSave: (domainId: string, assessmentId: string, questions: any[]) => void;
   onUpdateQuestion: (index: number, isTrial: boolean) => void;
   onToggleAll: (isTrial: boolean) => void;
   isSaving: boolean;
@@ -63,6 +61,8 @@ interface DomainTrialEditorDialogProps {
 const DomainTrialEditorDialog: React.FC<DomainTrialEditorDialogProps> = ({
   isOpen,
   domainName,
+  domainId,
+  assessmentId,
   questions,
   onClose,
   onSave,
@@ -74,113 +74,129 @@ const DomainTrialEditorDialog: React.FC<DomainTrialEditorDialogProps> = ({
   const pct = questions.length > 0 ? (trialCount / questions.length) * 100 : 0;
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-xl max-h-[82vh] flex flex-col overflow-hidden p-0 gap-0">
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open && !isSaving) onClose(); }}>
+      <DialogContent
+        className="flex flex-col overflow-hidden p-0 gap-0"
+        style={{ width: "min(680px, 95vw)", height: "min(580px, 90vh)", maxWidth: "none" }}
+      >
         {/* Header */}
-        <div className="px-6 pt-5 pb-4 border-b border-dash-ink-100">
-          <div className="flex items-center justify-between gap-3">
-            <div>
+        <div className="px-6 pt-5 pb-4 border-b border-dash-ink-100 shrink-0">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-dash-ink-400 mb-0.5">
                 Trial questions
               </p>
-              <h2 className="text-[17px] font-semibold text-dash-ink-900 leading-snug">
+              <h2 className="text-[18px] font-semibold text-dash-ink-900 leading-snug truncate">
                 {domainName}
               </h2>
             </div>
-            {/* Progress pill */}
-            <div className="shrink-0 text-right">
-              <span className="text-[22px] font-semibold text-dash-ink-900 leading-none tabular-nums">
-                {trialCount}
-              </span>
-              <span className="text-[13px] text-dash-ink-400 ml-1">
-                / {questions.length}
-              </span>
-              <p className="text-[11px] text-dash-ink-400 mt-0.5">selected</p>
+            {/* Count + progress */}
+            <div className="shrink-0 flex items-center gap-3 pt-0.5">
+              <div className="text-right">
+                <div className="text-[13px] font-medium text-dash-ink-500 leading-none">
+                  <span className="text-[20px] font-semibold text-dash-ink-900 tabular-nums">{trialCount}</span>
+                  {" "}/{" "}{questions.length}
+                </div>
+                <p className="text-[11px] text-dash-ink-400 mt-0.5">selected</p>
+              </div>
             </div>
           </div>
+
           {/* Progress bar */}
-          <div className="mt-3 h-1 rounded-full bg-dash-sunk overflow-hidden">
+          <div className="mt-3.5 h-[3px] rounded-full bg-dash-sunk overflow-hidden">
             <div
-              className="h-full rounded-full bg-dash-indigo-400 transition-all duration-300"
+              className="h-full rounded-full bg-dash-indigo-500 transition-all duration-300"
               style={{ width: `${pct}%` }}
             />
           </div>
+
           {/* Actions */}
-          <div className="flex items-center gap-2 mt-3">
+          <div className="flex items-center gap-2.5 mt-2.5">
             <button
+              type="button"
               onClick={() => onToggleAll(true)}
               className="text-[12px] font-medium text-dash-indigo-600 hover:text-dash-indigo-700 transition-colors"
             >
               Select all
             </button>
-            <span className="text-dash-ink-200">·</span>
+            <span className="text-dash-ink-200 text-[10px]">•</span>
             <button
+              type="button"
               onClick={() => onToggleAll(false)}
-              className="text-[12px] font-medium text-dash-ink-500 hover:text-dash-ink-700 transition-colors"
+              className="text-[12px] font-medium text-dash-ink-400 hover:text-dash-ink-700 transition-colors"
             >
               Clear all
             </button>
           </div>
         </div>
 
-        {/* Question list */}
-        <ScrollArea className="flex-1">
-          <div className="px-3 py-3 space-y-1">
+        {/* Question list — fills remaining height */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="px-4 py-3 grid grid-cols-1 gap-1">
             {questions.map((question, index) => {
               const selected = question.isTrial === true;
               return (
-                <div
+                <button
                   key={index}
+                  type="button"
                   onClick={() => onUpdateQuestion(index, !selected)}
                   className={cn(
-                    "group flex items-start gap-3 px-3 py-3 rounded-lg cursor-pointer transition-all duration-100 select-none",
+                    "group w-full flex items-start gap-3 px-3 py-2.5 rounded-lg text-left transition-all duration-100",
                     selected
-                      ? "bg-dash-indigo-50"
-                      : "hover:bg-dash-sunk/70",
+                      ? "bg-dash-indigo-50 hover:bg-dash-indigo-100/70"
+                      : "hover:bg-dash-sunk/80",
                   )}
                 >
                   {/* Indicator */}
                   <div
                     className={cn(
-                      "w-5 h-5 rounded-full shrink-0 mt-[1px] flex items-center justify-center transition-all duration-150 border",
+                      "w-[18px] h-[18px] rounded-full shrink-0 mt-[2px] flex items-center justify-center transition-all duration-150 border-2",
                       selected
                         ? "bg-dash-indigo-600 border-dash-indigo-600"
                         : "border-dash-ink-200 bg-white group-hover:border-dash-ink-400",
                     )}
                   >
-                    {selected && (
-                      <Check size={10} strokeWidth={3} className="text-white" />
-                    )}
+                    {selected && <Check size={9} strokeWidth={3} className="text-white" />}
                   </div>
 
-                  {/* Text */}
-                  <div className="flex-1 min-w-0">
-                    <span
-                      className={cn(
-                        "text-[13px] leading-relaxed",
-                        selected ? "text-dash-ink-900" : "text-dash-ink-700",
-                      )}
-                    >
-                      <span className="tabular-nums text-dash-ink-400 mr-1.5 text-[12px]">
-                        {index + 1}.
-                      </span>
+                  {/* Number + text */}
+                  <span className="flex-1 min-w-0 text-[13px] leading-[1.5]">
+                    <span className="tabular-nums text-dash-ink-400 mr-1.5 text-[11px] font-medium">
+                      {String(index + 1).padStart(2, "0")}.
+                    </span>
+                    <span className={selected ? "text-dash-ink-900 font-medium" : "text-dash-ink-700"}>
                       {question.text || question.title || "Untitled question"}
                     </span>
-                  </div>
-                </div>
+                  </span>
+                </button>
               );
             })}
           </div>
-        </ScrollArea>
+        </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-2 px-5 py-4 border-t border-dash-ink-100 bg-dash-surface/50">
-          <Button variant="outline" onClick={onClose} disabled={isSaving}>
-            Cancel
-          </Button>
-          <Button onClick={onSave} disabled={isSaving} className="min-w-[130px]">
-            {isSaving ? "Saving…" : "Save"}
-          </Button>
+        <div className="shrink-0 flex items-center justify-between gap-2 px-6 py-4 border-t border-dash-ink-100">
+          <span className="text-[12px] text-dash-ink-400">
+            {trialCount === 0
+              ? "No questions selected"
+              : `${trialCount} question${trialCount !== 1 ? "s" : ""} will appear in the trial`}
+          </span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={onClose} disabled={isSaving}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (domainId && assessmentId) onSave(domainId, assessmentId, questions);
+              }}
+              disabled={isSaving || !domainId || !assessmentId}
+              className="min-w-[80px]"
+            >
+              {isSaving ? "Saving…" : "Save"}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
@@ -381,18 +397,13 @@ const TrialAssessmentConfig: React.FC = () => {
     setEditorQuestions([]);
   };
 
-  const saveEditorChanges = async () => {
-    if (!editorDomainId || !editorAssessmentId) return;
+  const saveEditorChanges = async (domainId: string, assessmentId: string, questions: any[]) => {
     setEditorSaving(true);
     try {
       const res = await fetch("/api/admin/assessment-templates/trial", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          assessmentId: editorAssessmentId,
-          domainId: editorDomainId,
-          questions: editorQuestions,
-        }),
+        body: JSON.stringify({ assessmentId, domainId, questions }),
       });
       if (res.ok) {
         toast.success("Trial questions updated");
@@ -649,69 +660,77 @@ const TrialAssessmentConfig: React.FC = () => {
         const availableDomains = allDomainTemplates.filter((d) => !alreadyIncludedIds.has(d.id));
         return (
           <Dialog open={addDomainOpen} onOpenChange={(open) => { if (!open) { setAddDomainOpen(false); setSelectedNewDomainId(null); } }}>
-            <DialogContent className="max-w-lg max-h-[70vh] flex flex-col overflow-hidden">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Plus size={15} strokeWidth={2} className="text-dash-indigo-600" />
-                  Add domain to trial
-                </DialogTitle>
-              </DialogHeader>
+            <DialogContent
+              className="flex flex-col overflow-hidden p-0 gap-0"
+              style={{ width: "min(560px, 95vw)", height: "min(500px, 85vh)", maxWidth: "none" }}
+            >
+              {/* Header */}
+              <div className="px-6 pt-5 pb-4 border-b border-dash-ink-100 shrink-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-dash-ink-400 mb-0.5">
+                  Trial assessment
+                </p>
+                <h2 className="text-[18px] font-semibold text-dash-ink-900">Add domain</h2>
+              </div>
 
+              {/* List */}
               {availableDomains.length === 0 ? (
-                <div className="py-8 text-center">
-                  <p className="text-sm text-dash-ink-500">
+                <div className="flex-1 flex items-center justify-center">
+                  <p className="text-sm text-dash-ink-500 text-center px-6">
                     All available domains are already included in this trial assessment.
                   </p>
                 </div>
               ) : (
-                <ScrollArea className="flex-1 -mx-1 px-1">
-                  <div className="space-y-1.5 py-1">
+                <div className="flex-1 overflow-y-auto">
+                  <div className="px-4 py-3 grid grid-cols-1 gap-1">
                     {availableDomains.map((domain) => {
                       const qCount = Array.isArray(domain.questions) ? domain.questions.length : 0;
                       const isSelected = selectedNewDomainId === domain.id;
                       return (
-                        <div
+                        <button
                           key={domain.id}
+                          type="button"
                           onClick={() => setSelectedNewDomainId(isSelected ? null : domain.id)}
                           className={cn(
-                            "flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
+                            "group w-full flex items-start gap-3 px-3 py-3 rounded-lg text-left transition-all duration-100",
                             isSelected
-                              ? "bg-dash-indigo-50 border-dash-indigo-200"
-                              : "border-transparent hover:bg-dash-sunk/60",
+                              ? "bg-dash-indigo-50 hover:bg-dash-indigo-100/70"
+                              : "hover:bg-dash-sunk/80",
                           )}
                         >
                           <div
                             className={cn(
-                              "w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors",
-                              isSelected ? "border-dash-indigo-600 bg-dash-indigo-600" : "border-dash-ink-300",
+                              "w-[18px] h-[18px] rounded-full shrink-0 mt-[2px] flex items-center justify-center transition-all duration-150 border-2",
+                              isSelected ? "bg-dash-indigo-600 border-dash-indigo-600" : "border-dash-ink-200 bg-white group-hover:border-dash-ink-400",
                             )}
                           >
-                            {isSelected && <Check size={10} strokeWidth={3} className="text-white" />}
+                            {isSelected && <Check size={9} strokeWidth={3} className="text-white" />}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="text-[13px] font-semibold text-dash-ink-900 leading-snug">
                               {domain.name}
                             </div>
                             {domain.description && (
-                              <p className="text-xs text-dash-ink-500 mt-0.5 line-clamp-2">{domain.description}</p>
+                              <p className="text-[12px] text-dash-ink-500 mt-0.5 line-clamp-2 leading-relaxed">{domain.description}</p>
                             )}
-                            <p className="text-xs text-dash-ink-400 mt-1 font-medium">{qCount} questions</p>
+                            <p className="text-[11px] text-dash-ink-400 mt-1 font-medium">{qCount} questions</p>
                           </div>
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
-                </ScrollArea>
+                </div>
               )}
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-dash-ink-100">
-                <Button variant="outline" onClick={() => { setAddDomainOpen(false); setSelectedNewDomainId(null); }} disabled={addDomainSaving}>
+              {/* Footer */}
+              <div className="shrink-0 flex justify-end gap-2 px-6 py-4 border-t border-dash-ink-100">
+                <Button variant="outline" size="sm" onClick={() => { setAddDomainOpen(false); setSelectedNewDomainId(null); }} disabled={addDomainSaving}>
                   Cancel
                 </Button>
                 <Button
+                  size="sm"
                   onClick={handleAddDomain}
                   disabled={!selectedNewDomainId || addDomainSaving}
-                  className="min-w-[110px]"
+                  className="min-w-[100px]"
                 >
                   {addDomainSaving ? "Adding…" : "Add domain"}
                 </Button>
@@ -725,6 +744,8 @@ const TrialAssessmentConfig: React.FC = () => {
       <DomainTrialEditorDialog
         isOpen={editorOpen}
         domainName={editorDomainName}
+        domainId={editorDomainId}
+        assessmentId={editorAssessmentId}
         questions={editorQuestions}
         onClose={closeEditor}
         onSave={saveEditorChanges}
