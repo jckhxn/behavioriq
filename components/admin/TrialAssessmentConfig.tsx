@@ -15,8 +15,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   FlaskConical,
@@ -73,88 +71,115 @@ const DomainTrialEditorDialog: React.FC<DomainTrialEditorDialogProps> = ({
   isSaving,
 }) => {
   const trialCount = questions.filter((q) => q.isTrial === true).length;
+  const pct = questions.length > 0 ? (trialCount / questions.length) * 100 : 0;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FlaskConical className="h-4 w-4 text-dash-indigo-600" />
-            Trial questions — {domainName}
-          </DialogTitle>
-        </DialogHeader>
-
-        {/* Summary bar */}
-        <div className="flex items-center justify-between px-3 py-2.5 bg-dash-sunk rounded-lg border border-dash-ink-100">
-          <span className="text-sm font-medium text-dash-ink-700">
-            <span className="text-dash-ink-900 font-semibold">{trialCount}</span>
-            {" of "}
-            <span className="text-dash-ink-900 font-semibold">{questions.length}</span>
-            {" questions marked for trial"}
-          </span>
-          <div className="flex gap-1.5">
-            <Button
-              variant="outline"
-              size="sm"
+      <DialogContent className="max-w-xl max-h-[82vh] flex flex-col overflow-hidden p-0 gap-0">
+        {/* Header */}
+        <div className="px-6 pt-5 pb-4 border-b border-dash-ink-100">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-dash-ink-400 mb-0.5">
+                Trial questions
+              </p>
+              <h2 className="text-[17px] font-semibold text-dash-ink-900 leading-snug">
+                {domainName}
+              </h2>
+            </div>
+            {/* Progress pill */}
+            <div className="shrink-0 text-right">
+              <span className="text-[22px] font-semibold text-dash-ink-900 leading-none tabular-nums">
+                {trialCount}
+              </span>
+              <span className="text-[13px] text-dash-ink-400 ml-1">
+                / {questions.length}
+              </span>
+              <p className="text-[11px] text-dash-ink-400 mt-0.5">selected</p>
+            </div>
+          </div>
+          {/* Progress bar */}
+          <div className="mt-3 h-1 rounded-full bg-dash-sunk overflow-hidden">
+            <div
+              className="h-full rounded-full bg-dash-indigo-400 transition-all duration-300"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          {/* Actions */}
+          <div className="flex items-center gap-2 mt-3">
+            <button
               onClick={() => onToggleAll(true)}
-              className="h-7 text-xs"
+              className="text-[12px] font-medium text-dash-indigo-600 hover:text-dash-indigo-700 transition-colors"
             >
-              Mark all
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
+              Select all
+            </button>
+            <span className="text-dash-ink-200">·</span>
+            <button
               onClick={() => onToggleAll(false)}
-              className="h-7 text-xs"
+              className="text-[12px] font-medium text-dash-ink-500 hover:text-dash-ink-700 transition-colors"
             >
               Clear all
-            </Button>
+            </button>
           </div>
         </div>
 
         {/* Question list */}
-        <ScrollArea className="flex-1 -mx-1 px-1">
-          <div className="space-y-1.5 py-1">
-            {questions.map((question, index) => (
-              <div
-                key={index}
-                className={cn(
-                  "flex items-start gap-3 p-3 rounded-lg border transition-colors cursor-pointer",
-                  question.isTrial
-                    ? "bg-dash-indigo-50 border-dash-indigo-100"
-                    : "border-transparent hover:bg-dash-sunk/60",
-                )}
-                onClick={() => onUpdateQuestion(index, !question.isTrial)}
-              >
-                <Checkbox
-                  id={`trial-q-${index}`}
-                  checked={question.isTrial || false}
-                  onCheckedChange={(checked) => onUpdateQuestion(index, !!checked)}
-                  className="mt-0.5 shrink-0"
-                  onClick={(e) => e.stopPropagation()}
-                />
-                <Label
-                  htmlFor={`trial-q-${index}`}
-                  className="text-sm leading-relaxed cursor-pointer"
+        <ScrollArea className="flex-1">
+          <div className="px-3 py-3 space-y-1">
+            {questions.map((question, index) => {
+              const selected = question.isTrial === true;
+              return (
+                <div
+                  key={index}
+                  onClick={() => onUpdateQuestion(index, !selected)}
+                  className={cn(
+                    "group flex items-start gap-3 px-3 py-3 rounded-lg cursor-pointer transition-all duration-100 select-none",
+                    selected
+                      ? "bg-dash-indigo-50"
+                      : "hover:bg-dash-sunk/70",
+                  )}
                 >
-                  <span className="font-medium text-dash-ink-400 mr-1.5 tabular-nums">
-                    {index + 1}.
-                  </span>
-                  <span className={question.isTrial ? "text-dash-ink-900" : "text-dash-ink-700"}>
-                    {question.text || question.title || "Untitled question"}
-                  </span>
-                </Label>
-              </div>
-            ))}
+                  {/* Indicator */}
+                  <div
+                    className={cn(
+                      "w-5 h-5 rounded-full shrink-0 mt-[1px] flex items-center justify-center transition-all duration-150 border",
+                      selected
+                        ? "bg-dash-indigo-600 border-dash-indigo-600"
+                        : "border-dash-ink-200 bg-white group-hover:border-dash-ink-400",
+                    )}
+                  >
+                    {selected && (
+                      <Check size={10} strokeWidth={3} className="text-white" />
+                    )}
+                  </div>
+
+                  {/* Text */}
+                  <div className="flex-1 min-w-0">
+                    <span
+                      className={cn(
+                        "text-[13px] leading-relaxed",
+                        selected ? "text-dash-ink-900" : "text-dash-ink-700",
+                      )}
+                    >
+                      <span className="tabular-nums text-dash-ink-400 mr-1.5 text-[12px]">
+                        {index + 1}.
+                      </span>
+                      {question.text || question.title || "Untitled question"}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </ScrollArea>
 
-        <div className="flex justify-end gap-2 pt-3 border-t border-dash-ink-100">
+        {/* Footer */}
+        <div className="flex justify-end gap-2 px-5 py-4 border-t border-dash-ink-100 bg-dash-surface/50">
           <Button variant="outline" onClick={onClose} disabled={isSaving}>
             Cancel
           </Button>
-          <Button onClick={onSave} disabled={isSaving} className="min-w-[140px]">
-            {isSaving ? "Saving…" : "Save configuration"}
+          <Button onClick={onSave} disabled={isSaving} className="min-w-[130px]">
+            {isSaving ? "Saving…" : "Save"}
           </Button>
         </div>
       </DialogContent>
