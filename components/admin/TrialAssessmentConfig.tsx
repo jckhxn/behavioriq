@@ -25,6 +25,8 @@ import {
   Check,
   ListChecks,
   AlertCircle,
+  Plus,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -255,6 +257,7 @@ const DomainTrialCard: React.FC<DomainTrialCardProps> = ({ order, domain, onEdit
 
 const TrialAssessmentConfig: React.FC = () => {
   const [assessmentTemplates, setAssessmentTemplates] = useState<AssessmentTemplate[]>([]);
+  const [allDomainTemplates, setAllDomainTemplates] = useState<DomainTemplate[]>([]);
   const [trialAssessmentId, setTrialAssessmentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [settingTrial, setSettingTrial] = useState(false);
@@ -267,6 +270,11 @@ const TrialAssessmentConfig: React.FC = () => {
   const [editorQuestions, setEditorQuestions] = useState<any[]>([]);
   const [editorSaving, setEditorSaving] = useState(false);
 
+  // Add domain state
+  const [addDomainOpen, setAddDomainOpen] = useState(false);
+  const [addDomainSaving, setAddDomainSaving] = useState(false);
+  const [selectedNewDomainId, setSelectedNewDomainId] = useState<string | null>(null);
+
   useEffect(() => {
     loadAll();
   }, []);
@@ -274,11 +282,13 @@ const TrialAssessmentConfig: React.FC = () => {
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [templatesRes, settingsRes] = await Promise.all([
+      const [templatesRes, domainsRes, settingsRes] = await Promise.all([
         fetch("/api/admin/assessment-templates"),
+        fetch("/api/admin/domain-templates"),
         fetch("/api/admin/platform-settings"),
       ]);
       if (templatesRes.ok) setAssessmentTemplates(await templatesRes.json());
+      if (domainsRes.ok) setAllDomainTemplates(await domainsRes.json());
       if (settingsRes.ok) {
         const data = await settingsRes.json();
         setTrialAssessmentId(data.settings?.globalTrialAssessment?.id ?? null);
@@ -288,6 +298,11 @@ const TrialAssessmentConfig: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const reloadTemplates = async () => {
+    const r = await fetch("/api/admin/assessment-templates");
+    if (r.ok) setAssessmentTemplates(await r.json());
   };
 
   const trialAssessment = assessmentTemplates.find((t) => t.id === trialAssessmentId) ?? null;
@@ -312,9 +327,7 @@ const TrialAssessmentConfig: React.FC = () => {
       if (res.ok) {
         setTrialAssessmentId(template.id);
         toast.success(`"${template.name}" is now the trial assessment`);
-        // Reload templates to get fresh question data
-        const r = await fetch("/api/admin/assessment-templates");
-        if (r.ok) setAssessmentTemplates(await r.json());
+        await reloadTemplates();
       } else {
         const err = await res.json();
         toast.error(err.error || "Failed to set trial assessment");
@@ -359,9 +372,7 @@ const TrialAssessmentConfig: React.FC = () => {
       if (res.ok) {
         toast.success("Trial questions updated");
         closeEditor();
-        // Refresh templates so the card counts update
-        const r = await fetch("/api/admin/assessment-templates");
-        if (r.ok) setAssessmentTemplates(await r.json());
+        await reloadTemplates();
       } else {
         const err = await res.json();
         toast.error(err.error || "Failed to save trial configuration");
@@ -370,6 +381,46 @@ const TrialAssessmentConfig: React.FC = () => {
       toast.error("Error saving trial configuration");
     } finally {
       setEditorSaving(false);
+    }
+  };
+
+  const handleAddDomain = async () => {
+    if (!selectedNewDomainId || !trialAssessment) return;
+    setAddDomainSaving(true);
+    try {
+      const existingDomains = sortedDomains.map(({ order, domainTemplate }) => ({
+        domainTemplateId: domainTemplate.id,
+        order,
+      }));
+      const updatedDomains = [
+        ...existingDomains,
+        { domainTemplateId: selectedNewDomainId, order: existingDomains.length + 1 },
+      ];
+      const res = await fetch("/api/admin/assessment-templates", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: trialAssessment.id,
+          name: trialAssessment.name,
+          slug: trialAssessment.slug,
+          isActive: trialAssessment.isActive,
+          domains: updatedDomains,
+        }),
+      });
+      if (res.ok) {
+        const added = allDomainTemplates.find((d) => d.id === selectedNewDomainId);
+        toast.success(`"${added?.name}" added to trial assessment`);
+        setAddDomainOpen(false);
+        setSelectedNewDomainId(null);
+        await reloadTemplates();
+      } else {
+        const err = await res.json();
+        toast.error(err.error || "Failed to add domain");
+      }
+    } catch {
+      toast.error("Error adding domain");
+    } finally {
+      setAddDomainSaving(false);
     }
   };
 
@@ -489,7 +540,7 @@ const TrialAssessmentConfig: React.FC = () => {
       {/* Domain question configuration */}
       {trialAssessment && (
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <div>
               <h3 className="text-[14px] font-semibold text-dash-ink-900">
                 Configure trial questions by domain
@@ -498,6 +549,15 @@ const TrialAssessmentConfig: React.FC = () => {
                 Select which questions from each domain appear in the trial assessment.
               </p>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { setSelectedNewDomainId(null); setAddDomainOpen(true); }}
+              className="shrink-0 gap-1.5"
+            >
+              <Plus size={13} strokeWidth={2} />
+              Add domain
+            </Button>
           </div>
 
           {sortedDomains.length === 0 ? (
@@ -557,6 +617,84 @@ const TrialAssessmentConfig: React.FC = () => {
           </p>
         </div>
       )}
+
+      {/* Add domain dialog */}
+      {(() => {
+        const alreadyIncludedIds = new Set(sortedDomains.map(({ domainTemplate }) => domainTemplate.id));
+        const availableDomains = allDomainTemplates.filter((d) => !alreadyIncludedIds.has(d.id));
+        return (
+          <Dialog open={addDomainOpen} onOpenChange={(open) => { if (!open) { setAddDomainOpen(false); setSelectedNewDomainId(null); } }}>
+            <DialogContent className="max-w-lg max-h-[70vh] flex flex-col overflow-hidden">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Plus size={15} strokeWidth={2} className="text-dash-indigo-600" />
+                  Add domain to trial
+                </DialogTitle>
+              </DialogHeader>
+
+              {availableDomains.length === 0 ? (
+                <div className="py-8 text-center">
+                  <p className="text-sm text-dash-ink-500">
+                    All available domains are already included in this trial assessment.
+                  </p>
+                </div>
+              ) : (
+                <ScrollArea className="flex-1 -mx-1 px-1">
+                  <div className="space-y-1.5 py-1">
+                    {availableDomains.map((domain) => {
+                      const qCount = Array.isArray(domain.questions) ? domain.questions.length : 0;
+                      const isSelected = selectedNewDomainId === domain.id;
+                      return (
+                        <div
+                          key={domain.id}
+                          onClick={() => setSelectedNewDomainId(isSelected ? null : domain.id)}
+                          className={cn(
+                            "flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
+                            isSelected
+                              ? "bg-dash-indigo-50 border-dash-indigo-200"
+                              : "border-transparent hover:bg-dash-sunk/60",
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              "w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors",
+                              isSelected ? "border-dash-indigo-600 bg-dash-indigo-600" : "border-dash-ink-300",
+                            )}
+                          >
+                            {isSelected && <Check size={10} strokeWidth={3} className="text-white" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[13px] font-semibold text-dash-ink-900 leading-snug">
+                              {domain.name}
+                            </div>
+                            {domain.description && (
+                              <p className="text-xs text-dash-ink-500 mt-0.5 line-clamp-2">{domain.description}</p>
+                            )}
+                            <p className="text-xs text-dash-ink-400 mt-1 font-medium">{qCount} questions</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+              )}
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-dash-ink-100">
+                <Button variant="outline" onClick={() => { setAddDomainOpen(false); setSelectedNewDomainId(null); }} disabled={addDomainSaving}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleAddDomain}
+                  disabled={!selectedNewDomainId || addDomainSaving}
+                  className="min-w-[110px]"
+                >
+                  {addDomainSaving ? "Adding…" : "Add domain"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
 
       {/* Per-domain question editor dialog */}
       <DomainTrialEditorDialog
