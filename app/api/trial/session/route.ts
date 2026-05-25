@@ -57,20 +57,22 @@ export async function GET(request: NextRequest) {
 
     const trialAssessment = platformSettings.globalTrialAssessment;
 
-    // Get all questions from trial (questions is a JSON field)
+    // Get only trial-flagged questions from each domain
     const allQuestions = trialAssessment.domains.flatMap((domain: any) => {
       const questions = Array.isArray(domain.domainTemplate.questions)
         ? domain.domainTemplate.questions
         : [];
-      return questions.map((q: any, idx: number) => ({
-        qid: q.id || `q-${domain.id}-${idx}`,
-        text: q.text || q,
-        scale: 'yesno' as const,
-        context: {
-          domain: domain.domainTemplate.name,
-          order: idx,
-        },
-      }));
+      return questions
+        .filter((q: any) => q.isTrial === true)
+        .map((q: any, idx: number) => ({
+          qid: q.id || `q-${domain.id}-${idx}`,
+          text: q.text || q,
+          scale: 'yesno' as const,
+          context: {
+            domain: domain.domainTemplate.name,
+            order: idx,
+          },
+        }));
     });
 
     // Get answered question IDs from session

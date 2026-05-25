@@ -66,12 +66,14 @@ export async function GET(request: NextRequest) {
         ? domain.domainTemplate.questions
         : [];
 
-      questions.forEach((q: any, idx: number) => {
-        const qid = q.id || `q-${domain.id}-${idx}`;
-        const domainName = domain.domainTemplate.name;
-        questionToDomain.set(qid, domainName);
-        allQuestions.push({ qid, domain: domainName });
-      });
+      questions
+        .filter((q: any) => q.isTrial === true)
+        .forEach((q: any, idx: number) => {
+          const qid = q.id || `q-${domain.id}-${idx}`;
+          const domainName = domain.domainTemplate.name;
+          questionToDomain.set(qid, domainName);
+          allQuestions.push({ qid, domain: domainName });
+        });
     });
 
     // Parse answers to calculate domain scores
