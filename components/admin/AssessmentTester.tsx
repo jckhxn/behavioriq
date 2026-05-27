@@ -411,7 +411,7 @@ export function AssessmentTester({ templateId: initialTemplateId, onExit }: Asse
           const debugResponseList = Object.entries(responses).map(([questionId, response]) => ({ questionId, response }));
           const debugData = configs.length > 0 ? computeDebugScores(configs, debugResponseList) : null;
           return (
-            <details className="border border-dash-amber-300 rounded-xl overflow-hidden text-[11px] font-mono">
+            <details open className="border border-dash-amber-300 rounded-xl overflow-hidden text-[11px] font-mono">
               <summary className="bg-dash-amber-100 px-4 py-2.5 cursor-pointer text-dash-amber-800 font-semibold select-none list-none flex items-center gap-2">
                 <span className="text-[10px] bg-dash-amber-700 text-white px-1.5 py-0.5 rounded font-bold tracking-wide">DEBUG</span>
                 Scoring breakdown — {Object.keys(responses).length} questions answered
