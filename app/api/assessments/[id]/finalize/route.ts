@@ -50,21 +50,6 @@ export async function POST(
       );
     }
 
-    // If already COMPLETED and scores exist, nothing to do
-    if (assessment.status === "COMPLETED") {
-      const existingScores = await prisma.score.findMany({
-        where: { assessmentId },
-        select: { id: true },
-      });
-      if (existingScores.length > 0) {
-        return NextResponse.json({
-          success: true,
-          scoresCount: existingScores.length,
-        });
-      }
-      // COMPLETED but no scores — fall through to recompute
-    }
-
     const assessmentAI = new AssessmentAI(assessmentId);
     await assessmentAI.initialize();
 

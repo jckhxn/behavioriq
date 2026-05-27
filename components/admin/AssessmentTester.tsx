@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Progress } from "@/components/ui/progress";
+import { useFeatureFlag } from "@/lib/hooks/useFeatureFlag";
+import { computeDebugScores } from "@/lib/assessment/debugScoring";
 import { QuestionPresenter } from "@/components/assessment/QuestionPresenter";
 import {
   DynamicScoringCalculator,
@@ -63,6 +65,7 @@ export function AssessmentTester({ templateId: initialTemplateId, onExit }: Asse
   const [history, setHistory] = useState<Record<string, ResponseValue>[]>([]);
   const [results, setResults] = useState<ScoredResult[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const debugMode = useFeatureFlag("debug_assessment");
 
   useEffect(() => {
     if (initialTemplateId) return;
@@ -267,6 +270,8 @@ export function AssessmentTester({ templateId: initialTemplateId, onExit }: Asse
           assessmentConfigs={configs}
           responseType={activeQuestion.responseType}
           likertScale={activeQuestion.likertScale}
+          debugMode={debugMode}
+          debugResponses={debugMode ? Object.entries(responses).map(([questionId, response]) => ({ questionId, response })) : undefined}
         />
       </div>
     );
@@ -400,6 +405,92 @@ export function AssessmentTester({ templateId: initialTemplateId, onExit }: Asse
             Scoring: clinically significant threshold → HIGH · ≥60% → MODERATE · else LOW
           </p>
         </div>
+
+        {/* Debug panel */}
+        {debugMode && (() => {
+          const debugResponseList = Object.entries(responses).map(([questionId, response]) => ({ questionId, response }));
+          const debugData = configs.length > 0 ? computeDebugScores(configs, debugResponseList) : null;
+          return (
+            <details className="border border-dash-amber-300 rounded-xl overflow-hidden text-[11px] font-mono">
+              <summary className="bg-dash-amber-100 px-4 py-2.5 cursor-pointer text-dash-amber-800 font-semibold select-none list-none flex items-center gap-2">
+                <span className="text-[10px] bg-dash-amber-700 text-white px-1.5 py-0.5 rounded font-bold tracking-wide">DEBUG</span>
+                Scoring breakdown — {Object.keys(responses).length} questions answered
+              </summary>
+              <div className="bg-dash-amber-50 px-4 py-4 space-y-5">
+                {debugData && debugData.questionScores.length > 0 && (
+                  <div>
+                    <div className="text-dash-ink-500 mb-2 font-semibold uppercase tracking-wide text-[10px]">Per-question</div>
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="text-dash-ink-400 text-left">
+                          <th className="pr-4 pb-1 font-normal">question id</th>
+                          <th className="pr-4 pb-1 font-normal">domain</th>
+                          <th className="pr-4 pb-1 font-normal">response</th>
+                          <th className="pr-4 pb-1 font-normal">score</th>
+                          <th className="pb-1 font-normal">max</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {debugData.questionScores.map((qs) => (
+                          <tr key={qs.questionId} className="border-t border-dash-amber-200">
+                            <td className="pr-4 py-0.5 text-dash-ink-600">{qs.questionId}</td>
+                            <td className="pr-4 py-0.5 text-dash-ink-500">{qs.domainName}</td>
+                            <td className="pr-4 py-0.5 text-dash-ink-700">{String(qs.response)}</td>
+                            <td className="pr-4 py-0.5 text-dash-ink-900 font-semibold">{qs.score}</td>
+                            <td className="py-0.5 text-dash-ink-500">{qs.maxScore}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                <div>
+                  <div className="text-dash-ink-500 mb-2 font-semibold uppercase tracking-wide text-[10px]">Per-domain totals</div>
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="text-dash-ink-400 text-left">
+                        <th className="pr-4 pb-1 font-normal">domain</th>
+                        <th className="pr-4 pb-1 font-normal">answered</th>
+                        <th className="pr-4 pb-1 font-normal">raw</th>
+                        <th className="pr-4 pb-1 font-normal">max</th>
+                        <th className="pr-4 pb-1 font-normal">%</th>
+                        <th className="pb-1 font-normal">risk</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {results.map((r, i) => (
+                        <tr key={i} className="border-t border-dash-amber-200">
+                          <td className="pr-4 py-0.5 text-dash-ink-600">{r.displayName || r.domain}</td>
+                          <td className="pr-4 py-0.5 text-dash-ink-700">{r.skipped ? "—" : r.questionsAnswered}</td>
+                          <td className="pr-4 py-0.5 text-dash-ink-900 font-semibold">{r.skipped ? "—" : r.score}</td>
+                          <td className="pr-4 py-0.5 text-dash-ink-500">{r.skipped ? "—" : r.totalPossible}</td>
+                          <td className="pr-4 py-0.5 text-dash-ink-700">{r.skipped ? "skipped" : `${r.percentage.toFixed(1)}%`}</td>
+                          <td className="py-0.5 text-dash-ink-900 font-semibold">{r.riskLevel.replace("_", " ")}</td>
+                        </tr>
+                      ))}
+                      {results.filter((r) => !r.skipped).length > 1 && (() => {
+                        const activeResults = results.filter((r) => !r.skipped);
+                        const totalRaw = activeResults.reduce((s, r) => s + r.score, 0);
+                        const totalMax = activeResults.reduce((s, r) => s + r.totalPossible, 0);
+                        const totalPct = totalMax > 0 ? (totalRaw / totalMax) * 100 : 0;
+                        return (
+                          <tr className="border-t-2 border-dash-amber-400 font-semibold">
+                            <td className="pr-4 py-1 text-dash-ink-900">TOTAL</td>
+                            <td className="pr-4 py-1 text-dash-ink-700">—</td>
+                            <td className="pr-4 py-1 text-dash-ink-900">{totalRaw}</td>
+                            <td className="pr-4 py-1 text-dash-ink-500">{totalMax}</td>
+                            <td className="pr-4 py-1 text-dash-ink-700">{totalPct.toFixed(1)}%</td>
+                            <td className="py-1 text-dash-ink-400">—</td>
+                          </tr>
+                        );
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </details>
+          );
+        })()}
       </div>
     );
   }

@@ -357,6 +357,22 @@ export async function POST(
           ? new Set<string>(rawGatingLogic?.questionSubsetThreshold?.questionIds ?? [])
           : null;
 
+        // Derive domain-level Likert scale fallback from scoringConfig
+        const domainScoringConfig = domainTemplate.scoringConfig as any;
+        const domainResponseOptions: Array<{ value: number }> =
+          domainScoringConfig?.responseOptions ?? [];
+        const domainIsLikert =
+          domainScoringConfig?.responseType &&
+          domainScoringConfig.responseType !== "yes_no" &&
+          domainScoringConfig.responseType !== "text";
+        const domainLikertScale =
+          domainIsLikert && domainResponseOptions.length > 0
+            ? {
+                min: Math.min(...domainResponseOptions.map((o: any) => Number(o.value))),
+                max: Math.max(...domainResponseOptions.map((o: any) => Number(o.value))),
+              }
+            : null;
+
         let domainScoreSum = 0;
         let answeredInDomain = 0;
         let totalPossible = 0;
@@ -368,12 +384,26 @@ export async function POST(
 
           const response = responseMap.get(question.id as string) as any;
 
-          const questionMax = getQuestionMaxScore(question);
-          totalPossible += questionMax;
+          const qLikertScale = (question.likertScale as any) ?? domainLikertScale;
+          const isLikert =
+            question.responseType === "likert" ||
+            (!question.responseType && qLikertScale !== null);
 
-          if (response) {
-            answeredInDomain++;
-            domainScoreSum += Number(response.score || 0);
+          if (isLikert && qLikertScale) {
+            const range = qLikertScale.max - qLikertScale.min;
+            totalPossible += range > 0 ? 1 : 0;
+            if (response) {
+              answeredInDomain++;
+              const raw = Number(response.score ?? 0);
+              domainScoreSum += range > 0 ? (raw - qLikertScale.min) / range : 0;
+            }
+          } else {
+            const questionMax = getQuestionMaxScore(question);
+            totalPossible += questionMax;
+            if (response) {
+              answeredInDomain++;
+              domainScoreSum += Number(response.score || 0);
+            }
           }
         }
 

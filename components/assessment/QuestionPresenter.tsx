@@ -5,6 +5,7 @@ import { ArrowLeft, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { QuestionSetConfig } from "@/lib/assessment/db-loader";
 import type { QuestionResponseType, LikertScale, LikertOption } from "@/lib/assessment/types";
+import { computeDebugScores, type DebugQuestionScore, type DebugDomainScore } from "@/lib/assessment/debugScoring";
 
 interface QuestionPresenterProps {
   questionId: string;
@@ -23,6 +24,8 @@ interface QuestionPresenterProps {
   assessmentConfigs: QuestionSetConfig[];
   responseType?: QuestionResponseType;
   likertScale?: LikertScale;
+  debugMode?: boolean;
+  debugResponses?: Array<{ questionId: string; response: string | boolean | number }>;
 }
 
 export function QuestionPresenter({
@@ -37,6 +40,8 @@ export function QuestionPresenter({
   assessmentConfigs,
   responseType = "boolean",
   likertScale,
+  debugMode = false,
+  debugResponses = [],
 }: QuestionPresenterProps) {
   const [selected, setSelected] = useState<boolean | number | string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -101,6 +106,11 @@ export function QuestionPresenter({
   const domainConfig = useMemo(() => {
     return assessmentConfigs.find((d) => d.name === currentDomain) ?? { name: currentDomain };
   }, [assessmentConfigs, currentDomain]);
+
+  const debugScores = useMemo(() => {
+    if (!debugMode || debugResponses.length === 0 || assessmentConfigs.length === 0) return null;
+    return computeDebugScores(assessmentConfigs, debugResponses);
+  }, [debugMode, debugResponses, assessmentConfigs]);
 
   const pct = Math.round(progress.overallProgress);
 
@@ -368,6 +378,74 @@ export function QuestionPresenter({
           <div className="text-[11px] text-dash-ink-500 mt-0.5">domains done</div>
         </div>
       </div>
+
+      {/* Debug panel */}
+      {debugMode && (
+        <details className="mt-6 w-full max-w-lg border border-dash-amber-300 rounded-xl overflow-hidden text-[11px] font-mono open:pb-0">
+          <summary className="bg-dash-amber-100 px-3 py-2 cursor-pointer text-dash-amber-800 font-semibold select-none list-none flex items-center gap-2">
+            <span className="text-[10px] bg-dash-amber-700 text-white px-1.5 py-0.5 rounded font-bold tracking-wide">DEBUG</span>
+            Scoring — {questionId} · {currentDomain} · {responseType}
+          </summary>
+          <div className="bg-dash-amber-50 px-3 py-3 space-y-4">
+            {debugScores && debugScores.questionScores.length > 0 ? (
+              <>
+                <div>
+                  <div className="text-dash-ink-500 mb-1.5 font-semibold uppercase tracking-wide text-[10px]">Per-question</div>
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="text-dash-ink-400 text-left">
+                        <th className="pr-3 pb-1 font-normal">question</th>
+                        <th className="pr-3 pb-1 font-normal">domain</th>
+                        <th className="pr-3 pb-1 font-normal">response</th>
+                        <th className="pr-3 pb-1 font-normal">score</th>
+                        <th className="pb-1 font-normal">max</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {debugScores.questionScores.map((qs: DebugQuestionScore) => (
+                        <tr key={qs.questionId} className={cn("border-t border-dash-amber-200", qs.questionId === questionId && "bg-dash-amber-200/50")}>
+                          <td className="pr-3 py-0.5 text-dash-ink-600 truncate max-w-[120px]">{qs.questionId}</td>
+                          <td className="pr-3 py-0.5 text-dash-ink-500 truncate max-w-[100px]">{qs.domainName}</td>
+                          <td className="pr-3 py-0.5 text-dash-ink-700">{String(qs.response)}</td>
+                          <td className="pr-3 py-0.5 text-dash-ink-900 font-semibold">{qs.score}</td>
+                          <td className="py-0.5 text-dash-ink-500">{qs.maxScore}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div>
+                  <div className="text-dash-ink-500 mb-1.5 font-semibold uppercase tracking-wide text-[10px]">Per-domain running totals</div>
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="text-dash-ink-400 text-left">
+                        <th className="pr-3 pb-1 font-normal">domain</th>
+                        <th className="pr-3 pb-1 font-normal">answered</th>
+                        <th className="pr-3 pb-1 font-normal">score</th>
+                        <th className="pr-3 pb-1 font-normal">max</th>
+                        <th className="pb-1 font-normal">%</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {debugScores.domainScores.map((ds: DebugDomainScore) => (
+                        <tr key={ds.domainKey} className={cn("border-t border-dash-amber-200", ds.displayName === currentDomain && "bg-dash-amber-200/50")}>
+                          <td className="pr-3 py-0.5 text-dash-ink-600 truncate max-w-[120px]">{ds.displayName}</td>
+                          <td className="pr-3 py-0.5 text-dash-ink-700">{ds.answered}</td>
+                          <td className="pr-3 py-0.5 text-dash-ink-900 font-semibold">{ds.rawScore}</td>
+                          <td className="pr-3 py-0.5 text-dash-ink-500">{ds.maxPossible}</td>
+                          <td className="py-0.5 text-dash-ink-700">{ds.percent}%</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            ) : (
+              <div className="text-dash-ink-400">No responses yet.</div>
+            )}
+          </div>
+        </details>
+      )}
     </div>
   );
 }

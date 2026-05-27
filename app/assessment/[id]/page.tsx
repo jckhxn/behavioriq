@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useUser } from "@/lib/hooks/use-supabase-user";
+import { useFeatureFlag } from "@/lib/hooks/useFeatureFlag";
 import { AssessmentChat } from "@/components/chat/AssessmentChat";
 import { AssessmentCompletion } from "@/components/assessment/AssessmentCompletion";
 import { ArrowLeft } from "lucide-react";
@@ -21,6 +22,7 @@ interface Assessment {
 export default function AssessmentPage() {
   const params = useParams();
   const { isLoading } = useUser();
+  const debugMode = useFeatureFlag("debug_assessment");
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -119,6 +121,7 @@ export default function AssessmentPage() {
             assessmentId={assessmentId}
             subjectName={assessment.subjectName}
             isAnonymous={assessment.userId === null}
+            debugMode={debugMode}
           />
         </div>
       </div>

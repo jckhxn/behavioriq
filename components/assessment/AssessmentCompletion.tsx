@@ -59,11 +59,18 @@ interface Score {
   wasTerminatedEarly: boolean;
 }
 
+interface DebugResponse {
+  questionId: string;
+  response: string;
+  score: number;
+}
+
 interface AssessmentCompletionProps {
   assessmentId: string;
   subjectName: string;
   aiRecommendations?: string;
   isAnonymous?: boolean;
+  debugMode?: boolean;
 }
 
 export function AssessmentCompletion({
@@ -71,9 +78,11 @@ export function AssessmentCompletion({
   subjectName,
   aiRecommendations: initialRecommendations,
   isAnonymous = false,
+  debugMode = false,
 }: AssessmentCompletionProps) {
   const [scores, setScores] = useState<Score[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [debugResponses, setDebugResponses] = useState<DebugResponse[]>([]);
   const [isDownloading, setIsDownloading] = useState(false);
   const [savedLinks, setSavedLinks] = useState<string[]>([]);
   const [existingRecommendations, setExistingRecommendations] = useState<any[]>(
@@ -133,7 +142,20 @@ export function AssessmentCompletion({
     fetchScores();
     fetchSavedLinks();
     checkExistingRecommendations();
-  }, [assessmentId]);
+    if (debugMode) fetchDebugResponses();
+  }, [assessmentId, debugMode]);
+
+  const fetchDebugResponses = async () => {
+    try {
+      const res = await fetch(`/api/assessments/${assessmentId}/debug`);
+      if (res.ok) {
+        const data = await res.json();
+        setDebugResponses(data.responses || []);
+      }
+    } catch {
+      // debug panel is best-effort
+    }
+  };
 
   const fetchAssessmentData = async () => {
     try {
@@ -843,6 +865,93 @@ export function AssessmentCompletion({
           </div>
         </CardContent>
       </Card>
+
+      {/* Debug panel */}
+      {debugMode && (
+        <details className="border border-dash-amber-300 rounded-xl overflow-hidden text-[11px] font-mono">
+          <summary className="bg-dash-amber-100 px-4 py-2.5 cursor-pointer text-dash-amber-800 font-semibold select-none list-none flex items-center gap-2">
+            <span className="text-[10px] bg-dash-amber-700 text-white px-1.5 py-0.5 rounded font-bold tracking-wide">DEBUG</span>
+            Scoring breakdown — {scores.length} domains · {debugResponses.length} responses
+          </summary>
+          <div className="bg-dash-amber-50 px-4 py-4 space-y-5">
+            {/* Per-question */}
+            {debugResponses.length > 0 && (
+              <div>
+                <div className="text-dash-ink-500 mb-2 font-semibold uppercase tracking-wide text-[10px]">Per-question responses</div>
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="text-dash-ink-400 text-left">
+                      <th className="pr-4 pb-1 font-normal">question id</th>
+                      <th className="pr-4 pb-1 font-normal">response</th>
+                      <th className="pr-4 pb-1 font-normal">score</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {debugResponses.map((r) => (
+                      <tr key={r.questionId} className="border-t border-dash-amber-200">
+                        <td className="pr-4 py-0.5 text-dash-ink-600">{r.questionId}</td>
+                        <td className="pr-4 py-0.5 text-dash-ink-700">{r.response}</td>
+                        <td className="py-0.5 text-dash-ink-900 font-semibold">{r.score}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Per-domain */}
+            {scores.length > 0 && (
+              <div>
+                <div className="text-dash-ink-500 mb-2 font-semibold uppercase tracking-wide text-[10px]">Per-domain scores (server-computed)</div>
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="text-dash-ink-400 text-left">
+                      <th className="pr-4 pb-1 font-normal">domain</th>
+                      <th className="pr-4 pb-1 font-normal">answered</th>
+                      <th className="pr-4 pb-1 font-normal">raw</th>
+                      <th className="pr-4 pb-1 font-normal">max</th>
+                      <th className="pr-4 pb-1 font-normal">%</th>
+                      <th className="pb-1 font-normal">risk</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {scores.map((s) => {
+                      const pct = s.totalPossible > 0 ? Math.round((s.rawScore / s.totalPossible) * 100) : 0;
+                      return (
+                        <tr key={s.id} className="border-t border-dash-amber-200">
+                          <td className="pr-4 py-0.5 text-dash-ink-600">{s.domainName ?? s.domain}</td>
+                          <td className="pr-4 py-0.5 text-dash-ink-700">{s.questionsAnswered}</td>
+                          <td className="pr-4 py-0.5 text-dash-ink-900 font-semibold">{s.rawScore}</td>
+                          <td className="pr-4 py-0.5 text-dash-ink-500">{s.totalPossible}</td>
+                          <td className="pr-4 py-0.5 text-dash-ink-700">{pct}%</td>
+                          <td className="py-0.5 text-dash-ink-900 font-semibold">{s.riskLevel}</td>
+                        </tr>
+                      );
+                    })}
+                    {/* Totals row */}
+                    {scores.length > 1 && (() => {
+                      const totalRaw = scores.reduce((s, sc) => s + sc.rawScore, 0);
+                      const totalMax = scores.reduce((s, sc) => s + sc.totalPossible, 0);
+                      const totalAnswered = scores.reduce((s, sc) => s + sc.questionsAnswered, 0);
+                      const totalPct = totalMax > 0 ? Math.round((totalRaw / totalMax) * 100) : 0;
+                      return (
+                        <tr className="border-t-2 border-dash-amber-400 font-semibold">
+                          <td className="pr-4 py-1 text-dash-ink-900">TOTAL</td>
+                          <td className="pr-4 py-1 text-dash-ink-700">{totalAnswered}</td>
+                          <td className="pr-4 py-1 text-dash-ink-900">{totalRaw}</td>
+                          <td className="pr-4 py-1 text-dash-ink-500">{totalMax}</td>
+                          <td className="pr-4 py-1 text-dash-ink-700">{totalPct}%</td>
+                          <td className="py-1 text-dash-ink-400">—</td>
+                        </tr>
+                      );
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </details>
+      )}
     </div>
   );
 }

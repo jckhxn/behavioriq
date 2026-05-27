@@ -7,6 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, Loader2 } from "lucide-react";
 import { useUser } from "@/lib/hooks/use-supabase-user";
 import { ASSESSMENT_CONFIG } from "@/lib/config/ai-config";
+import { useFeatureFlag } from "@/lib/hooks/useFeatureFlag";
 import { QuestionPresenter } from "@/components/assessment/QuestionPresenter";
 import { AssessmentCompletion } from "@/components/assessment/AssessmentCompletion";
 import type { QuestionSetConfig } from "@/lib/assessment/db-loader";
@@ -30,6 +31,7 @@ interface AssessmentChatProps {
 
 export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
   const { user } = useUser();
+  const debugMode = useFeatureFlag("debug_assessment");
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -514,6 +516,7 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
           assessmentId={assessmentId}
           subjectName={subjectName}
           aiRecommendations={aiRecommendations}
+          debugMode={debugMode}
         />
       );
     }
@@ -546,6 +549,8 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
               assessmentConfigs={assessmentConfigs}
               responseType={activeQuestion.responseType}
               likertScale={activeQuestion.likertScale}
+              debugMode={debugMode}
+              debugResponses={debugMode ? questionResponses : undefined}
             />
           </div>
         </div>
@@ -586,6 +591,7 @@ export function AssessmentChat({ assessmentId }: AssessmentChatProps) {
         assessmentId={assessmentId}
         subjectName={subjectName}
         aiRecommendations={aiRecommendations}
+        debugMode={debugMode}
       />
     );
   }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUserWithRole } from "@/lib/supabase/auth-helpers";
 import { prisma } from "@/lib/db/prisma";
+import { computeTotalPossibleScore } from "@/lib/assessment/scoringConfigUtils";
 
 // POST /api/admin/domain-templates/upload - Upload domain template from JSON file
 export async function POST(request: NextRequest) {
@@ -60,6 +61,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Create the domain template
+    const scoringConfig = {
+      ...(domainData.scoringConfig || {}),
+      totalPossibleScore: computeTotalPossibleScore(
+        domainData.questions,
+        domainData.scoringConfig
+      ),
+    };
+
     const template = await prisma.domainTemplate.create({
       data: {
         name: domainData.name,
@@ -67,7 +76,7 @@ export async function POST(request: NextRequest) {
         description: domainData.description,
         questions: domainData.questions,
         resources: domainData.resources,
-        scoringConfig: domainData.scoringConfig,
+        scoringConfig,
         createdById: user.id,
       },
       include: {

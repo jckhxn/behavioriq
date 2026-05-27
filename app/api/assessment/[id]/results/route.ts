@@ -79,30 +79,36 @@ export async function GET(
         );
       }
 
-      // Score: count "yes" (true) responses as points
-      let yesCount = 0;
+      // Score: normalize each question to 0–1 (Likert) or 0/1 (boolean)
+      let domainScore = 0;
       let answeredCount = 0;
 
       relevantQuestions.forEach((q: any) => {
         const response = responseMap.get(q.id);
-        if (response !== undefined) {
-          answeredCount++;
-          // Check if response is yes/true
-          const responseStr = String(response).toLowerCase();
-          const isYes = responseStr === "true" ||
-             responseStr === "yes" ||
-             responseStr === "1" ||
-             responseStr === "y";
-          if (isYes) {
-            yesCount++;
+        if (response === undefined) return;
+        answeredCount++;
+        const isLikert = q.responseType === "likert" || q.likertScale;
+        if (isLikert && q.likertScale) {
+          const val = Number(response);
+          const range = q.likertScale.max - q.likertScale.min;
+          if (!isNaN(val) && range > 0) {
+            domainScore += (val - q.likertScale.min) / range;
           }
+        } else {
+          const responseStr = String(response).toLowerCase();
+          const isYes =
+            responseStr === "true" ||
+            responseStr === "yes" ||
+            responseStr === "1" ||
+            responseStr === "y";
+          if (isYes) domainScore += 1;
         }
       });
 
       // Calculate score as percentage
       const score =
         relevantQuestions.length > 0
-          ? Math.round((yesCount / relevantQuestions.length) * 100)
+          ? Math.round((domainScore / relevantQuestions.length) * 100)
           : 0;
 
       domainScores.push({
